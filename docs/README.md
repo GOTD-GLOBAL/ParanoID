@@ -26,6 +26,8 @@ This is the entry point and navigation contract for ParanoID documentation.
   used to compare designs.
 - [Decision log](decisions/README.md): accepted and superseded ADRs.
 - [RFC process](rfcs/README.md): proposals under discussion.
+- [Experiment log](experiments/README.md): reproducible evidence for unresolved
+  RFC questions; experiments are not accepted architecture.
 
 ## Contracts and operations
 
@@ -35,6 +37,8 @@ This is the entry point and navigation contract for ParanoID documentation.
 - [Operations](operations/README.md): deployment, upgrades, backups, observability,
   incidents, and recovery.
 - [Threat model](security/threat-model.md): assets, actors, boundaries, and threats.
+- [Run Rust checks](how-to/run-rust-checks.md): verify the experimental Rust
+  workspace and public identity vectors.
 
 ## Documentation by reader need
 

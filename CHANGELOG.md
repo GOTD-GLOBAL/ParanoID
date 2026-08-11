@@ -16,3 +16,5 @@ public contract is declared.
   implementation stack.
 - Added the proposed identity, nickname registration, device authorization,
   signed-challenge authentication, session, and seed-only recovery design.
+- Added an experimental Rust identity-core crate comparing three key-hierarchy
+  candidates, executable tests, a committed public vector, and pinned Rust CI.

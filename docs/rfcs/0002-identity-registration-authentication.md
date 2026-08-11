@@ -148,6 +148,14 @@ with BIP-39, SLIP-0010, Solana wallet conventions, secure hardware, and future
 algorithm agility. Inventing a project-specific cryptographic primitive is
 prohibited.
 
+`EXP-IDENTITY-0001` now provides a Rust-only comparison of three candidates and
+a committed public vector. It confirms that the experiment is reproducible and
+that the tested purposes produce distinct public keys. It does not resolve this
+RFC: none of the candidates, paths, mnemonic parameters, or schema identifiers
+is accepted. See the
+[experiment record](../experiments/identity-key-hierarchy-0001.md) and
+[public vector](../../specs/protocol/identity/key-derivation-experiment-v1.json).
+
 The initial client should not retain plaintext recovery words after the user has
 completed the recovery confirmation flow. Whether encrypted seed retention is an
 optional mode is outside paranoid-mode v1 and requires a separate decision.
@@ -518,7 +526,8 @@ discarded if the experiments reject the design.
    are accepted? Owner: identity and UX; deadline: before key-generation code.
 2. Which reviewed derivation construction and paths separate account, registry,
    recovery, and future messaging authority? Owner: security; deadline: before
-   the identity-core implementation.
+   production identity-core implementation. `EXP-IDENTITY-0001` supplies initial
+   Rust evidence but does not answer the question.
 3. Is the account root Ed25519, or does algorithm agility require another
    representation? Owner: security; deadline: before signed test vectors.
 4. Which canonical signed encoding passes Rust/Kotlin/Swift conformance? Owner:
@@ -543,5 +552,8 @@ discarded if the experiments reject the design.
 - Stack decision: [ADR-0002](../decisions/0002-initial-technology-stack.md)
 - Required experiments: key hierarchy, cross-platform signing, registry cost and
   account layout, replay-safe challenge flow, and offline registry cache.
+- Initial key-hierarchy evidence:
+  [EXP-IDENTITY-0001](../experiments/identity-key-hierarchy-0001.md); no candidate
+  is selected.
 - Implementation issues: create only after the corresponding contract section is
   accepted or explicitly marked as an experiment.

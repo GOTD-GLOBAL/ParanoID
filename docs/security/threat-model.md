@@ -110,6 +110,12 @@ Proposed trust assumptions:
 | THR-ID-011 | Key derivation reuses authority across registry, login, messaging, or another product. | Reviewed domain separation or independent generation, reserved versioned branches, and deterministic vectors. | Cryptographic review and cross-purpose key inequality tests. |
 | THR-ID-012 | Solana program or upgrade authority is compromised. | Minimal program, constrained authority, reproducible builds, audited upgrade policy, monitoring, and an explicit migration path. | Program security review and upgrade-compromise exercise before mainnet. |
 
+`EXP-IDENTITY-0001` adds reproducible public-key inequality tests relevant to
+`THR-ID-011` and uses best-effort zeroization for selected Rust secret buffers.
+It does not close `THR-ID-001` or `THR-ID-011`: mobile memory lifetime,
+cross-platform reproduction, cross-application path reuse, algorithm agility,
+and independent cryptographic review remain required.
+
 ## Identity metadata inventory
 
 The proposed design may expose or store:

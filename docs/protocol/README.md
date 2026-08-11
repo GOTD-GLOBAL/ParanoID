@@ -26,3 +26,8 @@ Future protocol documentation must be normative and versioned. It must define:
 
 Normative schemas and test vectors must live beside this documentation. Narrative
 examples do not replace executable conformance tests.
+
+The current
+[key-hierarchy vector](../../specs/protocol/identity/key-derivation-experiment-v1.json)
+is explicitly experimental and non-normative. Its scope, results, and limits are
+recorded in [EXP-IDENTITY-0001](../experiments/identity-key-hierarchy-0001.md).

@@ -10,8 +10,9 @@ last_reviewed: 2026-08-11
 
 **Inception and first vertical-slice design.** This repository is a clean reboot.
 It contains documentation governance, product framing, an accepted initial
-implementation stack, and a proposed identity design. It has no messenger
-implementation or accepted production identity protocol.
+implementation stack, a proposed identity design, and the first experimental
+identity reference code. It has no messenger implementation or accepted
+production identity protocol.
 
 The earlier proof of concept is preserved in the private
 `GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
@@ -33,6 +34,9 @@ and experiments, but it is not a dependency or source of current architecture.
 - Identity, registration, and authentication are being specified in proposed
   `RFC-0002`. Key derivation, signed encodings, device revocation, offline cache,
   and the on-chain nickname data model remain unresolved.
+- `EXP-IDENTITY-0001` compares three BIP-39-to-Ed25519 key-hierarchy candidates
+  in the experimental `paranoid-identity-core` Rust crate. Reproducible public
+  vectors and nine tests exist; no candidate or mnemonic policy is accepted.
 - The first intended vertical slice is seed generation, nickname registration,
   device authorization, signed challenge authentication, and server session
   creation. It is not implemented yet.
@@ -42,14 +46,16 @@ and experiments, but it is not a dependency or source of current architecture.
 
 ## Next decision gates
 
-1. Resolve the open key-hierarchy, encoding, recovery, nickname, cache, and
-   revocation questions in `RFC-0002`.
+1. Review `EXP-IDENTITY-0001`, reproduce the eventual key-hierarchy candidate
+   across client boundaries, and resolve the remaining key, encoding, recovery,
+   nickname, cache, and revocation questions in `RFC-0002`.
 2. Prototype and measure the candidate Solana registry account models and abuse
    economics on a local validator and Devnet.
-3. Produce cross-platform identity and signed-challenge conformance vectors.
+3. Extend the Rust-only public key-hierarchy vector into cross-platform identity
+   and signed-challenge conformance vectors.
 4. Accept the identity protocol through an ADR or reject and revise the proposal.
-5. Create the minimal server, identity-core, registry, and mobile scaffolds using
-   the accepted stack.
+5. Create the minimal server, registry, and mobile scaffolds around the
+   experimental identity-core boundary using the accepted stack.
 6. Implement and verify the first identity vertical slice without production
    security claims.
 

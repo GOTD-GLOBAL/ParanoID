@@ -1,0 +1,38 @@
+{
+  "schema_version": "paranoid.identity.key-hierarchy.experiment.v1",
+  "warning": "PUBLIC TEST VECTOR ONLY; NEVER USE THIS MNEMONIC OR ENTROPY FOR AN ACCOUNT.",
+  "input": {
+    "entropy_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+    "mnemonic": "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon art",
+    "passphrase": ""
+  },
+  "candidates": [
+    {
+      "schema_version": "paranoid.identity.key-hierarchy.experiment.v1",
+      "candidate": "hkdf_sha512_v1",
+      "mnemonic_word_count": 24,
+      "passphrase_used": false,
+      "account_root_public_key_hex": "f21bb8839c932aaf69903a2aa747a75c477f36a9c61a3d03bbe621479cdc20e9",
+      "registry_authority_public_key_hex": "7ffb6a5e376ff5929c8e089009783837885e536d0d0df772b8f95e81c73f2d0d",
+      "solana_compatibility_public_key_hex": "20c821b6510834ae1c47084c6f61fd97864d5f12d731f95f4b06fe477b1efb45"
+    },
+    {
+      "schema_version": "paranoid.identity.key-hierarchy.experiment.v1",
+      "candidate": "hybrid_hkdf_root_solana_registry_v1",
+      "mnemonic_word_count": 24,
+      "passphrase_used": false,
+      "account_root_public_key_hex": "f21bb8839c932aaf69903a2aa747a75c477f36a9c61a3d03bbe621479cdc20e9",
+      "registry_authority_public_key_hex": "20c821b6510834ae1c47084c6f61fd97864d5f12d731f95f4b06fe477b1efb45",
+      "solana_compatibility_public_key_hex": "20c821b6510834ae1c47084c6f61fd97864d5f12d731f95f4b06fe477b1efb45"
+    },
+    {
+      "schema_version": "paranoid.identity.key-hierarchy.experiment.v1",
+      "candidate": "slip10_ed25519_v1",
+      "mnemonic_word_count": 24,
+      "passphrase_used": false,
+      "account_root_public_key_hex": "908429353034e60d0b6f31895526878690ddd34c73411735d9868375d5233f0e",
+      "registry_authority_public_key_hex": "20c821b6510834ae1c47084c6f61fd97864d5f12d731f95f4b06fe477b1efb45",
+      "solana_compatibility_public_key_hex": "20c821b6510834ae1c47084c6f61fd97864d5f12d731f95f4b06fe477b1efb45"
+    }
+  ]
+}

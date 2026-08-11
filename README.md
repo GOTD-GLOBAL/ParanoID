@@ -6,8 +6,9 @@ optional federation, crypto-native identity, mobile clients, and an extension
 platform for commercial and enterprise capabilities.
 
 > The initial implementation stack is accepted, and the first identity vertical
-> slice is under RFC review. No production messenger capability or identity
-> protocol is implemented yet.
+> slice is under RFC review. An experimental Rust identity crate and public key
+> hierarchy vectors now exist, but no production messenger capability or
+> accepted identity protocol is implemented yet.
 
 ## Start here
 
