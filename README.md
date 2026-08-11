@@ -8,8 +8,9 @@ platform for commercial and enterprise capabilities.
 > The initial implementation stack is accepted, and the first identity vertical
 > slice is under RFC review. An experimental Rust identity crate and public key
 > hierarchy vectors now exist. A Kotlin Multiplatform spike reproduces the
-> provisional candidate on JVM and Android host tests, but no production
-> messenger capability or accepted identity protocol is implemented yet.
+> provisional candidate on JVM, Android host tests, and an iOS simulator, but no
+> production messenger capability or accepted identity protocol is implemented
+> yet.
 
 ## Start here
 
@@ -26,5 +27,5 @@ Read these documents in order before proposing or implementing changes:
 Code, specifications, tests, diagrams, decisions, and operational instructions
 must evolve together. A change is not complete when its documentation is stale.
 
-The previous experimental prototype is preserved separately in
-[ParanoID-legacy](https://github.com/GOTD-GLOBAL/ParanoID-legacy).
+The previous experimental prototype is preserved separately in the private
+`GOTD-GLOBAL/ParanoID-legacy` repository.

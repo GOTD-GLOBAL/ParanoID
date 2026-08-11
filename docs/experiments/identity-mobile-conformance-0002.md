@@ -67,7 +67,8 @@ fixture as the cross-implementation contract; they do not call the Rust crate.
 ## Tests and results on 2026-08-11
 
 The Windows development host reproduced the selected Rust vector in both JVM
-and Android host tests:
+and Android host tests. GitHub Actions then reproduced it in the iOS simulator
+on an ARM64 `macos-26` runner:
 
 - the exact account-root and registry-authority public keys matched;
 - repeated derivation was deterministic;
@@ -77,9 +78,10 @@ and Android host tests:
 - the JVM test confirmed that its expected values occur in the committed JSON
   fixture.
 
-The iOS simulator target and test task are configured, but the Windows host
-cannot execute them. The macOS CI job is the next source of iOS evidence. No
-physical Android or iOS device has run this experiment yet.
+The passing workflow run is recorded in
+[GitHub Actions run 31520679383](https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/31520679383).
+Windows still cannot execute the iOS simulator task locally. No physical Android
+or iOS device has run this experiment yet.
 
 ## Limitations and unresolved work
 

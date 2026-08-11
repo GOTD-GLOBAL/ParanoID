@@ -154,9 +154,9 @@ prohibited.
 
 `EXP-IDENTITY-0001` provides the Rust comparison and committed public vector.
 `EXP-IDENTITY-0002` independently reproduces the selected candidate on JVM and
-an Android host test through Kotlin Multiplatform; iOS simulator execution is
-configured but pending CI evidence. The experiments do not resolve this RFC or
-accept their salts, names, parameters, or schema identifiers. See the
+an Android host test through Kotlin Multiplatform, plus an iOS simulator in
+macOS CI. The experiments do not resolve this RFC or accept their salts, names,
+parameters, or schema identifiers. See the
 [Rust experiment](../experiments/identity-key-hierarchy-0001.md),
 [mobile conformance experiment](../experiments/identity-mobile-conformance-0002.md),
 and [public vector](../../specs/protocol/identity/key-derivation-experiment-v1.json).

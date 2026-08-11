@@ -39,8 +39,9 @@ and experiments, but it is not a dependency or source of current architecture.
   provisionally selected the 24-word, empty-passphrase `hkdf_sha512_v1`
   candidate for cross-platform testing; this is not an accepted protocol.
 - `EXP-IDENTITY-0002` independently reproduces that public Rust vector in a
-  Kotlin Multiplatform module. JVM and Android host tests pass locally; the iOS
-  simulator is configured for macOS CI but has not yet produced evidence.
+  Kotlin Multiplatform module. JVM and Android host tests pass locally, and the
+  iOS simulator passes on an ARM64 macOS CI runner. Physical-device evidence is
+  still absent.
 - The first intended vertical slice is seed generation, nickname registration,
   device authorization, signed challenge authentication, and server session
   creation. It is not implemented yet.
@@ -50,7 +51,7 @@ and experiments, but it is not a dependency or source of current architecture.
 
 ## Next decision gates
 
-1. Obtain macOS CI and physical-device evidence for `EXP-IDENTITY-0002`, then
+1. Obtain physical Android and iOS device evidence for `EXP-IDENTITY-0002`, then
    resolve the remaining key, encoding, recovery, nickname, cache, and revocation
    questions in `RFC-0002`.
 2. Prototype and measure the candidate Solana registry account models and abuse
