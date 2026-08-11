@@ -18,3 +18,6 @@ public contract is declared.
   signed-challenge authentication, session, and seed-only recovery design.
 - Added an experimental Rust identity-core crate comparing three key-hierarchy
   candidates, executable tests, a committed public vector, and pinned Rust CI.
+- Added a Kotlin Multiplatform identity conformance spike with JVM and Android
+  host tests, an iOS simulator CI target, a checksum-pinned Gradle wrapper, and
+  documentation of its non-production security boundaries.

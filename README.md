@@ -7,8 +7,9 @@ platform for commercial and enterprise capabilities.
 
 > The initial implementation stack is accepted, and the first identity vertical
 > slice is under RFC review. An experimental Rust identity crate and public key
-> hierarchy vectors now exist, but no production messenger capability or
-> accepted identity protocol is implemented yet.
+> hierarchy vectors now exist. A Kotlin Multiplatform spike reproduces the
+> provisional candidate on JVM and Android host tests, but no production
+> messenger capability or accepted identity protocol is implemented yet.
 
 ## Start here
 

@@ -18,3 +18,6 @@ fixtures belong under `specs/` and must be checked by automated tests.
 
 - [Identity key hierarchy 0001](identity-key-hierarchy-0001.md): compares three
   deterministic BIP-39-to-Ed25519 derivation candidates for RFC-0002.
+- [Identity mobile conformance 0002](identity-mobile-conformance-0002.md):
+  independently reproduces the provisional HKDF candidate across the Kotlin
+  Multiplatform JVM, Android, and iOS boundaries.

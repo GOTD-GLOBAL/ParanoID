@@ -96,6 +96,8 @@ requires a superseding ADR and contract compatibility evidence.
   `REQ-DEPLOY-001`, `REQ-SEC-001`
 - RFC: [RFC-0001](../rfcs/0001-initial-technology-stack.md)
 - Threat model: [Threat model](../security/threat-model.md)
-- Experiment or benchmark: pending initial scaffold and identity spike
+- Experiments:
+  [EXP-IDENTITY-0001](../experiments/identity-key-hierarchy-0001.md) and
+  [EXP-IDENTITY-0002](../experiments/identity-mobile-conformance-0002.md)
 - Supersedes: none
 - Superseded by: none

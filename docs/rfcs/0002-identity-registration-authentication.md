@@ -122,9 +122,13 @@ This RFC does not decide whether one server is globally authoritative.
 
 ### Proposed key hierarchy
 
-The first experiment will evaluate a 24-word mnemonic representing 256 bits of
-entropy. Twelve-word and optional-passphrase variants remain alternatives until
-recovery usability and compatibility tests are complete.
+Founder review has provisionally selected 24 English BIP-39 words representing
+256 bits of entropy, no additional BIP-39 passphrase, and the
+`hkdf_sha512_v1` candidate for the next experiments. This choice preserves the
+explicit paranoid-mode rule that losing the words loses the account. It is not
+an accepted production contract: complete mnemonic validation, mobile recovery
+UX, secure handling, versioning, migration, physical-device evidence, and
+independent review remain decision gates.
 
 The seed must produce or protect distinct logical authorities:
 
@@ -148,13 +152,14 @@ with BIP-39, SLIP-0010, Solana wallet conventions, secure hardware, and future
 algorithm agility. Inventing a project-specific cryptographic primitive is
 prohibited.
 
-`EXP-IDENTITY-0001` now provides a Rust-only comparison of three candidates and
-a committed public vector. It confirms that the experiment is reproducible and
-that the tested purposes produce distinct public keys. It does not resolve this
-RFC: none of the candidates, paths, mnemonic parameters, or schema identifiers
-is accepted. See the
-[experiment record](../experiments/identity-key-hierarchy-0001.md) and
-[public vector](../../specs/protocol/identity/key-derivation-experiment-v1.json).
+`EXP-IDENTITY-0001` provides the Rust comparison and committed public vector.
+`EXP-IDENTITY-0002` independently reproduces the selected candidate on JVM and
+an Android host test through Kotlin Multiplatform; iOS simulator execution is
+configured but pending CI evidence. The experiments do not resolve this RFC or
+accept their salts, names, parameters, or schema identifiers. See the
+[Rust experiment](../experiments/identity-key-hierarchy-0001.md),
+[mobile conformance experiment](../experiments/identity-mobile-conformance-0002.md),
+and [public vector](../../specs/protocol/identity/key-derivation-experiment-v1.json).
 
 The initial client should not retain plaintext recovery words after the user has
 completed the recovery confirmation flow. Whether encrypted seed retention is an
@@ -522,12 +527,13 @@ discarded if the experiments reject the design.
 
 ## Open questions
 
-1. Which mnemonic standard, word count, languages, and optional passphrase policy
-   are accepted? Owner: identity and UX; deadline: before key-generation code.
-2. Which reviewed derivation construction and paths separate account, registry,
-   recovery, and future messaging authority? Owner: security; deadline: before
-   production identity-core implementation. `EXP-IDENTITY-0001` supplies initial
-   Rust evidence but does not answer the question.
+1. Can the provisional 24-word English BIP-39 and no-passphrase policy be
+   accepted after recovery UX, complete validation, normalization, and
+   physical-device testing? Owner: identity and UX; deadline: before production
+   key-generation code.
+2. Can `hkdf_sha512_v1` be accepted after cross-platform, Solana-compatibility,
+   versioning, migration, and independent cryptographic review? Owner: security;
+   deadline: before production identity-core implementation.
 3. Is the account root Ed25519, or does algorithm agility require another
    representation? Owner: security; deadline: before signed test vectors.
 4. Which canonical signed encoding passes Rust/Kotlin/Swift conformance? Owner:
@@ -553,7 +559,8 @@ discarded if the experiments reject the design.
 - Required experiments: key hierarchy, cross-platform signing, registry cost and
   account layout, replay-safe challenge flow, and offline registry cache.
 - Initial key-hierarchy evidence:
-  [EXP-IDENTITY-0001](../experiments/identity-key-hierarchy-0001.md); no candidate
-  is selected.
+  [EXP-IDENTITY-0001](../experiments/identity-key-hierarchy-0001.md) and
+  [EXP-IDENTITY-0002](../experiments/identity-mobile-conformance-0002.md); one
+  candidate is provisionally selected for testing but is not accepted.
 - Implementation issues: create only after the corresponding contract section is
   accepted or explicitly marked as an experiment.

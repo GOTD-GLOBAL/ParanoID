@@ -39,6 +39,8 @@ This is the entry point and navigation contract for ParanoID documentation.
 - [Threat model](security/threat-model.md): assets, actors, boundaries, and threats.
 - [Run Rust checks](how-to/run-rust-checks.md): verify the experimental Rust
   workspace and public identity vectors.
+- [Run mobile identity checks](how-to/run-mobile-identity-checks.md): verify the
+  Kotlin Multiplatform identity vector on JVM, Android, and iOS.
 
 ## Documentation by reader need
 

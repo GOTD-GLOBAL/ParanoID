@@ -74,11 +74,18 @@ memory forensics, compiler copies, malware, or a compromised operating system.
 These results establish reproducibility of the experiment, not fitness for
 production.
 
+Founder review provisionally selected `hkdf_sha512_v1`, 24 English words, and
+an empty passphrase for the next cross-platform experiment. That selection is
+now reproduced on JVM and Android host tests in
+[EXP-IDENTITY-0002](identity-mobile-conformance-0002.md); iOS execution remains
+pending CI. The selection is not an accepted production protocol.
+
 ## Limitations and unresolved work
 
 - No candidate has received independent cryptographic review.
-- The vector has not yet been cross-checked against Kotlin, Swift, a Solana CLI,
-  or hardware wallets.
+- The selected vector has been cross-checked against Kotlin on JVM and an
+  Android host test. iOS simulator, physical devices, a Solana CLI, and hardware
+  wallets remain unverified.
 - The experiment does not test Unicode mnemonic languages, recovery UX, secure
   storage, process memory capture, mobile backups, or crash reporting.
 - Using the conventional Solana path may improve compatibility but may also

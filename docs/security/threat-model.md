@@ -112,9 +112,16 @@ Proposed trust assumptions:
 
 `EXP-IDENTITY-0001` adds reproducible public-key inequality tests relevant to
 `THR-ID-011` and uses best-effort zeroization for selected Rust secret buffers.
-It does not close `THR-ID-001` or `THR-ID-011`: mobile memory lifetime,
-cross-platform reproduction, cross-application path reuse, algorithm agility,
-and independent cryptographic review remain required.
+`EXP-IDENTITY-0002` reproduces the provisional HKDF candidate on JVM and Android
+host tests, rejects passphrases outside the prototype policy, and clears mutable
+derived Kotlin byte arrays on a best-effort basis. It also adds Bouncy Castle as
+a JVM/Android provider trust boundary and the native Apple provider path as an
+unverified iOS boundary.
+
+Neither experiment closes `THR-ID-001` or `THR-ID-011`: immutable Kotlin string
+copies, complete BIP-39 validation, physical-device memory lifetime,
+cross-application reuse, provider consistency, algorithm agility, and
+independent cryptographic review remain required.
 
 ## Identity metadata inventory
 

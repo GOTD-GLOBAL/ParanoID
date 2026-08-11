@@ -1,3 +1,8 @@
 tmp/
 target/
 *.profraw
+.gradle/
+.kotlin/
+build/
+**/build/
+local.properties
