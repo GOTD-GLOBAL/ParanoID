@@ -1,12 +1,17 @@
 ---
 status: draft
 owner: protocol
-last_reviewed: 2026-08-09
+last_reviewed: 2026-08-11
 ---
 
 # Protocol documentation
 
 No ParanoID protocol has been selected or specified.
+
+Identity, registration, and authentication are under discussion in
+[RFC-0002](../rfcs/0002-identity-registration-authentication.md). The RFC is not
+a normative protocol and must not be implemented as an accepted contract until
+its open questions are resolved and an ADR is accepted.
 
 Future protocol documentation must be normative and versioned. It must define:
 

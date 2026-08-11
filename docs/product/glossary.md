@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: product
-last_reviewed: 2026-08-09
+last_reviewed: 2026-08-11
 ---
 
 # Glossary
@@ -27,7 +27,8 @@ last_reviewed: 2026-08-09
 
 **Identity registry**
 : The blockchain-backed mechanism intended to associate human-readable names
-  with cryptographic control. Chain and data model are undecided.
+  with cryptographic control. Solana is selected for the initial prototype; the
+  account model and production protocol remain undecided.
 
 **Nickname**
 : A human-readable identifier intended to be anchored in the identity registry.

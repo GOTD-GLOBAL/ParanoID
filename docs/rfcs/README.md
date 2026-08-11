@@ -9,6 +9,13 @@ last_reviewed: 2026-08-09
 RFCs make significant proposals reviewable before implementation. They are not
 accepted architecture until an ADR records the decision.
 
+## RFCs
+
+| RFC | Status | Proposal |
+| --- | --- | --- |
+| [RFC-0001](0001-initial-technology-stack.md) | Accepted | Initial technology stack and repository layout |
+| [RFC-0002](0002-identity-registration-authentication.md) | Proposed | Identity, registration, and authentication |
+
 ## States
 
 - `draft`: author is still developing the proposal;

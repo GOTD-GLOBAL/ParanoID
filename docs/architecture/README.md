@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: architecture
-last_reviewed: 2026-08-09
+last_reviewed: 2026-08-11
 ---
 
 # Architecture map
@@ -22,8 +22,9 @@ ADR or be marked as proposed.
 
 ## Conceptual system context
 
-This diagram records scope only. It deliberately avoids choosing a stack,
-protocol, chain, or cryptographic construction.
+This diagram records scope only. The initial implementation stack is accepted in
+[ADR-0002](../decisions/0002-initial-technology-stack.md), but identity,
+messaging, federation, and cryptographic protocols remain undecided.
 
 ```mermaid
 flowchart LR
@@ -33,7 +34,7 @@ flowchart LR
     client["ParanoID client"]
     server["ParanoID server"]
     peer["Federated ParanoID server"]
-    chain["Identity blockchain<br/>(technology undecided)"]
+    chain["Solana identity registry<br/>(protocol proposed)"]
     plugin["Permissioned plugin or enterprise service"]
 
     user -->|messages and calls| client

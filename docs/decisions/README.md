@@ -13,6 +13,7 @@ ADRs preserve why durable choices were made. Numbers are never reused.
 | ADR | Status | Decision |
 | --- | --- | --- |
 | [ADR-0001](0001-documentation-as-code.md) | Accepted | Use documentation as code with English as the canonical language |
+| [ADR-0002](0002-initial-technology-stack.md) | Accepted | Adopt the initial Rust, PostgreSQL, Kotlin Multiplatform, and Solana/Anchor stack |
 
 ## Lifecycle
 

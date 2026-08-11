@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: founder
-last_reviewed: 2026-08-09
+last_reviewed: 2026-08-11
 ---
 
 # Product vision
@@ -56,12 +56,16 @@ and extend into a commercial enterprise platform.
 - Registration cost and mass-registration abuse must not be subsidized without a
   sustainable control mechanism.
 
-These are product constraints, not yet a complete identity architecture. The
-chain, transaction model, custody, recovery flow, naming rules, renewals,
-transferability, privacy, and offline behavior remain undecided.
+These are product constraints, not yet a complete identity architecture. Solana
+has been selected for the initial identity-registry prototype through
+`ADR-0002`; the transaction and account model, custody, recovery flow, naming
+rules, renewals, transferability, privacy, offline behavior, and mainnet design
+remain undecided.
 
-## Explicit non-decisions
+## Relationship to architecture decisions
 
-This vision does not select Solana, a token, a programming language, a mobile
-framework, a federation protocol, a cryptographic protocol, or a database. Those
-choices require evidence, threat modelling, prototypes, and ADRs.
+This vision does not itself select implementation technologies. `ADR-0002` now
+selects the initial Rust, PostgreSQL, Kotlin Multiplatform, and Solana/Anchor
+prototype stack. No token, federation protocol, cryptographic construction,
+identity protocol, or production blockchain deployment is accepted by this
+vision or that stack decision.

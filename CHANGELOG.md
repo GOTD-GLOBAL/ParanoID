@@ -12,3 +12,7 @@ public contract is declared.
 
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
+- Accepted the initial Rust, PostgreSQL, Kotlin Multiplatform, and Solana/Anchor
+  implementation stack.
+- Added the proposed identity, nickname registration, device authorization,
+  signed-challenge authentication, session, and seed-only recovery design.

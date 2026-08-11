@@ -1,12 +1,17 @@
 ---
 status: draft
 owner: api
-last_reviewed: 2026-08-09
+last_reviewed: 2026-08-11
 ---
 
 # API documentation
 
 No public API has been accepted.
+
+Candidate registration and signed-challenge operations are described
+non-normatively in
+[RFC-0002](../rfcs/0002-identity-registration-authentication.md). Machine-readable
+contracts do not exist yet.
 
 When APIs are introduced:
 

@@ -5,9 +5,9 @@ The application is being designed as an open-source, self-hostable system with
 optional federation, crypto-native identity, mobile clients, and an extension
 platform for commercial and enterprise capabilities.
 
-> The repository currently contains the project's documentation system. No
-> production application architecture or technology stack has been accepted
-> yet.
+> The initial implementation stack is accepted, and the first identity vertical
+> slice is under RFC review. No production messenger capability or identity
+> protocol is implemented yet.
 
 ## Start here
 
