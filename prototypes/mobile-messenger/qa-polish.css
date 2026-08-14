@@ -1,0 +1,21 @@
+/* Final audit overrides: preserve compact visuals while keeping mobile hit targets reachable. */
+button.pill {
+  min-height: var(--tap);
+}
+
+@media (max-width: 430px) {
+  body:not(.capture-mode) .system-status {
+    flex-basis: calc(34px + env(safe-area-inset-top, 0px));
+    min-height: calc(34px + env(safe-area-inset-top, 0px));
+    padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  }
+
+  body:not(.capture-mode) .platform-ios .bottom-nav {
+    margin-bottom: max(7px, env(safe-area-inset-bottom, 0px));
+  }
+
+  body:not(.capture-mode) .platform-android .bottom-nav {
+    min-height: calc(82px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  }
+}

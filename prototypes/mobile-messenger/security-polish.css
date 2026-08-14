@@ -1,0 +1,62 @@
+.auth-screen {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.auth-main {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.auth-main:has(#recovery-entry) {
+  justify-content: flex-start;
+}
+
+.auth-main::-webkit-scrollbar {
+  display: none;
+}
+
+.auth-footer {
+  position: relative;
+  z-index: 40;
+  background: var(--canvas);
+}
+
+button.message-trigger {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  text-align: left;
+}
+
+.prototype-provenance {
+  position: relative;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 28px;
+  padding: 5px 9px 6px;
+  color: var(--text-soft);
+  background: color-mix(in oklch, var(--surface) 96%, transparent);
+  border-top: 1px solid color-mix(in oklch, var(--line) 82%, transparent);
+  font-family: -apple-system, BlinkMacSystemFont, Roboto, "Noto Sans", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.2;
+  text-align: center;
+  text-wrap: balance;
+  pointer-events: none;
+}
+
+.phone-screen:has(.video-call-screen) .prototype-provenance,
+.phone-screen:has(.call-screen) .prototype-provenance,
+.phone-screen:has(.media-preview-screen) .prototype-provenance {
+  color: oklch(0.88 0.02 260);
+  background: oklch(0.12 0.025 260 / 0.96);
+  border-color: oklch(1 0 0 / 0.18);
+}
