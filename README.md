@@ -24,5 +24,5 @@ Read these documents in order before proposing or implementing changes:
 Code, specifications, tests, diagrams, decisions, and operational instructions
 must evolve together. A change is not complete when its documentation is stale.
 
-The previous experimental prototype is preserved separately in
-[ParanoID-legacy](https://github.com/GOTD-GLOBAL/ParanoID-legacy).
+The previous experimental prototype is preserved separately in the private
+`GOTD-GLOBAL/ParanoID-legacy` repository.
