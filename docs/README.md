@@ -1,7 +1,12 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-08-09
+decision_owner: martadvix-web
+approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
+approval_date: 2026-08-17
+approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
+last_reviewed: 2026-08-15
 ---
 
 # Documentation map
@@ -62,9 +67,20 @@ Every durable design or governance document should include metadata:
 
 - `draft`: incomplete and non-normative;
 - `proposed`: ready for decision or review;
-- `accepted`: normative until superseded;
+- `accepted`: normative until superseded; reserved for artifacts that are sources
+  of truth, including ADRs, requirements, policies, and specifications;
 - `deprecated`: retained for context but should not guide new work;
 - `superseded`: replaced by a linked document.
+
+Proposal processes may also use terminal, non-normative states:
+
+- `completed`: review concluded and any accepted decision is recorded elsewhere;
+- `rejected`: reviewed but not selected, with the reason preserved;
+- `withdrawn`: closed by the author without a decision.
+
+An RFC never uses `accepted`: even a completed RFC remains proposal history. Only
+a linked accepted ADR makes an architecture decision normative. Artifact-specific
+process documents define which subset of this vocabulary is valid.
 
 `last_reviewed` describes when the document was checked against reality, not when
 its spelling was last edited.

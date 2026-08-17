@@ -30,7 +30,10 @@ jobs:
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
+          # Private PR provenance is verified through authenticated GitHub API calls.
           args: >-
             --no-progress
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4$'
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500$'
             './**/*.md'
           fail: true

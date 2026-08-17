@@ -1,3 +1,14 @@
+---
+status: accepted
+owner: maintainers
+decision_owner: martadvix-web
+approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
+approval_date: 2026-08-17
+approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
+last_reviewed: 2026-08-15
+---
+
 # Instructions for AI agents
 
 These instructions apply to every AI system working in this repository.
@@ -40,20 +51,19 @@ and report the discrepancy. Do not silently choose one as the truth.
 
 ## Decisions
 
-Use an RFC while a significant design is being discussed. Create an ADR when a
-decision is accepted. An accepted ADR is historical evidence: do not rewrite its
-decision. Correct minor errors transparently or supersede it with a new ADR.
+Use an RFC while a significant design is being discussed. Create a `draft` or
+`proposed` ADR before disposition, then mark it `accepted` only after the required
+human approval is recorded. An accepted ADR is historical evidence: do not rewrite
+its decision. Correct minor errors transparently or supersede it with a new ADR.
 
-An RFC or ADR is required for changes to:
+RFCs are never normative and never use `accepted`; close a successful RFC as
+`completed` and link the accepted ADR. An AI review, CI result, merge permission,
+or bot-executed merge is not decision approval. Before marking an ADR `accepted`,
+verify the human decision owner, required domain reviews, and approval evidence
+defined in `docs/governance/documentation-policy.md`.
 
-- identity, key derivation, recovery, or blockchain integration;
-- cryptographic algorithms or end-to-end encryption semantics;
-- federation and protocol compatibility;
-- persistence formats, event models, or public APIs;
-- plugin permissions and isolation;
-- the primary stack or a foundational dependency;
-- security boundaries, trust assumptions, or data retention;
-- deployment topology or backward compatibility.
+An RFC or ADR and independent qualified human review are required for every
+[protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains).
 
 ## Definition of done
 

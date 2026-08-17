@@ -1,10 +1,21 @@
 ---
-status: proposed
+status: draft
 owner: <role-or-team>
+decision_owner: <human-github-login>
+required_reviewers: []
 last_reviewed: YYYY-MM-DD
 ---
 
 # ADR-NNNN: Decision title
+
+Use an empty `required_reviewers` list only when the decision policy does not
+require an independent domain review. Otherwise list each human GitHub login.
+
+## Required review rationale
+
+For each required reviewer, record the protected domain, relevant qualification,
+and why the reviewer is independent from the author and decision owner. Write
+`Not applicable` with a reason when no independent domain review is required.
 
 ## Context and problem statement
 
@@ -48,11 +59,25 @@ that the decision works?
 
 Describe rollout, backward compatibility, data migration, and rollback.
 
+## Disposition and acceptance evidence
+
+- Disposition: <accepted | rejected | withdrawn>
+- Disposition rationale:
+- Decision owner and identity:
+- Pull request URL:
+- Permanent disposition or approval evidence URL:
+- Withdrawal author statement URL, if applicable:
+- Delegation evidence URL, if applicable:
+- Required-review evidence URLs:
+- Telegram message ID, sender mapping, timestamp, and exact approval text, if used:
+- Disposition date: YYYY-MM-DD
+- Known limitations and follow-up:
+
 ## Links
 
-- Requirement:
-- RFC:
-- Threat model:
-- Experiment or benchmark:
+- Requirement: <link | not applicable — reason>
+- RFC: <link | not applicable — reason>
+- Threat model: <link | not applicable — reason>
+- Experiment or benchmark: <link | not applicable — reason>
 - Supersedes:
 - Superseded by:
