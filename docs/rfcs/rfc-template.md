@@ -1,10 +1,22 @@
 ---
 status: draft
 owner: <author-or-team>
+decision_owner: <human-github-login>
+decision_deadline: YYYY-MM-DD
+required_reviewers: []
 last_reviewed: YYYY-MM-DD
 ---
 
 # RFC-NNNN: Proposal title
+
+Use an empty `required_reviewers` list only when the decision policy does not
+require an independent domain review. Otherwise list each human GitHub login.
+
+## Required review rationale
+
+For each required reviewer, record the protected domain, relevant qualification,
+and why the reviewer is independent from the author and decision owner. Write
+`Not applicable` with a reason when no independent domain review is required.
 
 ## Summary
 
@@ -57,5 +69,11 @@ List prototypes, tests, benchmarks, reviews, and measurable acceptance criteria.
 
 ## Decision and follow-up
 
+- Disposition:
+- Decision-owner approval permalink:
+- Delegation evidence permalink, if applicable:
+- Required-review evidence permalinks:
 - Resulting ADR:
+- Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
+- Replacement RFC for `superseded`:
 - Implementation issues:

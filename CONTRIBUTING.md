@@ -1,3 +1,14 @@
+---
+status: accepted
+owner: maintainers
+decision_owner: martadvix-web
+approved_change: pending
+approval_date: pending
+approval_pull_request: pending
+approval_record: pending
+last_reviewed: 2026-08-15
+---
+
 # Contributing to ParanoID
 
 ParanoID is security-sensitive infrastructure. Small, reviewable, traceable
@@ -32,7 +43,7 @@ their own dedicated locations described in `docs/README.md`.
 | New user capability | Requirement, reference, tutorial/how-to as applicable, changelog |
 | Public API or protocol | Versioned specification, compatibility notes, tests, changelog |
 | Architecture or foundational dependency | RFC followed by ADR, C4 views, current state |
-| Identity, crypto, federation, plugin, or payment boundary | RFC/ADR and threat model |
+| [Protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains) | RFC/ADR, applicable threat model, and independent qualified human review |
 | Deployment or configuration | Reference, runbook, rollback procedure |
 | Behavior change or bug fix | Affected reference and regression test; changelog if notable |
 | Removed or deprecated behavior | Migration guide, compatibility policy, changelog |
@@ -46,7 +57,14 @@ If no documentation is needed, the PR must state why.
 - Describe risks, test evidence, rollout, rollback, and documentation impact.
 - Do not merge with unresolved contradictions between code and documentation.
 - Prefer diagrams and specifications that can be diffed in Git.
-- Obtain security review for changes to protected boundaries.
+- Follow the canonical review requirements for every
+  [protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains).
+
+For a decision-acceptance pull request, identify the human decision owner and
+required domain reviewers. Record their approval evidence before changing an ADR
+to `accepted`. AI reviews and bot-executed merges are advisory or mechanical; they
+do not replace human acceptance. Follow the
+[decision authority policy](docs/governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
 ## Versioning and changelog
 

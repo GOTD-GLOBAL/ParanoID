@@ -12,3 +12,5 @@ public contract is declared.
 
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
+- Explicit RFC closure states and human authority and evidence requirements for
+  accepting ADRs.
