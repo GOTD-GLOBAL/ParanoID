@@ -2,9 +2,9 @@
 status: accepted
 owner: maintainers
 decision_owner: martadvix-web
-approved_change: pending
+approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
 approval_date: pending
-approval_pull_request: pending
+approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
 approval_record: pending
 last_reviewed: 2026-08-15
 ---
