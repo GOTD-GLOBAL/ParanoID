@@ -34,5 +34,6 @@ jobs:
           args: >-
             --no-progress
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4$'
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500$'
             './**/*.md'
           fail: true

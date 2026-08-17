@@ -3,9 +3,9 @@ status: accepted
 owner: architecture
 decision_owner: martadvix-web
 approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
-approval_date: pending
+approval_date: 2026-08-17
 approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
-approval_record: pending
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
 last_reviewed: 2026-08-15
 ---
 
