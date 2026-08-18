@@ -49,6 +49,33 @@ not the architecture of this project.
 If implementation, tests, specifications, or accepted decisions disagree, stop
 and report the discrepancy. Do not silently choose one as the truth.
 
+## Invariant and scope gates
+
+Before implementation, migration, dependency/schema/API/config changes, or review:
+
+1. Record the repository, branch, HEAD, worktree status, issue/task, and one-sentence intent.
+2. Name every affected requirement ID, accepted ADR, contract, security boundary,
+   and protected decision domain. Memory and old discussions are discovery aids,
+   never substitutes for repository evidence.
+3. Locate the current implementation and tests. For legacy or unexplained behavior,
+   inspect commit history, blame, the introducing change, and related PRs/issues.
+4. Map each critical invariant to an executable unit, contract, protocol, migration,
+   architecture, or security check. Do not weaken an existing check to make a change pass.
+
+After implementation and before a PR is ready, compare the complete diff with the
+stated intent and affected IDs. Inspect unrelated paths/subsystems, dependencies,
+public API/schema/config/CI/deployment edits, generated or format-only files, renames,
+and oversized hunks. Classify each suspicious item as:
+
+- `keep` — directly required by the task;
+- `split` — independently landable and moved to another PR;
+- `justify` — inseparable and required by a named invariant or build constraint.
+
+Prefer `split` when the relationship is ambiguous. The reviewer repeats this analysis
+independently. A PR with unexplained scope drift is not ready. Record the affected IDs,
+real verification output, migration/rollout/rollback impact, and scope status (`clean`,
+`justified`, `requires split`, or `violated`) in the review evidence.
+
 ## Decisions
 
 Use an RFC while a significant design is being discussed. Create a `draft` or
