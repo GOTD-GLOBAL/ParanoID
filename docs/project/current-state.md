@@ -16,6 +16,13 @@ The earlier proof of concept is preserved in the private
 `GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
 and experiments, but it is not a dependency or source of current architecture.
 
+## Experimental device evidence
+
+A disposable Android packaging diagnostic exists in
+`spikes/002-android-bootstrap`. The owner supplied a screenshot of installation
+and launch on OPPO CPH2671 (Android 16/API 36). It displays device information
+locally, has no network permission and is not a messenger or stack acceptance.
+
 ## Present facts
 
 - The new repository is private and intentionally starts from a clean history.
