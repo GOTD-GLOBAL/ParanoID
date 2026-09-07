@@ -10,6 +10,9 @@ public contract is declared.
 
 ### Added
 
+- Experimental ARM64 Android native crypto diagnostic with a local synthetic
+  exchange and tamper/replay checks; no networking or production security claim.
+
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
 - Explicit RFC closure states and human authority and evidence requirements for

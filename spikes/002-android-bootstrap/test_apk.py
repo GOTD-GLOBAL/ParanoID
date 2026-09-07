@@ -10,6 +10,7 @@ class ApkTest(unittest.TestCase):
         self.assertTrue(apk.exists(), 'APK has not been built')
         with zipfile.ZipFile(apk) as z:
             self.assertIn('classes.dex', z.namelist())
+            self.assertIn('lib/arm64-v8a/libparanoid_android_probe.so', z.namelist())
             self.assertIn('AndroidManifest.xml', z.namelist())
         tools = Path(os.environ['ANDROID_SDK_ROOT']) / 'build-tools/35.0.0'
         subprocess.run([str(tools / 'apksigner'), 'verify', str(apk)], check=True)

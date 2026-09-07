@@ -28,6 +28,14 @@ and experiments, but it is not a dependency or source of current architecture.
   been selected.
 - No production security or privacy claims are valid yet.
 
+## Experimental Android evidence (not a production capability)
+
+The isolated [Android probe](../../spikes/002-android-bootstrap/README.md) builds
+an ARM64 APK using vodozemac with a JNI boundary for a local synthetic self-test.
+Host tests and cross-compilation pass; this crypto revision has no physical-device
+execution evidence yet. No server, real conversation, account recovery or accepted
+production stack is introduced. RFC-0004 (PR #6) remains proposal context only.
+
 ## Next decision gates
 
 1. Validate and prioritize the initial requirements with the founder.
