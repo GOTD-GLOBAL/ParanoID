@@ -130,9 +130,19 @@ Metrics: queue age, failed deliveries, retry rate, blob quota/orphans, call join
 and resource usage. No plaintext, content keys or high-cardinality contact IDs in logs.
 Restore must prove event/cursor/blob consistency, not merely database startup.
 
+## Delivery priority clarified by the founder
+
+Start with ONE server: messages, file/image transfer, audio/video messages and
+calls. The founder plans to recruit acquaintances for the subsequent test group.
+Simultaneous connections to multiple independent servers are a later implementation
+and test milestone, NOT a gate for the first alpha. Preserve a future server-scoped
+session/storage boundary without implementing federation, cross-server calls or
+running a second server now. This prioritization does not accept an identity,
+crypto, persistence or deployment design and does not remove existing E2EE gates.
+
 ## Validation plan
 
-First implement only an authorized two-device ciphertext delivery slice: durable
+First implement only an authorized two-device, single-server ciphertext delivery slice: durable
 acceptance, reconnect, replay-safe request IDs, wrong-device/room rejection and
 restart during ACK transitions. Test real OPPO client storage before remote rollout.
 
