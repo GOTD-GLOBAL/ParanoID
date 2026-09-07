@@ -14,6 +14,15 @@ last_reviewed: 2026-08-15
 RFCs make significant proposals reviewable before implementation. They are not
 accepted architecture until an ADR records the decision.
 
+## Active RFCs
+
+| RFC | Status | Proposal |
+| --- | --- | --- |
+| [RFC-0004](0004-closed-alpha-messenger.md) | Draft | Closed-alpha messenger slice: two phones, one hosted server, E2EE text first |
+
+Numbers 0001–0003 are allocated on unmerged branches and are not listed here
+until they reach this branch.
+
 ## States
 
 - `draft`: author is still developing the proposal;
