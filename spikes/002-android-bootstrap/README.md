@@ -38,13 +38,14 @@ install an untrusted artifact.
 - GREEN: APK contains DEX and binary manifest, expected package/launcher metadata,
   no INTERNET permission, signature verifies (v2 and v3).
 - Compilation emitted Java 8 compatibility deprecation warnings; no compile errors.
-- No emulator or physical phone execution performed. Signing success is not proof
-  of installation or runtime behavior on OPPO.
+- Owner-provided screenshot confirms installation and launch on OPPO CPH2671,
+  Android 16/API 36. This is manual device evidence, not an emulator or adb test.
 - UI lifecycle behavior has no instrumented test yet.
 - Android E2EE library cross-compilation, Kotlin integration and messaging are NOT
   implemented by this bootstrap. The earlier JVM spike is separate evidence.
 
 ## Next check
 
-Independent code review, then owner installation on the two OPPO phones and report
-of exact models/Android versions and launch behavior. No production deployment.
+Independent Fable review completed without blockers. Native crypto integration
+is a separate experimental PR; this package demonstrates no E2EE or messaging.
+No production deployment.
