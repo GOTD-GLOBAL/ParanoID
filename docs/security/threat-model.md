@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-07
 ---
 
 # Threat model
@@ -71,6 +71,17 @@ change.
   paths, and how is that consent represented?
 - How are binaries, containers, mobile releases, and automatic updates signed and
   verified?
+
+## Project-group automation proposal
+
+REQ-AI-002 introduces future AI automation as a discovery input, not blanket agent
+access. [RFC-0005](../rfcs/0005-server-messaging-media-automation.md) proposes isolated
+agent endpoints with explicit content sharing, per-project authorization and effect
+approval. A runtime sharing a host with the messaging server exposes its accessible
+plaintext/keys to host root; containers alone do not preserve operator-blind E2EE.
+Threats include prompt injection, cross-project context leakage, SSRF, credential
+export, repeated external effects and retained agent memory after group removal.
+No agent endpoint, permission contract or plaintext access is implemented/accepted.
 
 ## Required analysis artifacts
 

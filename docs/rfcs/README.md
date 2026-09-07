@@ -48,6 +48,11 @@ Follow the human authority and acceptance-evidence rules in the
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active
 RFCs to this file when the first proposal is opened.
 
+## Active server proposal
+
+- [RFC-0005: Server messaging, media and automation](0005-server-messaging-media-automation.md)
+  — draft research-backed design; independent human reviewers remain pending.
+
 ## Required use
 
 Create an RFC for every

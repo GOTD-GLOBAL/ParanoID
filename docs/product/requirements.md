@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: product
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-07
 ---
 
 # Initial product requirements
@@ -26,7 +26,11 @@ are complete.
 | REQ-EXT-001 | The platform must support modular extensions with explicit permissions and isolation. | Confirmed direction |
 | REQ-ENT-001 | The commercial platform must support configurable enterprise messaging and CRM workflows. | Confirmed direction |
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |
+| REQ-AI-002 | Project groups should support optional AI-agent automation; agent admission, data access, tool permissions and isolation require explicit design and consent. | Confirmed direction |
 | REQ-SEC-001 | End-to-end encryption scope and metadata guarantees must be specified and verified before any production privacy claim. | Required discovery gate |
+
+REQ-AI-002 is a future product direction; acceptance criteria and agent access
+contracts remain pending. It does not authorize reading encrypted groups.
 
 ## Acceptance criteria backlog
 

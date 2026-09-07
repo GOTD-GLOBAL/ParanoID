@@ -41,6 +41,11 @@ This is the entry point and navigation contract for ParanoID documentation.
   incidents, and recovery.
 - [Threat model](security/threat-model.md): assets, actors, boundaries, and threats.
 
+## Server research
+
+- [Messaging, media and automation prior art](research/2026-09-07-server-oss-design.md)
+  — source-pinned comparison and non-normative server recommendation.
+
 ## Documentation by reader need
 
 As content grows, classify developer, administrator, and user documentation using
