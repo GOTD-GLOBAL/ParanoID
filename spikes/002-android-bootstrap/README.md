@@ -44,7 +44,8 @@ requiring uninstall of the old test app first. Uninstall `org.paranoid.bootstrap
 to roll back. No server or data migration exists.
 
 Open the app and wait for PASS or FAIL. PASS means the native library loaded and
-the local synthetic exchange, every single-byte mutation of one normal message,
+the local synthetic exchange, a one-bit mutation at every byte position of one
+normal message,
 and replay check passed ON THAT DEVICE. FAIL is not success; report the screenshot.
 This does not authenticate remote contacts, verify server safety, or prove E2EE
 of a real conversation. The session handoff records owner-reported local PASS

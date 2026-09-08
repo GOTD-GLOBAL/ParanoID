@@ -86,7 +86,10 @@ No production identity, contact authentication, server trust, durable key storag
 or recovery protocol is implemented. Its public test pickle key is unsuitable for
 real storage. Dependency supply-chain, native load and platform compatibility risks
 remain; local tamper/replay checks are not a production security review or E2EE
-claim. Independent qualified human review remains required for adoption.
+claim. Independent qualified human review remains required for production
+adoption or use outside an explicitly approved private test-data alpha scope;
+that bounded exception follows the
+[canonical review policy](../governance/documentation-policy.md#closed-alpha-review-exception).
 
 ## Required analysis artifacts
 

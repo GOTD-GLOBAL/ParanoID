@@ -84,4 +84,5 @@ check. Home, shell, authorized-key contents and the complete sudo policy were
 reported by the owner, not independently inspected. No deployment or adjacent
 service was inspected or changed. Routine SSH/sudo access may produce server audit
 logs; read-only here means no intentional configuration or application mutation.
-The agent is terminated by the EXIT trap, including after command failures.
+The EXIT trap attempts agent cleanup on normal exit and shell-detected failures;
+abrupt termination can prevent cleanup.
