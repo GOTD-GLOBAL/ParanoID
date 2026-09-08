@@ -54,6 +54,28 @@ client state and public TLS remain gates before network exposure. A reverse prox
 must not bypass the development-only boundary. See the server README for the
 explicitly opted-in disposable CI database exception.
 
+## IP TLS pin provisioning and rotation boundary
+
+The development Android adapter now implements per-connection pinned HTTPS.
+The operator-generated trust input is SHA-256 over leaf SPKI DER, not a bearer
+credential or peer identity. Verify it out of band before enrollment; a pin
+copied from an unauthenticated endpoint provides no first-contact protection.
+Do not reuse one private TLS key across independent servers. TLS-key compromise
+exposes transport credentials/metadata; it does not provide client Olm content keys.
+
+The adapter requires a matching self-signed leaf, validity, server-auth usage,
+adequate key strength and exact SAN; default hostname verification stays enabled.
+Only TLS 1.2/1.3; redirects and global/trust-all overrides are absent. Saved pin
+changes are refused. Renewing a certificate with its key is distinct from rotating
+the key; key loss/change requires explicit re-enrollment, not remote auto-repin.
+The generator refuses existing destinations and prints only public connection data.
+
+JVM TLS tests cover correct pin and wrong pin/IP/expiry, with no HTTP request on
+rejected peers. Android TLS/Keystore behavior, IPv6 and further negative certificate
+fixtures remain unverified. These changes deploy no service or public port and
+accept no production trust model. Known broader client sync blockers remain in
+the [client README](../../clients/android/README.md).
+
 ## Residual limits
 
 The malicious server can drop/delay messages, lie about its own commit, withhold

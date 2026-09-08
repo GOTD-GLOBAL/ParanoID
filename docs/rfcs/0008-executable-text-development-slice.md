@@ -87,6 +87,45 @@ checks. Proposed checks: auth rejection, exact retries, conflicting retries,
 concurrent sends, recipient isolation, restart persistence, offline cursor sync,
 invalid version/payload and size limits. Tests must actually execute PostgreSQL.
 
+## Next client increment proposed for review
+
+A separate Rust client core and Android shell are the next increment, not a
+production identity system. Each disposable client generates its own Olm account.
+Two testers explicitly exchange and confirm public identity/prekey bundles out
+of band; the server never supplies a trusted contact key. Pin one peer, reject
+silent replacement, authenticate inner realm/device/message context, and use
+library Olm ciphertext for text and delivery receipts. No plaintext fallback.
+
+Commit local ratchet/history/cursor/outbox together before network effects. The
+Android shell must encrypt the entire atomic snapshot with a platform-keystore
+key and refuse to regenerate identity after a decryption/storage error. Retain
+unsent encrypted bytes for retries. Limit the development client to 200 history
+messages, fail visibly rather than evict. Losing client keys makes old history
+unreadable; no recovery or production account migration is promised here.
+
+Peer verification is explicit manual public-code exchange in this increment,
+not an implemented root-signed device credential or QR scanner. Android requires
+HTTPS for remote use. Server tokens are provisioned separately for each tester,
+not included in public pairing bundles. iOS is not built here; the shared core
+must remain independent of Android storage/network/UI. Review these boundaries
+before any hosted phone test. This paragraph does not authorize a rollout.
+
+## IP HTTPS with an explicitly pinned server key
+
+The founder selected IP-based HTTPS with a self-signed certificate and a pinned
+server public key, rather than requiring a domain. Proposed trust input is the
+SHA-256 digest of the leaf SubjectPublicKeyInfo DER, provided out of band by the
+operator, separate from the device bearer token and peer Olm pairing code.
+
+No trust-all manager, hostname-verification bypass or system-wide TLS override.
+Require the configured pin, certificate validity, server-auth use and an exact SAN
+for the requested address. Keep platform hostname verification, disable redirects,
+and permit only TLS 1.2/1.3. Persist the pin with the encrypted client snapshot;
+never fetch/accept a replacement from an untrusted server or silently repin.
+Certificate renewal under the same key can retain the pin; key rotation requires
+a separately reviewed explicit re-enrollment path. This does not approve a public
+deployment, relax the server development gate, or supply missing device evidence.
+
 ## Disposition
 
 Draft, not production or full-alpha acceptance. Owner request authorizes work in

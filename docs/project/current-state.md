@@ -100,6 +100,16 @@ ParanoID deployment must be isolated from existing services. The local test
 runner creates/removes its own private PostgreSQL cluster; it does not connect
 to that host. Simple reproducible Linux deployment remains a product requirement.
 
+## Development client and IP-TLS work
+
+`clients/core` and the Android adapter now contain peer-pinned Olm text/receipt
+logic, an encrypted atomic local snapshot and IP-based pinned HTTPS. An ARM64
+APK builds; Rust, Linux JVM JNI/codec, packaging and local TLS smoke checks pass.
+These do not prove runtime behavior on OPPO. The [client README](../../clients/android/README.md)
+records two outstanding synchronization findings and the bounded test sequence.
+No hosted TLS endpoint, new production process or public port is created by this
+increment. Full two-phone acceptance is still pending.
+
 ## Next decision gates
 
 1. Validate and prioritize the initial requirements with the founder.

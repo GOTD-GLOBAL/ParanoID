@@ -1,10 +1,10 @@
 name: Server transport
 on:
   pull_request:
-    paths: ["server/**", "scripts/check-server.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
   push:
     branches: [main]
-    paths: ["server/**", "scripts/check-server.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
 permissions:
   contents: read
 jobs:
@@ -35,3 +35,25 @@ jobs:
         run: cargo +1.98.1 clippy --locked --manifest-path server/Cargo.toml --all-targets -- -D warnings
       - name: Real PostgreSQL and HTTP tests
         run: cargo +1.98.1 test --locked --manifest-path server/Cargo.toml -- --test-threads=1
+  client-core-and-tls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Client core
+        run: |
+          cargo +1.98.1 fmt --manifest-path clients/core/Cargo.toml -- --check
+          cargo +1.98.1 clippy --locked --manifest-path clients/core/Cargo.toml --all-targets -- -D warnings
+          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml
+          cargo +1.98.1 build --locked --manifest-path clients/core/Cargo.toml
+      - name: JVM JNI and snapshot codec
+        # RUNNER_TEMP is runner-owned; no PR body/title/ref is interpolated here.
+        run: |
+          mkdir -p "$RUNNER_TEMP/paranoid-java"
+          javac --release 8 -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java
+          java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java" CoreSmoke
+          java -cp "$RUNNER_TEMP/paranoid-java" StorageSmoke
+      - name: Real local pinned-TLS handshakes
+        run: python3 scripts/check-pinned-tls.py

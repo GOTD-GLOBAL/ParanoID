@@ -10,6 +10,11 @@ public contract is declared.
 
 ### Added
 
+- Development Android/Rust text-client code with peer-pinned Olm, encrypted local
+  snapshots and explicit self-signed HTTPS SPKI pinning for IP-based connections.
+  Local TLS/JVM/packaging checks pass; connected OPPO acceptance and hosted rollout
+  remain blocked by the documented client/runtime and deployment gates.
+
 - Development-only Rust/PostgreSQL HTTP transport with durable opaque-envelope
   acceptance, idempotent retries, recipient cursor sync, bounded non-evicting
   storage and real HTTP/database tests. No phone messaging or hosted deployment
