@@ -10,6 +10,10 @@ public contract is declared.
 
 ### Added
 
+- Proposed bounded closed-alpha review-policy exception; not effective until
+  owner approval and merge. E2EE, human decision ownership and the external
+  security-review gate for sensitive/production use remain required.
+
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
 - Explicit RFC closure states and human authority and evidence requirements for

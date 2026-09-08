@@ -35,6 +35,15 @@ locally, has no network permission and is not a messenger or stack acceptance.
   been selected.
 - No production security or privacy claims are valid yet.
 
+## Pending review-policy change
+
+The founder requested removal of the mandatory second-human reviewer after
+reporting that none is available. [RFC-0007](../rfcs/0007-closed-alpha-review-policy.md)
+proposes a bounded private test-data alpha exception with independent AI review
+and retained human decision-owner approval. This revision is not yet normative:
+owner approval evidence and merge remain pending. It accepts no application
+architecture, authorizes no deployment and makes no security claim.
+
 ## Next decision gates
 
 1. Validate and prioritize the initial requirements with the founder.

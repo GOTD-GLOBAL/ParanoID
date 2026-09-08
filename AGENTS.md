@@ -1,12 +1,12 @@
 ---
-status: accepted
+status: proposed
 owner: maintainers
 decision_owner: martadvix-web
-approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
-approval_date: 2026-08-17
-approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
-approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
-last_reviewed: 2026-08-15
+approved_change: proposed bounded second-human review exception for private test-data alpha
+approval_date: pending
+approval_pull_request: pending
+approval_record: pending
+last_reviewed: 2026-09-08
 ---
 
 # Instructions for AI agents
@@ -62,8 +62,13 @@ or bot-executed merge is not decision approval. Before marking an ADR `accepted`
 verify the human decision owner, required domain reviews, and approval evidence
 defined in `docs/governance/documentation-policy.md`.
 
-An RFC or ADR and independent qualified human review are required for every
+An RFC or ADR and the canonical review process are required for every
 [protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains).
+Independent qualified human review is the default. Only the explicit
+[closed-alpha exception](docs/governance/documentation-policy.md#closed-alpha-review-exception)
+may substitute independent AI review for the second human. It never removes human
+decision-owner approval, E2EE, tests, threat analysis or deployment authorization.
+Do not apply a proposed policy revision before its approval and merge.
 
 ## Definition of done
 

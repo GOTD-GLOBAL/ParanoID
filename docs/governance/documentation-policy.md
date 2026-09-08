@@ -1,12 +1,12 @@
 ---
-status: accepted
+status: proposed
 owner: maintainers
 decision_owner: martadvix-web
-approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
-approval_date: 2026-08-17
-approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
-approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
-last_reviewed: 2026-08-15
+approved_change: proposed bounded second-human review exception for private test-data alpha
+approval_date: pending
+approval_pull_request: pending
+approval_record: pending
+last_reviewed: 2026-09-08
 ---
 
 # Documentation policy
@@ -77,7 +77,8 @@ approval evidence URL described below. None of these approval fields may remain
 ## Protected decision domains
 
 The following domains require an RFC or ADR, threat-model review where relevant,
-and the independent qualified human review defined below:
+and the review process defined below. Independent qualified human review is the
+default; only the explicit closed-alpha exception can replace the second reviewer:
 
 - identity, key derivation, recovery, and blockchain integration;
 - cryptographic algorithms and end-to-end encryption semantics;
@@ -105,12 +106,13 @@ explicit:
   decision owner for technical and governance decisions;
 - every change in a
   [protected decision domain](#protected-decision-domains) requires a second
-  qualified human domain reviewer who is not the decision owner or author.
+  qualified human domain reviewer who is not the decision owner or author, unless
+  the bounded [closed-alpha exception](#closed-alpha-review-exception) applies.
 
 Until a domain owner is delegated, the founder owns triage and reviewer
-selection for that domain. This fallback does not waive the independent-review
-requirement for a protected trust boundary. If no qualified second human is
-available, the proposal remains `proposed`.
+selection for that domain. This fallback does not itself waive review. Outside
+the closed-alpha exception, if no qualified second human is available, the
+proposal remains `proposed`.
 
 Delegation and required reviewers must be recorded in the RFC, ADR, or pull
 request. A delegation is valid only when its evidence meets the same identity,
@@ -127,7 +129,8 @@ records all of the following:
 2. links to applicable requirements, RFCs, threat analysis, experiments, and
    alternatives, or an explicit explanation for each item that is not applicable;
 3. validation evidence, known limitations, unresolved risks, and follow-up work;
-4. approval from the decision owner and every required human domain reviewer;
+4. approval from the decision owner and every required human domain reviewer, or
+   complete closed-alpha exception evidence in place of the second-human review;
 5. the accepted ADR, its decision-log entry, and the completed or otherwise closed
    RFC state as one coherent change, or an explicit `not applicable` explanation
    when no RFC was required.
@@ -142,6 +145,56 @@ The same human decision-owner approval is required for a material change to an
 already accepted policy, requirement, specification, or other normative document.
 A material change alters obligations, authority, status semantics, compatibility,
 or system behavior; editorial corrections do not require a new decision.
+
+## Closed-alpha review exception
+
+This exception applies only after this policy revision is approved and merged.
+It removes the mandatory SECOND human reviewer for bounded private test-data
+alpha development; the human decision owner is never removed or replaced by AI.
+
+Every use must record all of the following in its RFC/ADR and implementation PR:
+
+1. `review_mode: closed-alpha-ai`, the exact features, devices, data and environment,
+   the human risk owner, and a permanent owner approval for that scope. A blanket
+   instruction to proceed, this policy approval or an AI statement is not approval
+   of a particular architecture or permission to merge/deploy it.
+2. An independent AI review in a fresh context, separate from the implementing
+   context. Record reviewer/model, reviewed revision, findings, resolutions and
+   final report in the PR. Self-review alone does not qualify. Prefer a different
+   model where available; shared-model blind spots remain a disclosed risk.
+3. No unresolved blocking security/correctness findings. If the reviewer fails,
+   cannot finish, or disagrees materially, fix and re-review or escalate to the
+   owner; do not silently mark the gate passed. The owner cannot make a failed
+   test into passing evidence by approving it.
+4. Applicable RFC/ADR, versioned contract, threat analysis, requirement-to-test
+   mapping, actual verification evidence and honest NOT RUN items. Acceptance
+   criteria for delivered behavior must pass; missing phone evidence cannot be
+   replaced by a simulator or dependency build. ADR acceptance still requires
+   the human decision owner's exact decision approval and all lifecycle records.
+5. Only private, informed alpha testers using synthetic/non-sensitive test data.
+   E2EE remains required; no plaintext fallback, server content-key escrow or
+   invented recovery guarantees. A closed test endpoint is not production-ready
+   just because it runs on the owner's existing production machine. Deployment
+   still needs explicit bounded authorization, isolation and rollback.
+6. A review exit gate: before real sensitive communication, public release,
+   production/security/privacy claims, or expansion beyond the approved private
+   test scope, obtain independent qualified human review appropriate to identity,
+   cryptography, persistence and application security. Record the actual scope
+   and evidence; do not describe earlier AI review as a human audit.
+
+Requests using real sensitive data, an unreviewed scope expansion or a
+production-readiness claim do not qualify. Such requests remain blocked under
+the default human-review rule. Server restart, backups, retained metadata and
+local key loss still require explicit contracts and tests; the exception does
+not weaken those boundaries or any secret-handling rule.
+
+Application RFCs/ADRs may have `required_reviewers: []` only when accompanied by
+`review_mode: closed-alpha-ai` and complete exception evidence (or an explanation
+that no protected domain applies). Record the independent AI reviewer separately;
+never insert an AI identity into a list of human reviewers. Existing proposals
+must be updated explicitly after this revision becomes normative; they are not
+automatically approved, completed or reclassified. Existing accepted decisions
+and their historical human approval evidence remain unchanged.
 
 ## Durable approval and delegation records
 
@@ -199,7 +252,8 @@ compare generated API/protocol references, schemas, database migrations, CLI hel
 configuration examples, and architecture rules against their sources.
 
 Automation can detect drift but cannot decide whether an explanation is useful.
-Human review remains required.
+Human decision-owner acceptance remains required. Independent domain review
+follows the default rule or the bounded closed-alpha exception above.
 
 ## Security and privacy
 

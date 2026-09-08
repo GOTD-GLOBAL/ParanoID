@@ -1,12 +1,12 @@
 ---
-status: accepted
+status: proposed
 owner: maintainers
 decision_owner: martadvix-web
-approved_change: RFC/ADR lifecycle, decision authority, durable evidence, and protected-domain review governance
-approval_date: 2026-08-17
-approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/4
-approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500
-last_reviewed: 2026-08-15
+approved_change: proposed bounded second-human review exception for private test-data alpha
+approval_date: pending
+approval_pull_request: pending
+approval_record: pending
+last_reviewed: 2026-09-08
 ---
 
 # Contributing to ParanoID
@@ -43,7 +43,7 @@ their own dedicated locations described in `docs/README.md`.
 | New user capability | Requirement, reference, tutorial/how-to as applicable, changelog |
 | Public API or protocol | Versioned specification, compatibility notes, tests, changelog |
 | Architecture or foundational dependency | RFC followed by ADR, C4 views, current state |
-| [Protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains) | RFC/ADR, applicable threat model, and independent qualified human review |
+| [Protected decision domain](docs/governance/documentation-policy.md#protected-decision-domains) | RFC/ADR, applicable threat model, and canonical domain review (default human; bounded closed-alpha exception only) |
 | Deployment or configuration | Reference, runbook, rollback procedure |
 | Behavior change or bug fix | Affected reference and regression test; changelog if notable |
 | Removed or deprecated behavior | Migration guide, compatibility policy, changelog |
