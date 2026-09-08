@@ -43,12 +43,13 @@ check; a JDK is not a deployment-host prerequisite.
 
 ## Rollout status and network preflight
 
-The [2026-09-08 authorized attempt](linux-alpha-rollout-2026-09-08.md) installed
-and passed host-local authenticated health, but external 38443 was blocked by
-the observed default-deny firewall with no 38443 rule. The new unit was stopped/
-disabled and linger reverted; private data/config/TLS are retained. There is no
-working external endpoint. Independent review and four PR #15 checks passed;
-earlier pending-review language above describes the local preparation phase.
+The [2026-09-08 rollout record](linux-alpha-rollout-2026-09-08.md) records the
+initial blocked attempt and subsequent explicitly authorized IPv4 firewall resume.
+The retained unit now runs with scoped linger and an externally verified pinned
+TLS endpoint. Only inbound TCP 38443 on `enp5s0`, destination `157.180.49.125`,
+from any IPv4 source was allowed. IPv6 and existing rules/services were preserved.
+Independent package review and four PR #15 checks passed; earlier pending-review
+language above describes the local preparation phase. Phone acceptance is unrun.
 
 Before future installation or resume, inspect inbound firewall policy read-only
 as part of prerequisites, not just socket availability. An unbound port does not

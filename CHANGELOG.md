@@ -25,11 +25,12 @@ public contract is declared.
 
 ### Added
 
-- Authorized target-host rollout evidence: verified package/native restore tests
-  and host-local TLS/database health passed, but external 38443 timed out with
-  default-deny UFW and no allow rule. The new unit was stopped/disabled and linger
-  reverted without changing the firewall or neighboring services. Private state
-  is retained; external endpoint and phone acceptance remain unfulfilled.
+- Authorized target-host rollout and resume: after an initially blocked attempt,
+  explicit owner authorization allowed one precise IPv4 UFW TCP 38443 rule and
+  retained-service/linger resume. External pinned TLS and negative pin/auth checks,
+  Linux JVM Android TLS adapter, final-unit restart/crash recovery, and disposable
+  history/restore tests pass. Original identities/data and neighboring services
+  are preserved; physical OPPO acceptance remains unrun.
 
 - Native Linux private-alpha package: locked release artifact, explicit direct TLS
   on 38443, isolated PostgreSQL 16, systemd user enable/restart, authenticated DB

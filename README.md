@@ -23,8 +23,9 @@ Read these documents in order before proposing or implementing changes:
 
 [Server transport](server/README.md) includes real HTTP/PostgreSQL tests and a
 Linux test runner. The [native Linux alpha package](docs/operations/linux-alpha-deployment.md)
-adds locally tested direct TLS, isolated data and lifecycle tooling. No hosted
-rollout or two-phone acceptance is claimed.
+adds direct TLS, isolated data and lifecycle tooling. The authorized
+[hosted alpha](docs/operations/linux-alpha-rollout-2026-09-08.md) is externally
+reachable with pinned TLS; two-phone acceptance remains unrun.
 
 ## Working principle
 

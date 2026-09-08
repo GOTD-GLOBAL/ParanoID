@@ -132,7 +132,7 @@ Negative regressions and real native PG/TLS update/rollback checks pass; CI now
 includes non-systemd package coverage. Independent re-review is still pending;
 no hosted rollout or new architecture approval is inferred.
 
-## Authorized hosted attempt: stopped on firewall boundary
+## Authorized hosted attempt and narrowly scoped resume
 
 PR #15 merged as `f8131cd92e9e5945667b0257944552676885455d`; independent
 fresh-context review reported no package blockers and all four PR checks passed.
@@ -143,12 +143,20 @@ retry/history/update/restore tests, and successful final-unit host-local TLS/DB
 readiness. External TCP/38443 timed out; read-only UFW inspection found incoming
 default-deny and no 38443 rule. No firewall or neighboring service was changed.
 
-The new unit is stopped/disabled and linger restored to its original `no`. Private
-installation data and TLS/admission identities remain on the target for controlled
-resume. There is **no working externally reachable endpoint** and no physical
-phone acceptance. The immediate deployment blocker is explicit authorization for
-the narrow firewall change, followed by external TLS/SPKI and lifecycle checks;
-do not overwrite retained state or treat the old diagnostic APK as a messenger.
+The first attempt stopped/disabled the unit and restored `Linger=no`. The owner
+then explicitly authorized, in the current 2026-09-08 Telegram turn, inbound TCP
+38443 from any IPv4 source on the public IPv4 interface and resume of the retained
+service. No Telegram permalink is available. One precise UFW allow on `enp5s0`
+to `157.180.49.125` was added; other rules and neighboring services were preserved.
+The retained unit is now enabled/running with scoped linger. External verified
+certificate/IP/SPKI health and wrong-pin/missing/invalid-auth rejection passed,
+including the real Android TLS adapter on the Linux JVM. Explicit restart and
+child-crash recovery preserved original config/TLS and ordered database rows.
+The enrollment database still has zero envelopes; populated retry/restore evidence
+comes only from disposable fixtures. **The hosted alpha endpoint works; physical
+OPPO acceptance remains NOT RUN.** Parent independent endpoint verification and
+reviewed APK/signature/private enrollment precede device acceptance. Do not treat
+the old diagnostic APK as a messenger or reset any retained identity.
 
 ## Next decision gates
 

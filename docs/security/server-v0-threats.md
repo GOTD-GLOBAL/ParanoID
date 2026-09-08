@@ -120,10 +120,18 @@ martadvix-web, independent parent review pending under ADR-0003.
 The [authorized attempt](../operations/linux-alpha-rollout-2026-09-08.md) used the
 reviewed package on the dedicated host account and passed host-local authenticated
 TLS/DB health. External 38443 timed out; default-deny UFW had no allow rule. The
-operator did not widen firewall policy: the new unit was stopped/disabled, linger
-reverted, and private configuration/TLS/data retained. No external TLS/SPKI or
-phone acceptance is claimed. Public network exposure remains an explicit scoped
-authorization and verification gate, not an implicit consequence of a free port.
+operator initially stopped/disabled the unit, reverted linger and retained state.
+The owner subsequently explicitly authorized inbound TCP 38443 on the public IPv4
+interface from any IPv4 source and retained-service resume in the current Telegram
+turn (no permalink available). One destination/interface-specific UFW rule now
+exposes the TLS listener; other rules, IPv6 and neighboring services are unchanged.
+External certificate/IP/SPKI and wrong-pin/missing/invalid-auth tests passed;
+final-unit restart/crash recovery preserved configuration/TLS and ordered rows.
+Any IPv4 source can now reach TLS: handshake/volumetric DoS and the shared request
+budget remain risks. This is bounded private test-data scope, not public release
+or production privacy acceptance. No phone credentials or Olm state were exported
+or consumed. Parent independent verification and physical OPPO acceptance remain
+separate gates. Public exposure requires explicit authorization, not a free port.
 The linked record also captures completed independent package review and CI;
 preparation-time pending-review language above is historical.
 

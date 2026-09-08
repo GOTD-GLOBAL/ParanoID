@@ -130,10 +130,13 @@ not embedded circularly into the artifact's source-commit metadata.
 
 The [2026-09-08 rollout record](linux-alpha-rollout-2026-09-08.md) separately records
 completed package review/CI, exact merged-source provenance, target checks and
-actual host-local installation/health. External 38443 was blocked; own unit/linger
-changes were rolled back while private state was retained. Earlier local-only
-NOT RUN statements below are historical, not the current deployment status.
-No externally usable endpoint or physical-phone acceptance is claimed.
+actual host-local installation/health. The first firewall-blocked attempt stopped
+its unit/linger while retaining state. The subsequent explicitly authorized IPv4
+resume passed external pinned TLS/negative-auth checks, actual JVM adapter checks,
+and final-unit restart/crash recovery with unchanged identities and database rows.
+A fresh disposable native fixture passed in 2.342s. Earlier local-only NOT RUN
+statements below are historical, not current deployment status. Physical-phone
+acceptance and host reboot remain unrun.
 
 ## Scope and remaining NOT RUN items
 
