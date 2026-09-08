@@ -70,6 +70,17 @@ checking, delete the existing host entry, or blindly accept a replacement.
 )
 ```
 
+## Read-only inventory on 2026-09-08
+
+The owner requested the host check before programming/deployment preparation.
+SSH as `paranoid` succeeded. `systemctl is-active` reported Docker, Nginx and
+PostgreSQL active. Listening sockets included public ports 80/443 and loopback
+5432. Kernel reported Linux 6.8.0-138-generic. These are dated observations, not
+a complete workload inventory or a deployment approval. No credential contents,
+existing DB data or service configuration were read or changed. No service was
+installed, restarted, exposed or reconfigured. ParanoID must be isolated from
+these existing workloads; do not bind over their ports or reuse their database.
+
 ## Observed evidence
 
 Read-only SSH verification on 2026-09-07 exited with code 0 and returned:

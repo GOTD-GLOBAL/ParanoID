@@ -44,6 +44,16 @@ availability. OS/root compromise can expose content at endpoints.
 | Native boundary or platform backup leaks keys | High | Minimal separate JNI/C adapters, redacted errors, platform-protected local key and backup exclusions | Mobile security review; Android/iOS evidence separately |
 | Existing hosting services harmed by alpha deployment | High | Explicit bounded authorization, isolated service identity/volumes/resources, inspected rollback | Deployment runbook gate |
 
+## Executable development transport boundary
+
+The `server/` increment uses two disposable bearer credentials, loopback binding
+and a private development DB. It is not root/device admission or peer verification.
+Test fixture crypto keys are trusted inside one test process. Payload/row/body/page
+bounds and static error redaction are implemented; ingress rate limits, full
+client state and public TLS remain gates before network exposure. A reverse proxy
+must not bypass the development-only boundary. See the server README for the
+explicitly opted-in disposable CI database exception.
+
 ## Residual limits
 
 The malicious server can drop/delay messages, lie about its own commit, withhold

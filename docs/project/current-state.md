@@ -9,8 +9,8 @@ last_reviewed: 2026-09-08
 ## Phase
 
 **Inception and architecture discovery.** This repository is a clean reboot. It
-contains documentation governance and project framing, but no messenger
-implementation or accepted production architecture.
+contains documentation, Android diagnostics and a development transport
+increment, but no usable messenger or accepted production architecture.
 
 The earlier proof of concept is preserved in the private
 `GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
@@ -83,6 +83,22 @@ and retained human decision-owner approval, approved by martadvix-web in PR #12.
 [ADR-0003](../decisions/0003-closed-alpha-review-policy.md) records acceptance;
 the policy is normative on main. It accepts no application architecture,
 authorizes no deployment and makes no security claim.
+
+## Executable transport increment in development
+
+RFC-0008 and draft ADR-0004 accompany `server/`: a loopback HTTP process with
+PostgreSQL ciphertext append, idempotent retry, recipient cursor sync and
+non-evicting quotas. Real tests include killing/restarting the binary and Olm
+fixture ciphertext exchange. Fixture identities are trusted inside the test
+process, not two phones. No Android/iOS messaging client, remote peer verification,
+durable client ratchet, delivery receipt or hosted rollout is claimed. The full
+RFC-0006 acceptance matrix remains unfulfilled; architecture is not accepted.
+
+A fresh owner-authorized read-only host inventory confirmed Docker, Nginx and
+PostgreSQL active and HTTP/HTTPS ports occupied. No remote mutation occurred.
+ParanoID deployment must be isolated from existing services. The local test
+runner creates/removes its own private PostgreSQL cluster; it does not connect
+to that host. Simple reproducible Linux deployment remains a product requirement.
 
 ## Next decision gates
 

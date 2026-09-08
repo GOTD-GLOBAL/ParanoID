@@ -10,6 +10,11 @@ public contract is declared.
 
 ### Added
 
+- Development-only Rust/PostgreSQL HTTP transport with durable opaque-envelope
+  acceptance, idempotent retries, recipient cursor sync, bounded non-evicting
+  storage and real HTTP/database tests. No phone messaging or hosted deployment
+  is delivered by this increment.
+
 - Experimental ARM64 Android native crypto diagnostic with a local synthetic
   exchange and tamper/replay checks; no networking or production security claim.
 
