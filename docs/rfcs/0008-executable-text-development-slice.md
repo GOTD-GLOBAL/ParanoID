@@ -126,6 +126,29 @@ Certificate renewal under the same key can retain the pin; key rotation requires
 a separately reviewed explicit re-enrollment path. This does not approve a public
 deployment, relax the server development gate, or supply missing device evidence.
 
+## Recovery from rejected events and outbound failure
+
+For a well-formed newer transport event, a classified remote payload or capacity
+failure produces a candidate containing only transport progress and a rejection
+notice. Reconstruct the original client snapshot first: no failed candidate
+account/session/history/outbox is promoted, and no delivery receipt is emitted.
+The last 64 rejection notices, total count and earliest rejected sequence are
+retained atomically with the cursor. This bounded metadata ring is not message
+history deletion; server ciphertext and existing local messages are untouched.
+There is no automatic recovery/replay UI or guarantee of later decryption for
+capacity-deferred events. Show the rejection count visibly. Invalid transport
+headers/order, conflicting replay and local-state errors are not skippable.
+Transport UUIDs must use the canonical form emitted by the server. Previously
+accepted IDs are checked for sequence/payload conflicts even when replacement
+ciphertext is malformed; such replays never produce cursor-progress candidates.
+
+A full 200-message local history rejects/defer-notices additional text but still
+allows authenticated receipts for existing messages. Local snapshot/write failure
+remains fatal. Outbound network/status failure retains the exact outbox and a
+visible pending/error result, but does not prevent the inbound phase. Once inbound
+processing succeeds, attempt the outbound phase again to flush queued receipts.
+Do not suppress either direction's failure or continue after uncertain storage.
+
 ## Disposition
 
 Draft, not production or full-alpha acceptance. Owner request authorizes work in

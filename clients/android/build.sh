@@ -13,9 +13,10 @@ cargo fetch --locked --manifest-path ../core/Cargo.toml
 cargo test --locked --manifest-path ../core/Cargo.toml
 cargo build --locked --manifest-path ../core/Cargo.toml
 mkdir -p out/host out/classes out/dex
-javac --release 8 -d out/host src/org/paranoid/text/CoreBridge.java src/org/paranoid/text/SnapshotCodec.java test/CoreSmoke.java test/StorageSmoke.java
+javac --release 8 -d out/host src/org/paranoid/text/CoreBridge.java src/org/paranoid/text/SnapshotCodec.java src/org/paranoid/text/SyncCycle.java test/CoreSmoke.java test/StorageSmoke.java test/SyncSmoke.java
 java -Djava.library.path=../core/target/debug -cp out/host CoreSmoke
 java -cp out/host StorageSmoke
+java -cp out/host SyncSmoke
 cargo build --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
 python3 notices.py
 javac --release 8 -encoding UTF-8 -classpath "$PLATFORM" -d out/classes src/org/paranoid/text/*.java

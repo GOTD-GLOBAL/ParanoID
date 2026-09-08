@@ -67,6 +67,13 @@ struct Entry {
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+struct RejectedEvent {
+    id: String,
+    sequence: i64,
+    reason: String,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct Client {
     version: u32,
     public: Bundle,
@@ -77,6 +84,12 @@ struct Client {
     outbox: Vec<Outgoing>,
     history: Vec<Entry>,
     seen: BTreeMap<String, (String, i64)>,
+    #[serde(default)]
+    rejected_events: Vec<RejectedEvent>,
+    #[serde(default)]
+    rejected_count: u64,
+    #[serde(default)]
+    first_rejected_sequence: Option<i64>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -123,7 +136,7 @@ fn key(s: &str) -> Result<Curve25519PublicKey> {
     Curve25519PublicKey::from_base64(s).map_err(|_| "invalid_peer_key")
 }
 fn reply(s: Client) -> Result<String> {
-    serde_json::to_string(&json!({"state":&s,"public":&s.public,"outbox":&s.outbox,"messages":&s.history,"cursor":s.cursor})).map_err(|_|"state_error")
+    serde_json::to_string(&json!({"state":&s,"public":&s.public,"outbox":&s.outbox,"messages":&s.history,"cursor":s.cursor,"rejected_count":s.rejected_count,"first_rejected_sequence":s.first_rejected_sequence})).map_err(|_|"state_error")
 }
 fn init(device: String, realm: String) -> Result<Client> {
     if !["alice", "bob"].contains(&device.as_str())
@@ -156,6 +169,9 @@ fn init(device: String, realm: String) -> Result<Client> {
         outbox: vec![],
         history: vec![],
         seen: BTreeMap::new(),
+        rejected_events: vec![],
+        rejected_count: 0,
+        first_rejected_sequence: None,
     })
 }
 fn encrypt(s: &mut Client, kind: &str, body: String) -> Result<String> {
@@ -202,14 +218,28 @@ fn encrypt(s: &mut Client, kind: &str, body: String) -> Result<String> {
 }
 fn receive(s: &mut Client, m: Incoming) -> Result<()> {
     let peer = s.peer.clone().ok_or("verify_peer_first")?;
-    if m.sender != peer.device || m.sequence < 1 || uuid::Uuid::parse_str(&m.id).is_err() {
+    if m.sender != peer.device
+        || m.sequence < 1
+        || uuid::Uuid::parse_str(&m.id)
+            .map(|id| id.to_string() != m.id)
+            .unwrap_or(true)
+    {
         return Err("invalid_envelope");
     }
-    let frame = STANDARD
-        .decode(&m.ciphertext)
-        .map_err(|_| "invalid_ciphertext")?;
+    // Accepted IDs are immutable. Classify conflicts before malformed payloads
+    // can enter the recoverable-new-event path.
+    let known = s.seen.get(&m.id);
+    if known.is_some_and(|(_, sequence)| *sequence != m.sequence) {
+        return Err("conflicting_replay");
+    }
+    let malformed = if known.is_some() {
+        "conflicting_replay"
+    } else {
+        "invalid_ciphertext"
+    };
+    let frame = STANDARD.decode(&m.ciphertext).map_err(|_| malformed)?;
     if frame.len() < 2 || frame.len() > 16384 || frame[0] > 1 {
-        return Err("invalid_ciphertext");
+        return Err(malformed);
     }
     let hash = STANDARD.encode(Sha256::digest(&frame));
     if let Some((old, seq)) = s.seen.get(&m.id) {
@@ -260,8 +290,11 @@ fn receive(s: &mut Client, m: Incoming) -> Result<()> {
     }
     match p.kind.as_str() {
         "text" => {
-            if p.body.is_empty() || p.body.len() > 2048 || s.history.len() >= 200 {
-                return Err("invalid_text_or_full_history");
+            if p.body.is_empty() || p.body.len() > 2048 {
+                return Err("invalid_text");
+            }
+            if s.history.len() >= 200 {
+                return Err("local_history_full");
             }
             s.history.push(Entry {
                 id: p.id.clone(),
@@ -335,7 +368,53 @@ pub fn command(state: &str, request: &str) -> Result<String> {
                 delivered: false,
             });
         }
-        Request::Receive { message } => receive(&mut s, message)?,
+        Request::Receive { message } => {
+            let sequence = message.sequence;
+            let id = message.id.clone();
+            if let Err(reason) = receive(&mut s, message) {
+                let skippable = matches!(
+                    reason,
+                    "invalid_ciphertext"
+                        | "decryption_failed"
+                        | "invalid_plaintext"
+                        | "context_mismatch"
+                        | "unsupported_message"
+                        | "unknown_receipt"
+                        | "invalid_text_or_full_history"
+                        | "invalid_text"
+                        | "local_history_full"
+                        | "outbox_full"
+                        | "session_limit"
+                        | "invalid_or_full_inbox"
+                );
+                // Restore BEFORE recording progress: a failed candidate may have
+                // consumed a prekey, ratchet or appended history before failing.
+                s = serde_json::from_str(state).map_err(|_| "invalid_state")?;
+                if s.seen.contains_key(&id) {
+                    return Err("conflicting_replay");
+                }
+                if !skippable
+                    || sequence <= s.cursor
+                    || sequence > 100000
+                    || uuid::Uuid::parse_str(&id).is_err()
+                {
+                    return Err(reason);
+                }
+                if s.rejected_events.len() >= 64 {
+                    s.rejected_events.remove(0);
+                }
+                s.rejected_events.push(RejectedEvent {
+                    id,
+                    sequence,
+                    reason: reason.into(),
+                });
+                s.rejected_count = s.rejected_count.saturating_add(1);
+                if s.first_rejected_sequence.is_none() {
+                    s.first_rejected_sequence = Some(sequence);
+                }
+                s.cursor = sequence;
+            }
+        }
         Request::Accepted { id } => {
             if !s.outbox.iter().any(|m| m.id == id) {
                 return Err("unknown_acceptance");

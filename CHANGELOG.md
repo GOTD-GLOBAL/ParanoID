@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rejected/capacity-deferred client events no longer indefinitely stall later
+  messages or authenticated receipts; failed crypto state is discarded and
+  bounded rejection/progress metadata is persisted visibly.
+- Outbound 409/507 failures retain exact retry bytes without blocking inbound
+  processing or later outbox entries. Local storage uncertainty still stops all
+  operations. Regression tests cover the failure paths.
+
 ### Added
 
 - Development Android/Rust text-client code with peer-pinned Olm, encrypted local

@@ -30,11 +30,7 @@ fn tampering_context_replacement_and_retries_are_fail_closed() {
         json!({"id":out["id"],"sender":"alice","ciphertext":out["ciphertext"],"sequence":1});
     let mut wrong = incoming.clone();
     wrong["id"] = json!(uuid::Uuid::new_v4().to_string());
-    assert!(command(
-        &b["state"].to_string(),
-        &json!({"op":"receive","message":wrong}).to_string()
-    )
-    .is_err());
+    assert_quarantined_without_crypto_change(&b, wrong);
     let mut wrong = incoming.clone();
     wrong["sender"] = json!("bob");
     assert!(command(
@@ -44,11 +40,7 @@ fn tampering_context_replacement_and_retries_are_fail_closed() {
     .is_err());
     let mut wrong = incoming.clone();
     wrong["ciphertext"] = json!("AQID");
-    assert!(command(
-        &b["state"].to_string(),
-        &json!({"op":"receive","message":wrong}).to_string()
-    )
-    .is_err());
+    assert_quarantined_without_crypto_change(&b, wrong);
     b = call(
         &b["state"].to_string(),
         json!({"op":"receive","message":incoming}),
@@ -121,6 +113,23 @@ fn pinned_peers_exchange_text_and_authenticated_delivery_receipt_after_reload() 
     );
     assert_eq!(a["messages"][0]["delivered"], true);
     assert!(a["outbox"].as_array().unwrap().is_empty());
+}
+
+fn assert_quarantined_without_crypto_change(before: &Value, message: Value) {
+    // A rejected transport event is progress, NOT accepted plaintext. Discard this
+    // candidate here so each independent corruption uses the same original state.
+    let after = call(
+        &before["state"].to_string(),
+        json!({"op":"receive","message":message}),
+    );
+    assert_eq!(after["rejected_count"], 1);
+    assert_eq!(after["cursor"], 1);
+    for field in ["account", "sessions", "history", "outbox"] {
+        assert!(
+            after["state"][field] == before["state"][field],
+            "failed candidate changed {field}"
+        );
+    }
 }
 
 fn call(state: &str, request: Value) -> Value {

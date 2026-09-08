@@ -52,8 +52,9 @@ jobs:
         # RUNNER_TEMP is runner-owned; no PR body/title/ref is interpolated here.
         run: |
           mkdir -p "$RUNNER_TEMP/paranoid-java"
-          javac --release 8 -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java
+          javac --release 8 -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/src/org/paranoid/text/SyncCycle.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java clients/android/test/SyncSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java" CoreSmoke
           java -cp "$RUNNER_TEMP/paranoid-java" StorageSmoke
+          java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
       - name: Real local pinned-TLS handshakes
         run: python3 scripts/check-pinned-tls.py

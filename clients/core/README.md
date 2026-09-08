@@ -12,7 +12,16 @@ cargo test --locked --manifest-path clients/core/Cargo.toml
 cargo clippy --locked --manifest-path clients/core/Cargo.toml --all-targets -- -D warnings
 ```
 
-Three tests cover fresh identity/public export, pinned text/receipt exchange with
-snapshot reload, and negative/retry behavior. They do not exercise actual devices,
-platform storage or hosted TLS. This is disposable development identity, not the
-proposed seed/root/device hierarchy. See the Android README for current blockers.
+Tests cover fresh identity/public export, pinned text/receipt exchange, exact
+retries, simultaneous initial sends, bad-event recovery, full-history receipt
+processing and bounded rejection notices. A classified payload rejection now
+returns a candidate snapshot with transport progress and a notice, NOT successful
+plaintext acceptance. The original account/session/history/outbox is restored
+before that notice; committing the candidate emits no receipt for the rejected
+event. Local-state and untrustworthy transport-header failures remain errors.
+
+The platform must persist notice/cursor changes atomically like every other
+candidate. Old v0 snapshots receive empty additive notice fields without replacing
+keys. These tests do not exercise actual devices, platform storage or hosted TLS.
+This remains disposable development identity, not the seed/root/device hierarchy.
+See the Android README for resource limits and remaining runtime gates.

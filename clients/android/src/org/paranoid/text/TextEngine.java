@@ -166,7 +166,8 @@ public final class TextEngine {
                 connection.setDoOutput(true);connection.setRequestProperty("Content-Type","application/json");connection.setFixedLengthStreamingMode(bytes.length);
                 try(OutputStream output=connection.getOutputStream()){output.write(bytes);}
             }
-            if(connection.getResponseCode()!=200)throw new IOException("HTTP operation rejected");
+            int responseCode=connection.getResponseCode();
+            if(responseCode!=200)throw new SyncCycle.Rejected(responseCode);
             ByteArrayOutputStream bytes=new ByteArrayOutputStream();
             try(InputStream input=connection.getInputStream()) {
                 byte[] buffer=new byte[4096];int n;
@@ -177,20 +178,23 @@ public final class TextEngine {
     }
     private void flush() throws Exception {
         JSONArray outbox=invoke(state,new JSONObject().put("op","view")).getJSONArray("outbox");
-        for(int i=0;i<outbox.length();i++) {
-            JSONObject envelope=outbox.getJSONObject(i);JSONObject accepted=http("POST","/v0/messages",envelope);
+        java.util.List<JSONObject> snapshot=new java.util.ArrayList<>();
+        for(int i=0;i<outbox.length();i++)snapshot.add(outbox.getJSONObject(i));
+        SyncCycle.drain(snapshot,envelope->{
+            JSONObject accepted=http("POST","/v0/messages",envelope);
             if(!accepted.getString("id").equals(envelope.getString("id")) || accepted.getLong("sequence")<1)throw new IOException("invalid acceptance");
             apply(new JSONObject().put("op","accepted").put("id",envelope.getString("id")));
-        }
+        },()->broken);
     }
     private void pump() throws Exception {
         if(state.isEmpty() || new JSONObject(state).isNull("peer"))return;
-        flush();
+        SyncCycle.run(this::flush,this::receivePage,()->broken);
+    }
+    private void receivePage() throws Exception {
         long cursor=invoke(state,new JSONObject().put("op","view")).getLong("cursor");
         JSONArray messages=http("GET","/v0/messages?after="+cursor+"&limit=20",null).getJSONArray("messages");
         if(messages.length()>20)throw new IOException("page limit");
         for(int i=0;i<messages.length();i++)apply(new JSONObject().put("op","receive").put("message",messages.getJSONObject(i)));
-        flush();
     }
     private void publish(String status) {
         JSONObject display=new JSONObject();
@@ -201,9 +205,12 @@ public final class TextEngine {
                 // Private snapshots, tokens and content keys never enter the UI view.
                 display.put("public",view.getJSONObject("public")).put("messages",view.getJSONArray("messages"));
                 display.put("paired",!new JSONObject(state).isNull("peer"));
+                display.put("rejected_count",view.optLong("rejected_count",0));
             }
         } catch(Throwable error){broken=true;try{display.put("broken",true);}catch(Exception ignored){}}
         JSONObject safeView=display;
-        ui.post(()->{Listener target=listener;if(target!=null)target.changed(safeView,status);});
+        long rejected=display.optLong("rejected_count",0);
+        String visibleStatus=status+(rejected>0?" ⚠ Не принято событий: "+rejected+". История на сервере не удалена; доставка этих событий не подтверждена.":"");
+        ui.post(()->{Listener target=listener;if(target!=null)target.changed(safeView,visibleStatus);});
     }
 }

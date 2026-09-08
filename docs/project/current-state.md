@@ -106,7 +106,8 @@ to that host. Simple reproducible Linux deployment remains a product requirement
 logic, an encrypted atomic local snapshot and IP-based pinned HTTPS. An ARM64
 APK builds; Rust, Linux JVM JNI/codec, packaging and local TLS smoke checks pass.
 These do not prove runtime behavior on OPPO. The [client README](../../clients/android/README.md)
-records two outstanding synchronization findings and the bounded test sequence.
+records the corrected synchronization cases, rejection/progress semantics and
+the bounded device-test sequence. Code regression results are not device evidence.
 No hosted TLS endpoint, new production process or public port is created by this
 increment. Full two-phone acceptance is still pending.
 

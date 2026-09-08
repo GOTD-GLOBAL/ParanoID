@@ -68,10 +68,24 @@ is not repaired by generating a new identity over existing ciphertext.
 
 ## Known blockers and limits
 
-Independent client review found two synchronization issues still pending here:
-an invalid/full-history event can stall later sync; failed initial outbound flush
-can prevent receiving. The TLS review did not cover or waive those findings.
-Do not distribute this revision as ready for connected two-phone acceptance.
+The two identified synchronization defects are corrected in this development
+revision. Classified bad payloads and capacity-deferred text record progress and
+an explicit rejection notice, without committing failed crypto/history/outbox
+changes or generating a delivery receipt. The last 64 notices, total count and
+earliest rejected sequence survive snapshot reload; the UI shows the count.
+Existing messages/server ciphertext are not removed. No automatic replay/recovery
+UI or later-decryption guarantee is provided for deferred events. Structural
+transport/order/replay conflicts and local-state failures still fail closed.
+Old v0 snapshots without these additive notice fields load with empty notice state,
+not new keys; an older client may reject the newer snapshot on downgrade.
+
+Outbound failures no longer skip the inbound phase. HTTP 409/507 entries retain
+their exact bytes while other entries (including receipts) are attempted; failures
+are reported, not deleted. Auth/network failures stop that outbound batch but do
+not make receiving conditional on successful sending. Frozen local state or
+cancellation stops the cycle; inbound failure prevents further work in that cycle.
+Rust and real-loopback-HTTP JVM regressions exercise these paths. This is not
+Android runtime/Keystore evidence or authorization for connected two-phone tests.
 
 The development core caps local history at 200 messages and has no seed/root-device
 recovery, QR scanner, iOS build or production account migration. No hosted TLS
