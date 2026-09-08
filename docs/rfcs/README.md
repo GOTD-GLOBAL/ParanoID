@@ -43,6 +43,13 @@ Close an RFC and record its disposition in one coherent pull request:
 Follow the human authority and acceptance-evidence rules in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
+## Active narrow proposal
+
+- [RFC-0006: One-server text contract](0006-single-server-text-contract.md)
+  (draft): founder delivery/retention requirements, concrete technical
+  recommendations and remaining application-disposition gates. Earlier RFC-0004/0005 are
+  retained in closed PRs #6/#10 and their branches, not accepted architecture.
+
 ## Active governance proposal
 
 - [RFC-0007: Bounded closed-alpha review policy](0007-closed-alpha-review-policy.md)

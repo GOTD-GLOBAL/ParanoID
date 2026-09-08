@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-08
 ---
 
 # Threat model
@@ -9,6 +9,11 @@ last_reviewed: 2026-08-09
 This is an initial discovery scaffold, not evidence that ParanoID is secure.
 Update it whenever assets, actors, data flows, dependencies, or trust boundaries
 change.
+
+## Active scoped analysis
+
+The [single-server text delta](server-v0-threats.md) identifies proposed controls
+and test mappings for RFC-0006. It is unimplemented and not a completed review.
 
 ## Security objectives
 

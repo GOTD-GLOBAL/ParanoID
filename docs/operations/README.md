@@ -9,6 +9,13 @@ last_reviewed: 2026-08-09
 Operational design is part of the product because simple, safe self-hosting is a
 core requirement.
 
+## Infrastructure access
+
+- [Production SSH access](production-access.md): owner-provided host inventory,
+  temporary-agent procedure, read-only verification evidence, and authority limits.
+
+## Deployment documentation
+
 Every supported deployment profile must eventually include:
 
 - prerequisites and one-click or guided installation;

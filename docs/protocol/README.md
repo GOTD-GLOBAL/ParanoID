@@ -1,12 +1,14 @@
 ---
 status: draft
 owner: protocol
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-08
 ---
 
 # Protocol documentation
 
-No ParanoID protocol has been selected or specified.
+No normative ParanoID protocol has been accepted. The draft
+[single-server acceptance matrix](server-v0-acceptance.md) maps the proposed
+text/history/reconnect behavior to future tests; it is not a wire specification.
 
 Future protocol documentation must be normative and versioned. It must define:
 
