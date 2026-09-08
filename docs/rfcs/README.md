@@ -43,6 +43,13 @@ Close an RFC and record its disposition in one coherent pull request:
 Follow the human authority and acceptance-evidence rules in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
+## Active narrow proposal
+
+- [RFC-0006: One-server text contract](0006-single-server-text-contract.md)
+  (draft): founder delivery/retention requirements, concrete technical
+  recommendations and remaining human review gates. Earlier RFC-0004/0005 are
+  still in separate open PRs, not accepted architecture.
+
 ## Naming
 
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active

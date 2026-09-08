@@ -10,6 +10,12 @@ public contract is declared.
 
 ### Added
 
+- Draft single-server text contract and acceptance matrix for two OPPO phones:
+  durable server/recipient delivery indicators, retained ciphertext history,
+  reconnect, key-loss limits and future iPhone boundaries. No messenger shipped.
+- Reproducible dependency-only server stack compilation probe; not a runtime
+  server or accepted architecture.
+
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
 - Explicit RFC closure states and human authority and evidence requirements for

@@ -1,7 +1,7 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-08
 ---
 
 # Current project state
@@ -34,6 +34,30 @@ locally, has no network permission and is not a messenger or stack acceptance.
   cryptographic construction, database, hosting platform, or token model has
   been selected.
 - No production security or privacy claims are valid yet.
+
+## Active single-server implementation boundary
+
+The founder now prioritizes one server and two OPPO phones exchanging E2EE text
+with history, reconnect and no duplicates. One check means server acceptance;
+two mean peer delivery, not reading. Server history remains until an additional
+explicit deletion request. iPhone and multiple-server support remain future
+scope; a second server is not an acceptance gate for this slice.
+
+[RFC-0006](../rfcs/0006-single-server-text-contract.md) records concrete assistant
+recommendations and their [acceptance matrix](../protocol/server-v0-acceptance.md).
+It is draft, not an accepted architecture. Identity/E2EE, delivery/persistence
+and stack disposition still lack independent qualified human reviewers and
+durable owner approval evidence. Existing RFC-0004/0005 remain drafts in open PRs.
+
+A [dependency-only stack check](../research/2026-09-08-server-stack-check.md)
+compiled pinned Axum/Tokio/SQLx dependencies on Linux. It implements no server,
+API, message store or client. No phone-to-phone message has been demonstrated.
+The local Docker daemon was inaccessible to this invocation; no production host
+was changed. No iOS build or protected-domain implementation was performed.
+
+The older discovery list below is background, not a request to restart broad
+research. The immediate gate is disposition of the narrow contract, then the
+TDD implementation order in RFC-0006.
 
 ## Next decision gates
 
