@@ -16,6 +16,10 @@ public contract is declared.
 - Reproducible dependency-only server stack compilation probe; not a runtime
   server or accepted architecture.
 
+- Owner-approved bounded closed-alpha review-policy exception (ADR-0003),
+  effective on merge. E2EE, human decision ownership and the external
+  security-review gate for sensitive/production use remain required.
+
 - Initial documentation governance, project map, decision process, security
   threat-model skeleton, and contribution workflow.
 - Explicit RFC closure states and human authority and evidence requirements for

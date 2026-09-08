@@ -2,10 +2,10 @@
 status: draft
 owner: architecture
 decision_owner: martadvix-web
-decision_deadline: pending-human-reviewer-assignment
+decision_deadline: pending-application-disposition
+review_mode: pending-application-disposition
 required_reviewers:
-  - <independent-qualified-identity-and-messaging-security-human>
-  - <independent-qualified-persistence-and-stack-human>
+  - <reviewer-per-selected-policy-mode>
 last_reviewed: 2026-09-08
 ---
 
@@ -15,8 +15,10 @@ last_reviewed: 2026-09-08
 
 Identity, E2EE, protocol, persistence, stack and trust boundaries are protected
 by the [documentation policy](../governance/documentation-policy.md).
-The placeholders require real independent qualified humans selected by the owner;
-one person may cover both domains if qualified. AI review cannot replace them.
+ADR-0003 now permits independent AI review instead of a second human for
+explicitly owner-approved private test-data alpha scope. The placeholder is
+resolved at application disposition under that policy; it does not mandate
+finding an unavailable second human before drafting or publishing this proposal.
 The founder delegated technical recommendations to the primary assistant, not
 human decision authority under the policy. This document is not adoption or
 permission to implement protected contracts before disposition. No exception is
@@ -249,11 +251,12 @@ exact reviewed cryptographic encodings/vectors, not a new market study.
 
 - Disposition: draft; no accepted architecture or protocol in this change.
 - Decision owner: martadvix-web; approval permalink pending GitHub confirmation.
-- Required reviewer identities and evidence: pending owner assignment.
+- Review mode, reviewer identities and evidence: to be recorded at application
+  disposition under ADR-0003; second-human absence alone is not an alpha blocker.
 - Delegation evidence: none meeting the durable-evidence policy.
 - Resulting ADRs: separate identity/E2EE, delivery/persistence and stack records
   required before adoption; do not batch-accept protected domains through this RFC.
-- Deadline: owner schedules reviewer assignment; no invented deadline.
+- Deadline: owner schedules application disposition; no invented deadline.
 - RFC-0004/0005: archived draft material in closed PRs #6/#10; no architecture
   accepted by their closure or by this file.
 - Implementation authorization: blocked on the existing disposition gate.

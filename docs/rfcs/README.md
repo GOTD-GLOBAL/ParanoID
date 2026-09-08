@@ -47,8 +47,13 @@ Follow the human authority and acceptance-evidence rules in the
 
 - [RFC-0006: One-server text contract](0006-single-server-text-contract.md)
   (draft): founder delivery/retention requirements, concrete technical
-  recommendations and remaining human review gates. Earlier RFC-0004/0005 are
+  recommendations and remaining application-disposition gates. Earlier RFC-0004/0005 are
   retained in closed PRs #6/#10 and their branches, not accepted architecture.
+
+## Active governance proposal
+
+- [RFC-0007: Bounded closed-alpha review policy](0007-closed-alpha-review-policy.md)
+  (completed): approved by owner; ADR-0003 and the policy take effect on merge.
 
 ## Naming
 
