@@ -1,10 +1,10 @@
 name: Server transport
 on:
   pull_request:
-    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
   push:
     branches: [main]
-    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
 permissions:
   contents: read
 jobs:

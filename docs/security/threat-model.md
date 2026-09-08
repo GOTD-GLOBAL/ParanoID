@@ -13,7 +13,9 @@ change.
 ## Active scoped analysis
 
 The [single-server text delta](server-v0-threats.md) identifies proposed controls
-and test mappings for RFC-0006. It is unimplemented and not a completed review.
+and test mappings for RFC-0006, distinguishing implemented development/client
+controls and the native alpha deployment delta from outstanding gates. This is
+not a completed independent security review.
 
 ## Security objectives
 

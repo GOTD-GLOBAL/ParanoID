@@ -22,7 +22,9 @@ Read these documents in order before proposing or implementing changes:
 ## Executable development checks
 
 [Server transport](server/README.md) includes real HTTP/PostgreSQL tests and a
-Linux test runner. It is not a deployed messenger or two-phone application.
+Linux test runner. The [native Linux alpha package](docs/operations/linux-alpha-deployment.md)
+adds locally tested direct TLS, isolated data and lifecycle tooling. No hosted
+rollout or two-phone acceptance is claimed.
 
 ## Working principle
 

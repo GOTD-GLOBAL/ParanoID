@@ -20,6 +20,12 @@ ADRs preserve why durable choices were made. Numbers are never reused.
 | [ADR-0001](0001-documentation-as-code.md) | Accepted | Use documentation as code with English as the canonical language |
 | [ADR-0003](0003-closed-alpha-review-policy.md) | Accepted | Bounded independent-AI review exception for private test-data alpha; human owner acceptance retained |
 
+## Draft implementation records
+
+- [ADR-0004](0004-development-transport.md): initial development transport.
+- [ADR-0005](0005-isolated-linux-alpha-package.md): isolated native alpha package;
+  scope authorization exists, technical disposition and independent review pending.
+
 ## Lifecycle
 
 ADRs use these states:

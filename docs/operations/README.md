@@ -16,6 +16,9 @@ core requirement.
 
 ## Deployment documentation
 
+The [native private-alpha runbook](linux-alpha-deployment.md) accompanies the
+locally exercised package (RFC-0009, draft ADR-0005), not a hosted deployment.
+
 Every supported deployment profile must eventually include:
 
 - prerequisites and one-click or guided installation;

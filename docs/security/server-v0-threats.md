@@ -8,7 +8,8 @@ last_reviewed: 2026-09-08
 
 Companion to the [base threat model](threat-model.md) and
 [RFC-0006](../rfcs/0006-single-server-text-contract.md). Recommendations below
-are unimplemented. Residual-risk triage owner is martadvix-web until an independent
+include implemented development controls and outstanding target gates, distinguished
+below. Residual-risk triage owner is martadvix-web until an independent
 qualified human reviewer is assigned. This is not a completed security review.
 
 ## Assets and data flow
@@ -49,8 +50,9 @@ availability. OS/root compromise can expose content at endpoints.
 The `server/` increment uses two disposable bearer credentials, loopback binding
 and a private development DB. It is not root/device admission or peer verification.
 Test fixture crypto keys are trusted inside one test process. Payload/row/body/page
-bounds and static error redaction are implemented; ingress rate limits, full
-client state and public TLS remain gates before network exposure. A reverse proxy
+bounds and static error redaction are implemented. The initial transport did not
+include client state, TLS or ingress limits; later client and explicit alpha-mode
+controls are described below and in RFC-0009. A reverse proxy
 must not bypass the development-only boundary. See the server README for the
 explicitly opted-in disposable CI database exception.
 
@@ -92,6 +94,26 @@ stop that send batch and remain visible. Any uncertain local commit freezes the
 whole cycle. Cancellation is propagated. Rust recovery tests and a JVM HTTP
 409/507 fixture verify the distinction; Android filesystem/lifecycle evidence
 and final device acceptance remain separate.
+
+## Native alpha deployment delta
+
+[RFC-0009](../rfcs/0009-isolated-linux-alpha-package.md) explicitly changes the
+network boundary without proxying development HTTP: Rustls serves TLS directly
+on 38443 only in opted-in alpha mode. Private PG16 socket/data and systemd
+resource caps isolate neighboring workloads; global 20-request/second ingress
+and 10-second handler timeout bound application work, not volumetric/handshake
+DoS. No logs of credentials, payloads, DB URLs or SQL error statements.
+
+Release checksums are integrity checks, not signatures. Same-account/root
+compromise exposes bearer/TLS credentials and metadata. Dedicated account and
+trusted artifact provisioning remain required. Update/rollback first quiesces
+writes, verifies dump restore/data equality and refuses changed schema hashes;
+code rollback preserves current history, never restores a stale dump over it.
+Restricted dumps and retained verification DBs still contain routing metadata
+and need disk monitoring. No client content keys enter the package. Backup
+encryption/transfer, host loss, reboot and OPPO use remain unverified. The
+[runbook](../operations/linux-alpha-deployment.md) records limits; risk owner
+martadvix-web, independent parent review pending under ADR-0003.
 
 ## Residual limits
 

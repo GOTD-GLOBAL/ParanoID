@@ -19,6 +19,11 @@ public contract is declared.
 
 ### Added
 
+- Native Linux private-alpha package: locked release artifact, explicit direct TLS
+  on 38443, isolated PostgreSQL 16, systemd user enable/restart, authenticated DB
+  readiness, verified local backup restore and history-preserving code rollback.
+  Local real-process tests pass; no production host change or phone test occurred.
+
 - Development Android/Rust text-client code with peer-pinned Olm, encrypted local
   snapshots and explicit self-signed HTTPS SPKI pinning for IP-based connections.
   Local TLS/JVM/packaging checks pass; connected OPPO acceptance and hosted rollout

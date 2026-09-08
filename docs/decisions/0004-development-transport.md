@@ -17,6 +17,11 @@ the feature branch under the founder's direct request to start coding send/recei
 Retain ciphertext, fixture-device isolation, stable IDs, commit-before-ACK and
 cursor sync. RFC-0006 remains the full-alpha target, not implemented behavior.
 
+The later [RFC-0009](../rfcs/0009-isolated-linux-alpha-package.md) and
+[draft ADR-0005](0005-isolated-linux-alpha-package.md) add explicit alpha TLS and
+packaging under the owner’s bounded PR #14 authorization. This historical initial
+transport proposal remains draft; no production acceptance is inferred.
+
 ## Alternatives and consequences
 
 Mocks cannot test database durability. Exposing unfinished client authentication

@@ -149,6 +149,15 @@ visible pending/error result, but does not prevent the inbound phase. Once inbou
 processing succeeds, attempt the outbound phase again to flush queued receipts.
 Do not suppress either direction's failure or continue after uncertain storage.
 
+## Subsequent deployment preparation
+
+The owner later [authorized the bounded alpha and isolated deployment](https://github.com/GOTD-GLOBAL/ParanoID/pull/14#issuecomment-5587328763)
+after configuration/security/rollback checks. [RFC-0009](0009-isolated-linux-alpha-package.md)
+and draft ADR-0005 describe the separate explicit direct-TLS deployment mode and
+locally tested native package. Earlier loopback-only statements above describe
+the initial transport increment, not a proxy workaround or a claim that this
+later scope lacks owner authorization. No host change occurred in preparation.
+
 ## Disposition
 
 Draft, not production or full-alpha acceptance. Owner request authorizes work in

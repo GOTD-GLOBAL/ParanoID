@@ -8,7 +8,10 @@ last_reviewed: 2026-09-08
 
 This is a proposed executable-contract checklist for
 [RFC-0006](../rfcs/0006-single-server-text-contract.md), not implemented behavior
-or a normative API. Every row is currently NOT RUN. Use synthetic accounts and
+or a normative API. Full end-to-end rows remain NOT RUN. The
+[local deployment evidence](../operations/linux-alpha-verification.md) provides
+a bounded envelope/sequence backup-restore subset of V0-14, not full phone
+receipt-state or disaster-recovery acceptance. Use synthetic accounts and
 unique plaintext markers; never include real seed material in evidence.
 
 | ID | Requirement | Experiment and required result |

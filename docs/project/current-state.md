@@ -30,7 +30,7 @@ locally, has no network permission and is not a messenger or stack acceptance.
 - Initial product requirements are traceable but do not yet have complete
   acceptance criteria.
 - Documentation-as-code is the first accepted project decision.
-- No application stack, blockchain, identity protocol, messaging protocol,
+- No production application stack, blockchain, identity protocol, messaging protocol,
   cryptographic construction, database, hosting platform, or token model has
   been selected.
 - No production security or privacy claims are valid yet.
@@ -90,8 +90,8 @@ RFC-0008 and draft ADR-0004 accompany `server/`: a loopback HTTP process with
 PostgreSQL ciphertext append, idempotent retry, recipient cursor sync and
 non-evicting quotas. Real tests include killing/restarting the binary and Olm
 fixture ciphertext exchange. Fixture identities are trusted inside the test
-process, not two phones. No Android/iOS messaging client, remote peer verification,
-durable client ratchet, delivery receipt or hosted rollout is claimed. The full
+process, not two phones. This initial transport increment alone did not provide
+the subsequent Android client described below or a hosted rollout. The full
 RFC-0006 acceptance matrix remains unfulfilled; architecture is not accepted.
 
 A fresh owner-authorized read-only host inventory confirmed Docker, Nginx and
@@ -110,6 +110,20 @@ records the corrected synchronization cases, rejection/progress semantics and
 the bounded device-test sequence. Code regression results are not device evidence.
 No hosted TLS endpoint, new production process or public port is created by this
 increment. Full two-phone acceptance is still pending.
+
+## Locally verified deployment preparation
+
+`deploy/` now builds a native Linux alpha bundle with a separate explicit direct-TLS
+server mode on 38443, private PostgreSQL 16 data/socket, systemd user autostart and
+restart, authenticated DB readiness, and same-schema update/rollback retaining
+history. Real local systemd/PostgreSQL/TLS and dump/restore comparison tests pass;
+no Docker runtime test, host login/change, reboot or two-phone acceptance occurred.
+The [runbook](../operations/linux-alpha-deployment.md) records operator commands
+and remaining limits. RFC-0009 and ADR-0005 are draft; parent independent review
+is pending. The owner [authorized the bounded alpha](https://github.com/GOTD-GLOBAL/ParanoID/pull/14#issuecomment-5587328763)
+and isolated deployment after safety/rollback checks; no new broad research or
+second-human gate is inferred within that already approved scope. This task is
+local preparation only. Production architecture/privacy claims remain unaccepted.
 
 ## Next decision gates
 
