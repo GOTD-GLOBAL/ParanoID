@@ -1,0 +1,60 @@
+name: Server transport
+on:
+  pull_request:
+    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+  push:
+    branches: [main]
+    paths: ["server/**", "clients/**", "scripts/check-server.py", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+permissions:
+  contents: read
+jobs:
+  postgres-http:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16@sha256:f1c3376c26f2609ab9f29f71f824103fe2fcd8ee0346485cb6122a4f93df6f94
+        env:
+          POSTGRES_USER: paranoid_test
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: paranoid_test
+        ports: ["127.0.0.1:5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U paranoid_test -d paranoid_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PARANOID_CI_TEST_DATABASE: "1"
+      PARANOID_TEST_DATABASE_URL: postgres://paranoid_test:disposable_ci_only@127.0.0.1:5432/paranoid_test
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Format
+        run: cargo +1.98.1 fmt --manifest-path server/Cargo.toml -- --check
+      - name: Lint
+        run: cargo +1.98.1 clippy --locked --manifest-path server/Cargo.toml --all-targets -- -D warnings
+      - name: Real PostgreSQL and HTTP tests
+        run: cargo +1.98.1 test --locked --manifest-path server/Cargo.toml -- --test-threads=1
+  client-core-and-tls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Client core
+        run: |
+          cargo +1.98.1 fmt --manifest-path clients/core/Cargo.toml -- --check
+          cargo +1.98.1 clippy --locked --manifest-path clients/core/Cargo.toml --all-targets -- -D warnings
+          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml
+          cargo +1.98.1 build --locked --manifest-path clients/core/Cargo.toml
+      - name: JVM JNI and snapshot codec
+        # RUNNER_TEMP is runner-owned; no PR body/title/ref is interpolated here.
+        run: |
+          mkdir -p "$RUNNER_TEMP/paranoid-java"
+          javac --release 8 -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/src/org/paranoid/text/SyncCycle.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java clients/android/test/SyncSmoke.java
+          java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java" CoreSmoke
+          java -cp "$RUNNER_TEMP/paranoid-java" StorageSmoke
+          java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
+      - name: Real local pinned-TLS handshakes
+        run: python3 scripts/check-pinned-tls.py

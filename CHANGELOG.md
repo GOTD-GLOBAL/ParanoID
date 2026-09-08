@@ -8,7 +8,26 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Fixed
+
+- Rejected/capacity-deferred client events no longer indefinitely stall later
+  messages or authenticated receipts; failed crypto state is discarded and
+  bounded rejection/progress metadata is persisted visibly.
+- Outbound 409/507 failures retain exact retry bytes without blocking inbound
+  processing or later outbox entries. Local storage uncertainty still stops all
+  operations. Regression tests cover the failure paths.
+
 ### Added
+
+- Development Android/Rust text-client code with peer-pinned Olm, encrypted local
+  snapshots and explicit self-signed HTTPS SPKI pinning for IP-based connections.
+  Local TLS/JVM/packaging checks pass; connected OPPO acceptance and hosted rollout
+  remain blocked by the documented client/runtime and deployment gates.
+
+- Development-only Rust/PostgreSQL HTTP transport with durable opaque-envelope
+  acceptance, idempotent retries, recipient cursor sync, bounded non-evicting
+  storage and real HTTP/database tests. No phone messaging or hosted deployment
+  is delivered by this increment.
 
 - Experimental ARM64 Android native crypto diagnostic with a local synthetic
   exchange and tamper/replay checks; no networking or production security claim.

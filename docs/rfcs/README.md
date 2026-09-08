@@ -55,6 +55,11 @@ Follow the human authority and acceptance-evidence rules in the
 - [RFC-0007: Bounded closed-alpha review policy](0007-closed-alpha-review-policy.md)
   (completed): approved by owner; ADR-0003 and the policy take effect on merge.
 
+## Executable development proposal
+
+- [RFC-0008](0008-executable-text-development-slice.md) and draft ADR-0004 accompany
+  the bounded transport implementation, not a production architecture adoption.
+
 ## Naming
 
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active

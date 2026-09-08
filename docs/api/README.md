@@ -6,7 +6,9 @@ last_reviewed: 2026-08-09
 
 # API documentation
 
-No public API has been accepted.
+No public API has been accepted. The [development transport](../../server/README.md)
+implements a bounded loopback-only HTTP API for synthetic tests; it is not a
+public compatibility contract.
 
 When APIs are introduced:
 

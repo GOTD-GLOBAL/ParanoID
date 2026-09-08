@@ -44,6 +44,55 @@ availability. OS/root compromise can expose content at endpoints.
 | Native boundary or platform backup leaks keys | High | Minimal separate JNI/C adapters, redacted errors, platform-protected local key and backup exclusions | Mobile security review; Android/iOS evidence separately |
 | Existing hosting services harmed by alpha deployment | High | Explicit bounded authorization, isolated service identity/volumes/resources, inspected rollback | Deployment runbook gate |
 
+## Executable development transport boundary
+
+The `server/` increment uses two disposable bearer credentials, loopback binding
+and a private development DB. It is not root/device admission or peer verification.
+Test fixture crypto keys are trusted inside one test process. Payload/row/body/page
+bounds and static error redaction are implemented; ingress rate limits, full
+client state and public TLS remain gates before network exposure. A reverse proxy
+must not bypass the development-only boundary. See the server README for the
+explicitly opted-in disposable CI database exception.
+
+## IP TLS pin provisioning and rotation boundary
+
+The development Android adapter now implements per-connection pinned HTTPS.
+The operator-generated trust input is SHA-256 over leaf SPKI DER, not a bearer
+credential or peer identity. Verify it out of band before enrollment; a pin
+copied from an unauthenticated endpoint provides no first-contact protection.
+Do not reuse one private TLS key across independent servers. TLS-key compromise
+exposes transport credentials/metadata; it does not provide client Olm content keys.
+
+The adapter requires a matching self-signed leaf, validity, server-auth usage,
+adequate key strength and exact SAN; default hostname verification stays enabled.
+Only TLS 1.2/1.3; redirects and global/trust-all overrides are absent. Saved pin
+changes are refused. Renewing a certificate with its key is distinct from rotating
+the key; key loss/change requires explicit re-enrollment, not remote auto-repin.
+The generator refuses existing destinations and prints only public connection data.
+
+JVM TLS tests cover correct pin and wrong pin/IP/expiry, with no HTTP request on
+rejected peers. Android TLS/Keystore behavior, IPv6 and further negative certificate
+fixtures remain unverified. These changes deploy no service or public port and
+accept no production trust model. The [client README](../../clients/android/README.md)
+records the subsequent sync corrections and remaining runtime/deployment gates.
+
+## Rejected-event and outbound-failure recovery
+
+For well-formed newer transport events, classified payload/capacity errors restore
+the original client state before atomically saving only rejection metadata and
+cursor progress. Failed account/session/history/outbox candidates and false
+receipts are never committed. Notices are bounded (last 64 plus count/earliest
+sequence) and visible; this does not delete server ciphertext or existing history.
+Deferred messages have no automatic replay UI or guarantee of later decryption.
+Structural transport/order/replay conflicts and local-state errors are not skipped.
+
+HTTP 409/507 does not make receiving depend on successful sending, nor starve
+later outbox entries. Exact failed bytes remain queued; auth/network failures
+stop that send batch and remain visible. Any uncertain local commit freezes the
+whole cycle. Cancellation is propagated. Rust recovery tests and a JVM HTTP
+409/507 fixture verify the distinction; Android filesystem/lifecycle evidence
+and final device acceptance remain separate.
+
 ## Residual limits
 
 The malicious server can drop/delay messages, lie about its own commit, withhold
