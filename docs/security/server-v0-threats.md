@@ -115,6 +115,28 @@ encryption/transfer, host loss, reboot and OPPO use remain unverified. The
 [runbook](../operations/linux-alpha-deployment.md) records limits; risk owner
 martadvix-web, independent parent review pending under ADR-0003.
 
+### Filesystem fail-closed controls
+
+A reproduced packaging flaw allowed stale ignored secrets into rebuilds; builds
+now use fresh 0700 staging/output and exactly six regular nonsymlink members.
+Unknown prior build files are neither archived nor deleted. Installation roots
+and ancestors must be real directories, with no traversal or symlink aliases;
+ancestors are root/account-owned and not group/other-writable except root-owned
+sticky temporary directories. Persistent data/socket/releases/backups/TLS are
+private same-owner real directories. Config, TLS and existing lock files must
+be private same-owner single-link regular files; config and lock opens use
+O_NOFOLLOW/O_NONBLOCK and descriptor validation. Configuration has exactly
+`ip`, `alice`, `bob`: canonical IPv4 and distinct 64-hex tokens.
+
+The current symlink must select a verified direct child of releases with matching
+ID, not dot/dotdot or a redirected directory. Candidate collisions and invalid
+installation state fail before lifecycle writes or service stops. These controls
+address accidental/restored redirection, not a hostile root or concurrent
+same-account attacker: the dedicated account and trusted artifact/controller
+remain prerequisites. PG cluster contents and the executing controller remain
+trusted; this is not a general filesystem sandbox or publisher authentication.
+Tests use only synthetic files/databases and preserve client-only content keys.
+
 ## Residual limits
 
 The malicious server can drop/delay messages, lie about its own commit, withhold

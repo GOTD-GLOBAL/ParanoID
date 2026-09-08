@@ -57,6 +57,75 @@ before the explicit bounded rejection was added. Integration also caught rollbac
 trying to overwrite an already retained release and systemd reporting the linked
 fragment path instead of its resolved target; both were corrected and rerun.
 
+## Independent-review remediation: 2026-09-08
+
+This bounded local follow-up started at `9985d33cb7e1d3af0ec1969b6a78fdd65d13dd77`
+on the same deployment branch. The independent review reproduced two P2 blockers:
+stale ignored files entering rebuilds, and releases/backups redirected outside an
+installation. This implementer fixed those findings, not a remote auth bypass,
+and does not label self-verification as independent approval. Parent re-review
+is still required before publishing. The earlier table is historical evidence;
+its original 43.411s duration is not the duration of this follow-up run.
+
+Observed RED before fixes: the builder tar included synthetic `config.json` and
+`tls/key`; symlink components were accepted; stage accepted redirected persistent
+directories; initialization followed a symlink ancestor; invalid config and
+release IDs/members were accepted; redirected locks were acquired; update reached
+systemctl before rejecting unsafe state; CLI stage/run created locks before
+validating input; initialization overwrote a preexisting synthetic config.
+Each affected behavior was fixed and its negative test rerun GREEN. Additional
+regressions cover public/non-directory persistent paths, simulated owner mismatch,
+hard-linked/FIFO locks, unconfined/missing/tampered current and preexisting next.
+
+The final-source verification commands below actually ran locally (Python package
+commands used `PYTHONDONTWRITEBYTECODE=1`). Builder tests mock only Cargo/Git/version
+subprocesses inside synthetic filesystem fixtures; native lifecycle tests use
+real builds, PostgreSQL, TLS, dumps/restores and server processes, not mocks.
+
+| Command | Actual follow-up result |
+| --- | --- |
+| `python3 deploy/test_build.py` | Exit 0; 2 tests, stale files preserved/excluded and symlink component rejected |
+| `python3 deploy/test_containment.py` | Exit 0; 15 tests, including negative subcases and pre-side-effect checks |
+| `python3 deploy/test_package.py` | Exit 0; 2 tests, real PG16 initialization/TLS and overwrite/IPv6 refusal |
+| `python3 deploy/test_integration.py` | Exit 0; 1 test in 44.796s, actual systemd enable, child-kill restart, automatic failed-executable update recovery, retained history and real restores |
+| `python3 deploy/test_native.py` | Exit 0; 1 test in 4.244s, fresh real archive, private PG16, TLS/auth/idempotent retry/live lock, same-binary update/code rollback, two restores/full-row comparisons, unchanged config/TLS; no systemd |
+| `python3 scripts/check-server.py` | Exit 0; 13 transport and 1 deployment test; private cluster stopped/removed |
+| `python3 scripts/check-pinned-tls.py` | Exit 0; real JVM pin/key/SAN/expiry handshakes PASS |
+| `cargo test --locked --manifest-path clients/core/Cargo.toml` | Exit 0; 3 state and 6 recovery tests |
+| `cargo build --locked --manifest-path clients/core/Cargo.toml` plus CI's `javac --release 8` and CoreSmoke/StorageSmoke/SyncSmoke commands | Exit 0; JNI/codec/real HTTP409/507 sync PASS; JDK emitted 3 obsolete Java 8 option warnings |
+| `cargo fmt --manifest-path server/Cargo.toml -- --check` | Exit 0 |
+| `cargo clippy --locked --manifest-path server/Cargo.toml --all-targets -- -D warnings` | Exit 0 |
+| `ruff check deploy` | Exit 0, All checks passed, after correcting initial new style findings |
+| Python `ast.parse` of every `deploy/*.py` | Exit 0; syntax PASS, without bytecode side effects |
+| `npx --yes markdownlint-cli2 '**/*.md'` | Exit 0; 0 issues |
+| `git diff --check` | Exit 0 |
+
+One immediate native run following the systemd test failed its port-availability
+preflight with EADDRINUSE (exit 1) before creating an installation or children.
+Subsequent socket checks showed no listener and the temporary unit was not-found /
+inactive; the explicit rerun above passed. No unrelated listener was killed.
+Do not run the two lifecycle harnesses concurrently or while 38443 is unavailable.
+Raw local transcripts: `/tmp/paranoid-systemd-final-source.log`,
+`/tmp/paranoid-native-final-source.log` (failed preflight),
+`/tmp/paranoid-native-final-source-retry.log`, `/tmp/paranoid-server-green.log`.
+These paths are local handoff evidence, not published build dependencies.
+
+The CI workflow now installs native PG16/OpenSSL prerequisites and runs package,
+containment and non-systemd lifecycle tests with Rust 1.98.1. Hosted execution,
+GitHub rulesets/required-check configuration and approval lookup were **NOT RUN**
+in this local-only follow-up. The parent must inspect those separately; adding a
+workflow does not prove it is a required branch check. Full external link crawling,
+Docker, reboot/linger, target ABI, production SSH/keys/deploy, firewall/neighbor
+changes, backup transfer/host-loss recovery, phone/iOS acceptance and independent
+re-review were also **NOT RUN**. No E2EE, retention, schema or accepted ADR changed.
+
+Final transfer output is rebuilt after the local commit into fresh private
+`dist/build-<random>/`, checked for exactly six regular members, component/source
+hash equality, tar checksum and clean-commit provenance, then exercised using
+`PARANOID_ALPHA_ARTIFACT` with `test_native.py`. The exact final commit, artifact
+path, checksum and post-commit result are supplied in the remediation handoff,
+not embedded circularly into the artifact's source-commit metadata.
+
 ## Scope and remaining NOT RUN items
 
 - Production SSH/login, credential decryption, installation, port/firewall change,

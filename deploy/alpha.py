@@ -12,6 +12,7 @@ import secrets
 import shutil
 import signal
 import ssl
+import stat
 import subprocess
 import time
 import urllib.request
@@ -37,15 +38,23 @@ def private(path):
         raise ValueError('private same-owner path required')
 
 
+def root_path(root):
+    if (not root.is_absolute() or '..' in root.parts or os.geteuid() == 0
+            or not root.name.startswith('paranoid-')
+            or not re.fullmatch(r'[/A-Za-z0-9_.-]+', str(root))):
+        raise ValueError('absolute simple paranoid-* root and unprivileged account required')
+    for parent in root.parents:
+        s = parent.lstat()
+        # Root-owned sticky /tmp is safe for our exclusively created private root.
+        sticky = s.st_uid == 0 and s.st_mode & stat.S_ISVTX
+        if (not stat.S_ISDIR(s.st_mode) or s.st_uid not in (0, os.geteuid())
+                or (s.st_mode & 0o022 and not sticky)):
+            raise ValueError('real trusted non-writable ancestors required')
+
+
 def initialize(root, ip):
-    address = ipaddress.ip_address(ip)
-    if address.version != 4:
-        raise ValueError('this bounded package supports IPv4 only')
-    ip = str(address)
-    if not root.name.startswith('paranoid-') or not re.fullmatch(r'[/A-Za-z0-9_.-]+', str(root)):
-        raise ValueError('use an absolute simple paranoid-* directory')
-    if not root.is_absolute() or os.geteuid() == 0:
-        raise ValueError('absolute directory and unprivileged account required')
+    ip = canonical_ipv4(ip)
+    root_path(root)
     os.umask(0o077)
     root.mkdir(mode=0o700)  # Never adopt or overwrite existing data.
     for name in ('socket', 'releases', 'backups'):
@@ -55,7 +64,8 @@ def initialize(root, ip):
         generator = HERE.parent / 'scripts/create-test-tls.py'
     command(['python3', generator, '--ip', ip, '--output', root / 'tls'])
     config = {'ip': ip, 'alice': secrets.token_hex(32), 'bob': secrets.token_hex(32)}
-    (root / 'config.json').write_text(json.dumps(config))
+    with regular_file(root / 'config.json', os.O_RDWR | os.O_CREAT | os.O_EXCL, restricted=True) as stream:
+        os.write(stream.fileno(), json.dumps(config).encode())
     command([PG / 'initdb', '-D', root / 'data', '-U', 'paranoid_alpha',
              '--auth-local=trust', '--auth-host=reject', '--no-locale', '-E', 'UTF8'])
     # Disable statement/error-statement logs: rejected SQL must not leak envelopes.
@@ -65,10 +75,34 @@ def initialize(root, ip):
                 "log_statement = 'none'\nlog_min_error_statement = 'panic'\n")
 
 
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError('duplicate JSON key')
+        result[key] = value
+    return result
+
+
+def canonical_ipv4(ip):
+    if not isinstance(ip, str) or str(ipaddress.IPv4Address(ip)) != ip:
+        raise ValueError('canonical IPv4 string required')
+    return ip
+
+
 def config(root):
-    private(root)
-    private(root / 'config.json')
-    return json.loads((root / 'config.json').read_text())
+    installation(root)
+    with regular_file(root / 'config.json', restricted=True) as stream:
+        c = json.load(stream, object_pairs_hook=unique_object)
+    if not isinstance(c, dict) or set(c) != {'ip', 'alice', 'bob'}:
+        raise ValueError('exact configuration keys required')
+    canonical_ipv4(c['ip'])
+    for name in ('alice', 'bob'):
+        if not isinstance(c[name], str) or not re.fullmatch(r'[0-9a-fA-F]{64}', c[name]):
+            raise ValueError('256-bit hex admission tokens required')
+    if c['alice'].lower() == c['bob'].lower():
+        raise ValueError('distinct admission tokens required')
+    return c
 
 
 def sql(root, query, database='postgres'):
@@ -78,7 +112,8 @@ def sql(root, query, database='postgres'):
 
 @contextlib.contextmanager
 def database(root):
-    private(root / 'socket')
+    config(root)
+    current_release(root)
     process = subprocess.Popen([str(PG / 'postgres'), '-D', str(root / 'data'),
                                 '-k', str(root / 'socket')], env=clean_env(),
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -137,15 +172,15 @@ def health(root):
 @contextlib.contextmanager
 def lock(root):
     config(root)
-    with (root / 'lifecycle.lock').open('a') as f:
+    with regular_file(root / 'lifecycle.lock', os.O_RDWR | os.O_CREAT, restricted=True) as f:
         fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
         yield
 
 
 def run(root):
+    config(root)
+    release = current_release(root)
     with lock(root), database(root) as pg:
-        release = (root / 'current').resolve()
-        verify(release)
         child = subprocess.Popen([str(release / 'paranoid-server')], env=environment(root),
                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         def stop(*_):
@@ -161,34 +196,120 @@ def run(root):
                 child.wait(timeout=15)
 
 
+@contextlib.contextmanager
+def regular_file(path, flags=os.O_RDONLY, restricted=False):
+    fd = os.open(path, flags | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    try:
+        s = os.fstat(fd)
+        if not stat.S_ISREG(s.st_mode) or s.st_nlink != 1:
+            raise ValueError('single-link regular file required')
+        if restricted and (s.st_uid != os.geteuid() or s.st_mode & 0o077):
+            raise ValueError('private same-owner file required')
+        with os.fdopen(fd, 'rb', closefd=False) as stream:
+            yield stream
+    finally:
+        os.close(fd)
+
+
 def digest(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    with regular_file(path) as stream:
+        return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def release_id(version):
+    if (not isinstance(version, str) or version in ('.', '..')
+            or not re.fullmatch(r'[a-zA-Z0-9_.-]{1,128}', version)):
+        raise ValueError('invalid release id')
+    return version
 
 
 def verify(release):
-    manifest = json.loads((release / 'manifest.json').read_text())
-    for name in ('paranoid-server', 'schema.sql', 'alpha.py', 'create-test-tls.py', 'README.md'):
+    for path in (release, *release.parents):
+        if not stat.S_ISDIR(path.lstat().st_mode):
+            raise ValueError('real release directory and ancestors required')
+    files = ('paranoid-server', 'schema.sql', 'alpha.py', 'create-test-tls.py', 'README.md')
+    if {p.name for p in release.iterdir()} != {*files, 'manifest.json'}:
+        raise ValueError('unexpected release members')
+    with regular_file(release / 'manifest.json') as stream:
+        manifest = json.load(stream)
+    if not isinstance(manifest, dict):
+        raise ValueError('invalid release manifest')  # noqa: TRY004 - uniform invalid-input contract
+    release_id(manifest.get('release'))
+    if not isinstance(manifest.get('sha256'), dict) or set(manifest['sha256']) != set(files):
+        raise ValueError('invalid release checksums')
+    for name in files:
         if digest(release / name) != manifest['sha256'][name]:
             raise ValueError('release checksum mismatch')
     return manifest
 
 
-def stage(root, release):
-    manifest = verify(release)
-    version = manifest['release']
-    if not re.fullmatch(r'[a-zA-Z0-9_.-]+', version):
-        raise ValueError('invalid release id')
-    target = root / 'releases' / version
-    if target.exists():
-        if verify(target) != manifest:
-            raise ValueError('release id already exists with different content')
-    else:
-        shutil.copytree(release, target)
-    verify(target)
+def installation(root):
+    root_path(root)
+    private(root)
+    if not stat.S_ISDIR(root.lstat().st_mode):
+        raise ValueError('real installation directory required')
+    for name in ('data', 'socket', 'releases', 'backups', 'tls'):
+        path = root / name
+        private(path)
+        if not stat.S_ISDIR(path.lstat().st_mode):
+            raise ValueError('real persistent directory required')
+    for name in ('config.json', 'tls/server.key', 'tls/server.crt'):
+        with regular_file(root / name, restricted=True):
+            pass
+    if os.path.lexists(root / 'lifecycle.lock'):
+        with regular_file(root / 'lifecycle.lock', restricted=True):
+            pass
+    if os.path.lexists(root / 'next'):
+        raise ValueError('refuse preexisting next pointer')
+    if os.path.lexists(root / 'current'):
+        current_release(root)
+
+
+def confined_release(root, target):
+    if target.parent != root / 'releases':
+        raise ValueError('release must be directly below installation releases')
+    release_id(target.name)
+    private(target)
+    manifest = verify(target)
+    if manifest['release'] != target.name:
+        raise ValueError('release directory/id mismatch')
     return target
 
 
+def current_release(root):
+    pointer = root / 'current'
+    if not pointer.is_symlink():
+        raise ValueError('current must be a confined release symlink')
+    target = pointer.readlink()
+    if '..' in target.parts:
+        raise ValueError('noncanonical current target')
+    if not target.is_absolute():
+        target = root / target
+    return confined_release(root, target)
+
+
+def candidate(root, release):
+    config(root)
+    manifest = verify(release)
+    target = root / 'releases' / manifest['release']
+    if os.path.lexists(target):
+        confined_release(root, target)
+        if verify(target) != manifest:
+            raise ValueError('release id already exists with different content')
+    return target, manifest
+
+
+def stage(root, release):
+    target, _ = candidate(root, release)
+    if not target.exists():
+        shutil.copytree(release, target)
+        target.chmod(0o700)
+    return confined_release(root, target)
+
+
 def point(root, target):
+    config(root)
+    confined_release(root, target)
     temporary = root / 'next'
     temporary.symlink_to(target)
     temporary.replace(root / 'current')
@@ -196,6 +317,8 @@ def point(root, target):
 
 def backup(root):
     """Caller holds lifecycle lock with server stopped and private PG running."""
+    config(root)
+    current_release(root)
     destination = root / 'backups' / (time.strftime('%Y%m%dT%H%M%SZ', time.gmtime()) + '-' + secrets.token_hex(4))
     destination.mkdir(mode=0o700)
     dump = destination / 'history.dump'
@@ -220,13 +343,12 @@ def backup(root):
 
 
 def switch(root, release):
-    # Operator/systemd stops unit first. Lock refuses changes during serving.
+    # Validate candidate/destination before even creating a lock or backup.
+    _, new = candidate(root, release)
+    previous = current_release(root)
+    if verify(previous)['sha256']['schema.sql'] != new['sha256']['schema.sql']:
+        raise ValueError('schema change requires separately reviewed migration')
     with lock(root):
-        previous = (root / 'current').resolve()
-        old = verify(previous)
-        new = verify(release)
-        if old['sha256']['schema.sql'] != new['sha256']['schema.sql']:
-            raise ValueError('schema change requires separately reviewed migration')
         with database(root):
             backup(root)
         target = stage(root, release)
@@ -234,6 +356,8 @@ def switch(root, release):
 
 
 def unit(root):
+    config(root)
+    current_release(root)
     return f'''[Unit]
 Description=ParanoID isolated private test-data alpha
 StartLimitIntervalSec=0
@@ -277,6 +401,11 @@ def wait_health(root):
 
 
 def install(root, ip, release, name='paranoid-alpha.service'):
+    root_path(root)
+    canonical_ipv4(ip)
+    if os.path.lexists(root):
+        raise FileExistsError('refuse existing installation root')
+    verify(release)
     name = service_name(name)
     load = command(['systemctl', '--user', 'show', name, '-p', 'LoadState', '--value']).strip()
     if load != b'not-found':
@@ -293,14 +422,14 @@ def install(root, ip, release, name='paranoid-alpha.service'):
 
 
 def update(root, release, name='paranoid-alpha.service'):
+    _, new = candidate(root, release)
+    previous = current_release(root)
+    if verify(previous)['sha256']['schema.sql'] != new['sha256']['schema.sql']:
+        raise ValueError('schema change requires separately reviewed migration')
     name = service_name(name)
     actual = command(['systemctl', '--user', 'show', name, '-p', 'FragmentPath', '--value']).decode().strip()
     if not actual or Path(actual).resolve() != root / name:
         raise ValueError('unit does not belong to this installation')
-    previous = (root / 'current').resolve()
-    # Refuse incompatible/tampered artifacts before stopping a healthy service.
-    if verify(previous)['sha256']['schema.sql'] != verify(release)['sha256']['schema.sql']:
-        raise ValueError('schema change requires separately reviewed migration')
     command(['systemctl', '--user', 'stop', name])
     try:
         switch(root, release)
@@ -326,29 +455,32 @@ def main():
     args = parser.parse_args()
     root = args.root.absolute()
     if args.action == 'install':
-        install(root, args.ip, args.release.resolve(), args.unit_name)
+        install(root, args.ip, args.release.absolute(), args.unit_name)
         print('PASS: isolated unit enabled and TLS/database ready')
     elif args.action == 'update':
-        update(root, args.release.resolve(), args.unit_name)
+        update(root, args.release.absolute(), args.unit_name)
         print('PASS: same-schema update/rollback, verified backup, TLS/database ready')
     elif args.action == 'init':
         initialize(root, args.ip)
     elif args.action == 'stage':
+        candidate(root, args.release.absolute())
+        if os.path.lexists(root / 'current'):
+            raise ValueError('use switch for an existing installation')
         with lock(root):
-            if (root / 'current').exists():
-                raise ValueError('use switch for an existing installation')
-            point(root, stage(root, args.release.resolve()))
+            point(root, stage(root, args.release.absolute()))
     elif args.action == 'run':
         run(root)
     elif args.action == 'health':
         health(root)
         print('PASS: TLS authenticated database readiness')
     elif args.action == 'backup':
+        config(root)
+        current_release(root)
         with lock(root), database(root):
             backup(root)
         print('PASS: backup restored and compared in isolated database')
     elif args.action == 'switch':
-        switch(root, args.release.resolve())
+        switch(root, args.release.absolute())
         print('PASS: verified backup and same-schema release switch; start and health-check unit')
     elif args.action == 'unit':
         config(root)

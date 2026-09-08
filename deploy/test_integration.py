@@ -28,15 +28,15 @@ class Lifecycle(unittest.TestCase):
     def test_real_lifecycle(self):
         self.assertTrue((HERE / 'build.py').exists(), 'reproducible builder missing')
         self.assertTrue(hasattr(alpha, 'install'), 'guided installation command missing')
-        subprocess.run(['python3', HERE / 'build.py'], check=True)
-        release = ROOT / 'dist/release'
+        built = subprocess.run(['python3', HERE / 'build.py'], check=True, capture_output=True, text=True)
+        print(built.stdout, end='', flush=True)
+        artifact = Path(next(line.removeprefix('Built ') for line in built.stdout.splitlines() if line.startswith('Built ')))
+        release = artifact.parent / 'release'
         unit_name = 'paranoid-alpha-local-test.service'
         load = alpha.command(['systemctl', '--user', 'show', unit_name, '-p', 'LoadState']).decode()
         self.assertIn('not-found', load, 'refuse existing unit')
         with tempfile.TemporaryDirectory(prefix='paranoid-integration-') as temp:
             root = Path(temp) / 'paranoid-alpha'
-            release_id = json.loads((release / 'manifest.json').read_text())['release']
-            artifact = ROOT / 'dist' / f'paranoid-alpha-{release_id}-linux-{os.uname().machine}.tar'
             expected = artifact.with_suffix('.tar.sha256').read_text().split()[0]
             self.assertEqual(alpha.digest(artifact), expected)
             unpacked = Path(temp) / 'unpacked'

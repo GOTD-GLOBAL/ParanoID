@@ -8,6 +8,27 @@ on:
 permissions:
   contents: read
 jobs:
+  native-package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      RUSTUP_TOOLCHAIN: "1.98.1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Native test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 openssl
+          rustup toolchain install 1.98.1 --profile minimal
+      - name: Package negative regressions and real initialization
+        run: |
+          python3 deploy/test_build.py
+          python3 deploy/test_containment.py
+          python3 deploy/test_package.py
+      - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
+        # test_integration.py needs an explicitly provisioned user manager; never discover it here.
+        run: python3 deploy/test_native.py
   postgres-http:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

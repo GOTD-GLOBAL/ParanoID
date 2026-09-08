@@ -125,6 +125,13 @@ and isolated deployment after safety/rollback checks; no new broad research or
 second-human gate is inferred within that already approved scope. This task is
 local preparation only. Production architecture/privacy claims remain unaccepted.
 
+The independent package review reproduced stale-file bundling and redirected
+persistent-directory writes. Local fixes add fresh allowlisted build output,
+no-follow/private installation checks and exact IPv4/token configuration validation.
+Negative regressions and real native PG/TLS update/rollback checks pass; CI now
+includes non-systemd package coverage. Independent re-review is still pending;
+no hosted rollout or new architecture approval is inferred.
+
 ## Next decision gates
 
 1. Validate and prioritize the initial requirements with the founder.

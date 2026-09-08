@@ -46,7 +46,10 @@ check; a JDK is not a deployment-host prerequisite.
 From the reviewed repository revision, with Rust/Cargo available:
 
 ```sh
-python3 deploy/test_package.py
+PYTHONDONTWRITEBYTECODE=1 python3 deploy/test_build.py
+PYTHONDONTWRITEBYTECODE=1 python3 deploy/test_containment.py
+PYTHONDONTWRITEBYTECODE=1 python3 deploy/test_package.py
+PYTHONDONTWRITEBYTECODE=1 python3 deploy/test_native.py
 python3 scripts/check-server.py
 python3 deploy/test_integration.py
 python3 deploy/build.py
@@ -60,9 +63,13 @@ The successful update fixture is the same executable under a distinct release
 identifier; this proves lifecycle/history compatibility, not an unbuilt future
 version. A deliberately invalid executable tests automatic failed-update recovery.
 
-`dist/release/` contains the server binary, schema, controller, TLS generator and
-manifest. `dist/paranoid-alpha-*-linux-x86_64.tar` and matching `.tar.sha256` are the
-transfer artifacts. Cargo.lock pins dependencies; manifest records source commit,
+Each build prints a fresh `dist/build-<random>/paranoid-alpha-*-linux-x86_64.tar`
+path with a matching `.tar.sha256`. Its private output directory also contains
+`release/`: binary, schema, controller, TLS generator, README and manifest.
+Only those six regular nonsymlink members enter the archive. The builder never
+reuses or deletes old `dist/release` or other operator files; do not transfer
+an older tar by guessing its path. Use the exact printed artifact path.
+ Cargo.lock pins dependencies; manifest records source commit,
 dirty-tree flag, toolchain, architecture and component hashes. Build from a clean
 reviewed commit for rollout. The workflow is reproducible; cross-toolchain bitwise
 reproducibility and signed publisher provenance are **not** claimed. Hashes detect
@@ -95,6 +102,25 @@ checks authenticated TLS/database readiness. It does not overwrite partial faile
 installs: preserve them, inspect the static error and diagnose offline. It never
 prints tokens or private keys. On failure, stop only `paranoid-alpha.service` before
 maintenance; do not delete the persistent root to retry.
+
+Filesystem validation occurs before lifecycle writes or service stops. Root and
+ancestors must be real, root/account-owned directories without writable ancestors
+(except root-owned sticky temporary directories used by local tests). The root
+must be a private account-owned absolute simple `paranoid-*` path; symlink
+aliases and traversal are rejected. Data/socket/releases/backups/TLS directories
+must be private real same-owner directories. Config/lock/TLS files must be
+private single-link regular files; config and lock are opened without following
+symlinks. Config keys/types are exact: canonical IPv4 `ip` and distinct 64-hex
+`alice`/`bob` tokens (case-equivalent hex values are not distinct). Current is
+only a verified direct release child with a matching non-dot/non-dotdot ID.
+Unexpected release files, redirected targets and preexisting `next` are refused.
+Preserve invalid/partial installs for offline inspection, not automatic repair.
+
+`test_native.py` builds/extracts the real archive and tests PG/TLS/history/code
+rollback without systemd; `PARANOID_ALPHA_ARTIFACT=/absolute/archive.tar` selects
+an existing artifact instead. CI runs this and the package/negative tests with
+explicit PG16/OpenSSL prerequisites. It does not run `test_integration.py` or
+assume a user manager is provisioned. Local systemd checks remain separate.
 
 Persistent layout:
 
