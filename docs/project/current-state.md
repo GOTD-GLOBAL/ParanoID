@@ -132,6 +132,24 @@ Negative regressions and real native PG/TLS update/rollback checks pass; CI now
 includes non-systemd package coverage. Independent re-review is still pending;
 no hosted rollout or new architecture approval is inferred.
 
+## Authorized hosted attempt: stopped on firewall boundary
+
+PR #15 merged as `f8131cd92e9e5945667b0257944552676885455d`; independent
+fresh-context review reported no package blockers and all four PR checks passed.
+These supersede preparation-time pending-review statements above, not the draft
+architecture disposition. The [actual rollout record](../operations/linux-alpha-rollout-2026-09-08.md)
+records matching artifact provenance, target ABI/prerequisites, disposable native
+retry/history/update/restore tests, and successful final-unit host-local TLS/DB
+readiness. External TCP/38443 timed out; read-only UFW inspection found incoming
+default-deny and no 38443 rule. No firewall or neighboring service was changed.
+
+The new unit is stopped/disabled and linger restored to its original `no`. Private
+installation data and TLS/admission identities remain on the target for controlled
+resume. There is **no working externally reachable endpoint** and no physical
+phone acceptance. The immediate deployment blocker is explicit authorization for
+the narrow firewall change, followed by external TLS/SPKI and lifecycle checks;
+do not overwrite retained state or treat the old diagnostic APK as a messenger.
+
 ## Next decision gates
 
 1. Validate and prioritize the initial requirements with the founder.

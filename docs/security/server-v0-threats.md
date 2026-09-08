@@ -115,6 +115,18 @@ encryption/transfer, host loss, reboot and OPPO use remain unverified. The
 [runbook](../operations/linux-alpha-deployment.md) records limits; risk owner
 martadvix-web, independent parent review pending under ADR-0003.
 
+### Observed hosted rollout boundary
+
+The [authorized attempt](../operations/linux-alpha-rollout-2026-09-08.md) used the
+reviewed package on the dedicated host account and passed host-local authenticated
+TLS/DB health. External 38443 timed out; default-deny UFW had no allow rule. The
+operator did not widen firewall policy: the new unit was stopped/disabled, linger
+reverted, and private configuration/TLS/data retained. No external TLS/SPKI or
+phone acceptance is claimed. Public network exposure remains an explicit scoped
+authorization and verification gate, not an implicit consequence of a free port.
+The linked record also captures completed independent package review and CI;
+preparation-time pending-review language above is historical.
+
 ### Filesystem fail-closed controls
 
 A reproduced packaging flaw allowed stale ignored secrets into rebuilds; builds

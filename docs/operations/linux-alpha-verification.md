@@ -126,6 +126,15 @@ hash equality, tar checksum and clean-commit provenance, then exercised using
 path, checksum and post-commit result are supplied in the remediation handoff,
 not embedded circularly into the artifact's source-commit metadata.
 
+## Subsequent authorized target attempt
+
+The [2026-09-08 rollout record](linux-alpha-rollout-2026-09-08.md) separately records
+completed package review/CI, exact merged-source provenance, target checks and
+actual host-local installation/health. External 38443 was blocked; own unit/linger
+changes were rolled back while private state was retained. Earlier local-only
+NOT RUN statements below are historical, not the current deployment status.
+No externally usable endpoint or physical-phone acceptance is claimed.
+
 ## Scope and remaining NOT RUN items
 
 - Production SSH/login, credential decryption, installation, port/firewall change,

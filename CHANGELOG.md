@@ -25,6 +25,12 @@ public contract is declared.
 
 ### Added
 
+- Authorized target-host rollout evidence: verified package/native restore tests
+  and host-local TLS/database health passed, but external 38443 timed out with
+  default-deny UFW and no allow rule. The new unit was stopped/disabled and linger
+  reverted without changing the firewall or neighboring services. Private state
+  is retained; external endpoint and phone acceptance remain unfulfilled.
+
 - Native Linux private-alpha package: locked release artifact, explicit direct TLS
   on 38443, isolated PostgreSQL 16, systemd user enable/restart, authenticated DB
   readiness, verified local backup restore and history-preserving code rollback.

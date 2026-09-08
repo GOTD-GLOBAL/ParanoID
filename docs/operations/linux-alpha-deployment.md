@@ -18,7 +18,7 @@ service/data and unchanged neighboring services, after safety/rollback checks.
 No SSH or production credential access was performed to prepare this package.
 
 Host prerequisites (check separately at authorized rollout): Linux x86_64 ABI
-compatible with the build host, Python 3, OpenSSL, PostgreSQL **16** binaries at
+compatible with the build host, Python **3.11+**, OpenSSL, PostgreSQL **16** binaries at
 `/usr/lib/postgresql/16/bin`, systemd user manager, a dedicated unprivileged
 ParanoID account with a persistent private home, available IP/38443 and disk/RAM.
 The artifact dynamically links libc/libgcc; use `ldd release/paranoid-server` on
@@ -40,6 +40,22 @@ The package currently accepts IPv4 only; IPv6 is rejected before creating state.
 See the [local verification record](linux-alpha-verification.md) for exact results.
 The integration harness additionally needs a JDK for the real Android TLS adapter
 check; a JDK is not a deployment-host prerequisite.
+
+## Rollout status and network preflight
+
+The [2026-09-08 authorized attempt](linux-alpha-rollout-2026-09-08.md) installed
+and passed host-local authenticated health, but external 38443 was blocked by
+the observed default-deny firewall with no 38443 rule. The new unit was stopped/
+disabled and linger reverted; private data/config/TLS are retained. There is no
+working external endpoint. Independent review and four PR #15 checks passed;
+earlier pending-review language above describes the local preparation phase.
+
+Before future installation or resume, inspect inbound firewall policy read-only
+as part of prerequisites, not just socket availability. An unbound port does not
+prove external reachability. If a rule is missing, stop for explicit scoped owner
+authorization; do not modify global policy or assume deployment approval permits
+a firewall change. Preserve the existing root and identities on resume; `install`
+correctly refuses it. See the attempt record for retained paths and remaining gates.
 
 ## Build and verify locally
 
