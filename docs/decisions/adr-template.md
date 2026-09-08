@@ -8,8 +8,12 @@ last_reviewed: YYYY-MM-DD
 
 # ADR-NNNN: Decision title
 
-Use an empty `required_reviewers` list only when the decision policy does not
-require an independent domain review. Otherwise list each human GitHub login.
+Use an empty `required_reviewers` list only when no independent human domain
+review is required. For the closed-alpha exception, add
+`review_mode: closed-alpha-ai`, record the independent AI reviewer separately,
+and supply all scope, review and owner evidence required by the
+[policy](../governance/documentation-policy.md#closed-alpha-review-exception).
+Otherwise list each required human GitHub login.
 
 ## Required review rationale
 

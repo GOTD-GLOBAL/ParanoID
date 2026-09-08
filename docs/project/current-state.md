@@ -16,6 +16,13 @@ The earlier proof of concept is preserved in the private
 `GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
 and experiments, but it is not a dependency or source of current architecture.
 
+## Experimental device evidence
+
+A disposable Android packaging diagnostic exists in
+`spikes/002-android-bootstrap`. The owner supplied a screenshot of installation
+and launch on OPPO CPH2671 (Android 16/API 36). It displays device information
+locally, has no network permission and is not a messenger or stack acceptance.
+
 ## Present facts
 
 - The new repository is private and intentionally starts from a clean history.
@@ -27,6 +34,16 @@ and experiments, but it is not a dependency or source of current architecture.
   cryptographic construction, database, hosting platform, or token model has
   been selected.
 - No production security or privacy claims are valid yet.
+
+## Closed-alpha review policy
+
+The founder requested removal of the mandatory second-human reviewer after
+reporting that none is available. [RFC-0007](../rfcs/0007-closed-alpha-review-policy.md)
+records a bounded private test-data alpha exception with independent AI review
+and retained human decision-owner approval, approved by martadvix-web in PR #12.
+[ADR-0003](../decisions/0003-closed-alpha-review-policy.md) records acceptance;
+the policy becomes normative on merge. It accepts no application architecture,
+authorizes no deployment and makes no security claim.
 
 ## Next decision gates
 
