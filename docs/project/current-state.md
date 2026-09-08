@@ -35,6 +35,16 @@ locally, has no network permission and is not a messenger or stack acceptance.
   been selected.
 - No production security or privacy claims are valid yet.
 
+## Experimental Android evidence (not a production capability)
+
+The isolated [Android probe](../../spikes/002-android-bootstrap/README.md) builds
+an ARM64 APK using vodozemac with a JNI boundary for a local synthetic self-test.
+Host tests and cross-compilation pass. The session handoff records owner-reported
+local diagnostic PASS on OPPO CPH2671 and CPH2659 (Android 16 ARM64); this is not
+a new physical-device run or proof of phone-to-phone messaging. No server, real
+conversation, account recovery or production stack is introduced. RFC-0004
+(closed PR #6) is historical proposal context only.
+
 ## Active single-server implementation boundary
 
 The founder now prioritizes one server and two OPPO phones exchanging E2EE text

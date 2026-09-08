@@ -10,6 +10,9 @@ public contract is declared.
 
 ### Added
 
+- Experimental ARM64 Android native crypto diagnostic with a local synthetic
+  exchange and tamper/replay checks; no networking or production security claim.
+
 - Draft single-server text contract and acceptance matrix for two OPPO phones:
   durable server/recipient delivery indicators, retained ciphertext history,
   reconnect, key-loss limits and future iPhone boundaries. No messenger shipped.

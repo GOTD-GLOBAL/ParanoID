@@ -77,6 +77,17 @@ and test mappings for RFC-0006. It is unimplemented and not a completed review.
 - How are binaries, containers, mobile releases, and automatic updates signed and
   verified?
 
+## Isolated Android probe boundary
+
+The [experimental probe](../../spikes/002-android-bootstrap/README.md) creates
+both participants in one Android process, with synthetic data and no network
+permission. Java invokes a native Rust self-test; JNI returns only a result code.
+No production identity, contact authentication, server trust, durable key storage,
+or recovery protocol is implemented. Its public test pickle key is unsuitable for
+real storage. Dependency supply-chain, native load and platform compatibility risks
+remain; local tamper/replay checks are not a production security review or E2EE
+claim. Independent qualified human review remains required for adoption.
+
 ## Required analysis artifacts
 
 Before the first architecture is accepted, add data-flow diagrams, STRIDE-style
