@@ -1,0 +1,10 @@
+[package]
+name = "paranoid-server-dependency-check"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+axum = { version = "=0.8.9", default-features = false, features = ["http1", "json", "tokio", "ws"] }
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net"] }
+sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres", "migrate"] }

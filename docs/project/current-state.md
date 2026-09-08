@@ -1,7 +1,7 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-08
 ---
 
 # Current project state
@@ -35,6 +35,35 @@ locally, has no network permission and is not a messenger or stack acceptance.
   been selected.
 - No production security or privacy claims are valid yet.
 
+## Active single-server implementation boundary
+
+The founder now prioritizes one server and two OPPO phones exchanging E2EE text
+with history, reconnect and no duplicates. One check means server acceptance;
+two mean peer delivery, not reading. Server history remains until an additional
+explicit deletion request. iPhone and multiple-server support remain future
+scope; a second server is not an acceptance gate for this slice.
+
+[RFC-0006](../rfcs/0006-single-server-text-contract.md) records concrete assistant
+recommendations and their [acceptance matrix](../protocol/server-v0-acceptance.md).
+It is draft, not an accepted architecture. Identity/E2EE, delivery/persistence
+and stack still require their own disposition and durable owner approval
+evidence under the now-accepted ADR-0003 process. Absence of a second human
+is not itself a closed-alpha blocker. Earlier PRs #1, #2, #5, #6 and #10 were
+closed without merge during owner-requested cleanup. Their branches and research
+are retained, not accepted architecture. PR #12 published ADR-0003. This
+contract, native crypto evidence and host-access documentation are separate
+artifacts, not prerequisites requiring another broad research phase.
+
+A [dependency-only stack check](../research/2026-09-08-server-stack-check.md)
+compiled pinned Axum/Tokio/SQLx dependencies on Linux. It implements no server,
+API, message store or client. No phone-to-phone message has been demonstrated.
+The local Docker daemon was inaccessible to this invocation; no production host
+was changed. No iOS build or protected-domain implementation was performed.
+
+The older discovery list below is background, not a request to restart broad
+research. The immediate gate is disposition of the narrow contract, then the
+TDD implementation order in RFC-0006.
+
 ## Closed-alpha review policy
 
 The founder requested removal of the mandatory second-human reviewer after
@@ -42,7 +71,7 @@ reporting that none is available. [RFC-0007](../rfcs/0007-closed-alpha-review-po
 records a bounded private test-data alpha exception with independent AI review
 and retained human decision-owner approval, approved by martadvix-web in PR #12.
 [ADR-0003](../decisions/0003-closed-alpha-review-policy.md) records acceptance;
-the policy becomes normative on merge. It accepts no application architecture,
+the policy is normative on main. It accepts no application architecture,
 authorizes no deployment and makes no security claim.
 
 ## Next decision gates

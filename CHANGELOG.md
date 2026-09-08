@@ -10,6 +10,12 @@ public contract is declared.
 
 ### Added
 
+- Draft single-server text contract and acceptance matrix for two OPPO phones:
+  durable server/recipient delivery indicators, retained ciphertext history,
+  reconnect, key-loss limits and future iPhone boundaries. No messenger shipped.
+- Reproducible dependency-only server stack compilation probe; not a runtime
+  server or accepted architecture.
+
 - Owner-approved bounded closed-alpha review-policy exception (ADR-0003),
   effective on merge. E2EE, human decision ownership and the external
   security-review gate for sensitive/production use remain required.

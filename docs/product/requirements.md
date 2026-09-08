@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: product
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-08
 ---
 
 # Initial product requirements
@@ -17,6 +17,9 @@ are complete.
 | REQ-ID-003 | A human-readable username or nickname must be anchored in a blockchain registry. | Confirmed direction |
 | REQ-ID-004 | Identity registration must have sustainable cost and abuse controls that do not allow unlimited founder-subsidized registrations. | Confirmed direction |
 | REQ-MSG-001 | The product must support text, images, files, video, audio, and voice messages. | Draft |
+| REQ-MSG-002 | The first slice must deliver 1:1 E2EE text between two OPPO phones through one server, with persistent history, reconnect and no duplicate display. | Confirmed founder direction; technical contract draft |
+| REQ-MSG-003 | One check means durable server acceptance; two mean recipient delivery, not reading. | Confirmed founder direction; receipt authentication design draft |
+| REQ-MSG-004 | Server history must persist until an additional explicit deletion request; no automatic expiry or delivery-triggered deletion. | Confirmed founder direction; deletion authority and backup policy draft |
 | REQ-CALL-001 | The product must support real-time audio and video communication. | Draft |
 | REQ-CLIENT-001 | Supported end-user clients must include Android and iOS. | Confirmed direction |
 | REQ-DEPLOY-001 | A non-specialist must be able to deploy a server through a guided, near one-click flow. | Confirmed direction |
@@ -27,6 +30,16 @@ are complete.
 | REQ-ENT-001 | The commercial platform must support configurable enterprise messaging and CRM workflows. | Confirmed direction |
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |
 | REQ-SEC-001 | End-to-end encryption scope and metadata guarantees must be specified and verified before any production privacy claim. | Required discovery gate |
+
+## First-slice clarification
+
+Founder input is recorded in [RFC-0006](../rfcs/0006-single-server-text-contract.md).
+One server and Android first do not remove future iPhone or multi-server support.
+Multiple servers are a later milestone, not a gate for this slice.
+Technical recommendations are delegated to the assistant; protected decisions
+still require human disposition. The source Telegram permalink is unavailable
+to this tool context, so approval evidence requires owner GitHub confirmation.
+The [acceptance matrix](../protocol/server-v0-acceptance.md) is proposed and unrun.
 
 ## Acceptance criteria backlog
 
