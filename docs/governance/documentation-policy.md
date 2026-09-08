@@ -1,11 +1,11 @@
 ---
-status: proposed
+status: accepted
 owner: maintainers
 decision_owner: martadvix-web
-approved_change: proposed bounded second-human review exception for private test-data alpha
-approval_date: pending
-approval_pull_request: pending
-approval_record: pending
+approved_change: bounded second-human review exception for private test-data alpha
+approval_date: 2026-09-08
+approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/12
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/12#issuecomment-5581548687
 last_reviewed: 2026-09-08
 ---
 

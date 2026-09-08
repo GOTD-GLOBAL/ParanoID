@@ -1,8 +1,8 @@
 ---
-status: draft
+status: completed
 owner: maintainers
 decision_owner: martadvix-web
-decision_deadline: pending-owner-confirmation
+decision_deadline: 2026-09-08
 required_reviewers: []
 last_reviewed: 2026-09-08
 ---
@@ -69,8 +69,11 @@ suspend exception-dependent work and review it under the restored rules.
 
 ## Disposition
 
-- Status: draft; owner GitHub confirmation and independent AI review pending.
-- Approval permalink: pending.
-- Resulting ADR: none; material governance-policy revision is the durable record.
-- Implementation impact: none until approval and merge.
-- Merge/deploy authorization: none supplied by this proposal.
+- Status: completed; owner approved the bounded policy change on 2026-09-08.
+- Approval: [owner GitHub comment](https://github.com/GOTD-GLOBAL/ParanoID/pull/12#issuecomment-5581548687).
+- Independent AI review: PR #12 comment 5580637163; no blocking findings.
+- Resulting ADR: [ADR-0003](../decisions/0003-closed-alpha-review-policy.md).
+- Closure rationale: owner disposition recorded; policy becomes normative on merge.
+- Implementation impact: application designs still require their own disposition.
+- Merge authorization: owner approval comment above explicitly authorizes PR #12
+  after evidence and checks. No application deployment is authorized.

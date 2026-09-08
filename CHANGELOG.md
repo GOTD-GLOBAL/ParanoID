@@ -10,8 +10,8 @@ public contract is declared.
 
 ### Added
 
-- Proposed bounded closed-alpha review-policy exception; not effective until
-  owner approval and merge. E2EE, human decision ownership and the external
+- Owner-approved bounded closed-alpha review-policy exception (ADR-0003),
+  effective on merge. E2EE, human decision ownership and the external
   security-review gate for sensitive/production use remain required.
 
 - Initial documentation governance, project map, decision process, security

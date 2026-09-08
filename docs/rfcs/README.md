@@ -46,7 +46,7 @@ Follow the human authority and acceptance-evidence rules in the
 ## Active governance proposal
 
 - [RFC-0007: Bounded closed-alpha review policy](0007-closed-alpha-review-policy.md)
-  (draft): does not take effect before owner approval and merge.
+  (completed): approved by owner; ADR-0003 and the policy take effect on merge.
 
 ## Naming
 
