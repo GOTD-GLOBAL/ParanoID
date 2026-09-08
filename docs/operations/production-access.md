@@ -35,6 +35,11 @@ those privileges. Never reuse this access to change other projects implicitly.
 
 ## Read-only verification
 
+Historical procedure, not an instruction or authorization to execute. Publication
+or merge grants no credential decryption, production login or sudo permission.
+Obtain explicit bounded owner authorization before repeating even this access
+check; never treat possession of the credential or this runbook as permission.
+
 Run with Bash, without shell tracing. Load the decrypted key only through a pipe
 into a temporary agent; never print it or write it to a decrypted file. Do not
 forward the agent to the remote host. Preserve host-key verification: if it fails,
