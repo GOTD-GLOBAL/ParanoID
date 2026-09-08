@@ -35,5 +35,7 @@ jobs:
             --no-progress
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4$'
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500$'
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/12$'
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/12#issuecomment-5581548687$'
             './**/*.md'
           fail: true

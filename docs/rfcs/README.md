@@ -43,6 +43,11 @@ Close an RFC and record its disposition in one coherent pull request:
 Follow the human authority and acceptance-evidence rules in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
+## Active governance proposal
+
+- [RFC-0007: Bounded closed-alpha review policy](0007-closed-alpha-review-policy.md)
+  (completed): approved by owner; ADR-0003 and the policy take effect on merge.
+
 ## Naming
 
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active

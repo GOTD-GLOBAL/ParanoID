@@ -11,7 +11,8 @@ process exchange test messages. Modified messages and replay are rejected.
 No network permission, production identity, real user data or persistent storage.
 This is NOT messaging between phones, a recovery implementation or an accepted
 stack. It supplies feasibility evidence for REQ-CLIENT-001 / REQ-SEC-001 and the
-RFC-0004 proposal in PR #6. ADR-0001 governs documentation; no crypto ADR accepted.
+RFC-0004 proposal in closed PR #6. ADR-0001 governs documentation; no crypto ADR
+accepted. This retained synthetic diagnostic is not production E2EE integration.
 
 ## Reproduce on Linux x86_64
 
@@ -46,14 +47,17 @@ Open the app and wait for PASS or FAIL. PASS means the native library loaded and
 the local synthetic exchange, every single-byte mutation of one normal message,
 and replay check passed ON THAT DEVICE. FAIL is not success; report the screenshot.
 This does not authenticate remote contacts, verify server safety, or prove E2EE
-of a real conversation. No physical-device result for this revision exists yet.
+of a real conversation. The session handoff records owner-reported local PASS
+on OPPO CPH2671 and CPH2659 (Android 16 ARM64) for the earlier diagnostic. The
+premerge rebuild is not a new phone run; no repeat device claim is made.
 
 ## Evidence and risks
 
 - Rust RED: probe returned Not implemented; GREEN: real cryptographic probe passed
   on Linux. Decode-level rejection counts as rejection of malformed messages.
 - Android ARM64 cross-compilation and packaging test passed; signing v2/v3 verified.
-- Library linker requests 16 KB page alignment. Actual device loading is pending.
+- Library linker requests 16 KB page alignment. The owner-reported local PASS
+  is historical loading evidence, not validation of the current rebuilt APK.
 - Java JNI call runs off the UI thread; native errors return a failure code, no
   secrets. Panics are caught at the boundary, but fatal OS errors remain fatal.
 - The public constant pickle key protects synthetic test snapshots in memory ONLY;
