@@ -5,6 +5,8 @@ edition = "2021"
 publish = false
 
 [dependencies]
+axum-server = { version = "=0.8.0", default-features = false, features = ["tls-rustls-no-provider"] }
+rustls = { version = "=0.23.44", default-features = false, features = ["ring", "std", "tls12"] }
 axum = { version = "=0.8.9", default-features = false, features = ["http1", "json", "tokio", "query"] }
 tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net", "signal"] }
 sqlx = { version = "=0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring", "postgres"] }

@@ -7,7 +7,8 @@ last_reviewed: 2026-08-09
 # API documentation
 
 No public API has been accepted. The [development transport](../../server/README.md)
-implements a bounded loopback-only HTTP API for synthetic tests; it is not a
+implements bounded development HTTP and an explicit TLS-only closed-alpha mode
+(see the [deployment runbook](../operations/linux-alpha-deployment.md)); it is not a
 public compatibility contract.
 
 When APIs are introduced:

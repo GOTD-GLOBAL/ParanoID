@@ -74,8 +74,13 @@ An Olm fixture exchanges actual ciphertext through HTTP/DB and decrypts replies;
 identities/peer keys are trusted inside the test process. This is NOT remote peer
 authentication, two physical phones, durable client crypto state or an Android app.
 
-No root/device recovery, peer delivery receipts, public TLS, Android/iOS messaging
-UI or deployment is implemented. Do not expose this binary through a reverse
-proxy as a shortcut around its loopback boundary. The product acceptance target
+The development transport alone provides no root/device recovery, peer delivery
+receipts or mobile UI; the separate Android client now implements its documented
+development subset. Do not expose development HTTP through a reverse proxy as a
+shortcut around its loopback boundary. The separate explicit `closed-alpha-v0`
+mode terminates TLS directly on 38443 and requires a private Unix-socket DB with
+no CI override. See the [native alpha runbook](../docs/operations/linux-alpha-deployment.md)
+for the locally verified package, resource/rate bounds and rollback contract.
+This does not claim a hosted deployment. The product acceptance target
 remains two OPPO phones on an isolated hosted instance installed by the same
 simple reproducible Linux package, after client/auth/TLS boundaries are completed.

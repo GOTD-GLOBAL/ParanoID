@@ -45,6 +45,20 @@ flowchart LR
     server <-->|explicit capabilities| plugin
 ```
 
+## Proposed private-alpha deployment view
+
+```text
+OPPO A/B (Olm keys + encrypted client state)
+  -> direct pinned IP TLS :38443 -> Rust server (closed-alpha-v0)
+  -> private Unix socket -> dedicated PG16 cluster / ciphertext + metadata
+systemd user unit -> Python supervisor -> server + private PG16
+operator -> verified release pointer / restricted dumps + isolated restore DB
+neighboring Nginx :80/:443 and existing PG: no connection or modification
+```
+
+This local-package view accompanies draft RFC-0009/ADR-0005, not accepted
+production architecture or evidence of a hosted rollout.
+
 ## Rules for diagrams
 
 - State scope, audience, and abstraction level.
