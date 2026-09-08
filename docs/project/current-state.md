@@ -47,7 +47,10 @@ scope; a second server is not an acceptance gate for this slice.
 recommendations and their [acceptance matrix](../protocol/server-v0-acceptance.md).
 It is draft, not an accepted architecture. Identity/E2EE, delivery/persistence
 and stack disposition still lack independent qualified human reviewers and
-durable owner approval evidence. Existing RFC-0004/0005 remain drafts in open PRs.
+durable owner approval evidence. Earlier PRs #1, #2, #5, #6 and #10 were
+closed without merge during owner-requested cleanup. Their branches and research
+are retained, not accepted architecture. Active PRs are #12 (review policy),
+PR #11 (this contract), #9 (native crypto evidence) and #7 (host access runbook).
 
 A [dependency-only stack check](../research/2026-09-08-server-stack-check.md)
 compiled pinned Axum/Tokio/SQLx dependencies on Linux. It implements no server,

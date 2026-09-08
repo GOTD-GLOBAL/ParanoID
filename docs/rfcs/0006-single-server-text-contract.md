@@ -37,7 +37,8 @@ permalink, message ID or authenticated mapping to GitHub. Owner confirmation on
 GitHub is required for durable approval evidence. No protected decision is accepted.
 
 This narrow proposal uses the existing RFC-0004 (PR #6) and RFC-0005 (PR #10)
-research; it neither merges nor silently supersedes those open branches.
+research. PRs #6/#10 were closed without merge during owner-requested cleanup;
+their branches remain research history, not accepted architecture.
 In particular, RFC-0004's root identity/reset ambiguity is resolved here as a
 recommendation: never silently reset or reinterpret an established identity.
 No second-server test is a gate for this slice.
@@ -253,6 +254,7 @@ exact reviewed cryptographic encodings/vectors, not a new market study.
 - Resulting ADRs: separate identity/E2EE, delivery/persistence and stack records
   required before adoption; do not batch-accept protected domains through this RFC.
 - Deadline: owner schedules reviewer assignment; no invented deadline.
-- RFC-0004/0005: remain drafts in their existing PRs, not superseded by this file.
+- RFC-0004/0005: archived draft material in closed PRs #6/#10; no architecture
+  accepted by their closure or by this file.
 - Implementation authorization: blocked on the existing disposition gate.
 - Production authorization: not requested or granted by this document.
