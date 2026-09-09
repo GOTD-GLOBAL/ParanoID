@@ -37,7 +37,7 @@ class NativeLifecycle(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='paranoid-native-') as tmp:
             base = Path(tmp)
             with tarfile.open(artifact) as archive:
-                expected = {'release/' + name for name in ('paranoid-server', 'schema.sql', 'alpha.py',
+                expected = {'release/' + name for name in ('paranoid-server', 'schema.sql', 'key-schema.sql', 'alpha.py',
                                                            'create-test-tls.py', 'README.md', 'manifest.json')}
                 self.assertEqual(set(archive.getnames()), expected)
                 self.assertEqual(len(archive.getmembers()), len(expected))

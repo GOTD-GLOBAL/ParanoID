@@ -9,7 +9,12 @@ state. This does not accept a future iOS UI or change the proposed production st
 
 ```sh
 export ANDROID_SDK_ROOT=/path/to/android-sdk
+# Preserve the existing signing identity; provide password through build environment.
+export PARANOID_ANDROID_KEYSTORE=/absolute/path/to/existing/test.keystore
+read -r -s -p 'Existing test keystore password: ' PARANOID_ANDROID_KS_PASSWORD
+export PARANOID_ANDROID_KS_PASSWORD
 bash clients/android/build.sh
+unset PARANOID_ANDROID_KS_PASSWORD
 python3 scripts/check-pinned-tls.py
 ```
 
@@ -18,8 +23,9 @@ and NDK 28.2.13676358. Build runs Rust client tests, Linux JVM JNI smoke and
 AES-GCM codec smoke, cross-compiles native code, then signs and checks the APK.
 Output: `clients/android/out/paranoid-text.apk`. Test key and build output are
 ignored, not committed. The development signature is not a release identity.
-A fresh checkout generates a different signing key; it cannot silently update
-an earlier differently signed APK. Never uninstall a data-bearing app merely to
+A fresh checkout refuses to generate a replacement signing key. The versionCode 4
+candidate retains `org.paranoid.devtext` and verifies the established signing
+certificate. Never uninstall a data-bearing app merely to
 bypass signature verification: this development client has no recovery.
 
 Packaging/JVM tests do NOT prove Android Keystore, filesystem durability, UI,
@@ -35,7 +41,7 @@ The private key stays on the server. The public descriptor contains the planned
 HTTPS URL and 64-hex SHA-256 of leaf SubjectPublicKeyInfo DER.
 
 The tester must verify that public pin out of band with the operator, separately
-from the private bearer credential and the peer's public Olm code. Do not obtain
+from operator admission and the peer's public key binding. Do not obtain
 an unverified pin from the endpoint being authenticated. The app requires matching
 SPKI, dates, self-signature, server-auth usage, adequate key strength and exact SAN;
 platform hostname verification remains enabled. Only TLS 1.2/1.3, no redirects,
@@ -46,15 +52,29 @@ Certificate renewal with the same key is possible; a key change needs an explici
 future re-enrollment procedure. Pinless snapshots from earlier unreleased test
 builds fail closed, not a silent reset. This is not a data-migration promise.
 
+## Phone-created identity and local key-registration candidate
+
+[RFC-0010](../../docs/rfcs/0010-phone-key-registration.md) and the
+[local operator/test runbook](../../docs/operations/key-registration-local.md)
+describe Create ID -> exact known-phone operator approval -> automatic proof ->
+messaging. The candidate is 0.0.4-dev, with a built signed APK and actual local
+TLS/PostgreSQL/JVM JNI evidence. ADR-0006 remains proposed; the hosted endpoint
+has not been upgraded and no physical OPPO registration test is claimed.
+The default public origin/SPKI are compiled in; existing saved trust always wins.
+No reusable bearer is placed in QR, URLs, app defaults or key-auth requests.
+
 ## Device test sequence once reviewed and authorized
 
 1. Install the reviewed exact APK on both OPPO phones; do not disable Play Protect.
-2. Use the same approved HTTPS URL and verified public server pin on both phones.
-   Configure separate server credentials and roles alice/bob. Never share private
-   credentials as part of a public pairing code.
-3. Exchange the public codes and compare directly on the other phone's screen.
-   Confirm explicitly. Existing peer keys cannot silently be replaced.
-4. First validate local configure/pair/queue/reopen and Keystore behavior with test
+2. Tap Create ID (or enable key login for the retained identity). Show the public
+   request QR to the operator. The operator verifies the known tester, exact
+   credential and old Olm binding, explicitly chooses the authorized legacy slot,
+   and returns a public grant QR. Testers never enter roles, bearer tokens or SSH.
+3. Scan the grant, then the peer's distinct contact QR. Admission/status/activation
+   use fresh key proof automatically. Compare the full displayed contact
+   fingerprint directly with the peer and confirm explicitly. Existing peer keys
+   cannot silently be replaced. Cancellation does not reset state.
+4. First validate local create/scan/pair/queue/reopen and Keystore behavior with test
    data. Connecting to a hosted instance is a later, separately authorized step.
 5. After runtime/host readiness, test text both ways, single/double checks,
    receiver offline, reconnect, app/process restart and no duplicate display.
@@ -88,7 +108,8 @@ Rust and real-loopback-HTTP JVM regressions exercise these paths. This is not
 Android runtime/Keystore evidence or authorization for connected two-phone tests.
 
 The development core caps local history at 200 messages and has no seed/root-device
-recovery, QR scanner, iOS build or production account migration. No hosted TLS
+recovery, iOS build or production account migration. ZXing QR scan/display is
+implemented; actual camera and OPPO behavior remain untested. No hosted key-auth
 instance has been deployed by these changes. The loopback server must not be
 exposed through a proxy as a shortcut around missing adoption/runtime gates.
 No sensitive messages, private keys or credentials belong in screenshots or logs.

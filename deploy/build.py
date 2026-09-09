@@ -24,7 +24,8 @@ def main():
     dest = output / 'release'
     dest.mkdir(mode=0o700)
     files = {'paranoid-server': ROOT / 'server/target/release/paranoid-server',
-             'schema.sql': ROOT / 'server/schema.sql', 'alpha.py': ROOT / 'deploy/alpha.py',
+             'schema.sql': ROOT / 'server/schema.sql', 'key-schema.sql': ROOT / 'server/key-schema.sql',
+             'alpha.py': ROOT / 'deploy/alpha.py',
              'create-test-tls.py': ROOT / 'scripts/create-test-tls.py',
              'README.md': ROOT / 'deploy/README.md'}
     for name, source in files.items():
@@ -38,7 +39,8 @@ def main():
             (dest / name).chmod(0o700 if mode & 0o111 else 0o600)
     hashes = {name: hashlib.sha256((dest / name).read_bytes()).hexdigest() for name in files}
     release = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()[:20]
-    manifest = {'release': release, 'sha256': hashes, 'schema_contract': 'paranoid-dev-v0',
+    manifest = {'release': release, 'sha256': hashes, 'schema_contract': 'paranoid-key-v1',
+                'deployment_api': 1,
                 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(),
                 'source_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT)),
                 'architecture': platform.machine(),

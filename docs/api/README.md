@@ -11,6 +11,11 @@ implements bounded development HTTP and an explicit TLS-only closed-alpha mode
 (see the [deployment runbook](../operations/linux-alpha-deployment.md)); it is not a
 public compatibility contract.
 
+[Key enrollment v1](../protocol/key-enrollment-v1.md) describes the proposed
+RFC-0010 route/auth boundaries and the exact local candidate schemas. The shared
+strict Rust types and public canonical signature vectors accompany the implemented
+routes; no production API or new hosted capability is accepted by the local build.
+
 When APIs are introduced:
 
 - keep the machine-readable contract canonical;

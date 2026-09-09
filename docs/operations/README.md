@@ -19,6 +19,17 @@ core requirement.
 The [native private-alpha runbook](linux-alpha-deployment.md) accompanies the
 locally exercised package (RFC-0009, draft ADR-0005), not a hosted deployment.
 
+The [key-registration local runbook](key-registration-local.md) records the
+explicitly authorized local APK/server candidate, operator-only admission and
+isolated migration/restore tests under RFC-0010/proposed ADR-0006. It is not a
+live migration procedure or permission to change the hosted alpha.
+
+The [key deployment rollout runbook](key-deployment-rollout.md) records the
+locally tested migration-capable package and recovery restrictions under
+[RFC-0011](../rfcs/0011-key-deployment-migration.md). The
+[2026-09-09 authority](key-rollout-authorization-2026-09-09.md) permits only the
+reviewed isolated two-phone rollout; this index does not claim it has occurred.
+
 Every supported deployment profile must eventually include:
 
 - prerequisites and one-click or guided installation;

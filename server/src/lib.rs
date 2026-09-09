@@ -14,6 +14,9 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
+mod key_http;
+mod key_transport;
+pub mod registration;
 
 #[derive(Clone)]
 struct Store {

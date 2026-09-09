@@ -10,6 +10,11 @@ public contract is declared.
 
 ### Fixed
 
+- Independent registration replay exposed intermittent decoding of pristine
+  public grant QR images. The ZXing adapter now retains camera detection first,
+  then tries its pure-image decoder on reader failure. A deterministic 200-grant
+  regression runs in every APK build; typed credential checks remain unchanged.
+
 - Native alpha rebuilds now use fresh private output and an exact regular-file
   allowlist, preserving ignored/stale operator files without shipping them.
   Lifecycle operations reject redirected or unsafe installation paths, invalid
@@ -24,6 +29,30 @@ public contract is declared.
   operations. Regression tests cover the failure paths.
 
 ### Added
+
+- Migration-capable isolated Linux key-registration package: exact offline schema
+  transition after verified restore, retained TLS/config/history, key-aware
+  readiness and compatible code rollback. Process ownership now survives PG
+  lock-backend loss; TLS keep-alive/idle occupancy is bounded. Populated native
+  systemd/PostgreSQL/TLS/JNI tests pass; live cutover and phone acceptance are
+  recorded separately, not inferred from local results.
+
+- Local Android key-registration candidate (`org.paranoid.devtext`, 0.0.4-dev,
+  versionCode 4): persisted independent root/device keys, exact-slot operator
+  grants, automatic one-use key login, typed verified QR contacts and existing
+  Olm text/receipts. Real isolated TLS/PostgreSQL/JVM JNI and populated v0
+  preservation/restore tests accompany the signed ARM64 APK. No live migration,
+  deployment, physical OPPO test or production architecture acceptance is claimed.
+
+- Draft RFC-0010, proposed ADR-0006 and a key-enrollment contract clarify the
+  requested phone-created identity/automatic proof/verified QR UX versus the
+  existing manual bearer fixture. Recommended two-tester exact-key admission
+  preserves legacy identities/history; the subsequent local candidate above
+  implements the bounded flow without accepting the proposed ADR.
+  Sergey accepts the one-time operator step as bounded Telegram UX input, not ADR
+  or deployment approval. Canonical requirements retain future default/own/existing
+  server selection and QR/link/store invitation UX, with independent trust and an
+  explicit unverified deferred-link/fallback boundary; no alpha scope expansion.
 
 - Authorized target-host rollout and resume: after an initially blocked attempt,
   explicit owner authorization allowed one precise IPv4 UFW TCP 38443 rule and

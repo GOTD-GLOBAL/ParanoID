@@ -1,10 +1,23 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-08
+last_reviewed: 2026-09-09
 ---
 
 # Current project state
+
+## Current product priority
+
+The owner rejected operator-dependent onboarding and approved preserving the
+current implementation in an [archival checkpoint](operator-approval-checkpoint.md),
+without merging it wholesale into main. The next deliverable is the self-service
+app/server flow in [REQ-ID-008](../product/requirements.md#default-server-self-registration-correction-2026-09-09):
+create ID, automatically register on the common server, add a contact, message.
+It is not implemented by the current operator-grant code. Blockchain registration
+and public/private server choice remain the later direction, with identity and
+history continuity required. No new runtime or hosting change follows merely
+from the archive/issue task. Historical implementation/rollout observations below
+remain evidence, not the target user experience.
 
 ## Phase
 
@@ -157,6 +170,92 @@ comes only from disposable fixtures. **The hosted alpha endpoint works; physical
 OPPO acceptance remains NOT RUN.** Parent independent endpoint verification and
 reviewed APK/signature/private enrollment precede device acceptance. Do not treat
 the old diagnostic APK as a messenger or reset any retained identity.
+
+## Registration UX correction — locally built candidate, not deployed
+
+The 2026-09-08 user input rejects manually obtaining a bearer and requests
+Threema-inspired on-phone identity creation, locally owned keys, automatic key
+proof and verified QR contacts, without phone/email. Baseline `7bef87b` had
+URL/pin/alice-or-bob/token fields and copied pairing codes. The local candidate
+replaces them rather than hiding those bearers in QR.
+
+[RFC-0010](../rfcs/0010-phone-key-registration.md), proposed
+[ADR-0006](../decisions/0006-phone-key-registration.md) and the
+[draft contract](../protocol/key-enrollment-v1.md) recommend exact-key maintainer
+approval for only the existing two testers, explicit legacy mapping and one-use
+request proof. A public TLS listener is not permission for anonymous public signup
+or first-free-slot assignment. Blockchain is later; no recovery redesign.
+The Telegram follow-up accepts Create ID -> one-time operator approval -> messaging
+for this alpha (“Пока что пойдет”); it does not approve the manual-token UI or prove
+the proposed flow works. Durable exact-scope/architecture evidence and independent
+review remain pending; ADR-0006 is still proposed, with no new rollout permission.
+The subsequent implementation-worker CLI instruction explicitly authorized only
+local implementation/build and isolated fixtures. It corrected a delegation typo:
+the actual application package stays `org.paranoid.devtext`, while Java/JNI remains
+`org.paranoid.text`. A signed ARM64 API26+ 0.0.4-dev/versionCode4 APK is built with
+the original signing identity. Independent root/device keys are saved before
+requests; known-phone approval explicitly maps the verified credential/old Olm
+digest to slot 0 or 1. No arbitrary-key registration rows or reusable key-login
+bearer are created. Active slots reject v0 bearers on every message route.
+
+`KeyClient` is exercised on the real Linux JVM/JNI against isolated Rust TLS and
+PostgreSQL: registration, login, QR encoding/decoding, E2EE text, receipts,
+restart, populated v0 state preservation and dump/restore. The client retains
+`text-state.enc`, the Keystore alias, old Olm state/history/pins/outbox and saved
+TLS trust. A missing snapshot with a retained wrapping key also fails closed.
+The [local runbook](../operations/key-registration-local.md) records commands,
+limits and evidence. This is a working local candidate, not a phone-test result.
+
+No live service, database, secret, firewall or other worktree was changed. The
+key-server mode intentionally binds only loopback and cannot be substituted into
+the existing deployment controller. The public APK default remains the supplied
+origin/SPKI, but the hosted endpoint was NOT upgraded to key registration here.
+Existing same-schema deployment gates remain intact. Parent independent review,
+separately authorized migration/deployment and physical OPPO acceptance remain
+outstanding; ADR-0006 is still proposed.
+
+## Authorized two-phone registration rollout preparation
+
+On 2026-09-09 Sergey supplied screenshots labelled phone 1 and phone 2 showing
+local ID creation/pending status, followed by the two labelled public registration
+requests. Both root signatures, account derivations, expected realm and SPKI were
+verified locally. This is user-supplied device/UI and credential evidence, not
+server activation, full Android Keystore acceptance or demonstrated messaging.
+
+Sergey then explicitly answered “Разрешаю” to the bounded isolated-server update
+and activation request after independent checks and history-preserving recovery.
+[The authority record](../operations/key-rollout-authorization-2026-09-09.md)
+supersedes the prior local-only task's no-deploy restriction for this exact scope;
+production architecture acceptance, neighboring changes and merge remain excluded.
+
+A fresh read-only host check found the retained v0 service and exact pinned TLS
+healthy, zero envelopes/sequence/usage, no key schema, unchanged neighboring
+service PIDs/activation times and private root/config/TLS permissions. That check
+made no mutation. The subsequent migration-capable package passed populated
+native/JNI/restore tests and independent review. The
+[actual rollout](../operations/key-rollout-2026-09-09.md) now records successful
+history-preserving migration and the reviewed ALPN correction, unchanged TLS and
+neighbors, working external key-auth routes, and two exact-key operator grants.
+The grants are `approved`, not yet proof of phone activation or messaging. Public
+phone inputs and grant descriptors remain outside Git. No phone reset or new APK
+was needed; physical activation/contact/message acceptance awaits the user's scan.
+
+## Future server onboarding direction — recorded, not implemented
+
+Sergey's supplied 2026-09-08 Telegram input prioritizes preserving the product idea
+rather than rebuilding today's implementation: default to the common project
+server, offer create/self-host or join a known existing server, and share server
+invites by QR/link. Without the app, guide to Google Play/App Store and resume the
+invite after user/platform-mediated installation. Deferred continuation is
+platform-dependent and unverified; fallback is to reopen the original invite.
+[Requirements REQ-SERVER-001/002 and REQ-CLIENT-002](../product/requirements.md#server-onboarding-direction-future-production-ux)
+and [RFC-0010](../rfcs/0010-phone-key-registration.md#future-server-onboarding-boundary)
+capture this direction without a new broad RFC or current implementation gate.
+Server invites are not verified contact pairing; independent server trust/admission
+and existing identities/history remain intact, with no permanent default-server
+authority, secret grants in app/store URLs or auth bypass. Simultaneous multi-server
+operation, iOS and store publishing are not two-OPPO alpha acceptance requirements.
+This is Telegram product provenance, not fabricated GitHub approval or delivered UX.
 
 ## Next decision gates
 

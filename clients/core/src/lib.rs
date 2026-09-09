@@ -11,6 +11,7 @@ use vodozemac::{
 };
 
 type Result<T> = std::result::Result<T, &'static str>;
+mod contact;
 
 // Android/JVM adapter only; core state/network/storage remain separate.
 #[no_mangle]
@@ -75,6 +76,14 @@ struct RejectedEvent {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Client {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    enrollment: Option<contact::Status>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    peer_credential: Option<paranoid_key_protocol::Credential>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    grant: Option<paranoid_key_protocol::Grant>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    identity: Option<paranoid_key_protocol::Identity>,
     version: u32,
     public: Bundle,
     account: Value,
@@ -113,11 +122,58 @@ struct Plain {
 #[derive(Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 enum Request {
-    Init { device: String, realm: String },
-    Pair { peer: Bundle, verified: bool },
-    Send { text: String },
-    Receive { message: Incoming },
-    Accepted { id: String },
+    ImportGrantText {
+        text: String,
+    },
+    ContactText {
+        text: String,
+        verified: Option<bool>,
+    },
+    ServerStatus {
+        status: contact::Status,
+    },
+    PairContact {
+        contact: contact::Contact,
+        verified: bool,
+    },
+    PreviewContact {
+        contact: contact::Contact,
+    },
+    ImportGrant {
+        grant: paranoid_key_protocol::Grant,
+    },
+    #[serde(rename = "sign_request")]
+    Sign {
+        challenge: paranoid_key_protocol::Challenge,
+        method: String,
+        path: String,
+        body: String,
+    },
+    #[serde(rename = "validate_request")]
+    Validate {
+        descriptor: paranoid_key_protocol::PublicRequest,
+    },
+    CreateIdentity {
+        realm: String,
+        pin: String,
+    },
+    Init {
+        device: String,
+        realm: String,
+    },
+    Pair {
+        peer: Bundle,
+        verified: bool,
+    },
+    Send {
+        text: String,
+    },
+    Receive {
+        message: Incoming,
+    },
+    Accepted {
+        id: String,
+    },
     View,
 }
 fn encode<T: Serialize>(value: T) -> Result<Value> {
@@ -135,11 +191,33 @@ fn session(value: &Value) -> Result<Session> {
 fn key(s: &str) -> Result<Curve25519PublicKey> {
     Curve25519PublicKey::from_base64(s).map_err(|_| "invalid_peer_key")
 }
+fn validate_peer(s: &Client, peer: &Bundle, verified: bool) -> Result<()> {
+    if !verified
+        || peer.realm != s.public.realm
+        || peer.device == s.public.device
+        || !["alice", "bob"].contains(&peer.device.as_str())
+        || peer.curve == s.public.curve
+    {
+        return Err("peer_not_verified");
+    }
+    key(&peer.curve)?;
+    key(&peer.one_time_key)?;
+    if s.peer.as_ref().is_some_and(|old| *old != *peer) {
+        return Err("peer_already_pinned");
+    }
+    Ok(())
+}
 fn reply(s: Client) -> Result<String> {
-    serde_json::to_string(&json!({"state":&s,"public":&s.public,"outbox":&s.outbox,"messages":&s.history,"cursor":s.cursor,"rejected_count":s.rejected_count,"first_rejected_sequence":s.first_rejected_sequence})).map_err(|_|"state_error")
+    let request = s
+        .identity
+        .as_ref()
+        .map(|i| json!({"type":"paranoid-request-v1","credential":i.credential}));
+    let contact = contact::contact(&s)?;
+    let fingerprint = contact.as_ref().map(|c| c.fingerprint());
+    serde_json::to_string(&json!({"state":&s,"public":&s.public,"request":request,"contact":contact,"contact_fingerprint":fingerprint,"enrollment":s.enrollment,"grant":s.grant,"outbox":&s.outbox,"messages":&s.history,"cursor":s.cursor,"rejected_count":s.rejected_count,"first_rejected_sequence":s.first_rejected_sequence})).map_err(|_|"state_error")
 }
 fn init(device: String, realm: String) -> Result<Client> {
-    if !["alice", "bob"].contains(&device.as_str())
+    if !["alice", "bob", "unassigned"].contains(&device.as_str())
         || !realm.starts_with("https://")
         || realm.len() > 512
     {
@@ -160,6 +238,10 @@ fn init(device: String, realm: String) -> Result<Client> {
     };
     a.mark_keys_as_published();
     Ok(Client {
+        enrollment: None,
+        peer_credential: None,
+        grant: None,
+        identity: None,
         version: 0,
         public,
         account: encode(a.pickle())?,
@@ -328,6 +410,42 @@ pub fn command(state: &str, request: &str) -> Result<String> {
         return Err("input_limit");
     }
     let request: Request = serde_json::from_str(request).map_err(|_| "invalid_request")?;
+    if let Request::Validate { descriptor } = request {
+        descriptor.verify()?;
+        return Ok(json!({"fingerprint":descriptor.credential.fingerprint()}).to_string());
+    }
+    if let Request::CreateIdentity { realm, pin } = request {
+        let mut s = if state.is_empty() {
+            init("unassigned".into(), realm.clone())?
+        } else {
+            serde_json::from_str::<Client>(state).map_err(|_| "invalid_state")?
+        };
+        if s.version != 0 || s.public.realm != realm {
+            return Err("identity_change_refused");
+        }
+        // Do not mint auth keys over unreadable or substituted legacy crypto state.
+        let retained = account(&s)?;
+        if retained.identity_keys().curve25519.to_base64() != s.public.curve {
+            return Err("invalid_state");
+        }
+        key(&s.public.one_time_key)?;
+        for old in &s.sessions {
+            session(old)?;
+        }
+        if let Some(i) = &s.identity {
+            if i.credential.pin != pin {
+                return Err("identity_change_refused");
+            }
+        } else {
+            s.identity = Some(paranoid_key_protocol::Identity::create(
+                &realm,
+                &pin,
+                &s.public.curve,
+                &s.public.one_time_key,
+            )?);
+        }
+        return reply(s);
+    }
     if let Request::Init { device, realm } = request {
         if !state.is_empty() {
             return Err("already_initialized");
@@ -339,20 +457,134 @@ pub fn command(state: &str, request: &str) -> Result<String> {
         return Err("unsupported_state");
     }
     match request {
-        Request::Pair { peer, verified } => {
-            if !verified
-                || peer.realm != s.public.realm
-                || peer.device == s.public.device
-                || !["alice", "bob"].contains(&peer.device.as_str())
-                || peer.curve == s.public.curve
+        Request::ImportGrantText { text } => {
+            if text.len() > 4096 {
+                return Err("qr_limit");
+            }
+            let grant: paranoid_key_protocol::Grant =
+                serde_json::from_str(&text).map_err(|_| "invalid_grant")?;
+            return command(
+                state,
+                &json!({"op":"import_grant","grant":grant}).to_string(),
+            );
+        }
+        Request::ContactText { text, verified } => {
+            if text.len() > 4096 {
+                return Err("qr_limit");
+            }
+            let contact: contact::Contact =
+                serde_json::from_str(&text).map_err(|_| "invalid_contact")?;
+            let request = if let Some(verified) = verified {
+                json!({"op":"pair_contact","contact":contact,"verified":verified})
+            } else {
+                json!({"op":"preview_contact","contact":contact})
+            };
+            return command(state, &request.to_string());
+        }
+        Request::ServerStatus { status } => {
+            let g = s.grant.as_ref().ok_or("grant_required")?;
+            if status.grant != g.id
+                || status.credential != g.credential
+                || status.slot != g.slot
+                || !["pending", "active"].contains(&status.mode.as_str())
+                || s.enrollment
+                    .as_ref()
+                    .is_some_and(|e| e.mode == "active" && status.mode != "active")
             {
+                return Err("status_conflict");
+            }
+            let alias = if status.slot == 0 { "alice" } else { "bob" };
+            if s.public.device != "unassigned" && s.public.device != alias {
+                return Err("legacy_slot_conflict");
+            }
+            s.public.device = alias.into();
+            s.enrollment = Some(status);
+        }
+        Request::PreviewContact { contact } => {
+            contact.verify(&s)?;
+            return Ok(
+                json!({"fingerprint":contact.fingerprint(),"account":contact.credential.account})
+                    .to_string(),
+            );
+        }
+        Request::PairContact { contact, verified } => {
+            if !verified || s.enrollment.as_ref().map(|e| e.mode.as_str()) != Some("active") {
                 return Err("peer_not_verified");
             }
-            key(&peer.curve)?;
-            key(&peer.one_time_key)?;
-            if s.peer.as_ref().is_some_and(|old| *old != peer) {
-                return Err("peer_already_pinned");
+            contact.verify(&s)?;
+            s.peer = Some(contact.bundle);
+            s.peer_credential = Some(contact.credential);
+        }
+        Request::ImportGrant { grant } => {
+            let i = s.identity.as_ref().ok_or("create_identity_first")?;
+            if grant.kind != "paranoid-grant-v1"
+                || grant.realm != i.credential.realm
+                || grant.pin != i.credential.pin
+                || grant.credential != i.credential.fingerprint()
+                || !(0..=1).contains(&grant.slot)
+                || uuid::Uuid::parse_str(&grant.id)
+                    .map(|u| u.to_string() != grant.id)
+                    .unwrap_or(true)
+                || grant.expires < 1
+                || (s.enrollment.is_some() && s.grant.as_ref().is_some_and(|old| *old != grant))
+            {
+                return Err("grant_conflict");
             }
+            let alias = if grant.slot == 0 { "alice" } else { "bob" };
+            if s.public.device != "unassigned" && s.public.device != alias {
+                return Err("legacy_slot_conflict");
+            }
+            s.grant = Some(grant);
+        }
+        Request::Sign {
+            challenge: c,
+            method,
+            path,
+            body,
+        } => {
+            let i = s.identity.as_ref().ok_or("create_identity_first")?;
+            let g = s.grant.as_ref().ok_or("grant_required")?;
+            let purpose = match (method.as_str(), path.as_str()) {
+                ("POST", "/v1/enrollment/commit") => "enroll",
+                ("POST", "/v1/auth/verify") => "status",
+                ("POST", "/v1/enrollment/activate") => "activate",
+                ("POST", "/v1/messages") => "message",
+                ("GET", p) if p == "/v1/messages" || p.starts_with("/v1/messages?") => "message",
+                _ => return Err("invalid_proof_purpose"),
+            };
+            if c.method != method
+                || c.path != path
+                || c.body != paranoid_key_protocol::digest(body.as_bytes())
+                || c.purpose != purpose
+                || c.account != i.credential.account
+                || c.device != i.credential.device
+                || c.credential != g.credential
+                || c.realm != g.realm
+                || c.pin != g.pin
+                || c.grant != g.id
+                || c.slot != g.slot
+                || c.expires < 1
+                || uuid::Uuid::parse_str(&c.id).is_err()
+                || uuid::Uuid::parse_str(&c.epoch).is_err()
+                || STANDARD
+                    .decode(&c.nonce)
+                    .map(|n| n.len() != 32)
+                    .unwrap_or(true)
+            {
+                return Err("proof_context_mismatch");
+            }
+            let key = vodozemac::Ed25519SecretKey::from_base64(&i.auth_secret)
+                .map_err(|_| "invalid_state")?;
+            if key.public_key().to_base64() != i.credential.auth {
+                return Err("invalid_state");
+            }
+            return Ok(json!({"authorization":format!("Paranoid {}.{}",c.id,key.sign(&c.bytes()).to_base64())}).to_string());
+        }
+        Request::Pair { peer, verified } => {
+            if s.identity.is_some() {
+                return Err("use_verified_contact");
+            }
+            validate_peer(&s, &peer, verified)?;
             s.peer = Some(peer);
         }
         Request::Send { text } => {
@@ -425,7 +657,9 @@ pub fn command(state: &str, request: &str) -> Result<String> {
             }
         }
         Request::View => {}
-        Request::Init { .. } => return Err("already_initialized"),
+        Request::Init { .. } | Request::CreateIdentity { .. } | Request::Validate { .. } => {
+            return Err("already_initialized")
+        }
     }
     reply(s)
 }

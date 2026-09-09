@@ -45,6 +45,13 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0010: Phone-created identity](0010-phone-key-registration.md) (draft):
+  user correction, exact-key alpha admission and history-preserving migration;
+  proposed ADR-0006, locally built/tested registration candidate.
+- [RFC-0011: Key deployment migration](0011-key-deployment-migration.md) (proposed):
+  exact offline schema transition, sticky cutover and history-preserving recovery;
+  local package tested, independent final deployment review pending.
+
 - [RFC-0006: One-server text contract](0006-single-server-text-contract.md)
   (draft): founder delivery/retention requirements, concrete technical
   recommendations and remaining application-disposition gates. Earlier RFC-0004/0005 are

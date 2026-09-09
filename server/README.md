@@ -6,6 +6,11 @@ and [draft ADR-0004](../docs/decisions/0004-development-transport.md).
 
 ## Reproduce on Linux
 
+The separate [key-registration candidate](../docs/operations/key-registration-local.md)
+adds local-only TLS key admission under proposed RFC-0010/ADR-0006. It does not
+change the deployment controller or accept a production protocol. The v0 mode
+below remains for unmigrated development fixtures only.
+
 Requires an unprivileged user, Python 3, Rust/Cargo (tested 1.98.1), and PostgreSQL
 16 binaries. No running database, Docker privilege or production access is needed.
 

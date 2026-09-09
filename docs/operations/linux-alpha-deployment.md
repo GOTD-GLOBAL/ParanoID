@@ -160,6 +160,16 @@ screenshots. Peer Olm pairing codes are a separate trust input. The Android
 [enrollment guide](../../clients/android/README.md) still applies. No server
 content keys, peer verification changes or plaintext fallback are introduced.
 
+The above bearer provisioning is current fixture behavior, not the requested
+product UX. [RFC-0010](../rfcs/0010-phone-key-registration.md) proposes replacement
+with phone-generated keys and exact-key maintainer grants, not token export or
+public signup. It authorizes no change to this deployment. Its DB/config migration
+is not compatible with the current same-schema update command; review and test
+a migration-capable path before any rollout, preserving all retained identities.
+The subsequent [local key-registration candidate](key-registration-local.md)
+implements and rehearses only isolated fixtures. It does not modify this
+controller, relax its same-schema gate or authorize hosted migration.
+
 ## Health, restart and resource bounds
 
 ```sh

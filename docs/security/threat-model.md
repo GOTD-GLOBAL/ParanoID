@@ -17,6 +17,14 @@ and test mappings for RFC-0006, distinguishing implemented development/client
 controls and the native alpha deployment delta from outstanding gates. This is
 not a completed independent security review.
 
+The [proposed registration delta](server-v0-threats.md#proposed-phone-key-registration-delta)
+adds RFC-0010 key/admission/QR/migration risks and now distinguishes the locally
+tested candidate from the unchanged hosted endpoint and unperformed phone tests.
+
+The [key deployment delta](key-deployment-delta.md) covers the separately authorized
+migration candidate: durable cutover, verified restore, same-host process ownership
+and bounded TLS connection lifetimes. Live cutover remains gated on final review.
+
 ## Security objectives
 
 - Prevent unauthorized control of accounts, devices, servers, names, and plugins.

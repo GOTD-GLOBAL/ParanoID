@@ -1123,12 +1123,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
+name = "paranoid-key-protocol"
+version = "0.0.1"
+dependencies = [
+ "base64",
+ "serde",
+ "sha2 0.10.9",
+ "uuid",
+ "vodozemac",
+]
+
+[[package]]
 name = "paranoid-server"
 version = "0.0.1"
 dependencies = [
  "axum",
  "axum-server",
  "base64",
+ "paranoid-key-protocol",
+ "rand 0.8.8",
  "reqwest",
  "rustls",
  "serde",

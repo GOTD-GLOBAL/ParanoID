@@ -10,6 +10,9 @@ No normative ParanoID protocol has been accepted. The draft
 [single-server acceptance matrix](server-v0-acceptance.md) maps the proposed
 text/history/reconnect behavior to future tests; it is not a wire specification.
 
+The [key enrollment v1 draft](key-enrollment-v1.md) narrows RFC-0010 admission,
+request-proof and migration semantics. It is unimplemented and non-normative.
+
 Future protocol documentation must be normative and versioned. It must define:
 
 - identity, device, key, and recovery state machines;

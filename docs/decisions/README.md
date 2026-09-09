@@ -26,6 +26,11 @@ ADRs preserve why durable choices were made. Numbers are never reused.
 - [ADR-0005](0005-isolated-linux-alpha-package.md): isolated native alpha package;
   scope authorization exists, technical disposition and independent review pending.
 
+## Proposed identity change
+
+- [ADR-0006](0006-phone-key-registration.md): phone-created identity and bounded
+  exact-key admission; proposed, owner scope/disposition and review pending.
+
 ## Lifecycle
 
 ADRs use these states:

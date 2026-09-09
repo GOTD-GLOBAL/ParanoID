@@ -157,6 +157,91 @@ remain prerequisites. PG cluster contents and the executing controller remain
 trusted; this is not a general filesystem sandbox or publisher authentication.
 Tests use only synthetic files/databases and preserve client-only content keys.
 
+## Proposed phone-key-registration delta
+
+[RFC-0010](../rfcs/0010-phone-key-registration.md) and proposed ADR-0006 describe
+the new identity/admission boundary. The explicit local build task now implements
+and tests a bounded candidate, not a live rollout or architecture acceptance.
+The hosted bearer service is unchanged. Risk owner: martadvix-web; independent
+review and durable architecture approval remain pending under ADR-0003. No live
+secret or live state was read. See the [local evidence/runbook](../operations/key-registration-local.md).
+
+New assets: independent local account root and device auth keys, root-signed
+public credentials, grant/mapping/auth-mode records and volatile replay state.
+Flow: phone public request QR -> trusted maintainer -> local grant store;
+public exact-key grant QR -> phone -> pinned TLS + device proof -> slot mapping
+-> unchanged ciphertext transport. Peer contact QR crosses a different human
+verification boundary; neither QR trusts a server-supplied identity automatically.
+The operator still sees IPs, stable public IDs, timing, approval and relationship
+metadata. Root/device compromise controls identity/auth, endpoint compromise
+also exposes E2EE; independent keys do not protect a fully compromised phone.
+
+| Threat / initial risk | Proposed mitigation and residual risk | Test gate |
+| --- | --- | --- |
+| New key claims alice/bob or floods public signup / High | No public grant creation or arbitrary-key pending rows; exact maintainer-approved key/slot, unique mapping, two-account cap. Public listener still suffers handshake/volumetric DoS. | REG-02/03 |
+| Copied grant, replay or cross-request proof / High | Public grant requires bound private key; expiring one-use challenge binds purpose/realm/SPKI/credential/method/path/query/body; atomic consume and restart invalidation. No bearer session or silent v0 fallback. | REG-02/03 |
+| Operator approves wrong tester/slot or substitutes account / High | Direct known-tester public-key comparison, explicit old Olm fingerprint and slot mapping; possession is not admission or past ownership. Malicious operator can still deny service and lie about routing. | REG-02/05 |
+| QR type confusion or forged peer key / High | Distinct request/grant/contact types; local root/device/E2EE binding checks plus direct confirmation, existing Olm pin unchanged. Forwarded unverified QR has no identity guarantee. | REG-04 |
+| Crash/retry activates new keys but loses old state / High | Persist keys before request; staged enrollment/status/activation, unique transactional map, no init/reset over old state. Local storage failure freezes; key loss remains unrecoverable here. | REG-01/05 |
+| Old binary revives bearer or stale backup erases later history / High | Migration-capable version gates, key-only mode on every route after activation; refuse old binary downgrade, verify populated restore offline and retain all later writes. | REG-05/06 |
+| QR, logs, APK or backups leak secret material / High | Public-only QR and connection descriptor; platform-protected root/auth/E2EE state, no secret logs/URLs/clipboard/APK. DB has public credentials/mappings, not client private keys. Existing backups remain sensitive metadata and may retain old server bearer configuration. | REG-04/06 |
+
+Recommended grant expiry, challenge expiry and auth-resource cleanup delete no
+messages, identity mapping or legacy history. Device/seed recovery, public
+registration, on-chain naming and security/privacy claims remain outside scope.
+The local implementation uses strict Ed25519 and length-prefixed domain-separated
+transcripts with independent public vectors. Grant/commit/status/activation and
+message authorization are serialized with the PostgreSQL room row; successful
+proof consumption is atomic and invalid signatures do not consume valid proofs.
+There is no session bearer. Operator renewal is limited to expired unconsumed
+exact-key grants, with a new grant ID. Abort cannot revoke an active account into
+bearer mode; retired mappings are not automatically recycled.
+
+Raw QR fields are parsed strictly in Rust before Android can collapse duplicate
+JSON keys. Root/device/Olm signatures, realm/SPKI and prior pins are checked before
+explicit human contact confirmation. ZXing is bounded to 2048-byte QR payloads
+and 1280-by-1280 frames, decoded locally with no persistent camera image or upload.
+Camera permission/cancellation plumbing compiles, but physical behavior is unrun.
+
+Ingress is bounded globally before lookup, with two challenge issues/device/s,
+eight auth requests/s, twenty requests/s, ten-second handlers, four outstanding
+challenges/device and sixteen total. Sixteen TLS sockets include handshakes with
+an eight-second deadline. A fresh socket factory per Android request requires
+`Connection: close`; otherwise the JVM's idle cache exhausts the socket bound,
+as reproduced and corrected in the real TLS fixture. Shared-budget denial of
+service, traffic correlation and malicious operator/compromised phone remain.
+
+AES-GCM snapshot framing, Keystore alias and package/signature are retained. A
+wrapping key without its snapshot is not treated as a fresh installation. Old
+client tokens remain sealed for preservation only and are never sent by key auth.
+Java/Rust immutable state strings do not promise complete zeroization; no
+hardware-backed Ed25519 claim is made. Loss/recovery remains explicitly unsupported.
+
+The versioned local schema installs a BEFORE INSERT guard that makes stopped v0
+binaries fail on their original singleton initialization. Offline migration must
+stop any already-running old process first. Real populated local migration and
+fresh dump/restore preserve rows/ratchets/history/outbox and key-only mode. The
+unchanged deployment schema-hash gate is not a live migration or rollback tool;
+rollback requires a compatible key-aware binary or a stopped, preserved service.
+Physical OPPO Keystore/camera/migration, deployment and independent review remain
+unperformed. Local evidence does not satisfy full V0-01/two-phone acceptance.
+
+The old base-model phrase “root seed” describes a target asset, not a seed/root
+capability already present in the v0 Olm fixture.
+
+### Future server-invite and installation boundary (not an alpha gate)
+
+REQ-SERVER-001/002 and REQ-CLIENT-002 add later QR/link -> browser/store -> app trust
+boundaries, not implemented controls. Risks include substituted server descriptors,
+contact/invite type confusion, URL/referrer/store metadata disclosure and lost or
+replayed continuation. Keep each server's trust/admission independent; the default
+is not permanent authority. Never put secret grants in app/store URLs, auto-verify
+contacts, silently replace pins or reset identity/history. User/platform-mediated
+installation conveys no admission. Revalidate the original invite and key proof on
+resume; deferred links are platform-dependent and unverified, with reopen-original
+invite as fallback. Later tests must cover wrong types/server, expiry/revocation,
+absent app and lost continuation; none is claimed as run or required for two OPPOs.
+
 ## Residual limits
 
 The malicious server can drop/delay messages, lie about its own commit, withhold

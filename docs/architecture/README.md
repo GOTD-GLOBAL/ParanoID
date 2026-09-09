@@ -59,6 +59,24 @@ neighboring Nginx :80/:443 and existing PG: no connection or modification
 This local-package view accompanies draft RFC-0009/ADR-0005, not accepted
 production architecture or evidence of a hosted rollout.
 
+## Proposed registration boundary (RFC-0010; local candidate implemented)
+
+```text
+Phone: account root + device auth keys | independent existing Olm + storage keys
+  -> public request QR -> trusted maintainer verification -> local grant tool
+  <- exact-key public grant QR (not a bearer, no public grant-creation API)
+  -> pinned TLS + one-use signed proof -> server grant/device/mode mapping
+  -> explicitly assigned existing 0/1 transport principal -> unchanged history
+Phone A <-> explicitly compared contact QR/root-device-Olm binding <-> Phone B
+```
+
+[The proposal](../rfcs/0010-phone-key-registration.md) separates local identity
+creation from closed-alpha admission. Public signup, blockchain and recovery
+are not introduced; existing pins, keys and message state are preserved.
+The [local operator/test runbook](../operations/key-registration-local.md) documents
+the executable candidate. This view is not accepted production architecture or
+evidence that the hosted endpoint has been migrated.
+
 ## Rules for diagrams
 
 - State scope, audience, and abstraction level.
