@@ -97,9 +97,11 @@ mechanism or unrestricted resource use. Technical admission/abuse controls and
 migration from fixed legacy slots require a scoped RFC/ADR before implementation.
 
 The currently deployed operator-grant implementation does NOT satisfy this new
-onboarding requirement. The user asks for advice on preserving versus merging the
-existing work; no commit, merge, live permission change or new implementation is
-authorized merely by recording this product correction.
+onboarding requirement. The owner subsequently approved an archival checkpoint,
+a separate workstream and [issue #16](https://github.com/GOTD-GLOBAL/ParanoID/issues/16).
+[The product brief](self-service-messenger.md) mirrors the requested app/server
+flow and its acceptance criteria. Preservation and issue creation do not implement
+self-service registration, authorize a merge or change live admission policy.
 
 ## Acceptance criteria backlog
 

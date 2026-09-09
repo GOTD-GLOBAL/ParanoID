@@ -20,6 +20,8 @@ This is the entry point and navigation contract for ParanoID documentation.
 - [Vision](product/vision.md): intended users, value, and product boundaries.
 - [Requirements](product/requirements.md): traceable product requirements and
   open acceptance criteria.
+- [Self-service messenger target](product/self-service-messenger.md): application/server
+  acceptance scope for issue #16, not a completed implementation.
 - [Glossary](product/glossary.md): canonical project vocabulary.
 
 ## Architecture and decisions

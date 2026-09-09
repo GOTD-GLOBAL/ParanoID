@@ -8,6 +8,11 @@ last_reviewed: 2026-09-09
 
 ## Current product priority
 
+The active workstream is [issue #16](https://github.com/GOTD-GLOBAL/ParanoID/issues/16)
+and its [English product brief](../product/self-service-messenger.md). The
+`feat/self-service-registration` branch starts from the preserved archive; no
+self-service runtime change has been implemented or deployed by this setup task.
+
 The owner rejected operator-dependent onboarding and approved preserving the
 current implementation in an [archival checkpoint](operator-approval-checkpoint.md),
 without merging it wholesale into main. The next deliverable is the self-service
