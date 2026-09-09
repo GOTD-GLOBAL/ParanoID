@@ -17,6 +17,19 @@ public contract is declared.
   records actual offline checks and missing expiry/ACL packet gates. No live
   server, firewall, DNS, phone or public listener changes were performed.
 
+### Voice implementation checkpoint — 2026-09-09
+
+- Added native authenticated 1:1 call controls on the retained Olm channel,
+  Android answer/reject/cancel/mute/routing lifecycle, microphone foreground
+  service and pinned WebRTC/Opus integration. Calls retain core3/sealed4 identity,
+  history and TLS trust. Fresh design closure and native/JNI/controller checks
+  pass, including actual v8 text/receipt continuation and 3700 encrypted controls
+  without exhausting the text replay ledger. Real Android/aiortc direct and local
+  TURN relay audio pass decoded-tone, mute/unmute and teardown checks. [Exact
+  evidence and remaining gates](docs/operations/voice-calls-local.md) record 14 app acceptance steps passing, with final inset UI
+  and signed voice APK checks passing; independent final review remains pending. No new live listener,
+  server change, physical-phone test or production quality claim is included.
+
 ### Realtime rollout — 2026-09-09
 
 - Updated the existing isolated private-alpha service from release

@@ -1,0 +1,6 @@
+{
+  "reason": "Actual UI screenshot found call Dialog system-bar inset gap; stop obsolete candidate before correcting UI. Native gate changed to release profile matching shipped JNI, supported release tests already PASS.",
+  "owned_test_pid": 540784,
+  "candidate_valid": false,
+  "not_a_new_test_assertion_failure": true
+}

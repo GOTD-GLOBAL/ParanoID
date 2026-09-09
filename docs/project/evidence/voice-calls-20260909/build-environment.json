@@ -1,0 +1,69 @@
+{
+  "rustc": {
+    "command": [
+      "rustc",
+      "--version",
+      "--verbose"
+    ],
+    "exit": 0,
+    "version": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6"
+  },
+  "cargo": {
+    "command": [
+      "cargo",
+      "--version"
+    ],
+    "exit": 0,
+    "version": "cargo 1.97.1 (c980f4866 2026-06-30)"
+  },
+  "javac": {
+    "command": [
+      "javac",
+      "-version"
+    ],
+    "exit": 0,
+    "version": "javac 21.0.12"
+  },
+  "java": {
+    "command": [
+      "java",
+      "-version"
+    ],
+    "exit": 0,
+    "version": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-24.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-24.04-Ubuntu, mixed mode, sharing)"
+  },
+  "clang": {
+    "command": [
+      "/home/codex/.local/share/paranoid-android-sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android26-clang",
+      "--version"
+    ],
+    "exit": 0,
+    "version": "Android (13624864, +pgo, +bolt, +lto, +mlgo, based on r530567e) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project 97a699bf4812a18fb657c2779f5296a4ab2694d2)\nTarget: aarch64-unknown-linux-android26\nThread model: posix\nInstalledDir: /home/codex/.local/share/paranoid-android-sdk/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin"
+  },
+  "aapt": {
+    "command": [
+      "/home/codex/.local/share/paranoid-android-sdk/build-tools/35.0.0/aapt",
+      "version"
+    ],
+    "exit": 0,
+    "version": "Android Asset Packaging Tool, v0.2-11948202"
+  },
+  "d8": {
+    "command": [
+      "/home/codex/.local/share/paranoid-android-sdk/build-tools/35.0.0/d8",
+      "--version"
+    ],
+    "exit": 0,
+    "version": "D8 8.6.2-dev (build abaab469b5ebd4dd2bb91ba0ed6f45277faae4ca from go/r8bot (luci-r8-custom-ci-archive-0-77gl))"
+  },
+  "apksigner": {
+    "command": [
+      "/home/codex/.local/share/paranoid-android-sdk/build-tools/35.0.0/apksigner",
+      "version"
+    ],
+    "exit": 0,
+    "version": "0.9"
+  },
+  "android_platform_sha256": "4566663c3876e022b4fa4ced8c8697c4ab1688267f090114fd92d027b32e619b",
+  "scope": "Actual local APK pipeline environment; CI separately pins Rust1.98.1. No toolchain requirement was changed."
+}

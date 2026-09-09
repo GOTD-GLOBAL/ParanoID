@@ -187,6 +187,11 @@ authority, in-place v7 continuity, latency/UI and safe-deployment gates.
 
 ## Acceptance criteria backlog
 
+The [post-PR18 voice scope](voice-calls.md) adds REQ-CALL-002/003/004/005 with
+real audio, immutable E2EE signaling, explicit consent/lifecycle and bounded
+network/resource acceptance. It is a local implementation task, not a claim of
+implemented calls, approved public TURN or permanent architecture acceptance.
+
 Each requirement must gain measurable acceptance criteria before implementation.
 The first pass must define at least:
 

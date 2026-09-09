@@ -8,7 +8,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Two network lanes; all native state and commits stay on the supplied owner. */
 public final class RealtimeLoop implements AutoCloseable {
-    public interface Listener {void changed(boolean connected,String status);}
+    public interface Listener {
+        void changed(boolean connected,String status);
+        default void authorizationLost(){}
+    }
     private final ExecutorService owner;
     private final SelfServiceClient client;
     private final Listener listener;
@@ -53,7 +56,7 @@ public final class RealtimeLoop implements AutoCloseable {
             guard(run);
             if(client.broken())throw new IOException("local state frozen");
             try{return task.call();}
-            catch(Exception failure){if(client.broken()){enabled=false;listener.changed(false,"Ошибка хранения. Данные сохранены; подключение остановлено.");}throw failure;}
+            catch(Exception failure){if(client.broken()){enabled=false;listener.authorizationLost();listener.changed(false,"Ошибка хранения. Данные сохранены; подключение остановлено.");}throw failure;}
         });
         try{return result.get();}
         catch(ExecutionException failure){Throwable cause=failure.getCause();if(cause instanceof Exception)throw (Exception)cause;throw new IOException("state operation failed");}
@@ -61,6 +64,10 @@ public final class RealtimeLoop implements AutoCloseable {
     private void publish(long run,boolean connected,String message) {
         if(!current(run))return;
         owner.execute(()->{if(current(run))listener.changed(connected,message);});
+    }
+    private void authorityFailure(long run,Exception failure){
+        if(failure instanceof SyncCycle.Rejected&&((SyncCycle.Rejected)failure).status==401)
+            owner.execute(()->{if(current(run))listener.authorizationLost();});
     }
     private void pause(long run,long millis)throws InterruptedException {
         long end=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(millis);
@@ -145,6 +152,7 @@ public final class RealtimeLoop implements AutoCloseable {
             catch(InterruptedException interrupted){if(closed)return;}
             catch(Exception failure) {
                 if(!current(run))continue;
+                authorityFailure(run,failure);
                 publish(run,false,errorMessage(failure));
                 try{pause(run,backoff(++failures));kick();}catch(InterruptedException ignored){}
             }
@@ -152,6 +160,7 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     private void receiveLoop() {
         int failures=0;
+        long observedRun=-1;
         while(!closed) {
             long run=0;
             try {
@@ -159,7 +168,9 @@ public final class RealtimeLoop implements AutoCloseable {
                 long after=state(run,client::receiveCursor);JSONObject page;boolean polling=context==null;
                 if(context==null)page=proof(run,"message","GET","/v2/messages?after="+after+"&limit=20","");
                 else {
-                    try{page=sessionCall(run,context,"events",null);}
+                    // A resumed empty inbox must confirm actual authenticated
+                    // readiness before waiting through a full long-poll timeout.
+                    try{page=sessionCall(run,context,observedRun==run?"events":"messages",null);}
                     catch(SyncCycle.Rejected busy){if(busy.status!=429||!busy.code.equals("waiter_busy"))throw busy;page=sessionCall(run,context,"messages",null);polling=true;}
                 }
                 JSONArray messages=page.getJSONArray("messages");
@@ -175,12 +186,14 @@ public final class RealtimeLoop implements AutoCloseable {
                     if(messages.length()==0)listener.changed(true,"Подключено");
                     return null;
                 });
+                observedRun=run;
                 kick();failures=0;
                 if(polling&&messages.length()<20)pause(run,3000);
             } catch(Idle idle){try{pause(run,500);}catch(InterruptedException ignored){}}
             catch(InterruptedException interrupted){if(closed)return;}
             catch(Exception failure) {
                 if(!current(run))continue;
+                authorityFailure(run,failure);
                 publish(run,false,errorMessage(failure));
                 try{pause(run,backoff(++failures));}catch(InterruptedException ignored){}
             }

@@ -74,12 +74,12 @@ jobs:
             name="$(basename "$source" .rs)"
             if [[ "$name" != self_service ]]; then tests+=(--test "$name"); fi
           done
-          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --lib --bins "${tests[@]}"
+          cargo +1.98.1 test --locked --release --manifest-path clients/core/Cargo.toml --lib --bins "${tests[@]}"
           # Supported tests in the mixed historical target still gate. The exact
           # 14 archived failures run WITHOUT these exclusions in the legacy job.
           legacy=()
           while IFS= read -r name; do legacy+=(--skip "$name"); done < scripts/ci-legacy-client-tests.txt
-          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --test self_service -- --exact "${legacy[@]}"
+          cargo +1.98.1 test --locked --release --manifest-path clients/core/Cargo.toml --test self_service -- --exact "${legacy[@]}"
           cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --doc
           cargo +1.98.1 build --locked --manifest-path clients/core/Cargo.toml
       - name: JVM JNI and snapshot codec
@@ -92,6 +92,12 @@ jobs:
           java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
       - name: Real local pinned-TLS handshakes
         run: python3 scripts/check-pinned-tls.py
+      - name: Voice consent lifecycle and durable JNI callback boundary
+        run: |
+          python3 clients/android/dependencies.py
+          python3 clients/android/test_call_controller.py
+          javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy}.java clients/android/test/VoiceCommitSmoke.java
+          java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
   legacy-client-history:
     name: Legacy client history (informational, failures retained)
     runs-on: ubuntu-24.04

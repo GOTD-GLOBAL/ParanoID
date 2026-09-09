@@ -15,6 +15,7 @@ mod clean_service;
 mod contact;
 mod contact_v2;
 mod intro_v2;
+mod voice_v1;
 // Retain the historical schema2/intro-v1 experiment as source evidence. Its
 // messaging dispatcher is deliberately unreachable from the clean product.
 #[allow(dead_code)]

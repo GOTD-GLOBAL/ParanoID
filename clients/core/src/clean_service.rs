@@ -1,6 +1,7 @@
 //! Clean-install schema 3. One Account, immutable signed channels, whole-State transactions.
 use super::contact_v2::ContactV2;
 use super::intro_v2::{canonical_id, channel, frame, Introduction, PROFILE};
+use super::voice_v1::CallV1;
 use super::*;
 use paranoid_key_protocol::digest;
 
@@ -79,6 +80,7 @@ struct ReceiptTarget {
 enum Body {
     Text(String),
     Receipt(ReceiptTarget),
+    Call(Box<CallV1>),
 }
 // Explicit fields plus typed body: unknown/duplicate fields remain rejected by serde.
 #[derive(Serialize, Deserialize)]
@@ -97,6 +99,10 @@ impl PlainV1 {
     fn into_body(self) -> Result<Body> {
         match (self.kind.as_str(), self.body) {
             ("text", body @ Body::Text(_)) | ("receipt", body @ Body::Receipt(_)) => Ok(body),
+            ("call", Body::Call(body)) => {
+                body.validate()?;
+                Ok(Body::Call(body))
+            }
             _ => Err("unsupported_message"),
         }
     }
@@ -132,6 +138,10 @@ enum Operation {
         account: String,
         text: String,
     },
+    SendCallV1 {
+        account: String,
+        body: Box<CallV1>,
+    },
     ReceiveV2 {
         message: Incoming,
     },
@@ -143,8 +153,14 @@ enum Operation {
         blocked: bool,
     },
 }
+#[derive(Serialize)]
+struct CallEvent {
+    account: String,
+    channel: String,
+    body: Box<CallV1>,
+}
 enum Acceptance {
-    Accepted,
+    Accepted(Option<CallEvent>),
     ExactDuplicate,
     Rejected(&'static str),
 }
@@ -313,7 +329,12 @@ fn reply(s: State, acceptance: Option<Acceptance>) -> Result<String> {
         "contact":contact,"contact_fingerprint":contact.as_ref().map(ContactV2::fingerprint),"enrollment":s.enrollment,
         "outbox":outbox,"dialogs":dialogs,"cursor":s.cursor,"rejected_count":s.rejected_count,"rejected_events":s.rejected_events});
     match acceptance {
-        Some(Acceptance::Accepted) => result["acceptance"] = json!("accepted"),
+        Some(Acceptance::Accepted(event)) => {
+            result["acceptance"] = json!("accepted");
+            if let Some(event) = event {
+                result["call_event"] = json!(event);
+            }
+        }
         Some(Acceptance::ExactDuplicate) => result["acceptance"] = json!("exact_duplicate"),
         Some(Acceptance::Rejected(reason)) => {
             result["acceptance"] = json!("rejected");
@@ -372,6 +393,11 @@ fn enqueue(s: &mut State, id: &str, body: Body) -> Result<String> {
     if c.outbox.len() >= 400 {
         return Err("outbox_full");
     }
+    // Bound stale durable controls without reserving schema fields or deleting
+    // ciphertext. Ordinary text retains its independent 400-envelope allowance.
+    if matches!(body, Body::Call(_)) && c.outbox.len() >= 16 {
+        return Err("call_outbox_full");
+    }
     if matches!(body, Body::Text(_)) && (c.history.len() >= 200 || c.commitments.len() >= 1000) {
         return Err("local_history_full");
     }
@@ -391,6 +417,7 @@ fn enqueue(s: &mut State, id: &str, body: Body) -> Result<String> {
     let kind = match &body {
         Body::Text(_) => "text",
         Body::Receipt(_) => "receipt",
+        Body::Call(_) => "call",
     };
     let p = PlainV1 {
         v: 1,
@@ -448,6 +475,7 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
     if s.conversations.get(&m.sender).is_some_and(|c| c.blocked) {
         return Err("contact_blocked");
     }
+    let known_peer = s.conversations.contains_key(&m.sender);
     let intro = Introduction::inspect(
         &s.legacy,
         s.fallback_key.as_deref().ok_or("prepare_contact_first")?,
@@ -455,9 +483,6 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
     )?;
     let inner = intro.inner()?;
     add_peer(s, intro.contact, Trust::NetworkUnverified)?;
-    if s.events.values().filter(|e| e.sender == m.sender).count() >= 1000 {
-        return Err("invalid_or_full_inbox");
-    }
     let c = s.conversations.get_mut(&m.sender).ok_or("invalid_state")?;
     let message =
         OlmMessage::from_parts(inner[0] as usize, &inner[1..]).map_err(|_| "invalid_ciphertext")?;
@@ -479,6 +504,14 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
         let OlmMessage::PreKey(prekey) = &message else {
             return Err("decryption_failed");
         };
+        // Reusable fallback keys can reconstruct a consumed session. Keep the
+        // retained ratchet's replay decision authoritative even without an Event
+        // row (call controls have none). Sessions are never evicted.
+        for pickle in &c.sessions {
+            if session(pickle)?.session_id() == prekey.session_id() {
+                return Err("decryption_failed");
+            }
+        }
         let mut a = account(&s.legacy)?;
         let result = a
             .create_inbound_session(
@@ -508,7 +541,14 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
         target_inner_digest: digest(&inner),
     };
     let accepted_channel = p.channel.clone();
-    let receipt_queued = match p.into_body()? {
+    let body = p.into_body()?;
+    if !matches!(body, Body::Call(_))
+        && s.events.values().filter(|e| e.sender == m.sender).count() >= 1000
+    {
+        return Err("invalid_or_full_inbox");
+    }
+    let mut call_event = None;
+    let receipt_queued = match body {
         Body::Text(text) => {
             if text.is_empty() || text.len() > 2048 {
                 return Err("invalid_text");
@@ -542,27 +582,40 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
             entry.delivered = true;
             false
         }
+        Body::Call(body) => {
+            if !known_peer {
+                return Err("unknown_call_peer");
+            }
+            call_event = Some(CallEvent {
+                account: m.sender.clone(),
+                channel: accepted_channel.clone(),
+                body,
+            });
+            false
+        }
     };
     s.conversations
         .get_mut(&m.sender)
         .ok_or("invalid_state")?
         .active = true;
-    s.events.insert(
-        format!("{}:{}", m.sender, m.id),
-        Event {
-            sender: m.sender.clone(),
-            id: m.id.clone(),
-            sequence: m.sequence,
-            channel: accepted_channel,
-            profile: PROFILE.into(),
-            outer_digest,
-            inner_digest: digest(&inner),
-            receipt_queued,
-        },
-    );
+    if call_event.is_none() {
+        s.events.insert(
+            format!("{}:{}", m.sender, m.id),
+            Event {
+                sender: m.sender.clone(),
+                id: m.id.clone(),
+                sequence: m.sequence,
+                channel: accepted_channel,
+                profile: PROFILE.into(),
+                outer_digest,
+                inner_digest: digest(&inner),
+                receipt_queued,
+            },
+        );
+    }
     s.cursor = m.sequence;
     snapshot_size(s)?;
-    Ok(Acceptance::Accepted)
+    Ok(Acceptance::Accepted(call_event))
 }
 fn receive(s: &mut State, m: Incoming) -> Result<Acceptance> {
     if !paranoid_key_protocol::hex32(&m.sender)
@@ -592,9 +645,9 @@ fn receive(s: &mut State, m: Incoming) -> Result<Acceptance> {
     let mut candidate: State = serde_json::from_value(encode(&*s)?).map_err(|_| "invalid_state")?;
     let result = outer.and_then(|bytes| receive_candidate(&mut candidate, &m, digest(&bytes)));
     match result {
-        Ok(Acceptance::Accepted) => {
+        Ok(accepted @ Acceptance::Accepted(_)) => {
             *s = candidate;
-            Ok(Acceptance::Accepted)
+            Ok(accepted)
         }
         Ok(_) => Err("invalid_acceptance"),
         Err(reason) => {
@@ -802,6 +855,13 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
                 return Err("invalid_text");
             }
             enqueue(&mut s, &account, Body::Text(text))?;
+        }
+        Operation::SendCallV1 { account, body } => {
+            if s.enrollment.is_none() {
+                return Err("registration_required");
+            }
+            body.validate()?;
+            enqueue(&mut s, &account, Body::Call(body))?;
         }
         Operation::ReceiveV2 { message } => {
             if s.enrollment.is_none() {

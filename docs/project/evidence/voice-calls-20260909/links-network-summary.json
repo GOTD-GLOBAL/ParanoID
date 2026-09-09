@@ -1,0 +1,12 @@
+{
+  "total": 628,
+  "unique": 185,
+  "successful": 593,
+  "unknown": 0,
+  "unsupported": 0,
+  "timeouts": 0,
+  "excludes": 35,
+  "errors": 0,
+  "boundary": "Public/relative link run checkpoint; private GitHub URLs use exact authenticated-owner-verified exclusions, no broad GitHub-domain bypass",
+  "raw_result_sha256": "f8c72110c2dbfa2d328c76fae281d30f7cffeb7fd40626921e7cbf50001bcae0"
+}

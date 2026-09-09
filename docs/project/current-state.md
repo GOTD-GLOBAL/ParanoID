@@ -28,6 +28,46 @@ expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection
 scope and rollback; no public TURN/firewall/DNS or existing-server changes were
 authorized or performed. RFC-0018/ADR-0012 remain proposed.
 
+## Voice implementation after verified PR18 merge
+
+GitHub independently reports PR18 MERGED at `2026-09-09T22:01:42Z`, merge
+commit `366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The clean feature worktree
+`feat/voice-calls-20260909` starts from that exact commit. The owner's
+[voice scope](../product/voice-calls.md) now authorizes local actual 1:1 voice
+implementation, real tests, retained-signer APK and a GitHub PR for issue19.
+[RFC-0017](../rfcs/0017-voice-calls.md) and [ADR-0011](../decisions/0011-voice-calls.md)
+remain proposed. Fresh independent design review and exact-doc closure succeeded
+before runtime implementation. Strict encrypted controls, post-commit dispatch,
+the volatile consent/lifecycle controller, Android call UI/microphone service
+and pinned WebRTC/Opus adapter are implemented. The [durable evidence](evidence/voice-calls-20260909/README.md)
+records 62 supported native tests including 14 voice tests, actual old/current
+Java/JNI compatibility and controller/adapter checks passing. Twenty simulated
+maximum calls exchange 3700 real Olm controls without consuming the text Event
+ledger; this is signaling evidence, not decoded audio.
+
+Real Android M150/aiortc direct and isolated local TURN relay media pass with
+decoded synthetic tones in both directions, mute/unmute and complete capture/route
+cleanup. Exact captured SDP also passes real native/Olm validation and binding
+substitution rejection. These are separate media and encrypted-control fixtures;
+the owned Android v8→v9 in-place update also retains identity/contact/history and
+passes new delivered text, microphone denial and incoming-without-capture checks.
+Actual TLS retry/revocation and authenticated resume RED/GREEN pass. Full app
+acceptance passes 14 steps, first microphone grant and deferred SDK mute corrections
+pass, and actual process restart preserves identity/contact/history without media
+resurrection. Final text regression passes 24 warm samples at P50 105.92 ms and
+P95 122.99 ms. The final fixture5 app run repeats all 14 steps and visually
+verifies corrected call-dialog system-bar insets. The retained-signer ARM64
+`org.paranoid.devtext` version9, `0.0.9-voice`, is now built and verified:
+SHA256 `4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f`,
+15,712,851 bytes. The [artifact/source record](evidence/voice-calls-20260909/signed-apk-artifact.json)
+retains the frozen uncommitted feature-source manifest; post-build documentation
+updates leave packaged code unchanged. Fresh independent exact-source final
+Fable review remains required before candidate handoff.
+Working v8 text/identity/pins/history remain protected. Live TURN/firewall/DNS
+or existing-server changes need separate concrete reviewed authorization. See
+[the current gates](../operations/voice-calls-local.md). Physical OPPO audio,
+Bluetooth, Doze/force-stop, public relay and production claims remain unverified.
+
 ## Owner phone feedback and PR 18 merge direction
 
 After receiving v8, Sergey reports: "Работает отлично. Текст летает туда сюда".

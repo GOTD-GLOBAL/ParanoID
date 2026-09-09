@@ -6,6 +6,11 @@ last_reviewed: 2026-09-08
 
 # Protocol documentation
 
+The [voice-v1 proposal](voice-v1.md) defines the implemented retained-channel
+E2EE call controls and media fingerprint/ICE binding. Its independent design
+closure and native/JNI tests are recorded; actual media and final-source review
+remain separate gates. It adds no server route or accepted production protocol.
+
 No normative ParanoID protocol has been accepted. The draft
 [single-server acceptance matrix](server-v0-acceptance.md) maps the proposed
 text/history/reconnect behavior to future tests; it is not a wire specification.

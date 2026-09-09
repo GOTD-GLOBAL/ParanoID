@@ -1,0 +1,16 @@
+{
+  "boundary": "Actual Android libwebrtc, callback-immediate engine replacement, synthetic PCM",
+  "original_audio_mode": 0,
+  "original_speaker": false,
+  "mode_at_immediate_redial": 0,
+  "initial_mute_capture_starts": 1,
+  "initial_mute_host_frames": 95,
+  "initial_mute_host_max_rms": 0.5439056290693574,
+  "reverse_audio_while_initially_muted": true,
+  "unmuted_host_rms_median": 1028.1571960511033,
+  "capture_starts": 2,
+  "capture_stops": 2,
+  "restored_audio_mode": 0,
+  "restored_speaker": false,
+  "pass": true
+}

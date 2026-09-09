@@ -1,0 +1,30 @@
+{
+  "base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "old_jni_sha256": "e0b02ac5d90abebdec2d25fcc5d5067fe0dba0a9e313a8bddec354ccf1aebdcc",
+  "new_jni_sha256": "d740c48ff02501dc439edc4a409fadbd3d0de2d7814125357c2b8af1fc51c221",
+  "java_source_sha256": {
+    "old:clients/android/src/org/paranoid/text/CoreBridge.java": "a666aacc05c7351f385191c5ca4c1e5bc0372116b9433c11a3cb0fb366362d15",
+    "old:clients/android/src/org/paranoid/text/SelfServiceClient.java": "cbc71ac05489fcec974893615b841e7d5fbae7ce0cc2b1689099b1a7e2e549f9",
+    "old:clients/android/src/org/paranoid/text/SnapshotCodec.java": "7965c9af9748320315191088852f202825014654e9d1861f68c1799c5943e049",
+    "old:clients/android/src/org/paranoid/text/KeyClient.java": "933948c3c1062c969df8a727d3f207cb26b52d97fd9c7c3981e07780cbd2cd77",
+    "old:clients/android/src/org/paranoid/text/KeyTransport.java": "7db986a83ae332d9194679dca4fcbebc4008a22807c0f03b4a85415be80fcf39",
+    "old:clients/android/src/org/paranoid/text/PinnedTls.java": "3e60eeeb8f0ac9037dd34b8ebc6f4471c587ebaedede3dc6e834448ebae9bf0b",
+    "old:clients/android/src/org/paranoid/text/SyncCycle.java": "c9baf2de6ccf1978ac4a98f96240ec5ce69aec8c41e3e2230a15955bf45466e6",
+    "new:clients/android/src/org/paranoid/text/CoreBridge.java": "a666aacc05c7351f385191c5ca4c1e5bc0372116b9433c11a3cb0fb366362d15",
+    "new:clients/android/src/org/paranoid/text/SelfServiceClient.java": "18eb746f7c3f65a624c180dcf4677ec414be52111278ab62922a8e741726d936",
+    "new:clients/android/src/org/paranoid/text/SnapshotCodec.java": "7965c9af9748320315191088852f202825014654e9d1861f68c1799c5943e049",
+    "new:clients/android/src/org/paranoid/text/KeyClient.java": "933948c3c1062c969df8a727d3f207cb26b52d97fd9c7c3981e07780cbd2cd77",
+    "new:clients/android/src/org/paranoid/text/KeyTransport.java": "7db986a83ae332d9194679dca4fcbebc4008a22807c0f03b4a85415be80fcf39",
+    "new:clients/android/src/org/paranoid/text/PinnedTls.java": "3e60eeeb8f0ac9037dd34b8ebc6f4471c587ebaedede3dc6e834448ebae9bf0b",
+    "new:clients/android/src/org/paranoid/text/SyncCycle.java": "c9baf2de6ccf1978ac4a98f96240ec5ce69aec8c41e3e2230a15955bf45466e6"
+  },
+  "checks": [
+    "Actual v8 core3/sealed4 opens unchanged with new JNI/facade",
+    "New pending call snapshot reopens in actual v8; v8 rejects call with entire crypto rollback",
+    "Actual old/new text and authenticated delivery receipts work in both directions after ratchet gap",
+    "New accepted-call state reopens unchanged in old core3/sealed4; no call event resumes"
+  ],
+  "result": "PASS",
+  "physical_phone": "NOT RUN",
+  "network": "NOT RUN"
+}

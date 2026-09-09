@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="org.paranoid.devtext"',manifest)
-        self.assertIn('android:versionCode="8"',manifest)
-        self.assertIn('android:versionName="0.0.8-realtime"',manifest)
+        self.assertIn('android:versionCode="9"',manifest)
+        self.assertIn('android:versionName="0.0.9-voice"',manifest)
 
     def test_self_service_ui_is_contacts_dialogs_and_chat_not_operator_json(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

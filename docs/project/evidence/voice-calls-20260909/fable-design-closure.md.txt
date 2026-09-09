@@ -1,0 +1,43 @@
+All evidence is in hand. Here is the closure report.
+
+---
+
+# Final design-closure report — ParanoID voice v1 (independent Fable review, closure pass)
+
+**Scope of this pass:** read-only assessment of the six canonical docs at `366ceed…` in `voice-calls-20260909`, the closure amendments, the actual `clean_service.rs` receive path, and the installed vodozemac 0.10.0 sources. No code, tests, builds, or network mutation were run; the new RED tests in `clients/core/tests/voice_calls.rs` were read, not executed.
+
+## Verdict: **CONFIRMED — native implementation gate is OPEN on the corrected contract**
+
+The corrected contract (voice-v1.md + RFC-0017 + ADR-0011 + threats + product + operations docs) closes all eight original findings at the design level and correctly incorporates the three later corrections. The retained final-source review, artifact/license freeze, and actual-media evidence gates remain separate and are still required before any candidate/release claim. ADR-0011 remains *proposed*; nothing here is permanent acceptance or a human audit.
+
+## The prekey replay hole — verified concretely in vodozemac 0.10.0 source
+
+The hole is real in the current code once call controls stop writing Event rows, and the prescribed fix is exactly right:
+
+- **Replay reaches the reconstruction branch.** With no Event row for a call control, a replayed exact ciphertext with the same envelope ID and a forged higher server sequence passes both the exact-duplicate lookup (`clean_service.rs:578`) and the `sequence <= cursor` guard (`:588`), reaching `receive_candidate`'s decrypt loop.
+- **Retained sessions correctly refuse the replay** — used message keys are deleted: in-order decryption advances the chain (`receiver_chain.rs:191` routes old indices to the skipped-key store only), and consumed skipped keys are removed after use (`receiver_chain.rs:240`), so replay fails with `MissingMessageKey` (`:195`).
+- **But the Account happily rebuilds the consumed session.** `create_inbound_session` resolves the one-time key via `find_one_time_key`, which falls through to fallback keys (`account/mod.rs:221-225`), and its cleanup `remove_one_time_key_helper` removes **only** from `one_time_keys`, never fallback secrets (`:242-247`, called at `:324`). With this project's reusable fallback key, the same PreKeyMessage reconstructs an identical session and yields the identical plaintext, unboundedly — accepting the replayed control and burning one of the 8 session slots per replay.
+- **The session-ID guard is sound and precise.** `PreKeyMessage::session_id()` (`pre_key.rs:80`) and `Session::session_id()` (`session/mod.rs:239`) both exist and both compute SHA-256(identity_key ‖ base_key ‖ one_time_key) (`session_keys.rs:46-56`) — fully deterministic from the ciphertext, so a replayed prekey matches its retained session's ID exactly, and a genuine new handshake (fresh base key) never collides. Rejecting after all-sessions-decrypt-failure when the prekey's session ID matches any retained session closes the hole with no schema change. The test `retained_session_id_identifies_consumed_reusable_fallback_prekey` (`voice_calls.rs:570-606`) pins precisely this primitive against the real library.
+
+**Does the fix fully close no-Event replay?** Yes, across the asked cases: repeated same prekey (session-ID match → reject, no session created); normal frames (message key consumed → `decryption_failed`); changed envelope ID (inner `p.id != m.id` → `context_mismatch`, candidate state discarded); restart (sessions and cursor are persisted, and `voice_calls.rs:546-567` tests replay after reopen); mixed text (text keeps its durable Event/exact-duplicate ledger unchanged). Two bounded residuals, neither blocking: (1) a prekey whose session was **never retained** (original rejected, candidate discarded) is not caught by the session-ID check, but re-acceptance requires a forged higher sequence from the relay **and** passes only within the 45-second freshness window, and grants no media authority without the fresh volatile nonce handshake plus explicit answer — acceptable, worth one test; (2) rejects advance `cursor` to the forged sequence (`:618`), so a malicious relay can still fail-clear future text — pre-existing v8 behavior, not consent-affecting, correctly outside scope.
+
+## Finding-by-finding closure
+
+| Finding | Status at design level |
+|---|---|
+| F-01 heartbeat ledger exhaustion | **Closed.** Transient acceptance for all accepted controls, no Event rows/receipts, no schema field (voice-v1.md:25-32, 81-87). RED tests exist for ≥20 max-length calls preserving text budgets and for the replay guard. |
+| Prekey replay (new) | **Closed as specified** — verified against real vodozemac source above; RED→GREEN required. |
+| F-02 outbox pressure | **Closed as amended.** The <16 per-peer pending admission + realtime-connection gate + one-in-flight heartbeat + acceptance-based completion (voice-v1.md:112-121) is **sufficient**: text retains the full 400-slot path, call admission fails conservatively toward call termination, and stale immutable frames are bounded at ≤15 and dropped by the receiver on expiry. I accept the narrowed wording — "no stale control **acted on** beyond TTL" — since deleting durable ciphertext would be worse. No further fix needed. |
+| Heartbeat 75 s (new) | **Closed.** Docs now state the honest worst case: immediate local stop on own 401/storage freeze; remote detection ≤45 s TTL delay + 30 s silence = 75 s plus stated 5 s clock tolerance (voice-v1.md:100-106); no new challenge/ack wire — correct, the truthful bound is adequate. |
+| F-03 transient dispatch | **Closed.** `call_event={account,body}` post-sealed-commit only, absent from state/view/reopen/duplicate/rejected; tests assert `call_event` present while `events` stays empty (`voice_calls.rs:613-617`). Naming-only delta from my sketch. |
+| F-04 envelope limit | **Closed.** SDP ≤6144 bytes plus explicit 16384-byte final frame guard (voice-v1.md:52). |
+| F-05 body ambiguity | **Closed.** The canonical **flat** strict body (v/kind/call_id/nonces/seq/times/sdp/fingerprint/ice/offer_digest/reason) is disjoint from `ReceiptTarget`'s `target_*` keys under `deny_unknown_fields`; my nested `{call:{…}}` sketch is superseded — I confirm the flat form, including 16 candidates × 512 bytes (stricter than my 32), redundant fingerprint/ICE fields required to equal the single SDP values with no alternate authority, the pre-ready empty-context `end` rules, and both-end-busy crossing calls (stricter and better than my F-08 tie-break). The **actual v8-binary ratchet-gap fixture stays a hard test gate.** |
+| F-06 provenance | **Closed at design level** with the corrected characterization: `webrtc.tar.gz` is a build-**output** archive (prefix-stripped AAR + VERSIONS/NOTICE), not a source bundle and not reproducible-build proof; exact source pinned separately at `73cb8180f7258ee292878d6edd05177f41883962`, build-scripts commit `7b6390fb…`; Maven-vs-GitHub per-ABI native-byte comparison and d8-on-Maven recorded as done by discovery (not re-executed here). Classes-API/restamp freeze and license/NOTICE generation remain **release** gates. |
+| F-07 NAT reality | **Closed.** Honest direct-ICE limitation and isolated-coturn-only stance in RFC/protocol docs. |
+| F-08 crossing calls | **Closed.** Both end busy, no automatic answer or tie-break — adopted stricter than my recommendation. |
+
+## Remaining gates (unchanged, all still required)
+
+1. **Implementation gate (now open):** TDD native/Rust code turning the existing RED suite GREEN — notably the higher-sequence prekey replay test, ≥20-call ledger budget, post-commit-only `call_event`, disconnected-enqueue/one-heartbeat bound, and the real v8 ratchet-gap fixture. Suggested addition: one test for the never-retained-session replay residual noted above.
+2. **Separate retained gates, not satisfied by this review:** actual media evidence (real ICE/DTLS/SRTP/Opus packets and decoded synthetic-tone energy — never mocked), Android UI/permission/lifecycle tests, AAR/source/license freeze and NOTICE generation, signed retained-cert APK correspondence, independent exact-source **final** Fable review with finding closure, sanitized PR referencing issue #19.
+3. **NOT RUN / out of scope forever for this pass:** all tests and builds, physical OPPO acoustics/Bluetooth/Doze, any TURN deployment (exact reviewed request only), PR merge, ADR-0011 permanent acceptance, and any human audit.

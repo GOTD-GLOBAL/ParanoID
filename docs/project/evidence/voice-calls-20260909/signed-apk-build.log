@@ -1,0 +1,217 @@
+Verified SHA256: zxing-core-3.5.3.jar
+Verified SHA256: json-20240303.jar
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+CallControllerSmoke PASS: consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 17 tests
+test old_snapshots_refuse_without_reset_and_pristine_registration_identity_reopens ... ok
+test stripped_v1_is_also_rejected_by_the_unchanged_historical_v0_decoder ... ok
+test duplicate_nested_receipt_fields_are_not_collapsed_before_validation ... ok
+test genuine_changed_same_root_fallback_and_stale_signature_are_rejected ... ok
+test server_acceptance_preserves_local_pending_channel_and_exact_commitment ... ok
+test exact_wire_limit_and_equivalent_json_reencoding_have_distinct_replay_commitments ... ok
+test replay_ledger_binds_sender_uuid_sequence_exact_outer_and_survives_reload ... ok
+test independently_derived_channel_crossing_texts_and_receipts_share_two_sessions ... ok
+test unknown_receipt_and_every_wrong_commitment_target_roll_back ... ok
+test wrong_signatures_stripping_and_recursive_outer_fields_never_allocate_peer ... ok
+test zero_contact_plaintext_reply_receipts_and_clean_reopen ... ok
+test eight_real_inbound_sessions_are_retained_and_ninth_is_rejected_transactionally ... ok
+test signed_wrong_inner_context_and_strict_json_roll_back_entire_state ... ok
+test post_decrypt_history_and_receipt_outbox_capacity_discard_account_and_ratchets ... ok
+test valid_outer_signature_with_corrupt_olm_and_full_inbox_never_commit_crypto_state ... ok
+test whole_snapshot_limit_after_unknown_decryption_and_receipt_construction_rolls_back ... ok
+test budgets_bound_unverified_and_total_peers_without_eviction_and_block_preserves_keys ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.76s
+
+
+running 4 tests
+test session_open_is_exact_active_device_challenge_only ... ok
+test session_signs_exact_native_cursor_context_with_unique_nonces_without_state_mutation ... ok
+test session_rejects_cross_identity_trust_invalid_expiry_unknown_routes_and_extra_fields ... ok
+test session_send_only_signs_retained_immutable_outbox_and_rejects_accepted_ids ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 14 tests
+test early_end_has_explicit_empty_context_without_promoting_it_to_media_authority ... ok
+test call_control_preserves_v8_snapshot_shape_and_exact_retry_bytes ... ok
+test retained_session_id_identifies_consumed_reusable_fallback_prekey ... ok
+test prior_authenticated_text_contact_can_receive_call_without_identity_trust_upgrade ... ok
+test exact_control_replay_and_reopen_never_emit_another_call_event ... ok
+test unknown_and_blocked_call_controls_cannot_allocate_or_mutate_crypto_state ... ok
+test duplicate_body_keys_are_rejected_without_json_value_normalization ... ok
+test authenticated_call_wrong_inner_or_outer_context_and_ciphertext_tamper_roll_back ... ok
+test higher_sequence_replay_of_consumed_call_prekey_never_recreates_a_fallback_session ... ok
+test sdp_exact_fingerprint_ice_offer_digest_and_audio_only_contract_are_enforced ... ok
+test call_admission_preserves_normal_text_outbox_capacity_and_numeric_bounds ... ok
+test flat_call_shape_limits_and_kind_sequences_are_strict_on_send_and_receive ... ok
+test established_call_controls_are_encrypted_signed_transient_and_never_messages_or_receipts ... ok
+test twenty_maximum_duration_calls_preserve_text_replay_history_and_receipt_budgets ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.07s
+
+JNI string boundary: PASS (Linux JVM, not Android device)
+Snapshot codec: PASS (JVM crypto, not Android Keystore)
+Sync cycle: PASS (real HTTP409/507 do not block GET; exact retry bytes; local failures stop)
+PASS REG-01: real JNI creation, durable-before-use, duplicate Create ID, reopen, storage failure freezes; no network
+PASS clean actual JVM/JNI: durable wrapper4/core3, zero contacts, stable ID/retry/reopen, unsupported older snapshots preserve bytes, failed storage freezes
+PASS actual JNI snapshot boundary: populated historical native0 refused unchanged; pristine interrupted creation reopens and upgrades same ID
+PASS actual JNI/Olm voice adapter: commit-before-event, duplicate/reopen, unknown/block, no text/receipt, failed-save freeze
+PASS Android UI policy: network-unverified immediate reply, trust text, blocked/offline/frozen/inflight disabled
+PASS: ZXing QR encode/decode UTF-8 roundtrip, input/frame bounds; camera/OPPO NOT RUN
+PASS 200 deterministic diverse public grant QR render/decode roundtrips
+PASS: receipt semantics, 2048-byte Unicode limit, readable unknown sender, in-flight per-chat draft safety
+PASS real pinned TLS reused; blocked receive independent of send; redirects refused
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+UpdateSmoke valid manifest PASS
+UpdatePolicySmoke PASS; negative cases=41
+UpdateTrustSmoke saved nondefault trust/no state writes PASS
+Non-origin/cleartext/credential URLs: REJECT PASS; explicit unusable JVM proxy ignored
+TLS valid/ok: PASS
+TLS valid/chunked: PASS
+TLS valid/absent: PASS
+TLS valid/redirect: REJECT PASS
+TLS valid/apk-redirect: REJECT PASS
+TLS valid/metadata-big: REJECT PASS
+TLS valid/metadata-invalid: REJECT PASS
+TLS valid/metadata-utf8: REJECT PASS
+TLS valid/bad-hash: REJECT PASS
+TLS valid/size-small: REJECT PASS
+TLS valid/size-large: REJECT PASS
+TLS valid/truncated: REJECT PASS
+TLS valid/overflow: REJECT PASS
+TLS valid/encoding: REJECT PASS
+TLS valid/reject-apk: REJECT PASS
+TLS valid/wrong-pin: REJECT PASS
+TLS valid/cookie: REJECT PASS
+TLS expired/ok: REJECT PASS
+TLS san/ok: REJECT PASS
+TLS ca/ok: REJECT PASS
+RFC0013 host fixture PASS (not Android PackageManager/installer/device evidence)
+
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.570s
+
+OK
+    Finished `release` profile [optimized] target(s) in 0.05s
+     Running unittests src/lib.rs (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/core/target/release/deps/paranoid_client_core-e236e53053046573)
+     Running tests/clean_first_contact.rs (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/core/target/release/deps/clean_first_contact-fbd6ff80f70093d5)
+     Running tests/realtime_signing.rs (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/core/target/release/deps/realtime_signing-9057a339a6939fde)
+     Running tests/voice_calls.rs (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/core/target/release/deps/voice_calls-0c56012b65232f84)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.05s
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+   Compiling cfg-if v1.0.4
+   Compiling typenum v1.20.1
+   Compiling subtle v2.6.1
+   Compiling libc v0.2.189
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+   Compiling generic-array v0.14.7
+   Compiling zerocopy v0.8.56
+   Compiling curve25519-dalek v4.1.3
+   Compiling zeroize v1.9.0
+   Compiling memchr v2.8.3
+   Compiling bytes v1.12.1
+   Compiling thiserror v2.0.20
+   Compiling zmij v1.0.23
+   Compiling opaque-debug v0.3.1
+   Compiling signature v2.2.0
+   Compiling getrandom v0.3.4
+   Compiling serde_json v1.0.151
+   Compiling itoa v1.0.18
+   Compiling thiserror v1.0.69
+   Compiling jni-sys v0.3.1
+   Compiling matrix-pickle v0.2.3
+   Compiling jni-sys v0.4.1
+   Compiling base64ct v1.8.3
+   Compiling base64 v0.22.1
+   Compiling log v0.4.34
+   Compiling cesu8 v1.1.0
+   Compiling getrandom v0.2.17
+   Compiling cpufeatures v0.2.17
+   Compiling prost v0.14.4
+   Compiling combine v4.6.8
+   Compiling uuid v1.18.1
+   Compiling rand_core v0.6.4
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling block-padding v0.3.3
+   Compiling digest v0.10.7
+   Compiling universal-hash v0.5.1
+   Compiling aead v0.5.2
+   Compiling inout v0.1.4
+   Compiling poly1305 v0.8.0
+   Compiling cipher v0.4.4
+   Compiling sha2 v0.10.9
+   Compiling hmac v0.12.1
+   Compiling hkdf v0.12.4
+   Compiling chacha20 v0.9.1
+   Compiling cbc v0.1.2
+   Compiling aes v0.8.4
+   Compiling chacha20poly1305 v0.10.1
+   Compiling serde_bytes v0.11.19
+   Compiling ed25519 v2.2.3
+   Compiling arrayvec v0.7.8
+   Compiling x25519-dalek v2.0.1
+   Compiling ed25519-dalek v2.2.0
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.3.1
+   Compiling rand v0.8.8
+   Compiling vodozemac v0.10.0
+   Compiling jni v0.21.1
+   Compiling paranoid-key-protocol v0.0.1 (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/key-protocol)
+   Compiling paranoid-client-core v0.0.1 (/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/core)
+    Finished `release` profile [optimized] target(s) in 11.61s
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.497s
+
+OK
+
+ACTUAL_EXIT=0

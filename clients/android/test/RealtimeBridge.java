@@ -22,13 +22,14 @@ public final class RealtimeBridge {
         volatile Throwable failure;
         volatile boolean connected;
         boolean failCommit;
-        int notifications;
+        int notifications, authorizationFailures, onlineNotifications;
         String lastSaved;
         SecretKeySpec key;
         Peer(String name)throws Exception {
             this.name=name;owner=Executors.newSingleThreadExecutor(r->new Thread(r,"owner-"+name));
             owner.submit(()->{try{open();}catch(Exception e){throw new CompletionException(e);}}).get(10,TimeUnit.SECONDS);
-            loop=new RealtimeLoop(owner,client,(online,status)->{
+            loop=new RealtimeLoop(owner,client,new RealtimeLoop.Listener(){
+              public void changed(boolean online,String status){
                 try {
                     requireOwner();connected=online;if(client.broken()){connected=false;notifications++;return;}JSONObject publicView=client.publicView();long notification=System.nanoTime();
                     if(lastSaved!=null){
@@ -45,8 +46,10 @@ public final class RealtimeBridge {
                             if(!message.getString("author").equals(dialog.getString("own"))&&!seen.has(text))seen.put(text,notification);
                         }
                     }
-                    notifications++;
+                    notifications++;if(online)onlineNotifications++;
                 }catch(Throwable error){failure=error;}
+              }
+              public void authorizationLost(){requireOwner();authorizationFailures++;}
             });
         }
         private void requireOwner(){if(!Thread.currentThread().getName().equals("owner-"+name))throw new AssertionError("state operation or listener escaped owner");}
@@ -91,7 +94,7 @@ public final class RealtimeBridge {
         private JSONObject checkedView()throws Exception {
             requireOwner();if(failure!=null)throw new AssertionError("listener invariant failed",failure);
             if(client.broken())return new JSONObject().put("broken",true).put("notifications",notifications).put("seen",new JSONObject(seen.toString()));
-            return client.publicView().put("seen",new JSONObject(seen.toString())).put("connected",connected).put("notifications",notifications);
+            return client.publicView().put("seen",new JSONObject(seen.toString())).put("connected",connected).put("notifications",notifications).put("authorization_failures",authorizationFailures).put("online_notifications",onlineNotifications);
         }
         JSONObject view()throws Exception{return owner.submit(()->checkedView()).get(3,TimeUnit.SECONDS);}
         void shutdown(){try{loop.close();}catch(Exception ignored){}owner.shutdown();try{if(!owner.awaitTermination(5,TimeUnit.SECONDS))owner.shutdownNow();}catch(InterruptedException e){Thread.currentThread().interrupt();}}

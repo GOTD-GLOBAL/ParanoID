@@ -1,0 +1,11 @@
+Exception in thread "main" org.json.JSONException: JSONObject["reconnecting"] not found.
+	at org.json.JSONObject.get(JSONObject.java:596)
+	at org.json.JSONObject.getBoolean(JSONObject.java:637)
+	at CallControllerSmoke.engineLimitsAndCallbacks(CallControllerSmoke.java:112)
+	at CallControllerSmoke.main(CallControllerSmoke.java:130)
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/android/test_call_controller.py", line 12, in <module>
+    subprocess.run(["java", "-cp", directory + ":" + cp, "CallControllerSmoke"], check=True)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['java', '-cp', '/tmp/paranoid-call-state-w9ad4vb5:/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/android/out/deps/json-20240303.jar', 'CallControllerSmoke']' returned non-zero exit status 1.

@@ -1,0 +1,40 @@
+{
+  "at": "2026-09-09T22:32:27.497139+00:00",
+  "base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "design_gate": "OPEN per verified fresh Fable exact-doc closure",
+  "checks": [
+    {
+      "name": "controller-final-jvm",
+      "exit_code": 0,
+      "command": [
+        "python3",
+        "clients/android/test_call_controller.py"
+      ]
+    },
+    {
+      "name": "controller-final-android",
+      "exit_code": 0,
+      "command": [
+        "javac",
+        "--release",
+        "8",
+        "-Xlint:-options",
+        "-cp",
+        "/home/codex/.local/share/paranoid-android-sdk/platforms/android-35/android.jar",
+        "-d",
+        "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/controller-test-classes",
+        "clients/android/src/org/paranoid/text/CallController.java"
+      ]
+    }
+  ],
+  "files": {
+    "clients/android/src/org/paranoid/text/CallController.java": "97dabcc47271d3a20241143e7a3c07bbd63c21576ce4dab06786de572ebcd27c",
+    "clients/android/test/CallControllerSmoke.java": "355b88c5b477a2202d8a4dde1a423fa56605f85992e54f688fda5a0872679c34",
+    "clients/android/test_call_controller.py": "d1e44915803d80db6236a102e472a70ee2a47115fb2b2f1ea091f57e2a24445e"
+  },
+  "limits": [
+    "Pure JVM lifecycle tests do not establish actual media",
+    "Actual Android javac is compilation, not platform UI execution",
+    "Root owns JNI/transport/UI/service/media integration and final independent review"
+  ]
+}

@@ -12,6 +12,13 @@ public final class SelfServiceClient {
     private final KeyClient.Commit commit;
     private String state="", realm=KeyClient.DEFAULT_REALM, pin=KeyClient.DEFAULT_PIN, legacyToken="";
     private boolean broken=false;
+    public interface CallListener {void received(JSONObject event) throws Exception;}
+    public interface AcceptedListener {void accepted(String id);}
+    private CallListener callListener;
+    private AcceptedListener acceptedListener;
+    /** Invoked on the state owner only after the entire candidate committed. */
+    public void setCallListener(CallListener listener){callListener=listener;}
+    public void setAcceptedListener(AcceptedListener listener){acceptedListener=listener;}
     private long lastProof=0;
     public SelfServiceClient(String saved,KeyClient.Commit commit) throws Exception {
         this.commit=commit;
@@ -67,6 +74,8 @@ public final class SelfServiceClient {
         JSONObject saved=new JSONObject().put("version",4).put("realm",realm).put("tls_pin",pin).put("token",legacyToken).put("state",new JSONObject(next));
         try{commit.save(saved.toString());}catch(Exception error){broken=true;throw new IOException("local commit failed");}
         state=next;
+        if(request.getString("op").equals("receive_v2")&&candidate.optString("acceptance").equals("accepted")&&candidate.has("call_event")&&callListener!=null)
+            callListener.received(candidate.getJSONObject("call_event"));
     }
     public void createIdentity() throws Exception {
         healthy();
@@ -89,6 +98,16 @@ public final class SelfServiceClient {
     public void send(String account,String text) throws Exception {
         if(!active())throw new IOException("registration required");
         apply(new JSONObject().put("op","send_v2").put("account",account).put("text",text));
+    }
+    /** Returns immutable envelope ID; this is durable enqueue, not server acceptance. */
+    public String sendCall(String account,JSONObject body) throws Exception {
+        if(!active())throw new IOException("registration required");
+        java.util.Set<String> before=new java.util.HashSet<>();
+        JSONArray previous=pending();for(int n=0;n<previous.length();n++)before.add(previous.getJSONObject(n).getString("id"));
+        apply(new JSONObject().put("op","send_call_v1").put("account",account).put("body",body));
+        JSONArray next=pending();String id=null;
+        for(int n=0;n<next.length();n++){JSONObject envelope=next.getJSONObject(n);if(!before.contains(envelope.getString("id"))){if(id!=null)throw new IOException("call enqueue invariant");id=envelope.getString("id");}}
+        if(id==null)throw new IOException("call enqueue missing");return id;
     }
     private JSONObject signed(String purpose,String method,String path,String body) throws Exception {
         healthy();JSONObject current=view();
@@ -179,6 +198,7 @@ public final class SelfServiceClient {
         healthy();
         if(!response.getString("id").equals(envelope.getString("id"))||response.getLong("sequence")<1)throw new IOException("invalid acceptance");
         apply(new JSONObject().put("op","accepted_v2").put("id",envelope.getString("id")));
+        if(acceptedListener!=null)acceptedListener.accepted(envelope.getString("id"));
     }
     public void received(JSONObject message)throws Exception {
         apply(new JSONObject().put("op","receive_v2").put("message",message));

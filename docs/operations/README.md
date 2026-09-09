@@ -6,6 +6,12 @@ last_reviewed: 2026-09-09
 
 # Operations documentation
 
+The [voice local record](voice-calls-local.md) tracks the post-PR18 client
+implementation, completed design/native/JNI and actual direct/isolated-relay media
+checks, with final inset UI and signed APK checks passing; final review remains pending. The [bounded relay proposal](voice-turn-request.md)
+records the local proof and missing production credential work. Neither document
+authorizes live TURN/firewall/DNS or existing-server changes.
+
 Operational design is part of the product because simple, safe self-hosting is a
 core requirement.
 

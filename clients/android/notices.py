@@ -23,4 +23,7 @@ for package in sorted(metadata["packages"],key=lambda p:(p["name"],p["version"])
     parts.append(f"\n{package['name']} {package['version']} — {package['license']}\n{package['repository']}")
     for path in files:parts.append(str(path.relative_to(root))+"\n"+path.read_text(errors="replace"))
 parts.append("\nZXing core 3.5.3 — Apache-2.0\nhttps://github.com/zxing/zxing/tree/zxing-3.5.3\n"+Path("licenses/zxing-LICENSE").read_text())
+parts.append("\nWebRTC SDK Android150.7871.01 — WebRTC BSD-3-Clause; upstream patch and dependency notices below\nhttps://github.com/webrtc-sdk/android/tree/v150.7871.01\nhttps://github.com/webrtc-sdk/webrtc/tree/73cb8180f7258ee292878d6edd05177f41883962")
+for path in sorted(Path("licenses/webrtc-150.7871.01").glob("*")):
+    if path.is_file():parts.append(path.name+"\n"+path.read_text())
 Path("out/THIRD_PARTY_NOTICES.txt").write_text("\n".join(parts))
