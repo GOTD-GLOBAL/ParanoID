@@ -45,6 +45,24 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0013: User-triggered Android updates](0013-user-triggered-android-updates.md)
+  (draft): user-requested Update button, pinned APK distribution and mandatory
+  platform confirmation; [draft ADR-0008](../decisions/0008-user-triggered-android-updates.md).
+
+- [RFC-0012: Self-service messenger](0012-self-service-messenger.md) (draft):
+  automatic registration/general direct messaging; draft
+  [ADR-0007](../decisions/0007-self-service-messenger.md),
+  [v2 contract](../protocol/self-service-v2.md) and
+  [threat delta](../security/self-service-v2-threats.md). Server locally tested;
+  application/phone/deployment acceptance and architecture disposition remain open.
+
+- [RFC-0010: Phone-created identity](0010-phone-key-registration.md) (draft):
+  user correction, exact-key alpha admission and history-preserving migration;
+  proposed ADR-0006, locally built/tested registration candidate.
+- [RFC-0011: Key deployment migration](0011-key-deployment-migration.md) (proposed):
+  exact offline schema transition, sticky cutover and history-preserving recovery;
+  local package tested, independent final deployment review pending.
+
 - [RFC-0006: One-server text contract](0006-single-server-text-contract.md)
   (draft): founder delivery/retention requirements, concrete technical
   recommendations and remaining application-disposition gates. Earlier RFC-0004/0005 are
@@ -63,6 +81,14 @@ Follow the human authority and acceptance-evidence rules in the
 - [RFC-0009](0009-isolated-linux-alpha-package.md): native isolated alpha package,
   explicit TLS mode and history-preserving lifecycle; draft ADR-0005.
 
+## First-contact incoming proposal
+
+- [RFC-0014](0014-first-contact-incoming.md) (proposed): owner-selected mandatory
+  signed account-ID intro-v2 channel, immediate unverified incoming plaintext/reply,
+  clean-install local implementation/testing/build scope; proposed ADR-0009.
+  Historical migration/recovery is outside this candidate's gate; old REDs remain
+  reported separately. The former Android-local RFC-0013 is preserved as [RFC-0016](0016-asymmetric-retained-context.md), with a transparent numbering correction.
+
 ## Naming
 
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active
@@ -75,3 +101,8 @@ Create an RFC for every
 or any other change whose reversal would be expensive or compatibility-sensitive.
 
 Use [the RFC template](rfc-template.md).
+
+## Overnight realtime candidate
+
+[RFC-0015: overnight realtime](0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
+No permanent architecture acceptance or physical-phone result is implied.

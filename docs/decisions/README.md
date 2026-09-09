@@ -22,9 +22,29 @@ ADRs preserve why durable choices were made. Numbers are never reused.
 
 ## Draft implementation records
 
+- [ADR-0008](0008-user-triggered-android-updates.md): user-triggered pinned HTTPS
+  Android APK updates with signer continuity and native installer confirmation;
+  RFC-0013 implementation/review pending, not accepted distribution architecture.
+
+- [ADR-0007](0007-self-service-messenger.md): self-service v2 registration and
+  general direct messaging; local server tested, decision/owner disposition and
+  SR-01 documentation re-review pending. RFC-0012 remains draft.
 - [ADR-0004](0004-development-transport.md): initial development transport.
 - [ADR-0005](0005-isolated-linux-alpha-package.md): isolated native alpha package;
   scope authorization exists, technical disposition and independent review pending.
+
+## Proposed identity change
+
+- [ADR-0006](0006-phone-key-registration.md): phone-created identity and bounded
+  exact-key admission; proposed, owner scope/disposition and review pending.
+
+## Proposed clean-install first contact
+
+- [ADR-0009](0009-clean-first-contact.md): mandatory signed account-ID text/receipt
+  channel for fresh private-alpha installs. Local implementation/build is directly
+  authorized; permanent provenance and independent code review remain outstanding.
+  Proposed, not accepted. Historical ADR-0007/0008 allocations in the server
+  worktree remain unchanged.
 
 ## Lifecycle
 
@@ -72,3 +92,8 @@ The authoritative acceptance rules are in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
 Use [the ADR template](adr-template.md) for new decisions.
+
+## Overnight realtime candidate
+
+[Proposed ADR-0010: retained-stack realtime](0010-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
+No permanent architecture acceptance or physical-phone result is implied.

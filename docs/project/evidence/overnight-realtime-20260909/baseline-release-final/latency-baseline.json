@@ -1,0 +1,168 @@
+{
+  "boundary": "v7 real JNI send call through serial sender/receiver sync return (production publishes after sync); no polling wait or physical frame included",
+  "network": "generated pinned TLS loopback + private PG + exact retained v2",
+  "samples": [
+    {
+      "index": 0,
+      "send_ns": 2192393172998734,
+      "queued_ns": 2192393203430953,
+      "sender_sync_ns": 2192394940997667,
+      "receiver_sync_publish_ns": 2192396204474448,
+      "send_to_publish_ms": 3031.475714
+    },
+    {
+      "index": 1,
+      "send_ns": 2192396204494438,
+      "queued_ns": 2192396234036114,
+      "sender_sync_ns": 2192397989222819,
+      "receiver_sync_publish_ns": 2192399236185694,
+      "send_to_publish_ms": 3031.691256
+    },
+    {
+      "index": 2,
+      "send_ns": 2192399236198715,
+      "queued_ns": 2192399264061522,
+      "sender_sync_ns": 2192401033517233,
+      "receiver_sync_publish_ns": 2192402285765702,
+      "send_to_publish_ms": 3049.566987
+    },
+    {
+      "index": 3,
+      "send_ns": 2192402285777562,
+      "queued_ns": 2192402314168583,
+      "sender_sync_ns": 2192404062178245,
+      "receiver_sync_publish_ns": 2192405314196713,
+      "send_to_publish_ms": 3028.419151
+    },
+    {
+      "index": 4,
+      "send_ns": 2192405314208104,
+      "queued_ns": 2192405344320842,
+      "sender_sync_ns": 2192407103837057,
+      "receiver_sync_publish_ns": 2192408354535849,
+      "send_to_publish_ms": 3040.327745
+    },
+    {
+      "index": 5,
+      "send_ns": 2192408354547710,
+      "queued_ns": 2192408382560058,
+      "sender_sync_ns": 2192410152981173,
+      "receiver_sync_publish_ns": 2192411412045694,
+      "send_to_publish_ms": 3057.497984
+    },
+    {
+      "index": 6,
+      "send_ns": 2192411412058424,
+      "queued_ns": 2192411446830104,
+      "sender_sync_ns": 2192413198812884,
+      "receiver_sync_publish_ns": 2192414456035887,
+      "send_to_publish_ms": 3043.977463
+    },
+    {
+      "index": 7,
+      "send_ns": 2192414456047877,
+      "queued_ns": 2192414477932597,
+      "sender_sync_ns": 2192416253044604,
+      "receiver_sync_publish_ns": 2192417507435894,
+      "send_to_publish_ms": 3051.388017
+    },
+    {
+      "index": 8,
+      "send_ns": 2192417507447314,
+      "queued_ns": 2192417537332831,
+      "sender_sync_ns": 2192419298525654,
+      "receiver_sync_publish_ns": 2192420550368882,
+      "send_to_publish_ms": 3042.921568
+    },
+    {
+      "index": 9,
+      "send_ns": 2192420550381712,
+      "queued_ns": 2192420581721306,
+      "sender_sync_ns": 2192422344692957,
+      "receiver_sync_publish_ns": 2192423593947453,
+      "send_to_publish_ms": 3043.565741
+    },
+    {
+      "index": 10,
+      "send_ns": 2192423593958163,
+      "queued_ns": 2192423624570244,
+      "sender_sync_ns": 2192425396303965,
+      "receiver_sync_publish_ns": 2192426646734497,
+      "send_to_publish_ms": 3052.776334
+    },
+    {
+      "index": 11,
+      "send_ns": 2192426646744227,
+      "queued_ns": 2192426671350640,
+      "sender_sync_ns": 2192428444515998,
+      "receiver_sync_publish_ns": 2192429706704714,
+      "send_to_publish_ms": 3059.960487
+    },
+    {
+      "index": 12,
+      "send_ns": 2192429706717324,
+      "queued_ns": 2192429738427199,
+      "sender_sync_ns": 2192431493863216,
+      "receiver_sync_publish_ns": 2192432749594072,
+      "send_to_publish_ms": 3042.876748
+    },
+    {
+      "index": 13,
+      "send_ns": 2192432749607212,
+      "queued_ns": 2192432781198097,
+      "sender_sync_ns": 2192434543409745,
+      "receiver_sync_publish_ns": 2192435804714257,
+      "send_to_publish_ms": 3055.107045
+    },
+    {
+      "index": 14,
+      "send_ns": 2192435804728307,
+      "queued_ns": 2192435837711108,
+      "sender_sync_ns": 2192437592857414,
+      "receiver_sync_publish_ns": 2192438850317968,
+      "send_to_publish_ms": 3045.589661
+    },
+    {
+      "index": 15,
+      "send_ns": 2192438850326618,
+      "queued_ns": 2192438883764671,
+      "sender_sync_ns": 2192440643525798,
+      "receiver_sync_publish_ns": 2192441902074117,
+      "send_to_publish_ms": 3051.747499
+    },
+    {
+      "index": 16,
+      "send_ns": 2192441902084207,
+      "queued_ns": 2192441936497525,
+      "sender_sync_ns": 2192443697236477,
+      "receiver_sync_publish_ns": 2192444959554643,
+      "send_to_publish_ms": 3057.470436
+    },
+    {
+      "index": 17,
+      "send_ns": 2192444959566853,
+      "queued_ns": 2192444992317663,
+      "sender_sync_ns": 2192446745928362,
+      "receiver_sync_publish_ns": 2192448000429383,
+      "send_to_publish_ms": 3040.86253
+    },
+    {
+      "index": 18,
+      "send_ns": 2192448000443763,
+      "queued_ns": 2192448038301197,
+      "sender_sync_ns": 2192449793496303,
+      "receiver_sync_publish_ns": 2192451055667159,
+      "send_to_publish_ms": 3055.223396
+    },
+    {
+      "index": 19,
+      "send_ns": 2192451055680279,
+      "queued_ns": 2192451089059792,
+      "sender_sync_ns": 2192452845583414,
+      "receiver_sync_publish_ns": 2192454096795920,
+      "send_to_publish_ms": 3041.115641
+    }
+  ],
+  "p50_ms": 3043.977463,
+  "p95_ms": 3057.497984
+}

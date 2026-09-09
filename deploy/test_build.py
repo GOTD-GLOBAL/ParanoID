@@ -12,7 +12,8 @@ spec = importlib.util.spec_from_file_location('builder', HERE / 'build.py')
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 SOURCES = {'paranoid-server': 'server/target/release/paranoid-server',
-           'schema.sql': 'server/schema.sql', 'alpha.py': 'deploy/alpha.py',
+           'schema.sql': 'server/schema.sql', 'key-schema.sql': 'server/key-schema.sql',
+           'alpha.py': 'deploy/alpha.py',
            'create-test-tls.py': 'scripts/create-test-tls.py', 'README.md': 'deploy/README.md'}
 
 
@@ -54,6 +55,8 @@ class BuildTests(unittest.TestCase):
                 self.assertTrue(all(m.isfile() for m in archive.getmembers()))
                 manifest = json.load(archive.extractfile('release/manifest.json'))
                 self.assertEqual(set(manifest['sha256']), set(SOURCES))
+                self.assertEqual(manifest['schema_contract'], 'paranoid-key-v1')
+                self.assertEqual(manifest['deployment_api'], 1)
             self.assertEqual(stale.read_text(), 'SYNTHETIC_SECRET_MARKER')
             self.assertEqual((stale.parent / 'tls/key').read_text(), 'SYNTHETIC_PRIVATE_KEY')
 

@@ -1,0 +1,23 @@
+   Compiling try-lock v0.2.5
+   Compiling sync_wrapper v1.0.2
+   Compiling ipnet v2.12.2
+   Compiling paranoid-key-protocol v0.0.1 (/home/codex/projects/paranoid-worktrees/overnight-integration-20260909T2006Z/key-protocol)
+   Compiling want v0.3.1
+   Compiling tower v0.5.3
+   Compiling axum-core v0.5.6
+   Compiling hyper v1.11.1
+   Compiling tower-http v0.6.11
+   Compiling hyper-util v0.1.20
+   Compiling axum v0.8.9
+   Compiling axum-server v0.8.0
+   Compiling reqwest v0.12.24
+   Compiling paranoid-server v0.0.1 (/home/codex/projects/paranoid-worktrees/overnight-integration-20260909T2006Z/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.72s
+     Running tests/android_updates.rs (server/target/debug/deps/android_updates-b807809f9db7c8fd)
+
+running 1 test
+actual APK snapshot: bytes=3031545 sha256=1b9f44d88011f0a8e4aa454e4df890c0a6872190a8606d1b590e8d942e42eadb
+test actual_build_apk_snapshot_roundtrips_exact_bytes_and_digest ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.61s
+

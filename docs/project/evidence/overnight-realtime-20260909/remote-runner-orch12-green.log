@@ -1,0 +1,27 @@
+test_absent_local_gate_never_executes_ssh (__main__.LocalOnly.test_absent_local_gate_never_executes_ssh) ... ok
+test_controller_failure_never_adds_wrapper_rollback_or_restore (__main__.LocalOnly.test_controller_failure_never_adds_wrapper_rollback_or_restore) ... ok
+test_exact_frozen_tar_verifies_all_eight_members (__main__.LocalOnly.test_exact_frozen_tar_verifies_all_eight_members) ... ok
+test_gate_without_review_cannot_create_stage (__main__.LocalOnly.test_gate_without_review_cannot_create_stage) ... ok
+test_load_rejects_changed_staged_code (__main__.LocalOnly.test_load_rejects_changed_staged_code) ... ok
+test_oversized_remote_output_is_truncated_before_record_and_fails (__main__.LocalOnly.test_oversized_remote_output_is_truncated_before_record_and_fails) ... ok
+test_partial_upload_preserved_without_extraction (__main__.LocalOnly.test_partial_upload_preserved_without_extraction) ... ok
+test_real_loopback_redirect_never_reaches_redirect_target (__main__.LocalOnly.test_real_loopback_redirect_never_reaches_redirect_target) ... ok
+test_regular_file_rejects_symlink (__main__.LocalOnly.test_regular_file_rejects_symlink) ... ok
+test_stage_exact_manual_extract_private_and_never_overwrites (__main__.LocalOnly.test_stage_exact_manual_extract_private_and_never_overwrites) ... ok
+test_stage_rejects_symlink_destination_without_following (__main__.LocalOnly.test_stage_rejects_symlink_destination_without_following) ... ok
+test_start_completed_transaction_never_calls_preflight_or_controller (__main__.LocalOnly.test_start_completed_transaction_never_calls_preflight_or_controller) ... ok
+test_start_exclusive_lock_refuses_concurrent_attempt (__main__.LocalOnly.test_start_exclusive_lock_refuses_concurrent_attempt) ... ok
+test_start_scheduled_crash_window_never_launches_second_attempt (__main__.LocalOnly.test_start_scheduled_crash_window_never_launches_second_attempt) ... ok
+test_tar_checksum_mismatch_fails (__main__.LocalOnly.test_tar_checksum_mismatch_fails) ... ok
+test_tar_duplicate_member_rejected (__main__.LocalOnly.test_tar_duplicate_member_rejected) ... ok
+test_tar_extra_member_rejected (__main__.LocalOnly.test_tar_extra_member_rejected) ... ok
+test_tar_hardlink_rejected (__main__.LocalOnly.test_tar_hardlink_rejected) ... ok
+test_tar_member_traversal_rejected (__main__.LocalOnly.test_tar_member_traversal_rejected) ... ok
+test_tar_symlink_rejected (__main__.LocalOnly.test_tar_symlink_rejected) ... ok
+test_worker_invokes_only_exact_reviewed_update_v2_and_completes (__main__.LocalOnly.test_worker_invokes_only_exact_reviewed_update_v2_and_completes) ... ok
+test_worker_rejects_unlocked_fd_when_third_process_holds_lock (__main__.LocalOnly.test_worker_rejects_unlocked_fd_when_third_process_holds_lock) ... ok
+
+----------------------------------------------------------------------
+Ran 22 tests in 2.663s
+
+OK

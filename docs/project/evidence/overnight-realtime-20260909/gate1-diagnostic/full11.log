@@ -1,0 +1,117 @@
+test_actual_schema_drift_refused_before_encrypted_backup (test_v2_update.SafeV2Update.test_actual_schema_drift_refused_before_encrypted_backup) ... ok
+test_corrupt_encrypted_archive_rejects_before_any_restore (test_v2_update.SafeV2Update.test_corrupt_encrypted_archive_rejects_before_any_restore) ... ok
+test_existing_backup_key_is_never_followed_or_overwritten (test_v2_update.SafeV2Update.test_existing_backup_key_is_never_followed_or_overwritten) ... ok
+test_failed_restore_comparison_aborts_cutover_preserves_live_rows (test_v2_update.SafeV2Update.test_failed_restore_comparison_aborts_cutover_preserves_live_rows) ... ok
+test_real_encrypted_archive_restore_preserves_all_rows_and_revocation (test_v2_update.SafeV2Update.test_real_encrypted_archive_restore_preserves_all_rows_and_revocation) ... ok
+test_same_data_code_rollback_keeps_post_update_messages (test_v2_update.SafeV2Update.test_same_data_code_rollback_keeps_post_update_messages) ... ok
+test_same_schema_binary_restarts_with_original_pinned_tls (test_v2_update.SafeV2Update.test_same_schema_binary_restarts_with_original_pinned_tls) ... ok
+test_staged_release_fsynced_before_durable_pointer_switch (test_v2_update.SafeV2Update.test_staged_release_fsynced_before_durable_pointer_switch) ... ok
+test_unrelated_or_inactive_unit_is_rejected_before_stop (test_v2_update.SafeV2Update.test_unrelated_or_inactive_unit_is_rejected_before_stop) ... ok
+test_wrong_cluster_or_held_lock_refuses_without_cutover_or_backup (test_v2_update.SafeV2Update.test_wrong_cluster_or_held_lock_refuses_without_cutover_or_backup) ... ok
+test_wrong_schema_or_changed_component_refuses_before_backup (test_v2_update.SafeV2Update.test_wrong_schema_or_changed_component_refuses_before_backup) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 48.206s
+
+OK
+{
+  "finished_utc": "2026-09-09T20:47:01.634911+00:00",
+  "tests": 11,
+  "failed": 0,
+  "errors": 0,
+  "passed": 11,
+  "pass": true,
+  "diagnostic_completed": true,
+  "initial_failure_root_cause": "UNKNOWN; this diagnostic is not claimed to fix the original intermittent readiness failure.",
+  "readiness_observations": [
+    {
+      "root": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha",
+      "started_monotonic_ns": 2196081237796566,
+      "started_utc": "2026-09-09T20:46:45.863516+00:00",
+      "outcome": "ready",
+      "observed_monotonic_ns": 2196081819948594,
+      "wait_health_elapsed_seconds": 0.582152028,
+      "observed_pg": {
+        "kind": "postgres",
+        "data": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha/data",
+        "root": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha",
+        "stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/66674-postgres-0.stderr.log",
+        "pre_start_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "start_monotonic_ns": 2196081326910579,
+        "start_utc": "2026-09-09T20:46:45.952632+00:00",
+        "pid": 66689,
+        "first_successful_select1_monotonic_ns": 2196081400584800,
+        "pg_ready_elapsed_seconds": 0.073674221,
+        "ready_utc": "2026-09-09T20:46:46.026306+00:00",
+        "ready_pid_fact": {
+          "postmaster_pid_present": true,
+          "postmaster_pid": "66689",
+          "matches_observed_pg": true
+        }
+      },
+      "pid_fact": {
+        "postmaster_pid_present": true,
+        "postmaster_pid": "66689",
+        "matches_observed_pg": true
+      },
+      "pg_start_elapsed_at_observation_seconds": 0.493038015
+    },
+    {
+      "root": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha",
+      "started_monotonic_ns": 2196084366288716,
+      "started_utc": "2026-09-09T20:46:48.992007+00:00",
+      "outcome": "ready",
+      "observed_monotonic_ns": 2196084938926350,
+      "wait_health_elapsed_seconds": 0.572637634,
+      "observed_pg": {
+        "kind": "postgres",
+        "data": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha/data",
+        "root": "/tmp/paranoid-safe-v2-fj6x_wdk/paranoid-alpha",
+        "stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/67036-postgres-0.stderr.log",
+        "pre_start_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "start_monotonic_ns": 2196084457267768,
+        "start_utc": "2026-09-09T20:46:49.082988+00:00",
+        "pid": 67051,
+        "first_successful_select1_monotonic_ns": 2196084532887088,
+        "pg_ready_elapsed_seconds": 0.07561932,
+        "ready_utc": "2026-09-09T20:46:49.158610+00:00",
+        "ready_pid_fact": {
+          "postmaster_pid_present": true,
+          "postmaster_pid": "67051",
+          "matches_observed_pg": true
+        }
+      },
+      "pid_fact": {
+        "postmaster_pid_present": true,
+        "postmaster_pid": "67051",
+        "matches_observed_pg": true
+      },
+      "pg_start_elapsed_at_observation_seconds": 0.481658582
+    }
+  ],
+  "backup_manifest_sample": [
+    {
+      "fixture_root": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/backup-manifest-fixture",
+      "manifest": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/backup-manifest-fixture/backups/v2-20260909T204619Z-5bc71f7b6cc66081/manifest.json",
+      "manifest_sha256": "4785a994c8ba3168d5610475cd6a114de8783cc5ad9370893dac70d20a840f81",
+      "backup_directory": "v2-20260909T204619Z-5bc71f7b6cc66081",
+      "contract": {
+        "pg_system_id": "7683639701367564947",
+        "old_release": "346f059914a290be4851"
+      },
+      "generated_by_controller_sha256": "c706b5dc9bf03371bbc6b4d72fa84417d9e81618579c26a920d07369b2298f9e",
+      "scope": "Actual generated authenticated restore-verified backup manifest, aggregate/public fields only; no key/archive/raw rows/TLS key retained."
+    }
+  ],
+  "assertions_or_timeouts_changed": false,
+  "product_source_modified": false,
+  "observation_scope": "Original full11 same order, actual outer/Rust/PostgreSQL stderr, monotonic PG startup to successful SELECT1, pid-file/own-PID matching, actual TLS health elapsed; failure path retains own PG state and exact.23 listener."
+}

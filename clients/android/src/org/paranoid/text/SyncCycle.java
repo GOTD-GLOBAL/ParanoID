@@ -8,7 +8,9 @@ public final class SyncCycle {
     private SyncCycle() {}
     public static final class Rejected extends IOException {
         public final int status;
-        public Rejected(int status){super("HTTP request rejected");this.status=status;}
+        public final String code;
+        public Rejected(int status){this(status, "");}
+        public Rejected(int status,String code){super("HTTP request rejected");this.status=status;this.code=code;}
     }
     public interface Sender<T> { void send(T item) throws Exception; }
     public static <T> void drain(Iterable<T> snapshot,Sender<T> sender,BooleanSupplier frozen)throws Exception {

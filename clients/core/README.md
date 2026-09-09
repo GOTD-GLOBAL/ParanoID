@@ -1,27 +1,44 @@
 # Development client core
 
-Library-backed Olm for one explicitly pinned peer. `command(state, request)`
-returns a new candidate snapshot and a public/UI view. Persist the full snapshot
-atomically before sending any encrypted outbox entry, including delivery receipts.
-On error retain the previous snapshot; never adopt partial ratchet changes.
-The raw snapshot contains private account/session state and plaintext history:
-it is NOT an encrypted-at-rest format until the platform adapter protects it.
+The issue #16 candidate now uses an explicit schema3 clean-install first-contact
+adapter. Previous version0/v1/v2 source and tests remain historical compatibility
+evidence, with actual failures reported separately. [Client contract and historical
+migration evidence](../../docs/clients/core/self-service.md) explain the single
+shared Olm Account, unchanged signed contact/root/device credentials and the
+owner's explicit clean-state compatibility boundary.
+
+The current clean-install candidate adds explicit core schema **3** with mandatory
+signed account-ID intro-v2 and strict PlainV1 text/receipts. A receiver with zero
+contacts gets immediate plaintext/reply as `network_unverified`. One shared Olm
+Account, immutable pins, full-state rejection rollback and exact durable frame2
+outbox are required. [The new protocol](../../docs/protocol/first-contact-v1.md)
+controls this clean path; the earlier compatibility record remains historical.
+Unsupported old snapshots fail unchanged; no migration/reset is performed.
+
+Clean acceptance and historical compatibility are run/reported separately:
+
+```sh
+cargo test --offline --locked --manifest-path clients/core/Cargo.toml --lib --test clean_first_contact
+cargo test --offline --locked --manifest-path clients/core/Cargo.toml --test self_service --no-fail-fast
+```
+
+The second command retains existing historical regressions; its failures are not
+fixed or suppressed by selecting the owner's fresh-install release scope.
+
+`command(state, request)` returns a candidate snapshot and public/UI view. Persist
+that complete snapshot atomically **before** sending ciphertext or receipts.
+Errors return no adopted candidate. Raw core snapshots contain private keys and
+plaintext history: only the platform's sealed atomic storage protects them at rest.
+Never log returned `state` or use public test wrapping keys for real storage.
 
 ```sh
 cargo test --locked --manifest-path clients/core/Cargo.toml
 cargo clippy --locked --manifest-path clients/core/Cargo.toml --all-targets -- -D warnings
 ```
 
-Tests cover fresh identity/public export, pinned text/receipt exchange, exact
-retries, simultaneous initial sends, bad-event recovery, full-history receipt
-processing and bounded rejection notices. A classified payload rejection now
-returns a candidate snapshot with transport progress and a notice, NOT successful
-plaintext acceptance. The original account/session/history/outbox is restored
-before that notice; committing the candidate emits no receipt for the rejected
-event. Local-state and untrustworthy transport-header failures remain errors.
-
-The platform must persist notice/cursor changes atomically like every other
-candidate. Old v0 snapshots receive empty additive notice fields without replacing
-keys. These tests do not exercise actual devices, platform storage or hosted TLS.
-This remains disposable development identity, not the seed/root/device hierarchy.
-See the Android README for resource limits and remaining runtime gates.
+The shared `key-protocol` v2 library belongs to the separate server PR dependency.
+The client owns contact extension/local state, not a competing server wire contract.
+Rust and real JVM/JNI tests are evidence, not physical Android or production
+security acceptance. Reusable fallback bootstrap has weaker initial forward
+secrecy than independently consumed one-time keys; review/owner disposition remain
+required. No recovery, multi-device or iOS implementation is claimed.

@@ -18,7 +18,7 @@ service/data and unchanged neighboring services, after safety/rollback checks.
 No SSH or production credential access was performed to prepare this package.
 
 Host prerequisites (check separately at authorized rollout): Linux x86_64 ABI
-compatible with the build host, Python 3, OpenSSL, PostgreSQL **16** binaries at
+compatible with the build host, Python **3.11+**, OpenSSL, PostgreSQL **16** binaries at
 `/usr/lib/postgresql/16/bin`, systemd user manager, a dedicated unprivileged
 ParanoID account with a persistent private home, available IP/38443 and disk/RAM.
 The artifact dynamically links libc/libgcc; use `ldd release/paranoid-server` on
@@ -40,6 +40,23 @@ The package currently accepts IPv4 only; IPv6 is rejected before creating state.
 See the [local verification record](linux-alpha-verification.md) for exact results.
 The integration harness additionally needs a JDK for the real Android TLS adapter
 check; a JDK is not a deployment-host prerequisite.
+
+## Rollout status and network preflight
+
+The [2026-09-08 rollout record](linux-alpha-rollout-2026-09-08.md) records the
+initial blocked attempt and subsequent explicitly authorized IPv4 firewall resume.
+The retained unit now runs with scoped linger and an externally verified pinned
+TLS endpoint. Only inbound TCP 38443 on `enp5s0`, destination `157.180.49.125`,
+from any IPv4 source was allowed. IPv6 and existing rules/services were preserved.
+Independent package review and four PR #15 checks passed; earlier pending-review
+language above describes the local preparation phase. Phone acceptance is unrun.
+
+Before future installation or resume, inspect inbound firewall policy read-only
+as part of prerequisites, not just socket availability. An unbound port does not
+prove external reachability. If a rule is missing, stop for explicit scoped owner
+authorization; do not modify global policy or assume deployment approval permits
+a firewall change. Preserve the existing root and identities on resume; `install`
+correctly refuses it. See the attempt record for retained paths and remaining gates.
 
 ## Build and verify locally
 
@@ -142,6 +159,16 @@ never publish `config.json`, tokens in URLs or command arguments, or shared
 screenshots. Peer Olm pairing codes are a separate trust input. The Android
 [enrollment guide](../../clients/android/README.md) still applies. No server
 content keys, peer verification changes or plaintext fallback are introduced.
+
+The above bearer provisioning is current fixture behavior, not the requested
+product UX. [RFC-0010](../rfcs/0010-phone-key-registration.md) proposes replacement
+with phone-generated keys and exact-key maintainer grants, not token export or
+public signup. It authorizes no change to this deployment. Its DB/config migration
+is not compatible with the current same-schema update command; review and test
+a migration-capable path before any rollout, preserving all retained identities.
+The subsequent [local key-registration candidate](key-registration-local.md)
+implements and rehearses only isolated fixtures. It does not modify this
+controller, relax its same-schema gate or authorize hosted migration.
 
 ## Health, restart and resource bounds
 

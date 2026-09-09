@@ -10,6 +10,21 @@ No normative ParanoID protocol has been accepted. The draft
 [single-server acceptance matrix](server-v0-acceptance.md) maps the proposed
 text/history/reconnect behavior to future tests; it is not a wire specification.
 
+The [key enrollment v1 draft](key-enrollment-v1.md) narrows RFC-0010 admission,
+request-proof and migration semantics. The historical key-registration candidate
+is implemented; the contract remains non-normative.
+
+The [self-service v2 draft](self-service-v2.md) specifies the locally implemented
+RFC-0012 server routes, exact proof fields, limits, cursor/retry behavior and offline
+transition. See draft [ADR-0007](../decisions/0007-self-service-messenger.md) and
+[threat/test mapping](../security/self-service-v2-threats.md). Local server tests
+do not establish client interoperability, phone acceptance or hosted v2 rollout.
+
+The [first-contact v1 proposal](first-contact-v1.md) specifies mandatory
+intro-v2/PlainV1 account-ID channels for the owner's clean-install private alpha.
+It leaves [server v2 opaque transport](self-service-v2.md) unchanged and keeps
+historical client migration/recovery outside this candidate's acceptance scope.
+
 Future protocol documentation must be normative and versioned. It must define:
 
 - identity, device, key, and recovery state machines;
@@ -23,3 +38,8 @@ Future protocol documentation must be normative and versioned. It must define:
 
 Normative schemas and test vectors must live beside this documentation. Narrative
 examples do not replace executable conformance tests.
+
+## Overnight realtime candidate
+
+[Signed-session realtime contract](realtime-v1.md) records the current private-alpha scope and its exact review/test gates.
+No permanent architecture acceptance or physical-phone result is implied.

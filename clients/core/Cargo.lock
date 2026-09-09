@@ -494,8 +494,20 @@ version = "0.0.1"
 dependencies = [
  "base64",
  "jni",
+ "paranoid-key-protocol",
  "serde",
  "serde_json",
+ "sha2",
+ "uuid",
+ "vodozemac",
+]
+
+[[package]]
+name = "paranoid-key-protocol"
+version = "0.0.1"
+dependencies = [
+ "base64",
+ "serde",
  "sha2",
  "uuid",
  "vodozemac",

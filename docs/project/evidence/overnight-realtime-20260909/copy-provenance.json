@@ -1,0 +1,132 @@
+{
+  "final-source-sha256.json": {
+    "original": "final-source-sha256.json",
+    "sha256": "0f6d0689cefd7eac1a61bddc296054fbddc09dc0d06795a832779f785c314f2e",
+    "transformation": "none"
+  },
+  "postdeployment-docs-sha256.json": {
+    "original": "postdeployment-docs-sha256.json",
+    "sha256": "6522b7fa39c1507dfba300ad97e37b815d58be81fda7e01905858eb95835c415",
+    "transformation": "none"
+  },
+  "fable-final-review.md.txt": {
+    "original": "fable-final-review.md",
+    "sha256": "a569e398b626f9cbb2179ca87bd15c61f212297fd19b6fe9efcef686ebac9494",
+    "transformation": "none"
+  },
+  "fable-scripts-review.md.txt": {
+    "original": "fable-scripts-review.md",
+    "sha256": "2710c3613b5ce2ed310be4e1a81437ca2a0518fee8b7388987cfead562d4990c",
+    "transformation": "none"
+  },
+  "fable-deploy-closure-review.md.txt": {
+    "original": "fable-deploy-closure-review.md",
+    "sha256": "311fb46c4ef4243761c99dcf85e0615c359a8779e4cb2b9b01a549d3e42ed912",
+    "transformation": "none"
+  },
+  "baseline-release-final/latency-baseline.json": {
+    "original": "baseline-release-final/latency-baseline.json",
+    "sha256": "082c0d50bc787d6d4c4d2997f298f20ad408c7ce7675473be58ae5e51dbdfa6e",
+    "transformation": "none"
+  },
+  "final-realtime-fixture/realtime-fixture-result.json": {
+    "original": "final-realtime-fixture/realtime-fixture-result.json",
+    "sha256": "adb1057a27eb69c50596a8cb5f7a227df38bfb187b23079ac9f688d19b39e9f6",
+    "transformation": "none"
+  },
+  "final-realtime-fixture/latency-samples.json": {
+    "original": "final-realtime-fixture/latency-samples.json",
+    "sha256": "68d35ed2cffb3ea99b7e1bbafe47af91ffc5c346370977cdcb0cba075b7b8c6b",
+    "transformation": "none"
+  },
+  "hosted-final-acceptance/result.json": {
+    "original": "hosted-final-acceptance/result.json",
+    "sha256": "5f6dc53033da3fdacec994d06748ec8b482f218ef79bc5f23bd570b1e9129a6c",
+    "transformation": "none"
+  },
+  "historical-comparison.json": {
+    "original": "historical-comparison.json",
+    "sha256": "d32efdd0dd992c536540769ee0d8584a7d4ead6c93b16f5d4db84be78116aadb",
+    "transformation": "none"
+  },
+  "server-final-validation.json": {
+    "original": "server-final-validation.json",
+    "sha256": "1fc37767c10cd25c9dec3b625da76cebd635451e262fb8a26e9ef69c23707c0e",
+    "transformation": "none"
+  },
+  "remote-runner-orch12-red.log": {
+    "original": "remote-runner-orch12-red.log",
+    "sha256": "ea1978643ac61824c953c65019a1b5d03024f5e74668d30f0095f235766624b1",
+    "transformation": "none"
+  },
+  "remote-runner-orch12-green.log": {
+    "original": "remote-runner-orch12-green.log",
+    "sha256": "18769229e53084d9c9169f5685b7c97416b320f8dcb8606fc44dc2d3c3216f9c",
+    "transformation": "none"
+  },
+  "gate1-diagnostic/full11.log": {
+    "original": "gate1-diagnostic/full11.log",
+    "sha256": "3656e99470ee1c5285b1090c0723de71dba211896b6ffb744976f58aba465b6e",
+    "transformation": "none"
+  },
+  "core-clean-final-candidate.log": {
+    "original": "core-clean-final-candidate.log",
+    "sha256": "e1717c0658c6dbd13a9906fc6a7aa6752c49cc3a8c53f75e0bf55746ad15ebad",
+    "transformation": "none"
+  },
+  "final-apk-server-bytes.log": {
+    "original": "final-apk-server-bytes.log",
+    "sha256": "fc9077d0d1388f9b2ea279cdba7566811ff8fd609d40dc3ca40fac0973079420",
+    "transformation": "none"
+  },
+  "frozen-docs/CHANGELOG.md.txt": {
+    "original": "final-source/CHANGELOG.md",
+    "sha256": "683de23ed227f8f16900aafd5ef0dd5a4d5f261aa022906a1828997c098d5a64",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/README.md.txt": {
+    "original": "final-source/docs/README.md",
+    "sha256": "7c157f95d1ac55a5f3a160ffb965728a0bbd0ca148fe92e7086b1f7b71bbb022",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/decisions/0010-overnight-realtime.md.txt": {
+    "original": "final-source/docs/decisions/0010-overnight-realtime.md",
+    "sha256": "1c5d2ddad5e22269199466e69e2c31b2f27dd158f009e2a661a522f0a7829a2e",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/operations/README.md.txt": {
+    "original": "final-source/docs/operations/README.md",
+    "sha256": "06e57ff7f7e57e7e81704dc131241ebf75e845d2240d844446eace422eef8b18",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/operations/overnight-realtime.md.txt": {
+    "original": "final-source/docs/operations/overnight-realtime.md",
+    "sha256": "924acce35982324f33de58334b09c8a783ff6dfa8245c5520e3d9b9e81595778",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/project/current-state.md.txt": {
+    "original": "final-source/docs/project/current-state.md",
+    "sha256": "fff290b7b554df8ab238c5c32426cf409d820f9fb57156e1fcf35f2b89abc5f9",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/rfcs/0015-overnight-realtime.md.txt": {
+    "original": "final-source/docs/rfcs/0015-overnight-realtime.md",
+    "sha256": "ddf24593d66f527365fa000eb3d9d08656e9ba4def95cbf67b6217806ea0aa38",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/security/realtime-v1-threats.md.txt": {
+    "original": "final-source/docs/security/realtime-v1-threats.md",
+    "sha256": "bc087baef1c9f0e50bd00aae8c4ebe5babe3dd50f56e3fc439b7bc93878e6ec0",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/security/threat-model.md.txt": {
+    "original": "final-source/docs/security/threat-model.md",
+    "sha256": "31b4e1ad062c7a7f61d51f6489966932ea6925e64bc38114e4abb0d9129ab26b",
+    "transformation": "none"
+  },
+  "frozen-docs/docs/server/realtime-local.md.txt": {
+    "original": "final-source/docs/server/realtime-local.md",
+    "sha256": "daf0ec17a901da4b15b516cd3e44743d4e070238b819a7e8bc3853df1568b5df",
+    "transformation": "none"
+  }
+}

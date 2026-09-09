@@ -4,7 +4,30 @@ Working local development code, NOT a deployed messenger or accepted production
 protocol. See [RFC-0008](../docs/rfcs/0008-executable-text-development-slice.md)
 and [draft ADR-0004](../docs/decisions/0004-development-transport.md).
 
+## Self-service foundation (issue #16)
+
+The [server-only local guide](../docs/server/self-service-local.md) documents the
+new explicit `self-service-v2-local` TLS mode and `self-service-init` offline
+helper. The [shared v2 wire contract](../docs/protocol/self-service-v2.md) remains
+draft. Registration has no operator/grant/slot; general account/device/conversation
+storage replaces pair routing, with bounded PoP and non-evicting quotas.
+[Observed RED/GREEN evidence](self-service-tdd.md) and real HTTP/PostgreSQL tests
+accompany the candidate. This is not a deployment, Android/iOS delivery or ADR
+acceptance. Historical v0/v1 modes below cannot open v2 storage.
+
+The later [fresh-only deployment candidate](../docs/operations/fresh-self-service-v2.md)
+adds explicit `self-service-v2` with separate exact-reviewed IPv4:38443 TLS opt-in,
+package/controller initialization, stopped old-server-cluster replacement without
+backup/import, readiness and the existing supervisor/unit lifecycle. The original
+local mode remains loopback-only. Owner-requested server freshness does not reset
+phone state or TLS; no live deployment or new architecture approval is implied.
+
 ## Reproduce on Linux
+
+The separate [key-registration candidate](../docs/operations/key-registration-local.md)
+adds local-only TLS key admission under proposed RFC-0010/ADR-0006. It does not
+change the deployment controller or accept a production protocol. The v0 mode
+below remains for unmigrated development fixtures only.
 
 Requires an unprivileged user, Python 3, Rust/Cargo (tested 1.98.1), and PostgreSQL
 16 binaries. No running database, Docker privilege or production access is needed.

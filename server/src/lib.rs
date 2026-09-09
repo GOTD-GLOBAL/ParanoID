@@ -14,6 +14,14 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
+pub mod android_updates;
+mod key_http;
+mod key_transport;
+pub mod registration;
+pub mod self_service;
+mod self_service_http;
+mod self_service_messages;
+mod self_service_migration;
 
 #[derive(Clone)]
 struct Store {
@@ -72,6 +80,7 @@ pub async fn stored_app(
     tokens: [String; 2],
     quota: i64,
 ) -> Result<Router, sqlx::Error> {
+    self_service::reject_cutover(&pool).await?;
     if tokens[0] == tokens[1]
         || tokens
             .iter()

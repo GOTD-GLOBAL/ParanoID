@@ -1,1 +1,9 @@
 tmp/
+/dist/
+**/__pycache__/
+*.py[cod]
+.env
+.env.*
+.git-credentials
+*.keystore
+*.jks
