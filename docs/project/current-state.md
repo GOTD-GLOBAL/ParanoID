@@ -6,6 +6,22 @@ last_reviewed: 2026-09-09
 
 # Current project state
 
+## Owner phone feedback and PR 18 merge direction
+
+After receiving v8, Sergey reports: "Работает отлично. Текст летает туда сюда".
+This is qualitative owner-observed responsive bidirectional phone messaging,
+not an instrumented latency measurement or proof of background/Doze/audio behavior.
+[The GitHub record](https://github.com/GOTD-GLOBAL/ParanoID/issues/16#issuecomment-5609070441)
+retains that distinction. It supersedes only the earlier absence of phone-text
+feedback, not the other NOT-RUN limits below.
+
+The owner explicitly requests testing/fixing/merging PR #18 and then implementing
+voice calls. [The scoped merge record](pr18-merge-scope.md) supersedes the PR's
+initial archival-only restriction for this one reviewed integration. Final CI and
+review still gate merge; writing this status does not claim the merge occurred.
+Voice calls are the next stage, not an implemented v8 feature. Existing identity,
+E2EE, TLS trust, history and working text remain protected.
+
 ## Overnight realtime implementation and rollout — 2026-09-09
 
 The [current owner scope](../product/overnight-realtime.md) authorizes a tested

@@ -14,6 +14,15 @@ component documentation separated for server, Android and later iOS. The source
 message has no stable permalink available in this tool context. This records
 workflow/product direction, not acceptance of a new application architecture.
 
+## One-off PR 18 merge direction
+
+The subsequent direct owner instruction explicitly requests testing, fixing and
+merging PR #18, followed by voice calls. The [exact scoped record](pr18-merge-scope.md)
+supersedes the earlier archival-only/split-before-merge restriction for that PR
+only. It preserves component layout, independent review, valid release tests,
+historical failure evidence and proposed architecture status. Future work still
+uses coherent component boundaries; this is not an unrestricted combined-PR rule.
+
 ## Repository layout
 
 Keep the current monorepo; this direction does not request separate repositories.
