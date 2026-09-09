@@ -1,0 +1,23 @@
+test_oversized_remote_output_is_truncated_before_record_and_fails (__main__.LocalOnly.test_oversized_remote_output_is_truncated_before_record_and_fails) ... FAIL
+test_worker_rejects_unlocked_fd_when_third_process_holds_lock (__main__.LocalOnly.test_worker_rejects_unlocked_fd_when_third_process_holds_lock) ... FAIL
+
+======================================================================
+FAIL: test_oversized_remote_output_is_truncated_before_record_and_fails (__main__.LocalOnly.test_oversized_remote_output_is_truncated_before_record_and_fails)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/remote-update-runner/test_local.py", line 293, in test_oversized_remote_output_is_truncated_before_record_and_fails
+    self.assertLessEqual(len(saved['stdout'].encode()) + len(saved['stderr'].encode()), 131072)
+AssertionError: 133120 not less than or equal to 131072
+
+======================================================================
+FAIL: test_worker_rejects_unlocked_fd_when_third_process_holds_lock (__main__.LocalOnly.test_worker_rejects_unlocked_fd_when_third_process_holds_lock)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/remote-update-runner/test_local.py", line 308, in test_worker_rejects_unlocked_fd_when_third_process_holds_lock
+    with self.assertRaises(BlockingIOError):
+AssertionError: BlockingIOError not raised
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.327s
+
+FAILED (failures=2)

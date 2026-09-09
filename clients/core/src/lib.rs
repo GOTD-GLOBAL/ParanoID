@@ -11,7 +11,16 @@ use vodozemac::{
 };
 
 type Result<T> = std::result::Result<T, &'static str>;
+mod clean_service;
 mod contact;
+mod contact_v2;
+mod intro_v2;
+// Retain the historical schema2/intro-v1 experiment as source evidence. Its
+// messaging dispatcher is deliberately unreachable from the clean product.
+#[allow(dead_code)]
+mod self_service;
+#[allow(dead_code)]
+mod sender_intro;
 
 // Android/JVM adapter only; core state/network/storage remain separate.
 #[no_mangle]
@@ -408,6 +417,18 @@ fn receive(s: &mut Client, m: Incoming) -> Result<()> {
 pub fn command(state: &str, request: &str) -> Result<String> {
     if state.len() > 8 * 1024 * 1024 || request.len() > 65536 {
         return Err("input_limit");
+    }
+    // The strict operation/state decoder below remains authoritative; this peek
+    // selects only the versioned adapter and never authenticates fields.
+    let peek: Value = serde_json::from_str(request).map_err(|_| "invalid_request")?;
+    let state_version = serde_json::from_str::<Value>(state)
+        .ok()
+        .and_then(|v| v["version"].as_u64());
+    if peek["op"] == "upgrade_v2"
+        || peek["op"] == "sign_request_v2"
+        || matches!(state_version, Some(2 | 3))
+    {
+        return clean_service::command(state, request);
     }
     let request: Request = serde_json::from_str(request).map_err(|_| "invalid_request")?;
     if let Request::Validate { descriptor } = request {

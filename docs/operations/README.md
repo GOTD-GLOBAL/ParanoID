@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: operations
-last_reviewed: 2026-08-09
+last_reviewed: 2026-09-09
 ---
 
 # Operations documentation
@@ -15,6 +15,17 @@ core requirement.
   temporary-agent procedure, read-only verification evidence, and authority limits.
 
 ## Deployment documentation
+
+The [actual 2026-09-09 self-service v2 rollout](self-service-v2-rollout-2026-09-09.md)
+records the later explicitly authorized successful installation, independently
+closed FPD-D01, exact artifact, one-time old-data-only discard, retained TLS/unit/
+neighbors, and real pinned HTTPS/SQL readiness. The existing unit is running v2;
+phone acceptance and optional Android feed publication remain separate.
+
+The [fresh self-service v2 candidate](fresh-self-service-v2.md) records the scoped
+owner correction: replace only the old isolated server DB in place without backup
+or legacy import, preserving TLS/phones/neighbors. Explicit mode, local tests and
+preparation-time commands are historical; the dated rollout above records execution.
 
 The [native private-alpha runbook](linux-alpha-deployment.md) accompanies the
 locally exercised package (RFC-0009, draft ADR-0005), not a hosted deployment.
@@ -46,3 +57,20 @@ Every supported deployment profile must eventually include:
 
 Runbooks are verified through exercises. A runbook that has never been executed is
 a hypothesis, not an operational guarantee.
+
+## Clean-install first-contact local candidate
+
+[Local testing and APK record](clean-first-contact-local.md) covers the authorized
+clean core/JVM/JNI/TLS/PostgreSQL build, separate historical test accounting,
+retained signer and independent review gate. It is not a live rollout or phone
+reset/installation procedure.
+
+## Overnight realtime implementation and rollout
+
+[Overnight realtime operation](overnight-realtime.md) records the private-alpha
+scope, review/test requirements and same-data recovery procedure. The
+[actual realtime rollout](realtime-rollout-2026-09-09.md) records completed
+independent review/closure, encrypted verified backup, preserved existing service
+and hosted messaging acceptance, including the unresolved original readiness
+failure and physical-device limits.
+No permanent architecture acceptance or physical-phone result is implied.

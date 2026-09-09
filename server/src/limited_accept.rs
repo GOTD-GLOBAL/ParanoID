@@ -17,12 +17,21 @@ use tokio::{
 pub struct LimitedAccept<A> {
     inner: A,
     permits: Arc<Semaphore>,
+    lifetime: Duration,
 }
 impl<A> LimitedAccept<A> {
     pub fn new(inner: A) -> Self {
         Self {
             inner,
             permits: Arc::new(Semaphore::new(16)),
+            lifetime: Duration::from_secs(15),
+        }
+    }
+    pub fn self_service(inner: A) -> Self {
+        Self {
+            inner,
+            permits: Arc::new(Semaphore::new(16)),
+            lifetime: Duration::from_secs(120),
         }
     }
 }
@@ -45,6 +54,7 @@ where
     fn accept(&self, stream: TcpStream, service: S) -> Self::Future {
         let permit = self.permits.clone().try_acquire_owned();
         let inner = self.inner.clone();
+        let lifetime = self.lifetime;
         Box::pin(async move {
             let permit = permit.map_err(|_| io::Error::other("connection limit"))?;
             let (inner, service) =
@@ -55,7 +65,7 @@ where
                 LimitedStream {
                     inner,
                     _permit: permit,
-                    deadline: Box::pin(tokio::time::sleep(Duration::from_secs(15))),
+                    deadline: Box::pin(tokio::time::sleep(lifetime)),
                 },
                 service,
             ))

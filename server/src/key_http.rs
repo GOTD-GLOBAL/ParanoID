@@ -30,6 +30,7 @@ fn denied() -> Failure {
     Failure(StatusCode::UNAUTHORIZED, "unauthorized")
 }
 pub async fn key_app(pool: PgPool, tokens: [String; 2], quota: i64) -> Result<Router, sqlx::Error> {
+    crate::self_service::reject_cutover(&pool).await?;
     if tokens[0] == tokens[1]
         || tokens
             .iter()

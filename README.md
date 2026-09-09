@@ -27,6 +27,24 @@ adds direct TLS, isolated data and lifecycle tooling. The authorized
 [hosted alpha](docs/operations/linux-alpha-rollout-2026-09-08.md) is externally
 reachable with pinned TLS; two-phone acceptance remains unrun.
 
+## Overnight realtime candidate
+
+The [overnight operations record](docs/operations/overnight-realtime.md) describes
+version8 native messenger UI, measured realtime E2EE, v7 continuity and the scoped
+existing-service update. It records build/review/deployment evidence separately.
+This current task supersedes the older no-live-action scope below only after its
+mandatory review and rollback gates pass.
+
+## Clean-install first-contact candidate
+
+The owner's 2026-09-09 amendment prioritizes automatic registration and immediate
+E2EE text/reply for a receiver with zero contacts. The [local candidate record](docs/operations/clean-first-contact-local.md)
+tracks actual tests and the retained-signer APK; [RFC-0014](docs/rfcs/0014-first-contact-incoming.md)
+and the [protocol](docs/protocol/first-contact-v1.md) define the mandatory signed
+account-ID channel. Historical migration/recovery is outside this candidate's
+release gate, with existing failures reported separately. Independent code review
+precedes publication/delivery; this task performs no live or phone action.
+
 ## Working principle
 
 Code, specifications, tests, diagrams, decisions, and operational instructions

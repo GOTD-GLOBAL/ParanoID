@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-09-08
+last_reviewed: 2026-09-09
 ---
 
 # Threat model
@@ -11,6 +11,15 @@ Update it whenever assets, actors, data flows, dependencies, or trust boundaries
 change.
 
 ## Active scoped analysis
+
+The [realtime trust delta](realtime-v1-threats.md) records signed-session,
+independent state/network, Android foreground connection and encrypted same-data
+maintenance boundaries for RFC-0015/proposed ADR-0010. Final Fable product/script
+reviews and bounded closure preceded the [actual attended rollout](../operations/realtime-rollout-2026-09-09.md).
+Hosted synthetic messaging passed; the original intermittent readiness-failure
+cause remains UNKNOWN, with attended recovery and physical-device limits retained.
+This dated outcome does not convert earlier scoped evidence below into a human
+audit or permanent architecture approval.
 
 The [single-server text delta](server-v0-threats.md) identifies proposed controls
 and test mappings for RFC-0006, distinguishing implemented development/client
@@ -25,7 +34,70 @@ The [key deployment delta](key-deployment-delta.md) covers the separately author
 migration candidate: durable cutover, verified restore, same-host process ownership
 and bounded TLS connection lifetimes. Live cutover remains gated on final review.
 
+The [self-service v2 delta](self-service-v2-threats.md) covers RFC-0012 and draft
+ADR-0007: automatic bounded registration, general routing, request proof, offline
+migration and downgrade authority. It includes data flows, residual risk owners
+and exact tests, distinguishing independent local server evidence from unrun
+client/phone/deployment gates. SR-01 documentation re-review remains pending.
+
+The [fresh-only v2 deployment amendment](self-service-v2-threats.md#fresh-only-deployment-amendment)
+adds explicit exact-IP exposure and scoped destructive replacement risks. The owner
+requested no old-server-DB backup for this one operation; TLS/phone state/neighbors
+remain protected. Local implementation is not host deployment or review approval.
+
+The [asymmetric retained-context draft](../rfcs/0016-asymmetric-retained-context.md#security-delta-and-replay-boundary)
+records a confirmed client profile-selection defect, the ambiguity of signed
+original labels, and why classified context failures cannot authorize blanket
+replay. No relaxed context verification or new negotiation protocol is implemented.
+
+## First-contact incoming trust-boundary draft
+
+The owner-selected [RFC-0014](../rfcs/0014-first-contact-incoming.md) and
+[exact protocol](../protocol/first-contact-v1.md) authorize local clean-install
+implementation/build for REQ-MSG-005. The **2026-09-09 Telegram** clarification
+is recorded verbatim there; no permalink/message ID or ADR acceptance is invented.
+Historic migration/recovery is outside this candidate's gate, not claimed fixed.
+Independent implementation review remains required before publication/delivery.
+
+The new boundary is admission of an unknown signed sender directly to a visible,
+replyable `network_unverified` dialog. Cryptographic device possession is not
+real-world identity verification; only explicit exact same-key QR comparison
+upgrades trust. No recipient approval, server directory or label inference is used.
+
+| Threat | Required candidate control and verification |
+| --- | --- |
+| Relay or peer substitutes sender/recipient/channel | Strict root/device ContactV2 plus intro-v2 signature; account-sorted endpoint/realm/SPKI commitment; exact local recipient and immutable existing pins; negative signature/recipient tests |
+| Wrapper stripping or signed wrong inner context | Mandatory frame2 for all new text/receipts; exact PlainV1 v1/channel/realm/from/to/id; no v0/alternate-context retry; independently re-signed wrong-inner test |
+| Invalid ciphertext consumes Account/prekey or allocates peer | Whole-state transient transaction with explicit accepted/duplicate/rejected outcome; reject all pin/Account/ratchet/history/outbox/replay changes, including failures after decrypt/receipt construction |
+| Forged/unknown receipt produces false delivery | Strict same-channel target sender/id/inner digest matched to retained outgoing commitment after server acceptance; unknown target no allocation, no synthetic receipt/receipt loop |
+| Replay, changed immutable ciphertext or conflicting sequence | Non-evicting sender/id + sequence/channel/outer/inner ledger; exact duplicates no-op across reload; conflict before decrypt; monotonic cursor |
+| Network peer launders verification or replaces keys | Unverified enum distinct from explicit QR trust, immutable credential/device/auth/original bundle/fallback, trust-only same-key upgrade |
+| Unknown-sender growth or blocked spam | 16 network-unverified/64 peers; existing 8 MiB snapshot, 200 history, 400 outbox, 8 sessions, 1000 accepted IDs per peer; 16 KiB frame/20-event pages; bounded block suppressing display/receipts |
+| Crash or ambiguous persistence publishes non-durable state | Core candidate sealed atomically before UI/network; failure freezes; exact wrapped outbox retry and persistent reopen exercised over real JVM/JNI |
+| Old incompatible client data silently reset | New explicit core3/outer4 validation; unsupported older snapshots preserved and visibly refused; no migration/reset path in this clean candidate |
+
+A single retained Olm Account owns private prekeys across per-peer sessions.
+The reusable fallback's weaker initial forward secrecy remains a scoped tradeoff.
+Signed device/contact/fallback linkage is exposed to the relay and device envelope
+signatures make origin claims transferable; deniability differs from Olm alone.
+Stable IDs, routing, timing, length and IP metadata remain visible. Server
+suppression/reordering, Sybil fairness, endpoint compromise, recovery, key rotation
+and multiple devices remain unresolved. No production/privacy guarantee follows.
+
+Human residual risk/decision owner: martadvix-web; ADR-0009 stays proposed.
+Current local implementation/test status is in [current-state](../project/current-state.md)
+and the candidate evidence record. Existing historical asymmetric RED is separately
+reported; no historical hosted message recovery or live data change is performed.
+
 ## Security objectives
+
+RFC-0013 adds the [bounded Android publication boundary](../server/android-updates.md#filesystem-and-resource-boundary):
+untrusted metadata/APK bytes, safe descriptor-relative reads and bounded hash work.
+The local controller selects `ROOT/updates` only for v2, outside DB storage, without
+directory creation or inherited feed authority in legacy modes. Missing feed
+does not authorize a fallback path. Publisher/client signer verification,
+independent combined-artifact review and phone installer consent remain required;
+server transport integrity is not a production secure-update claim.
 
 - Prevent unauthorized control of accounts, devices, servers, names, and plugins.
 - Protect message content according to a precisely defined encryption scope.
@@ -107,3 +179,10 @@ Before the first architecture is accepted, add data-flow diagrams, STRIDE-style
 threat enumeration, abuse cases, risk ratings, mitigations, residual risk owners,
 and verification tests. Before release, perform independent cryptographic and
 application security review appropriate to the claims being made.
+
+## Overnight realtime delta
+
+[The signed-session trust delta](realtime-v1-threats.md) covers replay, terminal
+revocation, wait races, native outbox signing, state/network separation, opt-in
+Android foreground notifications and encrypted same-data update/rollback.
+Actual final review and deployment evidence remain separate gates.

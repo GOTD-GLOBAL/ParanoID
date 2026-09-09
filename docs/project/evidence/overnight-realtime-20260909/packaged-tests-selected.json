@@ -1,0 +1,200 @@
+{
+  "started_utc": "2026-09-09T20:14:30.556838+00:00",
+  "phase": "original-readiness-failure-investigated-root-cause-unknown",
+  "scope": "Exact final packaged controller and runtime, old retained v2 release, entirely disposable local PG/TLS and unique user units on127.0.0.23; no remote action; synthetic payload rows are not E2EE evidence",
+  "release": "3ed25173ad978e6b417c",
+  "release_directory": "/home/codex/projects/paranoid-worktrees/overnight-integration-20260909T2006Z/dist/build-utkejh1u/release",
+  "old_release_directory": "/home/codex/paranoid-self-service-evidence/server-build-zeu65f67/release",
+  "source_manifest_sha256": "0f6d0689cefd7eac1a61bddc296054fbddc09dc0d06795a832779f785c314f2e",
+  "bundle_sha256": "2306c0a8c35e2d9e42e15a507d1825df7c2f3e6c115bf1823176817aaf4630f0",
+  "tests": [
+    {
+      "name": "test_v2_update.py",
+      "command": [
+        "python3",
+        "deploy/test_v2_update.py",
+        "-v"
+      ],
+      "exit": 1,
+      "wall_seconds": 82.053,
+      "log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-tests/test_v2_update.log",
+      "log_sha256": "f5d79804dee5b65520949d1fa5e84635e1817fefeb27db51dd71365ceaeb641f",
+      "unittest_count": 11,
+      "unittest_seconds": 81.947,
+      "ok_summary": false
+    },
+    {
+      "name": "test_v2_systemd.py",
+      "command": [
+        "python3",
+        "deploy/test_v2_systemd.py",
+        "-v"
+      ],
+      "exit": 0,
+      "wall_seconds": 25.599,
+      "log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-tests/test_v2_systemd.log",
+      "log_sha256": "e7a146b1678509ec389bfec7a29c21990a05ea1455af837dc34300715e7bc914",
+      "unittest_count": 2,
+      "unittest_seconds": 25.497,
+      "ok_summary": true
+    },
+    {
+      "name": "test_v2_maintenance_interrupts.py",
+      "command": [
+        "python3",
+        "deploy/test_v2_maintenance_interrupts.py",
+        "-v"
+      ],
+      "exit": 0,
+      "wall_seconds": 15.207,
+      "log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-tests/test_v2_maintenance_interrupts.log",
+      "log_sha256": "76172f3fc3a90e75d82e49918d0d75bd7dc9b83062949f25db7b14c005de5354",
+      "unittest_count": 1,
+      "unittest_seconds": 15.108,
+      "ok_summary": true
+    }
+  ],
+  "finished_utc": "2026-09-09T20:16:33.457358+00:00",
+  "sources_unchanged": true,
+  "bundle_unchanged": true,
+  "old_bundle_unchanged": true,
+  "tar_unchanged": true,
+  "pass": false,
+  "unittest_total": 14,
+  "original_counts": {
+    "tests": 14,
+    "passed": 13,
+    "failed": 1,
+    "suite_exits": [
+      1,
+      0,
+      0
+    ]
+  },
+  "original_overall_pass": false,
+  "original_phase": "FAIL",
+  "reproduction_investigation": {
+    "updated_utc": "2026-09-09T20:26:14.432677+00:00",
+    "root_cause": "UNKNOWN; no demonstrated product defect or environment cause identified. Initial failure is not claimed resolved or fixed.",
+    "initial_primary_failure": "test_same_schema_binary_restarts_with_original_pinned_tls: wait_health raises TLS/database readiness failed at testline188, then finally sees controller exit1 at194. Original stderr was suppressed at both outer test subprocess and controller runtime child. Failed old-versus-candidate loop iteration is unknown.",
+    "focused_captured_reproduction": {
+      "path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-repro/result.json",
+      "exit": 0,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "runtime_and_outer_stderr": "All empty; both old and candidate started and stopped successfully."
+    },
+    "focused_original_uninstrumented_repeats": {
+      "path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-uninstrumented-repeat/result.json",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "exits": [
+        0,
+        0,
+        0
+      ]
+    },
+    "original_full_order_with_stderr_capture": {
+      "path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-full-capture/result.json",
+      "log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-full-capture/full-suite.log",
+      "exit": 0,
+      "tests": 11,
+      "passed": 11,
+      "failed": 0,
+      "seconds": 47.552,
+      "readiness_failures": [],
+      "runtime_and_outer_stderr": "All empty; capture preserves original assertions, wait/retry timing, exact controller/runtime; captures added diagnostics only.",
+      "finished_utc": "2026-09-09T20:24:19.014291+00:00"
+    },
+    "resource_observation": {
+      "path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-full-capture/environment-observation.json",
+      "scope": "Post-failure only; worker scope4GiB memory limit and historical max hits, no OOM kills or PID-limit hits. Does not prove initialfailurecause.",
+      "cleanup_not_a_fix": "Full11 capture completed20:24:19UTC before UIagent cleanup notice; no product change or memory-cleanup fix claim.",
+      "confirmed_UI_cleanup_utc": "2026-09-09T20:24:55Z",
+      "confirmed_UI_cleanup_evidence": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/ui/shutdown-result.json"
+    },
+    "preservation": {
+      "all254_current_source_hashes_match_frozen_manifest": true,
+      "changed_files": [],
+      "final_capture_source_unchanged": true,
+      "final_capture_bundle_unchanged": true,
+      "no_product_source_edits": true,
+      "no_assertion_or_timeout_changes": true,
+      "retained_old_bundle_unchanged_after_all_reproductions": true,
+      "final_tar_unchanged_after_all_reproductions": true
+    },
+    "cleanup_evidence": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/final-packaged-deploy-tests/cleanup.json",
+    "remaining_gate": "Independent Fable review and parent disposition must consider retained original1/14 readiness failure with unknown rootcause alongside all exact-bundle successes, including actual dedicated-unit update/rollback/signal safety. No further test repetitions planned absent new findings."
+  },
+  "gate1_requested_diagnostic": {
+    "requested_by": "Fable final review DEPLOY-GATE-1; parent selected one bounded diagnostic, not owner risk-acceptance bypass",
+    "result_path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/Gate1-diagnostic-result.json",
+    "handoff_path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/HANDOFF.md",
+    "log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/full11.log",
+    "tests": 11,
+    "passed": 11,
+    "failed": 0,
+    "exit": 0,
+    "seconds": 48.206,
+    "exactly_one_run": true,
+    "original_root_cause": "UNKNOWN; no fix claim",
+    "frozen_source_and_bundles_unchanged": true,
+    "startup_summary": [
+      {
+        "runtime_release": "3ed25173ad978e6b417c",
+        "pg_pid": 66689,
+        "pg_start_monotonic_ns": 2196081326910579,
+        "pg_ready_elapsed_seconds": 0.073674221,
+        "pre_start_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "ready_pid_fact": {
+          "postmaster_pid_present": true,
+          "postmaster_pid": "66689",
+          "matches_observed_pg": true
+        },
+        "final_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "pg_exit": 0,
+        "pg_stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/66674-postgres-0.stderr.log",
+        "runtime_stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/66674-runtime-1.stderr.log",
+        "metadata": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/process-66674.json"
+      },
+      {
+        "runtime_release": "346f059914a290be4851",
+        "pg_pid": 67051,
+        "pg_start_monotonic_ns": 2196084457267768,
+        "pg_ready_elapsed_seconds": 0.07561932,
+        "pre_start_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "ready_pid_fact": {
+          "postmaster_pid_present": true,
+          "postmaster_pid": "67051",
+          "matches_observed_pg": true
+        },
+        "final_pid_fact": {
+          "postmaster_pid_present": false,
+          "postmaster_pid": null,
+          "matches_observed_pg": false
+        },
+        "pg_exit": 0,
+        "pg_stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/67036-postgres-0.stderr.log",
+        "runtime_stderr": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/67036-runtime-1.stderr.log",
+        "metadata": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/process-67036.json"
+      }
+    ],
+    "backup_sample": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/gate1-diagnostic/backup-manifest-sample.json",
+    "remaining_gate": "Fresh bounded Fable closure of diagnostic plus remote-wrapper changes before any live action."
+  },
+  "export_note": "Selected result fields; only repetitive hash maps and process inventory omitted. Original SHA256: 9858b32edb17a2214726f058b91e8884266d53b074c46e7af7641c176b087975"
+}

@@ -6,29 +6,196 @@ last_reviewed: 2026-09-09
 
 # Current project state
 
-## Current product priority
+## Overnight realtime implementation and rollout — 2026-09-09
+
+The [current owner scope](../product/overnight-realtime.md) authorizes a tested
+in-place v7 improvement and safe existing-service update after independent Fable
+review and rollback readiness. Initial dirty sources are preserved; TLS, phone
+identity, v7 history and existing server data remain compatibility boundaries.
+The signed-session long-poll transport, independent network/state lanes, native
+messenger UI and optional visible background connection are implemented.
+Matched optimized JNI measurements improved from P50 3043.98/P95 3057.50 ms (v7,
+20 messages) to P50 102.94/P95 122.01 ms (24 messages). These are actual pinned-TLS/PG
+receiver commit/listener timings, not physical display-frame measurements.
+Populated-v7 upgrade continuity and all 14 realtime server tests pass. Android 35
+emulator real messaging, keyboard and background permission/delivery checks pass.
+
+[The dated rollout](../operations/realtime-rollout-2026-09-09.md) records successful
+independent final Fable review and bounded closure, the signed ARM64 version 8 APK,
+and the attended same-data update to release `3ed25173ad978e6b417c`. The existing
+unit is active/enabled; TLS, configuration, cluster and scoped neighbor checks
+match. An authenticated restore-verified encrypted backup preceded cutover.
+Actual hosted product Java/JNI messaging passed with two synthetic identities:
+12 sends measured P50 76.51/P95 85.74 ms to durable receiver notification, separately
+from the local benchmark and physical rendering. Final postflight passed at
+2026-09-09 20:59:04 UTC. The original packaged readiness failure remains UNKNOWN
+(13 PASS/1 FAIL); subsequent diagnostic passes and review closure do not fix it.
+The [runbook](../operations/overnight-realtime.md) retains attended recovery limits.
+RFC-0015/ADR-0010 remain proposed, with direct scoped task authority distinguished from permanent ADR
+acceptance. Physical phones, Doze/force-stop, voice, second-server operation and
+provider push remain unrun or unimplemented. Historical pre-v7 failures remain
+separately visible. Older dated sections below retain their original scope;
+the current task supersedes their no-deploy boundary only for this reviewed update.
+
+## Clean-install first-contact candidate — scoped implementation authorized
+
+The current **2026-09-09 Telegram implementation task** is quoted in
+[REQ-MSG-005](../product/requirements.md#first-contact-incoming-correction-2026-09-09)
+and [RFC-0014](../rfcs/0014-first-contact-incoming.md). No permalink/message ID
+was supplied. The selected recommendation is the mandatory signed deterministic
+account-ID channel for all new text/receipts, with immediate plaintext/reply for
+a recipient with zero contacts and visibly unverified identity.
+
+Exact current task excerpt (2026-09-09); earlier owner approval is reported by
+this task, not independently retrieved as a permanent message in this context:
+
+> DELIVER implementation + actual built APK candidate for CLEAN-INSTALL first-contact messenger now. User explicitly approved review recommendation and discarded old teststate/migration/recovery as release gates (see context).
+
+The human owner selected the first independent design-review recommendation:
+mandatory deterministic signed account-ID channels for all newly created text
+and delivery receipts, within the existing bounded private test-data alpha.
+Fresh app installations are the acceptance scope. Historical test-message
+preservation, migration and exact old-event recovery are explicitly NOT gates
+for this candidate. Historical failing tests remain present, run separately and
+reported honestly; this scope amendment does not make their bugs fixed.
+
+The owner will uninstall applications himself. This task authorizes local source,
+TDD, isolated PostgreSQL/pinned-TLS/JVM/JNI testing and retained-signer APK build
+before independent code review. It authorizes no phone action, snapshot reset,
+live database wipe, SSH, deploy, upload, publication or delivery to phones.
+Unsupported older client snapshots must fail clearly while preserving their
+bytes; clean installation is not an automatic migration or reset implementation.
+Permanent architecture disposition remains proposed, with independent review
+and durable approval provenance still outstanding. No additional permission
+question is required for this exact local implementation/testing/build scope.
+
+The clean Rust matrix actually passes **15 tests / 0 failures / 0 ignored,
+exit0**, plus a separate passing stripped-new-frame/historical-v0-decoder check;
+final additional boundary-suite results are in the external evidence record.
+The real exact-retained-server + generated
+pinned-TLS + isolated PostgreSQL + Android Java/JNI final fixture passes **exit0**:
+five automatic registrations, zero initial receiver contacts, immediate
+plaintext/unverified reply, genuine receipts, database frame2 comparison, exact
+lost-response retry, injected receipt-save rollback/freeze, same-key verification,
+block/unblock, unrelated progress, crossing and encrypted snapshot/server/JVM
+reopen. Native/Java/fixture sources were unchanged across that final run.
+Clean creation/reopen and genuine populated-old-state/pristine-interrupted-creation
+JVM boundary checks also pass. These are local results, not phone acceptance.
+
+Historical tests are retained and run separately: frozen initial core **39 passed /
+2 failed / 0 ignored, exit101**; final unchanged historical core **27 passed /
+14 failed / 0 ignored, exit101**. Two old JVM schema/migration smokes exit1;
+the original reciprocal-contact real fixture exits0. No old failure is suppressed
+or called fixed. [The local candidate record](../operations/clean-first-contact-local.md)
+identifies exact commands/results and the unique external source/build/APK
+verification record. Artifact hashes live in that evidence README, avoiding a
+circular hash in the source snapshot. Independent code review remains the next
+gate before any publication or phone delivery; no live action was performed.
+
+All older implementation/deployment sections below describe their dated scope;
+where they called historical recovery an immediate release blocker, this explicit
+clean-install amendment now controls this candidate only. Existing live state and
+previous authority records are preserved without new live verification/actions.
+
+## Historical self-service product priority — before the later implementation
 
 The active workstream is [issue #16](https://github.com/GOTD-GLOBAL/ParanoID/issues/16)
 and its [English product brief](../product/self-service-messenger.md). The
-`feat/self-service-registration` branch starts from the preserved archive; no
-self-service runtime change has been implemented or deployed by this setup task.
+`feat/self-service-registration` setup started from the preserved archive and
+did not itself implement or deploy self-service. The subsequent local server
+candidate is recorded below; the complete application journey is not delivered.
 
 The owner rejected operator-dependent onboarding and approved preserving the
 current implementation in an [archival checkpoint](operator-approval-checkpoint.md),
 without merging it wholesale into main. The next deliverable is the self-service
 app/server flow in [REQ-ID-008](../product/requirements.md#default-server-self-registration-correction-2026-09-09):
 create ID, automatically register on the common server, add a contact, message.
-It is not implemented by the current operator-grant code. Blockchain registration
+It was not implemented by the historical operator-grant code. Blockchain registration
 and public/private server choice remain the later direction, with identity and
 history continuity required. No new runtime or hosting change follows merely
 from the archive/issue task. Historical implementation/rollout observations below
 remain evidence, not the target user experience.
 
+## Historical fresh v2 preparation — before the live rollout above
+
+Sergey explicitly requested a new database in place of the disposable old server
+database and no preservation/backup. The [fresh-v2 runbook](../operations/fresh-self-service-v2.md)
+records that supplied task provenance without a fabricated permanent approval.
+Only the isolated `data` cluster is the discard target; TLS, phone state, socket/
+locks, neighbors and other root contents remain protected. No live worker action.
+
+The local candidate adapts the existing bundle/controller: explicit exact-reviewed
+IPv4:38443 TLS v2 runtime, fresh initialization, stopped one-shot cluster replacement
+without dump/import, sticky v2 config, readiness and existing autostart/supervision.
+The separate retained `sr01-independent-rereview.md` reports `sr01_closed: true`
+for the original documentation-only correction. Earlier pending-SR-01 wording
+below is historical; that closure does not review these later deployment changes.
+V0/v1 remain separate; legacy backup/update/switch cannot operate on v2. Independent
+candidate review precedes any coordinator cutover. V2 update/restore and physical
+two-phone acceptance are not established by this fresh-only slice.
+
+Independent final candidate review found FV2-R01: SIGINT could falsely return
+success during destructive replacement. The local correction makes interrupted
+`replace-v2`/`fresh-v2`/`install-v2` operations exit 130 with a redacted fail-stopped
+diagnostic, preserving sticky state and legacy/graceful-run behavior. Regression
+and rebuilt-package evidence require bounded independent re-review before cutover;
+this correction accepts no ADR and performs no deployment.
+
+## Historical RFC-0013 bundle integration — before final review and rollout
+
+The optional read-only Android feed and v2-only controller environment are now
+combined locally after FV2-R01's independent bounded closure. The controller
+selects `ROOT/updates` without creating it; missing publication stays unavailable,
+and legacy modes do not inherit the feed. Strict RED/GREEN controller coverage
+checks that selection and preserved legacy authority. See the
+[publication contract](../operations/android-update-publication.md).
+The final combined bundle still requires independent review; this is not live
+publication, phone installer evidence or acceptance of draft ADR-0007/0008.
+
+## Historical self-service v2 local verification — before live rollout
+
+The `feat/self-service-server` worktree now implements the server part of issue #16:
+automatic device-proof registration, v2 exact-request one-use authentication,
+general accounts/devices/account-pair conversations, recipient cursor inboxes and
+commit-ordered idempotent ciphertext storage with non-evicting limits. Explicit
+offline initialization/migration preserves verified legacy ownership/history and
+revocation; downgrade guards reject old authority. The original runtime requires loopback TLS,
+a private PostgreSQL socket and single-worker ownership. The later explicit
+exact-IP candidate above adds a separate mode; it has not been deployed.
+
+[RFC-0012](../rfcs/0012-self-service-messenger.md), draft
+[ADR-0007](../decisions/0007-self-service-messenger.md),
+[the versioned contract](../protocol/self-service-v2.md) and
+[dedicated threat/test matrix](../security/self-service-v2-threats.md) accompany
+this implementation. No accepted historical decision was rewritten.
+
+[Independent server evidence](../server/self-service-local.md#independent-server-review-evidence)
+records 19 targeted and 43 full server tests passing, including populated DB
+dump/restore, plus independent Python Ed25519/TLS/PostgreSQL probes and actual
+historical executable downgrade tests. Review found no runtime blocker but failed
+overall on missing documentation (SR-01). This documentation correction supplies
+the artifacts; independent coordinator re-review remains pending. These are prior
+local runtime results, not a new runtime run, CI result or architecture approval.
+
+Major residual risks: shared budgets are not Sybil resistance/fairness; copied
+public credentials can starve challenges; no mutual-contact ACL prevents unsolicited
+messages to known IDs; authenticated recipient probing and server-visible metadata
+remain. Startup checks the v2 metadata row, not full schema attestation; health is
+liveness. Human residual risk/disposition owner is martadvix-web, pending acceptance.
+
+No client completion, multi-peer Olm/receipt interoperability, physical phones,
+installed snapshot migration, v2 package/controller lifecycle, public deployment
+or production readiness is established here. The historical hosted operator-grant
+rollout below is not a v2 rollout. Complete issue #16 acceptance, owner architecture
+disposition, separately authorized deployment and two-phone evidence remain open.
+
 ## Phase
 
-**Inception and architecture discovery.** This repository is a clean reboot. It
-contains documentation, Android diagnostics and a development transport
-increment, but no usable messenger or accepted production architecture.
+**Inception and architecture discovery, with a locally tested messenger candidate.**
+The repository contains documentation, Android diagnostics, development transport
+and the clean-install signed first-contact Android/core candidate described above.
+Actual physical two-phone acceptance and production architecture are not yet
+established. Local JVM/JNI messaging is evidence within its documented scope.
 
 The earlier proof of concept is preserved in the private
 `GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
@@ -261,6 +428,18 @@ and existing identities/history remain intact, with no permanent default-server
 authority, secret grants in app/store URLs or auth bypass. Simultaneous multi-server
 operation, iOS and store publishing are not two-OPPO alpha acceptance requirements.
 This is Telegram product provenance, not fabricated GitHub approval or delivered UX.
+
+## Confirmed client compatibility risk (2026-09-09)
+
+A synthetic reproduction confirms asymmetric retained-contact migration can
+select incompatible authenticated message contexts after genuine v2 QR pairing.
+This has not been attributed to the owner's phones.
+[RFC-0016](../rfcs/0016-asymmetric-retained-context.md) records why existing signed
+QR fields cannot distinguish a retained pair from a new conversation between
+original labelled identities. Focused acceptance is RED; no production client
+patch, general rejection replay, APK delivery or deployment follows. Existing
+symmetric/new-dialog tests are not evidence that the asymmetric case works.
+Independent review and disposition of the missing profile signal remain gates.
 
 ## Next decision gates
 

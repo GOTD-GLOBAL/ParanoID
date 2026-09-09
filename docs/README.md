@@ -17,6 +17,8 @@ This is the entry point and navigation contract for ParanoID documentation.
 
 - [Current state](project/current-state.md): what exists now, what does not, and
   the next decision gates.
+- [Clean first-contact candidate](operations/clean-first-contact-local.md): local
+  test/build evidence, exact signed channel, clean-install scope and review gate.
 - [Vision](product/vision.md): intended users, value, and product boundaries.
 - [Requirements](product/requirements.md): traceable product requirements and
   open acceptance criteria.
@@ -31,17 +33,30 @@ This is the entry point and navigation contract for ParanoID documentation.
   design work.
 - [Quality attributes](architecture/quality-attributes.md): measurable scenarios
   used to compare designs.
-- [Decision log](decisions/README.md): accepted and superseded ADRs.
+- [Decision log](decisions/README.md): accepted, draft/proposed and historical ADRs.
+- [Self-service v2 decision draft](decisions/0007-self-service-messenger.md):
+  RFC-0012 server candidate, not accepted application architecture.
 - [RFC process](rfcs/README.md): proposals under discussion.
+- [User-triggered Android updates](rfcs/0013-user-triggered-android-updates.md) and
+  [draft ADR-0008](decisions/0008-user-triggered-android-updates.md): Update button
+  with pinned distribution/signer checks and native installation consent; in progress.
 
 ## Contracts and operations
 
 - [Protocol documentation](protocol/README.md): wire formats, state machines,
   federation, and compatibility.
 - [API documentation](api/README.md): machine-readable and human-readable APIs.
+- [Fresh-only v2 deployment candidate](operations/fresh-self-service-v2.md): explicit
+  exact-IP mode and scoped old-server-DB discard without backup; the
+  [actual authorized rollout](operations/self-service-v2-rollout-2026-09-09.md)
+  records installed v2, retained boundaries and verified live readiness.
 - [Operations](operations/README.md): deployment, upgrades, backups, observability,
   incidents, and recovery.
 - [Threat model](security/threat-model.md): assets, actors, boundaries, and threats.
+- [Self-service v2 contract](protocol/self-service-v2.md),
+  [server-local evidence/runbook](server/self-service-local.md) and
+  [threat delta/test mapping](security/self-service-v2-threats.md): locally verified
+  server behavior; client, physical phones and deployment remain separate gates.
 
 ## Documentation by reader need
 
@@ -86,3 +101,12 @@ process documents define which subset of this vocabulary is valid.
 
 `last_reviewed` describes when the document was checked against reality, not when
 its spelling was last edited.
+
+## Overnight realtime implementation and rollout
+
+[Overnight realtime scope](product/overnight-realtime.md) records the private-alpha
+requirements. The [dated actual rollout](operations/realtime-rollout-2026-09-09.md)
+records signed artifacts, completed independent review/closure, preserved
+existing-service update and hosted product Java/JNI acceptance. The
+[runbook](operations/overnight-realtime.md) retains recovery, test and risk boundaries.
+No permanent architecture acceptance or physical-phone result is implied.

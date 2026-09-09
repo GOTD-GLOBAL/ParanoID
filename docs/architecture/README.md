@@ -77,6 +77,40 @@ The [local operator/test runbook](../operations/key-registration-local.md) docum
 the executable candidate. This view is not accepted production architecture or
 evidence that the hosted endpoint has been migrated.
 
+## Proposed self-service v2 server boundary
+
+The local candidate replaces operator-dependent signup and pair routing in a
+separate v2 mode. The [data-flow/trust-boundary view](../security/self-service-v2-threats.md#data-flow-and-trust-boundaries)
+shows client proof, bounded ingress/challenges, serialized private PostgreSQL
+transactions and offline legacy migration. It is scoped to the locking loopback
+TLS binary, not public deployment or completed client architecture.
+[ADR-0007](../decisions/0007-self-service-messenger.md),
+[RFC-0012](../rfcs/0012-self-service-messenger.md) and the
+[wire contract](../protocol/self-service-v2.md) remain drafts. Historical views
+above are not self-service authority or evidence of a v2 hosted rollout.
+
+The later [fresh-only deployment candidate](../operations/fresh-self-service-v2.md)
+reuses the isolated supervisor/private PG container boundary, with explicit
+reviewed IPv4:38443 TLS and one-shot replacement of only the old server data
+cluster. TLS/phone state/neighbors stay outside discard. This extends the original
+local-only view, not an accepted architecture or hosted rollout.
+
+## Proposed clean-install first-contact boundary (RFC-0014)
+
+```text
+Sender: genuine recipient QR -> immutable peer/channel -> Olm PlainV1 text
+  -> device-signed intro-v2 -> sealed immutable outbox -> v2 pinned-TLS transport
+Recipient: zero contacts -> signature/recipient/channel + transient Olm candidate
+  -> exact PlainV1 + budgets -> atomic unverified dialog/plaintext/receipt snapshot
+  -> immediate reply UI -> same signed channel and one shared retained Olm Account
+Server: existing proof-authenticated opaque POST/GET; no content keys or directory
+```
+
+[The exact proposed contract](../protocol/first-contact-v1.md) uses clean core3/
+sealed snapshot4 and rejects old client snapshots unchanged. The owner removed
+historical migration/recovery from this local candidate's gate. The source/build
+is not accepted architecture, current live rollout or physical-phone evidence.
+
 ## Rules for diagrams
 
 - State scope, audience, and abstraction level.
@@ -85,3 +119,8 @@ evidence that the hosted endpoint has been migrated.
 - Do not mix context, container, component, and code levels.
 - Prefer a small number of useful views over diagrams that mirror every class.
 - Update a diagram in the same change that alters the architecture it represents.
+
+## Overnight realtime candidate
+
+[Retained-stack realtime proposal](../rfcs/0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
+No permanent architecture acceptance or physical-phone result is implied.

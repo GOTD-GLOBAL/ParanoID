@@ -1,0 +1,41 @@
+   Compiling paranoid-client-core v0.0.1 (/home/codex/projects/paranoid-worktrees/self-service-android/clients/core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.60s
+     Running unittests src/lib.rs (clients/core/target/debug/deps/paranoid_client_core-2bdb8273653f3424)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/clean_first_contact.rs (clients/core/target/debug/deps/clean_first_contact-1f430eb1adcd74d8)
+
+running 17 tests
+test old_snapshots_refuse_without_reset_and_pristine_registration_identity_reopens ... ok
+test stripped_v1_is_also_rejected_by_the_unchanged_historical_v0_decoder ... ok
+test server_acceptance_preserves_local_pending_channel_and_exact_commitment ... ok
+test duplicate_nested_receipt_fields_are_not_collapsed_before_validation ... ok
+test genuine_changed_same_root_fallback_and_stale_signature_are_rejected ... ok
+test exact_wire_limit_and_equivalent_json_reencoding_have_distinct_replay_commitments ... ok
+test replay_ledger_binds_sender_uuid_sequence_exact_outer_and_survives_reload ... ok
+test unknown_receipt_and_every_wrong_commitment_target_roll_back ... ok
+test independently_derived_channel_crossing_texts_and_receipts_share_two_sessions ... ok
+test wrong_signatures_stripping_and_recursive_outer_fields_never_allocate_peer ... ok
+test valid_outer_signature_with_corrupt_olm_and_full_inbox_never_commit_crypto_state ... ok
+test zero_contact_plaintext_reply_receipts_and_clean_reopen ... ok
+test eight_real_inbound_sessions_are_retained_and_ninth_is_rejected_transactionally ... ok
+test post_decrypt_history_and_receipt_outbox_capacity_discard_account_and_ratchets ... ok
+test signed_wrong_inner_context_and_strict_json_roll_back_entire_state ... ok
+test whole_snapshot_limit_after_unknown_decryption_and_receipt_construction_rolls_back ... ok
+test budgets_bound_unverified_and_total_peers_without_eviction_and_block_preserves_keys ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 51.22s
+
+     Running tests/realtime_signing.rs (clients/core/target/debug/deps/realtime_signing-7618939006475797)
+
+running 4 tests
+test session_signs_exact_native_cursor_context_with_unique_nonces_without_state_mutation ... ok
+test session_open_is_exact_active_device_challenge_only ... ok
+test session_rejects_cross_identity_trust_invalid_expiry_unknown_routes_and_extra_fields ... ok
+test session_send_only_signs_retained_immutable_outbox_and_rejects_accepted_ids ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+

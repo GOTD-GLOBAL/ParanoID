@@ -1,0 +1,370 @@
+{
+  "utc": "2026-09-09T20:01:31.974257+00:00",
+  "scope": "Historical characterization only. Raw failures retained; tests not edited, skipped, ignored, or relabeled as passing. Shipping supported v7 schema4/core3 continuity is a separate actual-process test.",
+  "rust": {
+    "candidate_exit": 101,
+    "candidate_exit_source": "Parent reported completed process exit101; log ends one target failed",
+    "v7_exit": 101,
+    "same_all_41_outcomes": true,
+    "same_14_failure_error_classes": true,
+    "candidate": {
+      "path": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/historical-core-final.log",
+      "sha256": "0ef920ac9b05ce00597d3fec4312abb742d035bcf6a39bb480fff42eb4f6e63e",
+      "tests": {
+        "independent_python_vectors_match_rust_canonical_bytes_and_strict_ed25519": "ok",
+        "unreadable_legacy_olm_state_is_not_wrapped_in_a_new_root_identity": "ok",
+        "raw_qr_is_parsed_strictly_before_android_can_collapse_duplicate_keys": "ok",
+        "create_identity_is_unassigned_and_duplicate_create_retains_exact_state": "ok",
+        "an_unconfirmed_bad_or_expired_public_grant_does_not_permanently_poison_identity": "ok",
+        "public_request_validates_root_device_olm_binding_not_merely_json": "ok",
+        "grant_candidate_is_persistable_before_signing_exact_bound_proof": "ok",
+        "typed_verified_contact_enables_e2ee_but_never_replaces_an_existing_pin": "ok",
+        "new_conversations_between_original_labels_keep_account_context_and_strict_rejection": "FAILED",
+        "sender_intro_does_not_change_a_retained_legacy_profile": "FAILED",
+        "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts": "FAILED",
+        "migration_retains_installed_identity_and_every_legacy_field": "ok",
+        "installed_verified_peer_routes_and_history_survive_without_readding_contact": "FAILED",
+        "asymmetric_retained_pair_requires_bidirectional_text_and_receipts": "FAILED",
+        "signed_v2_qr_does_not_disclose_retained_peer_profile": "FAILED",
+        "damaged_conversation_or_missing_fallback_secret_cannot_reopen_as_healthy_state": "ok",
+        "sender_intro_authenticates_exact_pending_bytes_without_installing_contact": "FAILED",
+        "reusable_contact_extension_is_signed_persisted_and_keeps_the_original_binding": "ok",
+        "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id": "FAILED",
+        "sender_intro_rejects_forged_nested_bindings_and_malformed_frames": "FAILED",
+        "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account": "FAILED",
+        "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority": "FAILED",
+        "acceptance_drains_only_exact_queued_id_and_never_claims_peer_delivery": "ok",
+        "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history": "FAILED",
+        "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback": "FAILED",
+        "v2_status_activates_only_the_exact_saved_credential_without_legacy_alias_changes": "ok",
+        "v2_proof_uses_retained_identity_without_grant_and_rejects_context_substitution": "ok",
+        "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs": "FAILED",
+        "first_contact_plaintext_is_visible_without_recipient_pairing": "ok",
+        "three_users_exchange_independent_e2ee_conversations_and_authenticated_receipts_after_reload": "ok",
+        "snapshot_growth_is_refused_before_emitting_state_that_cannot_be_reopened": "ok",
+        "simultaneous_first_sends_to_two_contacts_preserve_crossing_ratchets_after_reload": "ok",
+        "fresh_client_exports_only_public_pairing_data": "ok",
+        "pinned_peers_exchange_text_and_authenticated_delivery_receipt_after_reload": "ok",
+        "tampering_context_replacement_and_retries_are_fail_closed": "ok",
+        "unknown_receipt_is_rejected_without_advancing_the_failed_ratchet": "ok",
+        "bad_event_is_recorded_without_crypto_commit_and_next_message_arrives": "ok",
+        "malformed_replay_of_accepted_id_never_returns_cursor_progress": "ok",
+        "simultaneous_first_sends_and_lost_acceptance_keep_exact_retry_bytes": "ok",
+        "full_history_defers_text_but_accepts_a_later_delivery_receipt": "ok",
+        "rejection_log_is_bounded_and_old_snapshots_load_without_key_reset": "ok"
+      },
+      "failures": {
+        "new_conversations_between_original_labels_keep_account_context_and_strict_rejection": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_does_not_change_a_retained_legacy_profile": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "installed_verified_peer_routes_and_history_survive_without_readding_contact": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "asymmetric_retained_pair_requires_bidirectional_text_and_receipts": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "signed_v2_qr_does_not_disclose_retained_peer_profile": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_authenticates_exact_pending_bytes_without_installing_contact": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:509:5:"
+        },
+        "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "sender_intro_rejects_forged_nested_bindings_and_malformed_frames": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history": {
+          "error_class": "unverified-count actual 0 expected 1",
+          "panic_location": "tests/self_service.rs:397:5:"
+        },
+        "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:569:6:"
+        },
+        "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs": {
+          "error_class": "unverified-count actual 0 expected 1",
+          "panic_location": "tests/self_service.rs:377:5:"
+        }
+      },
+      "suites": [
+        {
+          "target": "tests/key_vectors.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/registration.rs",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/self_service.rs",
+          "passed": 10,
+          "failed": 14,
+          "ignored": 0
+        },
+        {
+          "target": "tests/state.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/sync_recovery.rs",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "counts": {
+        "passed": 27,
+        "failed": 14,
+        "ignored": 0
+      }
+    },
+    "delivered_v7": {
+      "path": "/home/codex/paranoid-self-service-evidence/clean-first-contact-05_er157/historical-final-core.log",
+      "sha256": "9a240b8b2a41b04f3e741342a53ff899c2298f87773cf89db551efe7e7f59c6e",
+      "tests": {
+        "independent_python_vectors_match_rust_canonical_bytes_and_strict_ed25519": "ok",
+        "unreadable_legacy_olm_state_is_not_wrapped_in_a_new_root_identity": "ok",
+        "raw_qr_is_parsed_strictly_before_android_can_collapse_duplicate_keys": "ok",
+        "create_identity_is_unassigned_and_duplicate_create_retains_exact_state": "ok",
+        "an_unconfirmed_bad_or_expired_public_grant_does_not_permanently_poison_identity": "ok",
+        "public_request_validates_root_device_olm_binding_not_merely_json": "ok",
+        "grant_candidate_is_persistable_before_signing_exact_bound_proof": "ok",
+        "typed_verified_contact_enables_e2ee_but_never_replaces_an_existing_pin": "ok",
+        "new_conversations_between_original_labels_keep_account_context_and_strict_rejection": "FAILED",
+        "asymmetric_retained_pair_requires_bidirectional_text_and_receipts": "FAILED",
+        "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts": "FAILED",
+        "migration_retains_installed_identity_and_every_legacy_field": "ok",
+        "installed_verified_peer_routes_and_history_survive_without_readding_contact": "FAILED",
+        "sender_intro_does_not_change_a_retained_legacy_profile": "FAILED",
+        "signed_v2_qr_does_not_disclose_retained_peer_profile": "FAILED",
+        "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id": "FAILED",
+        "reusable_contact_extension_is_signed_persisted_and_keeps_the_original_binding": "ok",
+        "sender_intro_authenticates_exact_pending_bytes_without_installing_contact": "FAILED",
+        "damaged_conversation_or_missing_fallback_secret_cannot_reopen_as_healthy_state": "ok",
+        "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account": "FAILED",
+        "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback": "FAILED",
+        "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority": "FAILED",
+        "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history": "FAILED",
+        "acceptance_drains_only_exact_queued_id_and_never_claims_peer_delivery": "ok",
+        "sender_intro_rejects_forged_nested_bindings_and_malformed_frames": "FAILED",
+        "v2_status_activates_only_the_exact_saved_credential_without_legacy_alias_changes": "ok",
+        "v2_proof_uses_retained_identity_without_grant_and_rejects_context_substitution": "ok",
+        "first_contact_plaintext_is_visible_without_recipient_pairing": "ok",
+        "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs": "FAILED",
+        "three_users_exchange_independent_e2ee_conversations_and_authenticated_receipts_after_reload": "ok",
+        "snapshot_growth_is_refused_before_emitting_state_that_cannot_be_reopened": "ok",
+        "simultaneous_first_sends_to_two_contacts_preserve_crossing_ratchets_after_reload": "ok",
+        "fresh_client_exports_only_public_pairing_data": "ok",
+        "pinned_peers_exchange_text_and_authenticated_delivery_receipt_after_reload": "ok",
+        "tampering_context_replacement_and_retries_are_fail_closed": "ok",
+        "malformed_replay_of_accepted_id_never_returns_cursor_progress": "ok",
+        "unknown_receipt_is_rejected_without_advancing_the_failed_ratchet": "ok",
+        "bad_event_is_recorded_without_crypto_commit_and_next_message_arrives": "ok",
+        "simultaneous_first_sends_and_lost_acceptance_keep_exact_retry_bytes": "ok",
+        "full_history_defers_text_but_accepts_a_later_delivery_receipt": "ok",
+        "rejection_log_is_bounded_and_old_snapshots_load_without_key_reset": "ok"
+      },
+      "failures": {
+        "new_conversations_between_original_labels_keep_account_context_and_strict_rejection": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "asymmetric_retained_pair_requires_bidirectional_text_and_receipts": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "installed_verified_peer_routes_and_history_survive_without_readding_contact": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_does_not_change_a_retained_legacy_profile": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "signed_v2_qr_does_not_disclose_retained_peer_profile": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "sender_intro_authenticates_exact_pending_bytes_without_installing_contact": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:509:5:"
+        },
+        "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account": {
+          "error_class": "unsupported_state",
+          "panic_location": "tests/self_service.rs:1070:51:"
+        },
+        "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:569:6:"
+        },
+        "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history": {
+          "error_class": "unverified-count actual 0 expected 1",
+          "panic_location": "tests/self_service.rs:397:5:"
+        },
+        "sender_intro_rejects_forged_nested_bindings_and_malformed_frames": {
+          "error_class": "invalid_request",
+          "panic_location": "tests/self_service.rs:637:6:"
+        },
+        "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs": {
+          "error_class": "unverified-count actual 0 expected 1",
+          "panic_location": "tests/self_service.rs:377:5:"
+        }
+      },
+      "suites": [
+        {
+          "target": "tests/key_vectors.rs",
+          "passed": 1,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/registration.rs",
+          "passed": 7,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/self_service.rs",
+          "passed": 10,
+          "failed": 14,
+          "ignored": 0
+        },
+        {
+          "target": "tests/state.rs",
+          "passed": 3,
+          "failed": 0,
+          "ignored": 0
+        },
+        {
+          "target": "tests/sync_recovery.rs",
+          "passed": 6,
+          "failed": 0,
+          "ignored": 0
+        }
+      ],
+      "counts": {
+        "passed": 27,
+        "failed": 14,
+        "ignored": 0
+      }
+    },
+    "new_failures": []
+  },
+  "jvm": {
+    "passed": 0,
+    "failed": 2,
+    "mapping": [
+      {
+        "test": "SelfServiceSmoke",
+        "candidate_exit": 1,
+        "v7_exit": 1,
+        "same_exact_stderr": true,
+        "current_log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/historical-jvm-final/SelfServiceSmoke.log",
+        "v7_log": "/home/codex/paranoid-self-service-evidence/clean-first-contact-05_er157/android-historical-self-service-smoke.log",
+        "v7_log_sha256": "b87acf23db9459a8a256dbf230c495c5fff93a9e6228da867cad25f168580102"
+      },
+      {
+        "test": "SelfServiceMigrationSmoke",
+        "candidate_exit": 1,
+        "v7_exit": 1,
+        "same_exact_stderr": true,
+        "current_log": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/historical-jvm-final/SelfServiceMigrationSmoke.log",
+        "v7_log": "/home/codex/paranoid-self-service-evidence/clean-first-contact-05_er157/android-historical-migration-smoke.log",
+        "v7_log_sha256": "084f12aaff62d7a62d779ea03abd4cce798ba9ed87a6ad5e7c369538b9d411c8"
+      }
+    ],
+    "current_jni": {
+      "source": "/home/codex/projects/paranoid-worktrees/self-service-android/clients/core/target/release/libparanoid_client_core.so",
+      "sha256": "f430cb8e634313edb917e35a2a92ca9165e7ae30cff74b4970c3409022ab3808",
+      "copy_sha256": "f430cb8e634313edb917e35a2a92ca9165e7ae30cff74b4970c3409022ab3808"
+    }
+  },
+  "unchanged_test_sources": {
+    "clients/core/tests/key_vectors.rs": {
+      "current_sha256": "32ed5f1059bdbb9591c1a0bdd0996f9267aa3869397b2378d9b4b1a25a7c1fca",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/core/tests/registration.rs": {
+      "current_sha256": "6583d9dec18e75edead288d9fbc7be8bb04e7efca61680430e73a78a76812bf9",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/core/tests/self_service.rs": {
+      "current_sha256": "a2843d8e54df652215f53c3d7a7a96f6ae7964ffa9ef6dc3fbd3d3ca01517bb8",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/core/tests/state.rs": {
+      "current_sha256": "9746048029194b24c437bb27d2a6b63b40ae1c8d117ee7512bc356c57be502ab",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/core/tests/sync_recovery.rs": {
+      "current_sha256": "597da830140eea9941261a17d8f5574edf8a86fb0d12f9c5d1586d960f05de8e",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/android/test/SelfServiceSmoke.java": {
+      "current_sha256": "630b1399b4cdbd3b90f75abc1c86c25f91fc3dfeb6d3ab6f21f0f8a2b04ee48d",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    },
+    "clients/android/test/SelfServiceMigrationSmoke.java": {
+      "current_sha256": "e27b6c96e368d89ac97853048855446268b2822a96acfe6ee9660bcb25bb8f9d",
+      "initial_equal": true,
+      "immutable_v7_equal": true
+    }
+  },
+  "all_historical_tests_unchanged": true,
+  "interpretation": {
+    "unsupported_state": "7 retained legacy-profile/conversation tests require historical native snapshot state; delivered v7 already rejects those states.",
+    "invalid_request": "5 sender-introduction tests exercise the retired historical sender-intro request; delivered v7 already rejects these requests.",
+    "unverified-count actual 0 expected 1": "2 tests require the old quarantine-until-pairing behavior; delivered v7 first-contact behavior already yields actual0 versus expected1.",
+    "SelfServiceSmoke": "Requires native core version2; delivered v7 uses native3 with wrapper4.",
+    "SelfServiceMigrationSmoke": "Requires migration of populated historical rootless/rooted snapshots; delivered v7 already rejects these without altering retained data."
+  }
+}

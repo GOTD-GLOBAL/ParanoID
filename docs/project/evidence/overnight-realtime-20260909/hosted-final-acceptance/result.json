@@ -1,0 +1,197 @@
+{
+  "result": "PASS",
+  "physical_phone_benchmark": "NOT RUN",
+  "boundary": "actual host JVM/JNI send call before state-owner submit to receiver listener after encrypted durable snapshot commit; not Android rendering",
+  "network": "direct product Proxy.NO_PROXY pinned TLS to exact supplied realm; no proxy or remapped trust",
+  "identity_limit": 2,
+  "private_state_logging": "none; encrypted snapshots and separate mode-0600 local AES keys remain only in private-synthetic",
+  "inputs": {
+    "realm": "https://157.180.49.125:38443",
+    "pin": "8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba",
+    "source_manifest_sha256": "0f6d0689cefd7eac1a61bddc296054fbddc09dc0d06795a832779f785c314f2e",
+    "product_java_sha256": {
+      "clients/android/src/org/paranoid/text/CoreBridge.java": "a666aacc05c7351f385191c5ca4c1e5bc0372116b9433c11a3cb0fb366362d15",
+      "clients/android/src/org/paranoid/text/PinnedTls.java": "3e60eeeb8f0ac9037dd34b8ebc6f4471c587ebaedede3dc6e834448ebae9bf0b",
+      "clients/android/src/org/paranoid/text/SnapshotCodec.java": "7965c9af9748320315191088852f202825014654e9d1861f68c1799c5943e049",
+      "clients/android/src/org/paranoid/text/StorageGuard.java": "a878b32a94e01a0db5cb5482653c15a4f83218c8bf3fd13e57f75b1ca46f7b74",
+      "clients/android/src/org/paranoid/text/SyncCycle.java": "c9baf2de6ccf1978ac4a98f96240ec5ce69aec8c41e3e2230a15955bf45466e6",
+      "clients/android/src/org/paranoid/text/KeyClient.java": "933948c3c1062c969df8a727d3f207cb26b52d97fd9c7c3981e07780cbd2cd77",
+      "clients/android/src/org/paranoid/text/KeyTransport.java": "7db986a83ae332d9194679dca4fcbebc4008a22807c0f03b4a85415be80fcf39",
+      "clients/android/src/org/paranoid/text/SelfServiceClient.java": "cbc71ac05489fcec974893615b841e7d5fbae7ce0cc2b1689099b1a7e2e549f9",
+      "clients/android/src/org/paranoid/text/RealtimeLoop.java": "e8e1444e31a9dd63e6daaa5f5b6424e1e3862a2b3f3f86a1d299b6fa9f33b1f7",
+      "clients/android/src/org/paranoid/text/RealtimeTransport.java": "8b6de5be4dfaba30d6fa52a2612f164929231b87c19831f54ed93b42433c1e97",
+      "clients/android/src/org/paranoid/text/QrCodec.java": "29fbf872ad2e5dddea2871e20a6abf3818703f49d17caf96d4118a065f8e82d1"
+    },
+    "jni_sha256": "e0b02ac5d90abebdec2d25fcc5d5067fe0dba0a9e313a8bddec354ccf1aebdcc",
+    "bridge_sha256": "efcf96a25e796d3e75d98c3ea966ead61ce7d7be442544244888151e5e7814ff",
+    "runner_sha256": "2700d6e121efeaf4096840da6078e4ac0ba4122f6e75ddc5efccb7c84724df86",
+    "dependency_sha256": {
+      "json-20240303.jar": "3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed",
+      "zxing-core-3.5.3.jar": "8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82"
+    }
+  },
+  "checks": {
+    "negative_pinned_tls": {
+      "wrong_pin_tls_rejected": true,
+      "unauthenticated_events_and_session_401": true,
+      "pinned_health": true
+    },
+    "registration": "two native identities, actual automatic server enrollment, unchanged account IDs",
+    "zero_contacts_before_first_send": true,
+    "first_contact_reply_receipts": true,
+    "one_way_qr": "unchanged QrCodec 640px encode/decode roundtrip into native contact preview/pair on one sender only; camera NOT RUN",
+    "signed_session_event_lane": {
+      "first": {
+        "one": {
+          "session_id_sha256": "abffe0eec7928587ef891d4b0681ca6b4e2a55ed095f12fae73531ed4129655d",
+          "active_requests": 1,
+          "realtime": true,
+          "active_event_get": true,
+          "observed_ns": 2196725103382872,
+          "session_present": true,
+          "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+        },
+        "two": {
+          "session_id_sha256": "59d3458abfa13fff1acac304c2dfcee623414b2dbaad6719f67e23c84d58cc42",
+          "active_requests": 1,
+          "realtime": true,
+          "active_event_get": true,
+          "observed_ns": 2196728129742532,
+          "session_present": true,
+          "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+        }
+      },
+      "second": {
+        "one": {
+          "session_id_sha256": "abffe0eec7928587ef891d4b0681ca6b4e2a55ed095f12fae73531ed4129655d",
+          "active_requests": 1,
+          "realtime": true,
+          "active_event_get": true,
+          "observed_ns": 2196728280840033,
+          "session_present": true,
+          "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+        },
+        "two": {
+          "session_id_sha256": "59d3458abfa13fff1acac304c2dfcee623414b2dbaad6719f67e23c84d58cc42",
+          "active_requests": 1,
+          "realtime": true,
+          "active_event_get": true,
+          "observed_ns": 2196728281717487,
+          "session_present": true,
+          "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+        }
+      },
+      "observation": "read-only reflection of public session context hashes and active GET URL/method; no headers, private state, mutation or arbitrary signing API"
+    },
+    "process_stop_reopen_reconnect": true,
+    "reopened_session_event_lane": {
+      "one": {
+        "session_id_sha256": "dcb023f96c5eee03c10c72cb550604aa156724901fb4c5a9a5a8a7a112793b2f",
+        "active_requests": 1,
+        "realtime": true,
+        "active_event_get": true,
+        "observed_ns": 2196737320124866,
+        "session_present": true,
+        "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+      },
+      "two": {
+        "session_id_sha256": "ec409a256859350d5cafa83c31c41048789ebe5e713831a918f88f1a84a57f0e",
+        "active_requests": 1,
+        "realtime": true,
+        "active_event_get": true,
+        "observed_ns": 2196737363538570,
+        "session_present": true,
+        "epoch_sha256": "4b3d09fc4681b1069b7e15555e1065dde3696cc708d29eb5ab9d9b1da561cb18"
+      }
+    }
+  },
+  "samples": [
+    {
+      "sample": 0,
+      "direction": "one->two",
+      "milliseconds": 84.499477,
+      "sender_owner_ms": 20.670697
+    },
+    {
+      "sample": 1,
+      "direction": "two->one",
+      "milliseconds": 74.41767,
+      "sender_owner_ms": 26.240613
+    },
+    {
+      "sample": 2,
+      "direction": "one->two",
+      "milliseconds": 70.21967,
+      "sender_owner_ms": 22.061634
+    },
+    {
+      "sample": 3,
+      "direction": "two->one",
+      "milliseconds": 73.877597,
+      "sender_owner_ms": 22.052884
+    },
+    {
+      "sample": 4,
+      "direction": "one->two",
+      "milliseconds": 72.327341,
+      "sender_owner_ms": 19.10589
+    },
+    {
+      "sample": 5,
+      "direction": "two->one",
+      "milliseconds": 76.50962,
+      "sender_owner_ms": 26.871267
+    },
+    {
+      "sample": 6,
+      "direction": "one->two",
+      "milliseconds": 84.066106,
+      "sender_owner_ms": 25.709012
+    },
+    {
+      "sample": 7,
+      "direction": "two->one",
+      "milliseconds": 67.362497,
+      "sender_owner_ms": 22.913868
+    },
+    {
+      "sample": 8,
+      "direction": "one->two",
+      "milliseconds": 77.762006,
+      "sender_owner_ms": 25.329329
+    },
+    {
+      "sample": 9,
+      "direction": "two->one",
+      "milliseconds": 79.463224,
+      "sender_owner_ms": 25.426199
+    },
+    {
+      "sample": 10,
+      "direction": "one->two",
+      "milliseconds": 85.743713,
+      "sender_owner_ms": 25.422609
+    },
+    {
+      "sample": 11,
+      "direction": "two->one",
+      "milliseconds": 77.699876,
+      "sender_owner_ms": 26.906927
+    }
+  ],
+  "latency": {
+    "samples": 12,
+    "p50_ms": 76.50962,
+    "p95_ms": 85.743713,
+    "percentile": "nearest rank",
+    "cadence": "500 ms after prior actual peer receipt, outside measured send-to-listener interval",
+    "target_p50_ms": 500,
+    "target_p95_ms": 1500,
+    "target_met": true
+  },
+  "retained_encrypted_snapshots": {
+    "one": "10bc4b839d4f8990b4f718db090dfdc96c0349b877ff410733dbf1eb5e76bdf7",
+    "two": "968b3465b8ea98cb8eb0451c4e8998032eb4706b44a28e088fbb485eaf334332"
+  },
+  "duration_seconds": 17.179800326004624
+}

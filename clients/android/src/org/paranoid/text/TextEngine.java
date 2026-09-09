@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** One process-wide worker owns ratchets, local commits and network sequencing. */
+/** One state owner for ratchets/commits; RealtimeLoop owns separate network lanes. */
 public final class TextEngine {
     public interface Listener { void changed(JSONObject publicView, String status); }
     public interface Queued { void done(boolean committed); }
@@ -33,12 +33,16 @@ public final class TextEngine {
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final AtomicFile file;
     private final File directory;
+    private final Context context;
     private volatile Listener listener;
-    private final java.util.concurrent.atomic.AtomicBoolean syncScheduled=new java.util.concurrent.atomic.AtomicBoolean();
-    private KeyClient client;
-    private boolean broken=false, hasSnapshot=false;
+    private SelfServiceClient client;
+    private RealtimeLoop realtime;
+    private boolean connected=false,backgroundEnabled=false;
+    private long lastIncoming=-1;
+    private boolean broken=false, hasSnapshot=false, unsupportedSnapshot=false;
     private SecretKey storageKey;
     private TextEngine(Context context) {
+        this.context=context;
         directory=context.getFilesDir();file=new AtomicFile(new File(directory,"text-state.enc"));
         worker.execute(()->{
             try {
@@ -50,47 +54,62 @@ public final class TextEngine {
                     if(Math.max(file.getBaseFile().length(),new File(file.getBaseFile()+".bak").length())>9L*1024*1024)throw new IOException("snapshot limit");
                     saved=SnapshotCodec.open(key(),file.readFully());
                 }
-                client=new KeyClient(saved,this::persist);
+                client=new SelfServiceClient(saved,this::persist);
+                realtime=new RealtimeLoop(worker,client,(online,status)->{connected=online;publish(status);});
                 publish("Готово. Только тестовые сообщения.");
-            } catch(Throwable error) {broken=true;publish("Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются.");}
+            } catch(Throwable error) {broken=true;unsupportedSnapshot=error instanceof SelfServiceClient.UnsupportedSnapshot;publish("Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются.");}
         });
     }
-    public void listen(Listener next) {listener=next;worker.execute(()->publish(broken?"Локальные данные недоступны; сброс не выполнен":"Готово"));}
-    public void unlisten(Listener current) {if(listener==current)listener=null;}
+    public void listen(Listener next) {listener=next;worker.execute(()->{publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();});}
+    public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&realtime!=null){realtime.stop();connected=false;}});}}
+    private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled)){realtime.start();realtime.kick();}}
+    public void background(boolean enabled){worker.execute(()->{backgroundEnabled=enabled;if(enabled)startConnection();else if(listener==null&&realtime!=null){realtime.stop();connected=false;}publish(enabled?"Фоновое подключение включено":"Фоновое подключение выключено");});}
     private interface Task {void run() throws Exception;}
     private void submit(Task task) {
         worker.execute(()->{try {
             if(broken)throw new IOException("local state unavailable");
-            task.run();publish("Синхронизация завершена");
-        } catch(Throwable error) {publish(broken ? "Ошибка локального хранения. Операции остановлены; данные не удалены." : "Операция не завершена. Проверьте код, HTTPS и доступ; очередь и история сохранены.");}});
+            task.run();publish(connected?"Подключено":"Подключаемся…");startConnection();
+        } catch(Throwable error) {publish(broken ? "Ошибка локального хранения. Операции остановлены; данные не удалены." : userError(error));}});
     }
+    public interface UpdateTrust {void ready(String[] trust);}
+    /** Read only on the state owner; update I/O runs on a separate worker. */
+    public void updateTrust(UpdateTrust callback){worker.execute(()->{
+        String[] trust=null;
+        try{if(!broken && hasSnapshot && client!=null)trust=client.updateTrust();}catch(Exception ignored){}
+        String[] result=trust;ui.post(()->callback.ready(result));
+    });}
     public void createIdentity(){submit(()->client.createIdentity());}
-    public void importGrant(String code){submit(()->{client.importGrant(code);client.sync();});}
-    public void pair(String code){submit(()->{client.pair(code,true);client.sync();});}
+    public void pair(String code){submit(()->client.pair(code,true));}
+    public void block(String account,boolean blocked){submit(()->client.block(account,blocked));}
     public interface Preview {void checked(JSONObject preview);}
     public void previewContact(String code,Preview callback){submit(()->{
         JSONObject preview=client.previewContact(code);ui.post(()->callback.checked(preview));
     });}
-    public void send(String text,Queued completion) {
+    public void send(String account,String text,Queued completion) {
         worker.execute(()->{
             boolean committed=false;
             try {
                 if(broken)throw new IOException("local state unavailable");
-                client.send(text);committed=true;
-                ui.post(()->completion.done(true));publish("Сообщение сохранено в очередь");client.sync();publish("Синхронизация завершена");
+                client.send(account,text);committed=true;
+                ui.post(()->completion.done(true));publish("Сообщение сохранено в очередь");startConnection();
             } catch(Throwable error) {publish("Отправка не завершена; сохранённая очередь не удалена.");}
             finally {if(!committed)ui.post(()->completion.done(false));}
         });
     }
     public void sync() {
-        if(!syncScheduled.compareAndSet(false,true))return;
-        worker.execute(()->{
-            try {if(!broken && client!=null)client.sync();publish("Синхронизация завершена");}
-            catch(Throwable error){publish("Нет синхронизации. Проверьте HTTPS, доступ и код собеседника; данные сохранены.");}
-            finally{syncScheduled.set(false);}
-        });
+        worker.execute(this::startConnection);
     }
 
+    private String userError(Throwable error) {
+        if(error instanceof SyncCycle.Rejected) {
+            int code=((SyncCycle.Rejected)error).status;
+            if(code==404)return "Сервер пока не поддерживает эту версию. Ваш ID, контакты и очередь сохранены.";
+            if(code==429)return "Сервер занят. Подключение повторится автоматически; ID сохранён.";
+            if(code==507)return "Хранилище сервера заполнено. Очередь и история сохранены.";
+            if(code==401||code==409)return "Не удалось подтвердить подключение. Ваши ключи и данные сохранены; новый ID не создаётся.";
+        }
+        return "Подключение или проверка контакта не завершены. Повторим подключение автоматически. ID, очередь и история сохранены.";
+    }
     private SecretKey key() throws Exception {
         if(storageKey!=null)return storageKey;
         KeyStore keys=KeyStore.getInstance("AndroidKeyStore");keys.load(null);
@@ -126,9 +145,18 @@ public final class TextEngine {
         try {
             if(client!=null && client.broken())broken=true;
             if(!broken && client!=null)display=client.publicView();
-            display.put("broken",broken);
+            display.put("broken",broken).put("unsupported_snapshot",unsupportedSnapshot).put("connected",connected&&!broken).put("background_enabled",backgroundEnabled);
         } catch(Throwable error){broken=true;try{display.put("broken",true);}catch(Exception ignored){}}
         JSONObject safeView=display;
+        long incoming=0;
+        org.json.JSONArray dialogs=display.optJSONArray("dialogs");
+        if(dialogs!=null)for(int n=0;n<dialogs.length();n++) {
+            JSONObject dialog=dialogs.optJSONObject(n);if(dialog==null)continue;
+            org.json.JSONArray messages=dialog.optJSONArray("messages");if(messages==null)continue;
+            for(int m=0;m<messages.length();m++){JSONObject message=messages.optJSONObject(m);if(message!=null&&!message.optString("author").equals(dialog.optString("own")))incoming++;}
+        }
+        if(lastIncoming>=0&&incoming>lastIncoming&&backgroundEnabled&&listener==null&&!broken)BackgroundConnectionService.incoming(context);
+        lastIncoming=incoming;
         long rejected=display.optLong("rejected_count",0);
         String visibleStatus=status+(rejected>0?" ⚠ Не принято событий: "+rejected+". История на сервере не удалена; доставка этих событий не подтверждена.":"");
         ui.post(()->{Listener target=listener;if(target!=null)target.changed(safeView,visibleStatus);});

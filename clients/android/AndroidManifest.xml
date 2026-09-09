@@ -1,11 +1,21 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.paranoid.devtext" android:versionCode="4" android:versionName="0.0.4-dev">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.paranoid.devtext" android:versionCode="8" android:versionName="0.0.8-realtime">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
   <uses-permission android:name="android.permission.INTERNET" />
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
   <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
   <uses-feature android:name="android.hardware.camera" android:required="false" />
   <application android:label="ParanoID Text Alpha" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:fullBackupContent="false" android:usesCleartextTraffic="false" android:debuggable="false">
+    <service android:name="org.paranoid.text.BackgroundConnectionService" android:exported="false" android:foregroundServiceType="specialUse">
+      <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled persistent encrypted messenger connection for a private alpha without a push provider; ongoing stop notification, bounded network retries, no boot start." />
+    </service>
+    <provider android:name="org.paranoid.text.UpdateProvider" android:authorities="org.paranoid.devtext.updates" android:exported="false" android:grantUriPermissions="false">
+      <grant-uri-permission android:path="/verified.apk" />
+    </provider>
     <activity android:name="org.paranoid.text.QrScanActivity" android:exported="false" android:screenOrientation="portrait" />
-    <activity android:name="org.paranoid.text.MainActivity" android:exported="true">
+    <activity android:name="org.paranoid.text.MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
       <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
     </activity>
   </application>

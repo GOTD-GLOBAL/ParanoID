@@ -9,14 +9,36 @@ last_reviewed: 2026-09-09
 Owner-facing issue: [#16](https://github.com/GOTD-GLOBAL/ParanoID/issues/16), in
 Russian. This English brief mirrors its product scope; concrete technical choices
 remain subject to the repository's scoped RFC/ADR and security-review process.
-Requirements: REQ-ID-001/004/005/006/007/008, REQ-MSG-002/003/004,
+Requirements: REQ-ID-001/004/005/006/007/008, REQ-MSG-002/003/004/005,
 REQ-DEPLOY-001, REQ-SERVER-001/002, REQ-CLIENT-001/002, REQ-MULTI-001, REQ-SEC-001.
 
-**Implementation status: not delivered.** This feature branch starts from
-[archival checkpoint f45519e](https://github.com/GOTD-GLOBAL/ParanoID/commit/f45519ebe1c44ab2f34b3707c57703fce4583fa6).
-Its inherited runtime still implements operator-grant enrollment. Creating this
-branch/brief/issue does not remove that gate, upgrade the live server or establish
-self-service signup. Do not merge the archive wholesale as the finished product.
+**Current local scope: tested clean-install first-contact candidate.**
+[Current-state](../project/current-state.md) and the [local candidate record](../operations/clean-first-contact-local.md)
+separate observed core/JVM/JNI/real-server tests from final artifact verification
+and still-unrun physical-phone acceptance. This does not close issue #16 by
+substituting a local fixture for the eventual two-phone outcome.
+
+Historically, the feature branch started from
+[archival checkpoint f45519e](https://github.com/GOTD-GLOBAL/ParanoID/commit/f45519ebe1c44ab2f34b3707c57703fce4583fa6)
+with operator-grant enrollment. Merely creating that branch/brief/issue did not
+implement self-service or authorize merging the archive as a finished product.
+
+## Current clean-install amendment (2026-09-09)
+
+The owner selected [RFC-0014](../rfcs/0014-first-contact-incoming.md)'s mandatory
+signed account-ID first-contact recommendation and explicitly prioritized a
+working messenger on fresh installations. Exact Telegram text/provenance is in
+[REQ-MSG-005](requirements.md#first-contact-incoming-correction-2026-09-09).
+Historical test-message preservation/migration/recovery is NOT this candidate's
+release gate. The historical migration acceptance bullet below remains a later
+obligation, not an immediate build blocker or a claim of fixed historical REDs.
+
+The local deliverable is tested core + actual pinned-TLS/PostgreSQL/JVM/JNI
+zero-contact text/reply/receipts and a retained-signer APK candidate. Parent
+independent review precedes any delivery/publication. Real two-phone acceptance
+still requires later evidence and is not inferred from local tests. Fresh-state
+persistence/reopen, E2EE, exact immutable retries and genuine receipts remain
+required. No live action or application reset is performed by this task.
 
 ## User journey
 
@@ -74,7 +96,11 @@ this issue does not choose them or claim they are implemented.
   journey without an operator or service-code exchange.
 - Create ID needs no phone/email/wallet/chain transaction; retry/relaunch preserves
   the same identity. Contacts and history survive closing/reopening the app.
-- Users add each other normally and exchange text both ways without a developer.
+- REQ-MSG-005: only the sender needs the recipient public contact. The recipient
+  with zero contacts sees first incoming plaintext and can reply without scanning
+  or approving the sender; optional identity verification is a separate action.
+  [RFC-0014](../rfcs/0014-first-contact-incoming.md) is proposed; actual candidate
+  evidence is recorded separately.
 - Offline/reconnect and server restart retain acknowledged data without duplicates;
   receipt semantics and E2EE are actually exercised, not inferred from health.
 - Server integration covers more than two accounts; a third physical phone is not
@@ -95,11 +121,23 @@ Media/files/voice messages/audio-video calls remain later product tasks. iOS,
 server creation/selection/invitations/stores and blockchain are not silently
 implemented here and must not postpone the usable initial text journey again.
 
+## Scoped fresh-server correction (2026-09-09)
+
+Sergey subsequently requested replacing the old disposable server DB in place
+without preserving/backing it up. The [operation record](../operations/fresh-self-service-v2.md#scope-correction-and-provenance)
+records exact supplied provenance and deletion boundary, not invented permanent
+approval. This supersedes the legacy server migration/pre-cutover-backup gate for
+this one fresh replacement only. Preserve APK identity, TLS and every phone
+snapshot/key/contact/history; fresh server storage never authorizes phone reset.
+Future v2 history preservation/update/restore requirements remain unchanged.
+
 ## Preservation and workflow
 
 Keep the archive as history. Reuse tested crypto, client storage, transport,
 receipts/retry, TLS and lifecycle components after adaptation; replace the manual
 onboarding/two-slot design instead of discarding everything or bypassing checks.
 New protected changes need a small concrete contract, strict TDD and review, not
-another broad research cycle. This task prepares the workstream only; no runtime,
-server permission, deployment, merge or architecture acceptance occurs here.
+another broad research cycle. The original brief task prepared the workstream
+only; subsequent implementation/evidence is tracked in
+[current state](../project/current-state.md). Neither this product brief nor local
+server tests grant deployment, merge or architecture acceptance.

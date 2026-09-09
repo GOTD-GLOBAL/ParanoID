@@ -13,21 +13,30 @@ export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK/aarch64-linux-android26-c
 export CC_aarch64_linux_android="$NDK/aarch64-linux-android26-clang"
 export AR_aarch64_linux_android="$NDK/llvm-ar"
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS="-C link-arg=-Wl,-z,max-page-size=16384"
-cargo fetch --locked --manifest-path ../core/Cargo.toml
-cargo test --locked --manifest-path ../core/Cargo.toml
-cargo build --locked --manifest-path ../core/Cargo.toml
+# Clean-install candidate gate (RFC-0014 / REQ-MSG-005). Historical compatibility
+# tests remain in source and are run separately with real exits in the handoff;
+# unsupported old-snapshot migration is explicitly outside this candidate gate.
+cargo test --offline --locked --manifest-path ../core/Cargo.toml --lib --test clean_first_contact --test realtime_signing
+cargo build --offline --locked --manifest-path ../core/Cargo.toml
 python3 -c 'from pathlib import Path; import shutil; [(shutil.rmtree(p) if p.exists() else None, p.mkdir(parents=True)) for p in map(Path,("out/host","out/classes","out/dex"))]'
 javac --release 8 -d out/host src/org/paranoid/text/CoreBridge.java src/org/paranoid/text/SnapshotCodec.java src/org/paranoid/text/SyncCycle.java test/CoreSmoke.java test/StorageSmoke.java test/SyncSmoke.java
 java -Djava.library.path=../core/target/debug -cp out/host CoreSmoke
 java -cp out/host StorageSmoke
 java -cp out/host SyncSmoke
-javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,QrCodec,StorageGuard}.java test/{RegistrationSmoke,QrSmoke,QrDiverseSmoke}.java
+javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy}.java test/{RegistrationSmoke,CleanSelfServiceSmoke,CleanSnapshotBoundarySmoke,QrSmoke,QrDiverseSmoke,DialogPolicySmoke}.java
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar RegistrationSmoke
+java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSelfServiceSmoke
+java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSnapshotBoundarySmoke
+java -cp out/host:out/deps/json-20240303.jar DialogPolicySmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrSmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDiverseSmoke
 javac --release 8 -Xlint:-options -cp out/host:out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host test/PublicQr.java
 python3 test_ui_contract.py
-cargo build --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
+python3 test_message_presentation.py
+python3 test_background_contract.py
+python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
+python3 test_update_wiring.py
+cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
 python3 notices.py
 javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar" -d out/classes src/org/paranoid/text/*.java
 "$TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output out/dex out/classes/org/paranoid/text/*.class out/deps/zxing-core-3.5.3.jar
@@ -38,3 +47,4 @@ python3 -c 'import zipfile; z=zipfile.ZipFile("out/unsigned.apk","a",compression
 "$TOOLS/apksigner" sign --ks "$PARANOID_ANDROID_KEYSTORE" --ks-pass env:PARANOID_ANDROID_KS_PASSWORD --key-pass env:PARANOID_ANDROID_KS_PASSWORD --out out/paranoid-text.apk out/aligned.apk
 "$TOOLS/apksigner" verify --verbose out/paranoid-text.apk
 python3 test_apk.py
+python3 test_updates.py

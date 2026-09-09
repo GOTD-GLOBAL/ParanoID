@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the native bundle with locked Rust dependencies; no deployment."""
+import argparse
 import hashlib
 import json
 import os
@@ -14,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def main():
+def main(self_service_v2=False):
     subprocess.run(['cargo', 'build', '--release', '--locked', '--manifest-path',
                     ROOT / 'server/Cargo.toml'], check=True)
     os.umask(0o077)
@@ -28,6 +29,8 @@ def main():
              'alpha.py': ROOT / 'deploy/alpha.py',
              'create-test-tls.py': ROOT / 'scripts/create-test-tls.py',
              'README.md': ROOT / 'deploy/README.md'}
+    if self_service_v2:
+        files['self-service-schema.sql'] = ROOT / 'server/self-service-schema.sql'
     for name, source in files.items():
         fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
         with os.fdopen(fd, 'rb') as src:
@@ -39,7 +42,7 @@ def main():
             (dest / name).chmod(0o700 if mode & 0o111 else 0o600)
     hashes = {name: hashlib.sha256((dest / name).read_bytes()).hexdigest() for name in files}
     release = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()[:20]
-    manifest = {'release': release, 'sha256': hashes, 'schema_contract': 'paranoid-key-v1',
+    manifest = {'release': release, 'sha256': hashes, 'schema_contract': 'paranoid-self-service-v2' if self_service_v2 else 'paranoid-key-v1',
                 'deployment_api': 1,
                 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(),
                 'source_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT)),
@@ -68,4 +71,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--self-service-v2', action='store_true')
+    main(parser.parse_args().self_service_v2)

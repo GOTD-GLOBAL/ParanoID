@@ -1,0 +1,48 @@
+{
+  "result": "PASS",
+  "server_binary": "/home/codex/projects/paranoid-worktrees/overnight-integration-20260909T2006Z/dist/build-utkejh1u/release/paranoid-server",
+  "server_sha256": "bf74a9634f20163ac7254af9c0876bd6c9ff7e60cd77253503cc598deeb22fa2",
+  "jni_sha256": "e0b02ac5d90abebdec2d25fcc5d5067fe0dba0a9e313a8bddec354ccf1aebdcc",
+  "physical_phone_benchmark": "NOT RUN",
+  "ui_render": "JVM durable publicView listener, not phone pixels",
+  "latency": {
+    "samples": 24,
+    "p50_ms": 102.942236,
+    "p95_ms": 122.013062,
+    "target_p50_ms": 500,
+    "target_p95_ms": 1500,
+    "environment": "same-host generated pinned TLS proxy + exact Rust server + PostgreSQL + Java/JNI; 250ms pacing after actual receipt, no imposed latency",
+    "boundary": "send call before local commit to receiver durable publicView listener; not Android screen pixels"
+  },
+  "legacy_server_sha256": "3418332f112b2ce4ac699e9b5fb26222619b48dca7405fffdf69af237cf0c211",
+  "session_open_401_rollback": {
+    "actual_old_v2_rejections": 1,
+    "new_peer_ever_acquired_session": false,
+    "sent_and_received_receipt": true
+  },
+  "elapsed_seconds": 29.00666056992486,
+  "checks": [
+    "three automatic registrations, zero initial receiver contacts",
+    "durable listener matches actual encrypted snapshot",
+    "blocked receipt network independent of state owner/publication",
+    "immediate unverified reply and genuine receipts",
+    "24 actual warm latency samples",
+    "crossing burst",
+    "exact lost-response retry",
+    "offline send and server/JVM snapshot4/core3 reopen",
+    "incoming save-failure freeze without receipt"
+  ],
+  "frontend_tls_connections": 34,
+  "real_requests_by_path": {
+    "/health": 20,
+    "/v2/registration/challenge": 4,
+    "/v2/registration/commit": 4,
+    "/v2/auth/challenge": 18,
+    "/v2/session": 6,
+    "/v2/messages": 90,
+    "/v2/events": 79
+  },
+  "target_met": true,
+  "changed_source_during_run": [],
+  "jni_end_sha256": "e0b02ac5d90abebdec2d25fcc5d5067fe0dba0a9e313a8bddec354ccf1aebdcc"
+}

@@ -1,0 +1,122 @@
+---
+status: proposed
+owner: architecture
+decision_owner: martadvix-web
+review_mode: closed-alpha-ai
+last_reviewed: 2026-09-09
+---
+
+# RFC-0015: Fast foreground text on the retained private-alpha stack
+
+## Scope and provenance
+
+The current direct task authorizes complete overnight implementation, real tests,
+independent Fable review, retained-signer Android APK and narrowly safe deployment
+of the existing isolated service. Exact supplied instructions are retained at
+`/home/codex/paranoid-self-service-evidence/realtime-architecture-fable-20260909/overnight-implementation.md`
+and `owner-clarifications.md` in that directory. The owner states:
+
+> к утру мультисерверность не важна, её нужно заложить архитектурно, сейчас задача на одном сервере. потестить
+
+The deadline is 2026-09-10 09:00 Europe/Istanbul. Required outcome: self-registering,
+fast E2EE foreground text with the supplied messenger design on Android, one
+existing server tested and safely deployed. Voice is stretch. Portable identity
+across isolated server memberships remains architectural scope; federation is not
+silently enabled. A GPL-compatible open client direction is explicitly allowed;
+adopting an entire future OSS foundation is not this overnight implementation.
+No permanent owner message permalink was supplied and none is invented. Human
+risk/decision owner remains martadvix-web. This proposal is not ADR acceptance.
+
+## Concrete change
+
+[The exact contract](../protocol/realtime-v1.md) adds five-minute public session
+contexts with device-signed, nonce-bound requests and a bounded long-poll route.
+It retains existing root registration, crypto, opaque messages, quotas, TLS trust,
+stored identity/history and idempotency. Reusable context is not bearer authority.
+The server schema does not change. Legacy v2 remains available for safe rollback.
+
+The client removes per-message challenges and the associated forced throttle on
+session operations, pools pinned TLS and puts network waits outside the native
+state owner. Persist/decrypt precedes visible publication, which precedes receipt
+network waits. UI follows actual supplied prototype design with real conversations,
+readable trust/delivery and stable composer; unsupported calls are omitted.
+
+Relevant requirements: REQ-MSG-002/003/004/005, REQ-ID-004/005/008,
+REQ-SEC-001, REQ-MULTI-001 and REQ-CLIENT-001. Acceptance needs actual measured
+local commit/notification P50 <= 500 ms and P95 <= 1500 ms under defined healthy network;
+results are targets until measured. JVM notification is not physical rendering.
+
+The [overnight requirement record](../product/overnight-realtime.md) adds
+REQ-MSG-006 (fast foreground text), REQ-CLIENT-004 (native messenger UI),
+REQ-MULTI-002 (isolated memberships beneath a portable root), REQ-SERVER-003
+(membership revocation/invitation scope) and REQ-DEPLOY-002 (safe existing-service
+update). Server invite roles and a second live server remain future work.
+
+The signed-session/long-poll server is now locally implemented: 14 real realtime
+tests pass, including natural expiry, actual TLS pooling/lifetime and resource
+bounds; retained server targets pass separately. See the
+[exact local evidence](../server/realtime-local.md). This establishes server
+transport behavior, not the complete client latency/UI/phone/deployment outcome.
+
+## Alternatives and trust delta
+
+Lowering periodic poll intervals alone keeps repeated TLS/challenges and does not
+meet the objective. Bearer sessions would add replayable stored authority. A full
+XMPP/Conversations migration adds identity/storage/endpoint migration beyond the
+bounded overnight slice. Current signed requests and long-poll retain the reviewed
+E2EE/persistence while reducing network round trips. This is an interim implementation,
+not permanent selection of a custom messenger stack.
+
+Session theft without the device-auth key cannot authorize a request. Replay,
+nonce exhaustion, socket/wait exhaustion, wake races, revoked-but-waiting requests,
+and post-decrypt persistence races are new risks with exact contract/test controls.
+Metadata remains visible to the server; no production assurance or sensitive use.
+Active-mode/full-binding rechecks rely on terminal revocation; future supported
+reactivation requires durable authorization generations and a separate review.
+
+## Review, validation and operation
+
+Fresh-context `claude-fable-5` reviews the exact contract before high-risk runtime
+implementation and actual final source/artifact/deployment before release. This
+uses accepted ADR-0003's bounded second-human exception; it is not a qualified
+human security audit and does not accept proposed ADR-0010. Blockers require fixes
+with real RED/GREEN tests and independent re-review.
+
+Initial complete dirty-source snapshots, task-only diffs, subprocess/checkpoint
+state, RED/GREEN, generated pinnedTLS/PostgreSQL/JVM/JNI fixtures, measured latency,
+UI rendering, signed APK and final source hashes are retained in the unique
+`overnight-realtime-20260909T191524Z` evidence directory. Existing historical tests
+remain unchanged with their known unsupported-oldstate failures reported separately.
+
+Deployment scope is only the existing isolated service after exact bundle review,
+read-only host preflight, tests and rollback readiness. Preserve all data, TLS,
+config, neighbors, existing releases and identities. No fresh-v2/reinitialization,
+DB wipe, broad firewall/DNS change, new signer or phone action. Safe update and
+same-data rollback must be concretely tested before the authorized live step.
+An encrypted restore-verifiable backup is required where needed for this operation;
+the earlier one-time no-backup discard is not renewed permission.
+
+The locally implemented additive `update-v2`/`backup-v2` controller verifies exact existing
+v2 schema, runtime capability, PostgreSQL system identifier and service unit.
+It retains a host-private AES-256-GCM encrypted database archive using the present
+Python cryptography package, authenticates/decrypts it, restores only into a new
+isolated verification database and compares all six v2 tables and schema before
+switching code. TLS, configuration and current data remain in place. Rollback
+selects the retained v2 binary on the current same data, including messages accepted
+by the candidate; it never restores an older snapshot over current history.
+The deployment handoff/checkpoint records 44 passing local controller tests,
+including real private PostgreSQL/TLS, local systemd failure/signal recovery and
+fsync durability cases. These controller fixtures used the immutable retained
+v2 runtime before the final transport bundle was built. Exact final combined-bundle
+tests and fresh independent code/security review were separate gates. The
+[2026-09-09 rollout record](../operations/realtime-rollout-2026-09-09.md) now records
+the final exact-source product/script reviews, bounded closure, signed APK,
+attended same-data update and actual hosted acceptance. The first packaged run
+remains 13 PASS/1 FAIL with UNKNOWN readiness-failure cause; the passing requested
+diagnostic closes its observation gate without claiming a fix. This factual
+outcome does not accept ADR-0010 or change this RFC's proposed disposition.
+
+Background delivery should use a bounded Android-supported foreground mechanism
+where feasible, with a future provider boundary for non-Google alternatives.
+No fabricated FCM credentials, force-stop/Doze reliability or phone measurements.
+Any unmet acceptance and exact next action remain in durable checkpoint/handoff.

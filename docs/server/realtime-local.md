@@ -1,0 +1,122 @@
+---
+status: draft
+owner: server
+last_reviewed: 2026-09-09
+---
+
+# Signed sessions and long-poll: local server evidence
+
+[RFC-0015](../rfcs/0015-overnight-realtime.md), proposed
+[ADR-0010](../decisions/0010-overnight-realtime.md) and the
+[exact protocol](../protocol/realtime-v1.md) describe this private test-data alpha
+increment. Server implementation now exists locally. The complete 14-test realtime
+matrix passes, including actual five-minute session expiry and two-minute TLS
+socket lifetime. Retained server targets pass 55 tests with no failure; one
+preexisting conditional APK fixture was ignored in that ordinary run, then passed
+explicitly against the retained v7 APK. The separate final APK byte test also
+passes. Final exact-source Fable product/script reviews and bounded closure are
+complete; the [dated rollout](../operations/realtime-rollout-2026-09-09.md) records
+the installed exact bundle and passing hosted product Java/JNI E2EE acceptance.
+The initial packaged sequence remains 13 PASS/1 FAIL with UNKNOWN readiness-failure
+cause, despite subsequent passes and completed diagnostic closure. These server
+tests are not production architecture acceptance or a physical-phone benchmark.
+
+## Actual source and test commands
+
+Runtime is in `server/src/self_service_http.rs`, shared strict context/transcript
+in `key-protocol/src/session_v2.rs`. The TLS middleware/acceptor changes are in
+`server/src/main.rs` and `server/src/limited_accept.rs`. No schema or existing
+capabilities JSON changes. Direct `hyper-util = 0.1.20` merely exposes the already
+locked transitive Tokio timer for the HTTP header deadline; no package version
+or new resolved dependency was introduced.
+
+```sh
+python3 server/check-realtime.py
+python3 scripts/check-server.py
+```
+
+Both runners create their own private PostgreSQL cluster, disable TCP and clean
+up only that disposable fixture. `TEST_FILTER=<exact-name>` narrows the realtime
+runner during development; the complete command is the acceptance matrix.
+The real TLS test launches the actual server binary and an independent Python
+Ed25519/strict generated-SPKI signer, observing the same SSL socket object across
+requests. Opaque payloads test server transport, not E2EE.
+
+## Exact regression mapping
+
+All names below are in [realtime.rs](../../server/tests/realtime.rs).
+REQ-ID-004/005/008, REQ-MSG-002/003/004 and REQ-SEC-001 apply to this server slice.
+[REQ-MSG-006 and REQ-SERVER-003](../product/overnight-realtime.md) trace the new
+foreground transport and membership access boundaries; server timing alone does
+not meet the full JNI/client render-notification acceptance.
+
+| Exact test | Contract / independent-review condition |
+| --- | --- |
+| `realtime_session_auth_binds_every_context_and_nonce_replay_has_one_winner` | Independent transcript construction, every session field, method/path/body changes, duplicate Authorization, bad signatures not consuming a valid nonce, concurrent replay one winner |
+| `realtime_wait_wakes_on_legacy_commit_and_paginates_without_losing_rows` | Existing v2 sender wakes session receiver, durable exact retries and recipient pagination |
+| `realtime_wait_rechecks_revocation_without_holding_database_lock` | Locked final revocation rejection, no transaction while waiting; OR-H1 |
+| `realtime_session_capacity_and_wait_capacity_do_not_evict_authority` | Two sessions/account, one waiter/account across sessions, old authority retained at capacity |
+| `realtime_changed_binding_and_server_restart_invalidate_existing_sessions` | Full device-binding recheck, observed invalid binding permanently invalidates session, fresh startup epoch |
+| `realtime_empty_wait_returns_after_bounded_timeout_without_advancing_cursor` | Real 20-second empty wait, strict query bounds/duplicates/unknown fields, unchanged cursor |
+| `realtime_nonce_ledger_is_bounded_without_evicting_replay_history` | Actual 2048 operations, exhaustion rejection and earliest nonce still consumed; request pacing respects ingress and is not a benchmark |
+| `realtime_real_five_minute_expiry_rejects_old_authority_and_allows_new_session` | Actual 301-second wait, no production clock/TTL override, new session after expiry |
+| `realtime_global_session_and_wait_caps_are_shared_and_release_after_revocation` | Actual 64-session/eight-waiter limits, no eviction/permit queue, revoked waits finish |
+| `realtime_actual_tls_pool_nested_deadlines_and_absolute_socket_lifetime` | Actual generated pinned TLS, sequential signed requests on one socket, both nested deadlines, 120-second close/recovery, eight-second header timeout; OR-B1/OR-M4 |
+| `realtime_session_open_counts_auth_ingress_while_events_do_not` | Nine rapid session opens exhaust auth ingress; events spend only total ingress; OR-M6 |
+| `realtime_session_messages_preserve_non_evicting_quotas_and_exact_retries` | Real 10000-row account quota, unchanged full-quota exact retry, altered-retry conflict, no eviction |
+| `realtime_committed_inbox_without_notify_is_recovered_by_lockless_tick` | Real committed DB event with intentionally absent process notification, one-second recovery; models the durable state after commit/cancellation without fabricating an HTTP cancellation instant; OR-M3 |
+| `realtime_eight_idle_waiters_do_not_starve_continuous_sends` | Thirty measured accept responses before/after eight idle waits, raw timings and P95, no pool timeout; OR-H1 |
+
+Global capacity fixtures seed valid synthetic preexisting credentials to avoid
+spending five minutes on an unrelated eight-new-accounts/minute registration
+budget. Every session still passes real device proof and binding checks. Actual
+registration is exercised by the other realtime tests and retained v2 suite.
+
+## Retained evidence and honest status
+
+Unique evidence directory:
+`/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z`.
+Server progress/resumption is `server-status.json`; coordinator checkpoint/status
+also tracks the overall APK/deployment task.
+
+- `server-realtime-red.log`: actual missing-session behavior RED, 0 passed/5 failed.
+- `server-realtime-red-expanded.log`: actual missing-session behavior RED,
+  0 passed/8 failed. Global capacity and later review regressions were added after
+  this log; do not retroactively call it a 14-test RED run.
+- `server-tls-pooling-red.log`: actual TLS first response closed the socket,
+  0 passed/1 failed before the acceptor/keep-alive changes.
+- `server-auth-first-green.log`: 1 passed/0 failed after implementation.
+- `server-wait-first-green.log`: 2 passed/0 failed; revoked waiter completed
+  in 868 ms in this run, with a concurrently acquired global lock proving the
+  wait held no database transaction.
+- `server-realtime-first-full.log` and `server-first-full-source.json`: full
+  14 passed/0 failed/0 ignored, exit 0, 706.74 seconds and exact source inputs.
+  Actual TLS lifetime was 119.997 seconds; missing-notify recovery was 874 ms.
+- `server-three-connection-load-green.log`: 1 passed/0 failed after reserving
+  one of the fixture's four pool connections to match the actual binary's advisory
+  lock. With three operational connections, 30 baseline accepts had P95 27.535 ms;
+  30 accepts beside eight idle waits had P95 27.404 ms, with no pool timeout.
+  The only test-source change after the full run is this stronger pool reservation;
+  runtime source remained identical. Sorted actual timing arrays are in the log.
+- `server-retained-regressions.log`: 55 passed/0 failed/one preexisting conditional
+  ignored across library, binary and every existing integration target. Realtime
+  was excluded here because its complete 14-test matrix had already passed.
+- `server-retained-apk-conditional.log`: the conditional APK snapshot test was
+  explicitly run and passed against the immutable supplied v7 APK; this is not a
+  check of the then-unbuilt final overnight APK.
+- `final-apk-server-bytes.log`: the final 3,031,545-byte version 8 APK was supplied
+  separately; the actual exact-hash APK snapshot test passed.
+- `server-clippy.log`: all server targets pass clippy with `-D warnings`; dedicated
+  rustfmt checks and Python syntax checks also pass.
+- `fable-design-review.md`, `fable-server-design-resolutions.md` and
+  `fable-design-closure.md`: fresh `claude-fable-5` design review and bounded
+  closure. They authorize implementation within scope, not final code approval.
+
+The initial binary copied for coordinator integration remains an intermediate
+debug candidate. Final release `3ed25173ad978e6b417c` is independently reviewed,
+installed and externally exercised; `live-deployment-result.json` and
+`hosted-final-acceptance/result.json` in the evidence directory retain the exact
+outcome and scope. The [dated rollout](../operations/realtime-rollout-2026-09-09.md)
+binds the final source/artifacts and preserves the original failed test separately.
+See the
+[server threat delta](../security/realtime-v1-threats.md).

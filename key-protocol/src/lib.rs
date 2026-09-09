@@ -2,6 +2,10 @@
 use serde::{Deserialize, Serialize};
 mod proof;
 pub use proof::Challenge;
+mod proof_v2;
+pub use proof_v2::ChallengeV2;
+mod session_v2;
+pub use session_v2::{session_nonce_valid, SessionV2};
 use sha2::{Digest, Sha256};
 use vodozemac::{Ed25519PublicKey, Ed25519SecretKey, Ed25519Signature};
 

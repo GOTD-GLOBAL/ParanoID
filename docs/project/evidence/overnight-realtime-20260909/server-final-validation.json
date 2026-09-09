@@ -1,0 +1,51 @@
+{
+  "updated": "2026-09-09T20:06:13.271860+00:00",
+  "phase": "server local implementation and validation complete; source frozen for parent integration",
+  "runtime_edits_pending": false,
+  "active_process_sessions": [],
+  "source_manifest": "server-final-source-sha256.json",
+  "source_manifest_sha256": "c97434c559f2ca9ca717cb36b607be30285556b1a1737430882bbf4ebf4617d5",
+  "source_file_count": 40,
+  "binary": "/home/codex/paranoid-self-service-evidence/overnight-realtime-20260909T191524Z/paranoid-server-realtime-verified-debug",
+  "binary_sha256": "754ca150447935cfa9ec265136108d73c2e68b23ee0d6c7223b58d70f89172db",
+  "first_full_source_changes": [
+    "server/tests/realtime.rs"
+  ],
+  "checks": {
+    "realtime": {
+      "passed": 14,
+      "failed": 0,
+      "ignored": 0,
+      "seconds": 706.74
+    },
+    "three_available_pg_connections": {
+      "passed": 1,
+      "baseline_p95_ms": 27.535164,
+      "eight_waiters_p95_ms": 27.404203
+    },
+    "retained_server": {
+      "passed": 55,
+      "failed": 0,
+      "ignored_conditional": 1
+    },
+    "conditional_retained_v7_apk": {
+      "passed": 1,
+      "failed": 0
+    },
+    "clippy_all_targets": "pass",
+    "rustfmt": "pass",
+    "python_syntax": "pass",
+    "markdown": {
+      "files": 5,
+      "result": "pass"
+    },
+    "local_links": {
+      "count": 22,
+      "result": "pass"
+    },
+    "optional_shared_library": "standalone --locked unavailable without its own lock; corrected -p via server lock passes, 0 library/doc tests"
+  },
+  "review": "Fable design and bounded closure passed; final exact-source/code/bundle review pending",
+  "deployment": "no live mutation by server worker",
+  "next": "parent imports exact frozen server/shared inputs and docs into combined Android source; builds release bundle, final exact-source Fable review and exact-bundle fixtures before authorized existing-service deployment"
+}

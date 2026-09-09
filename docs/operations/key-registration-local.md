@@ -74,7 +74,7 @@ a zero-RPO disaster-recovery promise or evidence of a physical phone installatio
 
 ## Build and verify the APK without changing identity
 
-Follow [the Android build instructions](../../clients/android/README.md#build-and-actual-checks).
+Follow [the Android build instructions](../../clients/android/README.md#build).
 Set `ANDROID_SDK_ROOT`, `PARANOID_ANDROID_KEYSTORE` and the signing password via
 `PARANOID_ANDROID_KS_PASSWORD` in the build process environment. Do not use shell
 tracing or place the password in Git, a URL, an APK asset or an argument to

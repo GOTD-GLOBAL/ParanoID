@@ -88,10 +88,12 @@ pub async fn local_pool() -> Result<PgPool, Box<dyn std::error::Error>> {
     if options.get_socket().is_none() || !crate::development_database_allowed(&options, false) {
         return Err("private local database required".into());
     }
-    Ok(PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(1)
         .connect_with(options)
-        .await?)
+        .await?;
+    crate::self_service::reject_cutover(&pool).await?;
+    Ok(pool)
 }
 pub async fn approve_cli(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     if args.len() != 5 {
