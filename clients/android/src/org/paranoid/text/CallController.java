@@ -135,7 +135,7 @@ public final class CallController {
             Call c=call;if(c==null||!baseContext(c,account,b))return;
             int seq=b.getInt("seq");
             if(kind.equals("ready")){
-                if(!c.outgoing||!state.equals("starting")||seq!=0||!c.callee.isEmpty()||!online||expired(c))return;
+                if(!c.outgoing||!state.equals("starting")||seq!=0||!c.callee.isEmpty()||expired(c))return;
                 c.callee=b.getString("callee_nonce");c.remoteSequence=0;state="authorizing";publish();
                 try{port.mediaOffer(c.generation);applyRoutes(c);}catch(RuntimeException failure){finish("failed",true);}return;
             }
@@ -154,7 +154,9 @@ public final class CallController {
         }catch(Exception invalid){/* Invalid input cannot grant UI or media authority. */}
     }
     private void knock(String account,JSONObject b)throws Exception{
-        if(!online||!allowKnock(account)||!terminalRoom())return;
+        // Authenticated durable-delivered knocks are not gated on the transient
+        // online flag: replying "ready" goes through the durable outbox anyway.
+        if(!allowKnock(account)||!terminalRoom())return;
         if(call!=null){sendDetached(account,b,"","","busy");return;}
         for(Slot s:ready.values())if(s.account.equals(account))return;
         if(ready.size()>=MAX_READY)return;
@@ -242,7 +244,8 @@ public final class CallController {
     }
     private void sendActive(JSONObject body,boolean heartbeat){
         Call c=call;if(c==null)return;
-        if(!online){finish("unavailable",false);return;}
+        // A transient offline flag must not end an active call: sends are
+        // durable-outboxed and the call is bounded by heartbeat/TTL timeouts.
         try{port.send(c.account,body,accepted->{
             own();if(call!=c)return;
             if(!accepted){finish("failed",false);return;}

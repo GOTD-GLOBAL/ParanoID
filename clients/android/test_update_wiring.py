@@ -7,7 +7,7 @@ A='{http://schemas.android.com/apk/res/android}'
 class UpdateWiring(unittest.TestCase):
     def test_explicit_update_ui_and_narrow_provider(self):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
-        self.assertEqual(m.get(A+'versionCode'),'10')
+        self.assertEqual(m.get(A+'versionCode'),'11')
         self.assertIn('android.permission.REQUEST_INSTALL_PACKAGES',[p.get(A+'name') for p in m.findall('uses-permission')])
         providers=m.findall('application/provider');self.assertEqual(len(providers),1)
         p=providers[0];self.assertEqual(p.get(A+'exported'),'false');self.assertEqual(p.get(A+'grantUriPermissions'),'false')

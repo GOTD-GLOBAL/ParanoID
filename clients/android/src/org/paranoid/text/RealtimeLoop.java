@@ -258,13 +258,15 @@ public final class RealtimeLoop implements AutoCloseable {
                 if(messages.length()>20)throw new IOException("page limit");
                 state(selected,()->{
                     if(client.receiveCursor()!=after)throw new IOException("stale receive page");
+                    // Connection is reported before delivering this page so call
+                    // signaling (CallController) observes online=true when events arrive.
+                    listener.changed(true,"Подключено");
                     for(int n=0;n<messages.length();n++) {
                         client.received(messages.getJSONObject(n));
                         // Persist succeeded. UI notification is issued before a receipt
                         // can enter the send lane, even if that network is stalled.
                         listener.changed(true,"Подключено");
                     }
-                    if(messages.length()==0)listener.changed(true,"Подключено");
                     return null;
                 });
                 observedRun=run;

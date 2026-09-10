@@ -91,6 +91,13 @@ public final class CallControllerSmoke {
         Pair pending=new Pair();pending.connect();pending.pa.holdHeartbeat=true;pending.time.advance(10_001);pending.a.tick();pending.time.advance(10_001);pending.a.tick();
         check(pending.pa.sent.size()==1,"only one heartbeat may await actual server acceptance");
         Pair offline=new Pair();offline.a.connection(false);offline.a.start(B,true);check(offline.pa.sent.isEmpty()&&offline.pa.offers==0,"offline call does not enter durable outbox");
+        Pair lapse=new Pair();lapse.a.start(B,true);Sent lk=lapse.pa.take();lapse.b.connection(false);lapse.deliver(lapse.b,A,lk);
+        check(lapse.pb.sent.size()==1,"authenticated durable knock is processed despite transient offline flag");
+        Pair rl=new Pair();rl.pa.deferMedia=true;rl.a.start(B,true);rl.deliver(rl.b,A,rl.pa.take());rl.a.connection(false);rl.deliver(rl.a,B,rl.pb.take());
+        check("authorizing".equals(rl.a.snapshot().getString("state")),"ready during transient offline still advances caller intent");
+        Pair drop=new Pair();drop.connect();drop.a.connection(false);drop.time.advance(10_001);drop.a.tick();
+        check(drop.a.active(),"transient offline does not immediately end an active call");
+        drop.a.connection(true);drop.time.advance(1);drop.a.tick();check(!drop.pa.sent.isEmpty(),"restored connection resumes heartbeats");
     }
     static void crossingAndClock(){
         Pair p=new Pair();p.a.start(B,true);p.b.start(A,true);Sent ak=p.pa.take(),bk=p.pb.take();p.deliver(p.b,A,ak);p.deliver(p.a,B,bk);

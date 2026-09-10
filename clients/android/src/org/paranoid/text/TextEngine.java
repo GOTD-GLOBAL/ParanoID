@@ -61,7 +61,10 @@ public final class TextEngine {
                 final JSONObject immutable;
                 try{immutable=new JSONObject(body.toString());}catch(Exception failure){completion.done(false);return;}
                 worker.execute(()->{try{
-                    if(broken||client==null||!connected||callCompletions.size()>=16)throw new IOException("call unavailable");
+                    // No !connected gate: sendCall is a durable outbox enqueue and the
+                    // send lane delivers once the transient poll failure clears; the call
+                    // itself stays bounded by its own heartbeat/TTL timeouts.
+                    if(broken||client==null||callCompletions.size()>=16)throw new IOException("call unavailable");
                     String id=client.sendCall(account,immutable);callCompletions.put(id,completion);startConnection();realtime.kick();
                 }catch(Exception failure){ui.post(()->completion.done(false));}});
             }
