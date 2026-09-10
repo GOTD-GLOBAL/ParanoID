@@ -72,14 +72,16 @@ an already verified exact TCP38443 inbound rule on the configured interface/IP;
 the coordinator never creates or adopts that rule. If absent or conflicting,
 preflight refuses before mutation. Existing-host delivery retains that rule.
 
-No reviewed full-relay rehearsal profile currently exists. The immutable production
-acceptance guard therefore refuses even a hand-authored complete PASS receipt;
-message-only fixture evidence cannot be submitted as full-rehearsal proof. A future
-reviewed source revision and actual full-relay evidence are required to make that
-gate satisfiable. This artifact can plan, inspect and rehearse its message phases;
-it cannot expose a production relay.
-Production apply reports the fixed `full-relay-rehearsal-unavailable` category with
-`mutations: false` and exit status 2 before creating a transaction.
+No reviewed full-relay VM rehearsal profile exists; the owner froze that
+programme on 2026-09-10. Production acceptance instead requires the
+`local-loopback-acceptance` gate: a real executed loopback TURN acceptance
+report (TURN-RT01/TURN-ACL02 cases, six or more, all PASS, bound to the exact
+turnserver binary digest and git revision). The verifier reads the referenced
+report file, checks its digest, structure and case outcomes, and requires the
+`turn-rt01`/`turn-acl02` gates to reference the same evidence; a bare hash or a
+failed/partial report is refused before any mutation. The owner's physical
+two-phone call remains the post-install product acceptance. Message-only
+fixture evidence still cannot be submitted for production gates.
 
 For safe normalized archive extraction, use the exact hashed coordinator file from this candidate:
 

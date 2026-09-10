@@ -243,11 +243,16 @@ class RehearsalFilesTests(unittest.TestCase):
             self.validate()
 
     def test_production_apply_cannot_accept_a_hash_only_receipt(self):
+        # Owner decision 2026-09-10: the frozen VM rehearsal gate was removed
+        # from production. A legacy receipt carrying it must fail the exact
+        # artifact-bound acceptance shape instead of reaching the old verifier.
         receipt = {'v': 1, 'profile': kit.PRODUCTION, 'kit_sha256': self.production_sha,
                    'plan_sha256': self.plan_sha, 'gates': {name: {'result': 'PASS',
                    'evidence_sha256': 'a' * 64} for name in kit.GATES[kit.PRODUCTION]}}
-        receipt['gates']['coordinated-full-rehearsal'].update(
-            fixture_profile=kit.VM_FIXTURE, fixture_kit_sha256=self.fixture_sha)
+        receipt['gates']['coordinated-full-rehearsal'] = {
+            'result': 'PASS', 'evidence_sha256': 'a' * 64,
+            'fixture_profile': kit.VM_FIXTURE, 'fixture_kit_sha256': self.fixture_sha,
+            'evidence_path': '/x', 'fixture_kit_path': '/y'}
         with patch.object(kit, 'FULL_REHEARSAL_PROFILES', frozenset({kit.VM_FIXTURE})):
             with self.assertRaises(ValueError) as caught:
                 kit.validate_acceptance(receipt, kit.PRODUCTION, self.production_sha,
@@ -311,22 +316,21 @@ class RehearsalFilesTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.validate()
 
     def test_matching_production_gates_must_reference_verified_case_hashes(self):
+        # Owner decision 2026-09-10: production no longer carries the frozen
+        # coordinated-full-rehearsal gate, so a receipt naming it is rejected
+        # at the acceptance shape even when the frozen verifier is available.
+        # The VM report verifier itself (self.validate) remains covered above.
         receipt = {'v': 1, 'profile': kit.PRODUCTION, 'kit_sha256': self.production_sha,
                    'plan_sha256': self.plan_sha, 'gates': {name: {'result': 'PASS',
                    'evidence_sha256': self.report['cases'].get(name, {}).get('sha256', 'a' * 64)}
                    for name in kit.GATES[kit.PRODUCTION]}}
         receipt['gates']['coordinated-full-rehearsal'] = self.gate
         verified = self.validate()
-        # Isolate acceptance-to-verified-case binding. Changing availability also
-        # changes plan hashes, so this dispatcher test returns the already read
-        # synthetic report instead of pretending it was executed under a new plan.
+        self.assertIn('cases', verified)
         proxy = types.SimpleNamespace(verify_rehearsal=lambda *args: verified)
         with patch.object(kit, 'FULL_REHEARSAL_PROFILES', frozenset({kit.VM_FIXTURE})), \
                 patch.object(kit, 'vm_module', return_value=proxy):
-            kit.validate_acceptance(receipt, kit.PRODUCTION, self.production_sha,
-                                    self.plan_sha, self.production, self.intent)
-            receipt['gates']['turn-acl02']['evidence_sha256'] = 'f' * 64
-            with self.assertRaisesRegex(ValueError, 'verified actual case log'):
+            with self.assertRaisesRegex(ValueError, 'exact artifact-bound'):
                 kit.validate_acceptance(receipt, kit.PRODUCTION, self.production_sha,
                                         self.plan_sha, self.production, self.intent)
 

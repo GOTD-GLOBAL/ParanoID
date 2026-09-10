@@ -42,7 +42,8 @@ class IntentTests(unittest.TestCase):
         self.assertEqual(installer.GATES[installer.FIXTURE],
                          ('design-review', 'offline-tests', 'artifact-verification'))
         self.assertIn('turn-rt01', installer.GATES[installer.PRODUCTION])
-        self.assertIn('coordinated-full-rehearsal', installer.GATES[installer.PRODUCTION])
+        self.assertIn('local-loopback-acceptance', installer.GATES[installer.PRODUCTION])
+        self.assertNotIn('coordinated-full-rehearsal', installer.GATES[installer.PRODUCTION])
         receipt = {'v': 1, 'profile': installer.FIXTURE, 'kit_sha256': 'a' * 64, 'plan_sha256': 'c' * 64,
                    'gates': {name: {'result': 'PASS', 'evidence_sha256': 'b' * 64}
                              for name in installer.GATES[installer.FIXTURE]}}
@@ -175,14 +176,62 @@ class StickyCreationTests(unittest.TestCase):
 
 
 class FullRehearsalBoundaryTests(unittest.TestCase):
-    def test_message_only_fixture_cannot_authorize_production_full_gate(self):
+    def loopback_report(self):
+        return {'gates': ['TURN-RT01', 'TURN-ACL02'],
+                'scope': 'loopback-only local acceptance',
+                'binding': {'turnserver_sha256': 'e' * 64, 'git_head': 'f' * 40},
+                'cases': [{'name': f'case-{n}', 'result': 'PASS', 'observed': {'n': n}}
+                          for n in range(6)],
+                'overall': 'PASS'}
+
+    def receipt(self, evidence_path, evidence_sha):
+        gates = {name: {'result': 'PASS', 'evidence_sha256': 'b' * 64}
+                 for name in installer.GATES[installer.PRODUCTION]}
+        gates['local-loopback-acceptance'] = {'result': 'PASS', 'evidence_sha256': evidence_sha,
+                                              'evidence_path': evidence_path}
+        gates['turn-rt01']['evidence_sha256'] = evidence_sha
+        gates['turn-acl02']['evidence_sha256'] = evidence_sha
+        return {'v': 1, 'profile': installer.PRODUCTION, 'kit_sha256': 'a' * 64,
+                'plan_sha256': 'c' * 64, 'gates': gates}
+
+    def test_loopback_gate_requires_real_bound_executed_report(self):
+        with tempfile.TemporaryDirectory(prefix='paranoid-loopback-unit-') as raw:
+            root = Path(raw)
+            root.chmod(0o700)
+            path = root / 'results.json'
+            data = installer.canonical(self.loopback_report())
+            path.write_bytes(data)
+            good = self.receipt(str(path), installer.sha(data))
+            installer.validate_acceptance(good, installer.PRODUCTION, 'a' * 64, 'c' * 64)
+            with self.assertRaises(ValueError):
+                installer.validate_acceptance(self.receipt(str(path), 'd' * 64),
+                                              installer.PRODUCTION, 'a' * 64, 'c' * 64)
+            with self.assertRaises((ValueError, OSError)):
+                installer.validate_acceptance(self.receipt(str(root / 'absent.json'), installer.sha(data)),
+                                              installer.PRODUCTION, 'a' * 64, 'c' * 64)
+            failed = self.loopback_report()
+            failed['cases'][0]['result'] = 'FAIL'
+            bad = installer.canonical(failed)
+            path.write_bytes(bad)
+            with self.assertRaisesRegex(ValueError, 'complete executed loopback'):
+                installer.validate_acceptance(self.receipt(str(path), installer.sha(bad)),
+                                              installer.PRODUCTION, 'a' * 64, 'c' * 64)
+            path.write_bytes(data)
+            unbound = self.receipt(str(path), installer.sha(data))
+            unbound['gates']['turn-rt01']['evidence_sha256'] = 'b' * 64
+            with self.assertRaisesRegex(ValueError, 'reference the loopback'):
+                installer.validate_acceptance(unbound, installer.PRODUCTION, 'a' * 64, 'c' * 64)
+
+    def test_frozen_vm_rehearsal_gate_is_no_longer_accepted_in_production_receipts(self):
         receipt = {'v': 1, 'profile': installer.PRODUCTION, 'kit_sha256': 'a' * 64,
                    'plan_sha256': 'c' * 64, 'gates': {
                        name: {'result': 'PASS', 'evidence_sha256': 'b' * 64}
                        for name in installer.GATES[installer.PRODUCTION]}}
-        receipt['gates']['coordinated-full-rehearsal'].update(
-            fixture_profile=installer.FIXTURE, fixture_kit_sha256='d' * 64)
-        with self.assertRaisesRegex(ValueError, 'full-relay rehearsal profile'):
+        receipt['gates']['coordinated-full-rehearsal'] = {
+            'result': 'PASS', 'evidence_sha256': 'b' * 64,
+            'fixture_profile': installer.FIXTURE, 'fixture_kit_sha256': 'd' * 64,
+            'evidence_path': '/x', 'fixture_kit_path': '/y'}
+        with self.assertRaisesRegex(ValueError, 'exact artifact-bound'):
             installer.validate_acceptance(receipt, installer.PRODUCTION, 'a' * 64, 'c' * 64)
 
     def test_only_exact_retained_message_ingress_is_supported(self):

@@ -31,10 +31,13 @@ STATE = Path('/var/lib/paranoid-single-host')
 GATES = {
     FIXTURE: ('design-review', 'offline-tests', 'artifact-verification'),
     VM_FIXTURE: ('design-review', 'offline-tests', 'artifact-verification', 'current-boot-isolation'),
+    # Owner decision 2026-09-10: the VM full-rehearsal programme is frozen.
+    # Production binds the executed local loopback TURN acceptance instead;
+    # the physical two-phone owner call is post-install product acceptance.
     PRODUCTION: ('design-review', 'offline-tests', 'artifact-verification',
                  'issuer-interoperability', 'turn-rt01', 'turn-acl02', 'relay-cli',
-                 'relay-credentials-lifecycle', 'coordinated-full-rehearsal',
-                 'current-call-acceptance', 'final-review'),
+                 'relay-credentials-lifecycle', 'local-loopback-acceptance',
+                 'final-review'),
 }
 IDENTITY = {'release', 'manifest_sha256', 'pg_system_id', 'config_sha256',
             'tls_cert_sha256', 'tls_key_sha256', 'tls_spki', 'unit_sha256'}
@@ -222,6 +225,39 @@ def validate_intent(value):
     return decode_json(canonical(value))
 
 
+LOOPBACK_EVIDENCE_LIMIT = 1024 * 1024
+LOOPBACK_BOUND_GATES = ('turn-rt01', 'turn-acl02')
+
+
+def verify_loopback_acceptance(result, gates):
+    """Owner-simplified gate (2026-09-10): bind an actually executed loopback
+    TURN acceptance report covering TURN-RT01/TURN-ACL02. The report must be a
+    real readable structured file whose digest matches the receipt; a bare hash
+    or a failed/partial report cannot authorize production."""
+    path = simple_path(result['evidence_path'])
+    data = read_file(path, LOOPBACK_EVIDENCE_LIMIT)
+    if sha(data) != result['evidence_sha256']:
+        raise ValueError('loopback acceptance evidence must match its digest')
+    report = decode_json(data)
+    if not isinstance(report, dict):
+        raise ValueError('structured loopback acceptance report required')
+    binding = report.get('binding')
+    cases = report.get('cases')
+    if (report.get('overall') != 'PASS'
+            or sorted(report.get('gates') or []) != ['TURN-ACL02', 'TURN-RT01']
+            or 'loopback' not in str(report.get('scope', ''))
+            or not isinstance(cases, list) or len(cases) < 6
+            or any(not isinstance(case, dict) or case.get('result') != 'PASS'
+                   or not case.get('name') or 'observed' not in case for case in cases)
+            or not isinstance(binding, dict)
+            or not is_hash(binding.get('turnserver_sha256') or '')
+            or not re.fullmatch(r'[0-9a-f]{40}', binding.get('git_head') or '')):
+        raise ValueError('complete executed loopback acceptance report required')
+    for name in LOOPBACK_BOUND_GATES:
+        if gates[name]['evidence_sha256'] != result['evidence_sha256']:
+            raise ValueError('turn gates must reference the loopback acceptance evidence')
+
+
 def validate_acceptance(value, profile, kit_sha256, plan_sha256, kit_root=None, intent=None):
     if (not isinstance(value, dict) or set(value) != {'v', 'profile', 'kit_sha256', 'plan_sha256', 'gates'}
             or type(value['v']) is not int or value['v'] != 1 or value['profile'] != profile
@@ -229,30 +265,20 @@ def validate_acceptance(value, profile, kit_sha256, plan_sha256, kit_root=None, 
             or value['plan_sha256'] != plan_sha256 or not isinstance(value['gates'], dict)
             or set(value['gates']) != set(GATES[profile])):
         raise ValueError('exact artifact-bound profile acceptance required')
-    rehearsal = None
     for name, result in value['gates'].items():
         required = {'result', 'evidence_sha256'}
-        if name == 'coordinated-full-rehearsal':
-            if not isinstance(result, dict) or result.get('fixture_profile') not in FULL_REHEARSAL_PROFILES:
-                raise FullRehearsalUnavailable('no reviewed full-relay rehearsal profile is available')
-            required |= {'fixture_profile', 'fixture_kit_sha256', 'evidence_path', 'fixture_kit_path'}
+        if name == 'local-loopback-acceptance':
+            required.add('evidence_path')
         if name == 'current-boot-isolation':
             required.add('boot_id')
         if (not isinstance(result, dict) or set(result) != required or result['result'] != 'PASS'
                 or not is_hash(result['evidence_sha256'])):
             raise ValueError('mandatory actual acceptance incomplete')
-        if name == 'coordinated-full-rehearsal':
-            if not is_hash(result['fixture_kit_sha256']):
-                raise ValueError('exact fixture kit digest required')
-            rehearsal = vm_module(kit_root).verify_rehearsal(sys.modules[__name__], result, kit_root,
-                                                             kit_sha256, plan_sha256, intent)
+        if name == 'local-loopback-acceptance':
+            verify_loopback_acceptance(result, value['gates'])
         if name == 'current-boot-isolation' and (not isinstance(result['boot_id'], str)
                 or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', result['boot_id'])):
             raise ValueError('exact current guest boot required')
-    if rehearsal is not None:
-        for name in set(value['gates']) & set(rehearsal['cases']):
-            if value['gates'][name]['evidence_sha256'] != rehearsal['cases'][name]['sha256']:
-                raise ValueError('production gate must reference its verified actual case log')
     return value
 
 
@@ -1038,8 +1064,6 @@ def apply(intent, kit_root, acceptance, expected_plan, updating=False):
     if relay_profile(intent['profile']) and os.geteuid() != 0:
         raise ValueError('production or VM apply requires root before loading a kit')
     desired = plan(intent, kit_root)
-    if intent['profile'] == PRODUCTION and not FULL_REHEARSAL_PROFILES:
-        raise FullRehearsalUnavailable('no reviewed full-relay rehearsal profile is available')
     if intent['profile'] == VM_FIXTURE:
         boundary = vm_boundary(intent, kit_root)
     validate_acceptance(acceptance, intent['profile'], intent['kit_sha256'], desired['plan_sha256'], kit_root, intent)
