@@ -1,0 +1,129 @@
+{
+  "gates": [
+    "TURN-RT01",
+    "TURN-ACL02"
+  ],
+  "scope": "loopback-only local acceptance; no public network, no physical phones, no systemd secret delivery",
+  "started": "2026-09-10T13:28:30+00:00",
+  "finished": "2026-09-10T13:28:45+00:00",
+  "binding": {
+    "turnserver_sha256": "b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551",
+    "harness_sha256": "9e55d05e8dff207cc8d81c5cbbbd04b822128df1a258672fb30b0672f8374b97",
+    "git_head": "ad966cb920761adcc8a293fc2c7df519a4c6430b",
+    "turnserver_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-offline-build-6/relocated/bin/turnserver",
+    "listener": "127.0.0.1:34781/udp",
+    "relay_range": "40000-40015"
+  },
+  "cases": [
+    {
+      "name": "TURN-RT01-1 valid REST credential Allocate",
+      "expected": "Allocate success, XOR-RELAYED-ADDRESS 127.0.0.1 port in 40000-40015",
+      "observed": {
+        "response_type": "0x0103",
+        "relayed_ip": "127.0.0.1",
+        "relayed_port": 40012,
+        "lifetime": 60
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:32+00:00"
+    },
+    {
+      "name": "TURN-RT01-2 expired-timestamp credential rejected",
+      "expected": "Allocate error 401/438, no relayed address",
+      "observed": {
+        "response_type": "0x0113",
+        "error_code": 401,
+        "relayed_address_present": false
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:32+00:00"
+    },
+    {
+      "name": "TURN-RT01-3 wrong-HMAC credential rejected",
+      "expected": "Allocate error 401/438, no relayed address",
+      "observed": {
+        "response_type": "0x0113",
+        "error_code": 401,
+        "relayed_address_present": false
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:32+00:00"
+    },
+    {
+      "name": "TURN-RT01-4 user-quota=4 enforced",
+      "expected": "four concurrent Allocates succeed, fifth rejected with 486",
+      "observed": {
+        "allocations": [
+          {
+            "attempt": 1,
+            "response_type": "0x0103",
+            "error_code": null
+          },
+          {
+            "attempt": 2,
+            "response_type": "0x0103",
+            "error_code": null
+          },
+          {
+            "attempt": 3,
+            "response_type": "0x0103",
+            "error_code": null
+          },
+          {
+            "attempt": 4,
+            "response_type": "0x0103",
+            "error_code": null
+          },
+          {
+            "attempt": 5,
+            "response_type": "0x0113",
+            "error_code": 486
+          }
+        ]
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:32+00:00"
+    },
+    {
+      "name": "TURN-ACL02-5 peer ACL: denied 10.0.0.1 (403), loopback relay echo works",
+      "expected": "CreatePermission 10.0.0.1 -> 403; 127.0.0.1 -> success; Send/Data echo through relay",
+      "observed": {
+        "relayed": "127.0.0.1:40015",
+        "denied_peer": {
+          "response_type": "0x0118",
+          "error_code": 403
+        },
+        "allowed_peer": {
+          "response_type": "0x0108",
+          "error_code": null
+        },
+        "peer_received_from": "127.0.0.1:40015",
+        "peer_payload_match": true,
+        "data_indication_payload_ok": true,
+        "data_indication_from_peer": [
+          "127.0.0.1",
+          58258
+        ]
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:32+00:00"
+    },
+    {
+      "name": "TURN-RT01-6 lifetime<=60 and expired-credential Refresh rejected",
+      "expected": "Allocate LIFETIME<=60 despite requesting 600; Refresh with expired credential -> 401/438",
+      "observed": {
+        "allocate_lifetime_from_case1": 60,
+        "requested_lifetime": 600,
+        "granted_lifetime": 60,
+        "refresh_after_expiry": {
+          "response_type": "0x0114",
+          "error_code": 401,
+          "waited_s": 10.0
+        }
+      },
+      "result": "PASS",
+      "timestamp": "2026-09-10T13:28:42+00:00"
+    }
+  ],
+  "overall": "PASS"
+}
