@@ -81,3 +81,51 @@ reviewed guest fixture/test profile is the next step; the RAM-only capability
 probe contained no relay/server/packet script. Detailed external evidence is
 voice-ready-20260910T065350Z under the owner's local evidence directory. All
 outcomes, including incomplete reviews and failed session resume, are retained.
+
+## Full guest preparation and candidate verifier
+
+[Signed205-package acquisition](full-guest-acquisition-result-summary.json)
+actually completed after [independent Opus5 source review](full-guest-acquisition-review.md.txt)
+and its [six corrections](full-guest-acquisition-scope.md). All packages and
+14127 resulting entries were verified; no host package installation or guest
+program execution occurred. Source, tests, freeze and actual result hash are
+retained. The full raw package tree manifest stays in the owned external evidence.
+
+The [candidate VM contract](../../../operations/voice-vm-rehearsal.md) now has
+profile dispatch and a separate kernel-observed boundary plus actual report/kit/
+log/intent/plan verification. [Actual Opus5 implementation review](full-vm-profile-review.md.txt)
+was conditional; its [ten corrections](full-vm-profile-review-closure.md) are
+implemented. Nineteen new offline tests pass, including [veth-pair RED](full-vm-profile-veth-red.log)
+and [GREEN](full-vm-profile-veth-green.log). Original failed intermediate fixtures
+are preserved. Synthetic parser files never constitute runtime acceptance.
+FULL_REHEARSAL_PROFILES remains empty; the full runner and relay/call tests are
+still being implemented. No new deployable installer artifact is claimed.
+
+[Current host identity](host-identity-readonly.json) was observed by one authorized
+read-only SSH check: message UID1003/GID1004, enp5s0, relay account absent and
+UID/GID1902 available. The temporary agent and owned children stopped. Nothing
+was installed or reconfigured on the host. [Nested Android vendor support](nested-android-vendor-support.json)
+is recorded as an unresolved compatibility limit, never an automatic PASS.
+
+The [base image](full-guest-base-artifact-summary.json) was actually assembled
+after separate Opus5 source review and corrections. [Complete cpio readback](full-guest-base-cpio-verification.json)
+verified17100 members,3708965338 regular bytes and1591558686 compressed bytes;
+image SHA256 f90a9ec93662503943be7c7695201e498fc79cf55e77c150a34b34439bfb723a.
+Only guest console/null device entries exist; regular files have no setuid/setgid
+bits. [Exact artifact review](full-base-artifact-review.md.txt) raised a firstboot
+finding; the [version-matched primary reference](systemd-firstboot-local-reference.json)
+contradicted it. [Opus explicitly corrected and withdrew that finding](full-base-artifact-c1-recheck.md.txt),
+approving one unchanged base observation without masks or rebuilding.
+
+That [actual KVM attempt](full-base-kvm-first-result.json) stopped before guest
+continuation: its auditor omitted `anon_inode:kvm-vcpu-stats:0`. The owned process
+stopped and serial output remained empty. [Primary-source explanation](kvm-stats-descriptor-reference.json)
+identifies the read-only statistics interface; this was a source predicate error,
+not a tool/device refusal or a nested-Android capability result. The exact
+metadata-aware correction has13 offline tests passing after genuine RED and is
+pending independent review. No guest relay, veth, AVD, full rehearsal, current
+call or deployment has run. Original failed evidence remains intact.
+
+[Credential-commit CI](credential-ci-final.json) completed four required jobs
+successfully. The informational pre-v7 history job still fails with the exact
+frozen14 tests; no exclusion or guard was changed to conceal it.

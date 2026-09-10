@@ -246,9 +246,19 @@ The single-host candidate's production unit contract excludes merged systemd
 drop-ins and stale loaded configuration. Updates stop the previous owned relay
 before selecting new code, and rollback verifies the prior active executable
 before restoring owned ingress. Process identity alone is not transport readiness
-or relay acceptance. No full-relay rehearsal profile is currently implemented,
-so the mandatory production gate remains structurally unsatisfiable in this
-candidate; message-only fixture results cannot authorize exposure.
+or relay acceptance. Full rehearsal availability remains empty while the new
+VM runner is implemented; the mandatory production gate stays structurally
+unsatisfiable. Message-only fixture results cannot authorize exposure.
+
+The candidate [VM rehearsal contract](../operations/voice-vm-rehearsal.md) adds
+required `evidence_path` and `fixture_kit_path` to the production rehearsal gate.
+Both referenced files and contained case logs are read and verified; exact kit,
+production intent/plan, both fixture modes, shared implementation and component
+identity must correspond. Matching issuer/relay gates reference those verified
+case hashes. The current-boot fixture boundary independently computes its topology
+digest. This changes installer evidence validation only; wire/credential/media
+contracts and production acceptance requirements are unchanged. Real execution
+and independent exact artifact/runtime review are still pending.
 
 ## Systemd runtime-copy compatibility 2026-09-10
 

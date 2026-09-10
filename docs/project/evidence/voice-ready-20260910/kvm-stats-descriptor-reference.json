@@ -1,0 +1,28 @@
+{
+  "observed_host_kernel": "6.8.0-137-generic",
+  "observed_rejected_fd": "anon_inode:kvm-vcpu-stats:0",
+  "result": "SOURCE_EXPLAINED_AUDITOR_OMISSION_NOT_CAPABILITY_DENIAL",
+  "references": [
+    {
+      "url": "https://docs.kernel.org/virt/kvm/api.html#kvm-get-stats-fd",
+      "fact": "KVM_GET_STATS_FD returns a descriptor exposing VM or vCPU statistics."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/torvalds/linux/v6.8/virt/kvm/kvm_main.c",
+      "lines": [
+        4092,
+        4121
+      ],
+      "fact": "kvm_vcpu_ioctl_get_stats_fd constructs kvm-vcpu-stats:%d, allocates CLOEXEC descriptor and opens the anonymous file O_RDONLY; file operations are read, release and seek."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/qemu/qemu/v8.2.2/accel/kvm/kvm-all.c",
+      "lines": [
+        423,
+        429
+      ],
+      "fact": "QEMU v8.2.2 creates and retains the per-vCPU statistics descriptor during vCPU initialization."
+    }
+  ],
+  "limits": "Primary upstream sources explain the interface; not an attestation of exact Ubuntu patched native text. Actual pinned binary and descriptor were observed; no guest cont, device-ioctl refusal or tool denial occurred. The initial failed observation remains unchanged."
+}

@@ -94,9 +94,10 @@ directories to0755, ordinary files0644 and native executables0755. No service st
 The destination parent must allow traversal by the intended service account.
 `plan` and `apply` still require the exact configuration and plan-bound acceptance.
 
-The initial design received independent Fable review. Required final Fable review
-is currently unavailable because the requested model routed to a different actual
-model. No final source, full-runtime or deployment approval is claimed. Production
+The initial design received independent Fable review. Subsequent independent
+reviews use the actual recorded model identity; the owner explicitly accepts
+Opus. Credential-only source/artifact review is complete, while full-runtime and
+deployment review remain required. Production
 update closes owned ingress, verifies and stops the old relay before replacement;
 both activation and recovery require the expected packaged executable to be active
 before reopening ingress. Loaded unit fragments, merged drop-ins, reload state,
@@ -112,3 +113,14 @@ no relay or issuer started. The development rehearsal harness now requires a
 structured successful prior offline report with exact commands, exit status,
 test count, output digest and source/package correspondence. Raw file hashes
 alone cannot authorize a fixture.
+
+The candidate `paranoid-single-host-vm-fixture-v1` profile adds a distinct
+root-owned no-NIC guest boundary and binds actual referenced case files, boot,
+driver, component hashes and both fixture modes to the exact production plan.
+Its fixed prerequisites are design review, offline tests, artifact verification
+and current-boot isolation. The full guest runner is not implemented yet; no
+full-profile kit or runtime acceptance exists and production availability remains
+closed. Production kits exclude the VM runner. Referenced evidence files and a
+verified fixture kit are mandatory; a plausible digest alone is insufficient.
+See the repository's `docs/operations/voice-vm-rehearsal.md` for the exact current
+contract and remaining runtime obligations.

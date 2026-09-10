@@ -1,0 +1,18 @@
+test_all_budget_edges_are_checked_without_allocating_gigabytes (__main__.ArchiveTests.test_all_budget_edges_are_checked_without_allocating_gigabytes) ... ok
+test_executable_alias_resolution_and_privileged_mode_refusal (__main__.ArchiveTests.test_executable_alias_resolution_and_privileged_mode_refusal) ... ok
+test_layout_checks_directories_under_aliases_and_exact_root_aliases (__main__.ArchiveTests.test_layout_checks_directories_under_aliases_and_exact_root_aliases) ... ok
+test_media_collision_and_kvm_builder_identity_are_rejected (__main__.ArchiveTests.test_media_collision_and_kvm_builder_identity_are_rejected) ... ok
+test_only_reviewed_package_hardlink_pairs_can_be_copied (__main__.ArchiveTests.test_only_reviewed_package_hardlink_pairs_can_be_copied) ... ok
+test_real_source_hash_and_cpio_header_are_bound (__main__.ArchiveTests.test_real_source_hash_and_cpio_header_are_bound) ... ok
+test_redirected_unsafe_unexpected_input_refused_before_copy (__main__.ArchiveTests.test_redirected_unsafe_unexpected_input_refused_before_copy) ... ok
+test_android_negative_wording_cannot_match_a_positive_probe (__main__.BootPredicatesTests.test_android_negative_wording_cannot_match_a_positive_probe) ... ok
+test_fd_allowlist_refuses_sockets_unknown_devices_and_changed_kvm_inode (__main__.BootPredicatesTests.test_fd_allowlist_refuses_sockets_unknown_devices_and_changed_kvm_inode) ... ok
+test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata (__main__.BootPredicatesTests.test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata) ... ok
+test_qmp_network_class_uses_16bit_class_representation (__main__.BootPredicatesTests.test_qmp_network_class_uses_16bit_class_representation) ... ok
+test_exact_drop_order_and_post_drop_verification (__main__.DropperTests.test_exact_drop_order_and_post_drop_verification) ... ok
+test_saved_root_identity_or_missing_nnp_prevents_exec (__main__.DropperTests.test_saved_root_identity_or_missing_nnp_prevents_exec) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.023s
+
+OK

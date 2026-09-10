@@ -1,0 +1,32 @@
+{
+  "result": "GUEST_PACKAGES_VERIFIED_NO_VM_STARTED",
+  "host_install": false,
+  "guest_binaries_executed_on_host": false,
+  "source_sha256": "8b247ee5f164f0cd702a62fdee10438bbb4b07bb4046162f506d37d4654acc4c",
+  "plan_sha256": "a36521153cd4280913af1075ada3b7458efbb63ddd6a4f85b51568852ba69108",
+  "chain_sha256": "2fcab5b8e9cd65e4fa18114a05e8f58f260853d7099ea665a633d6d2cc981938",
+  "expanded_bytes": 850958764,
+  "plan_origins_claim": "advisory only; actual trust is the verified signed stanza chain",
+  "host_tools": {
+    "/usr/bin/dpkg-deb": "fc9dde782ca8309b65ab92e61d13318bf463cd1aa71daa8967b87b81b48b63d2",
+    "/usr/bin/xz": "b5b163eb273291934556377ab883b4b2a5d4da50bd0dc0a91774ecc234ccd8d0",
+    "/usr/bin/zstd": "7c5468b370f7c47eda07281e3437fafc568f95d10420051e3aa522709f9342c5",
+    "/lib64/ld-linux-x86-64.so.2": "cd4df4f3c7b83673d61189bf2eaebd33ca4f2853ab9772b8a25e025ef99b1e81",
+    "/lib/x86_64-linux-gnu/libz.so.1": "86200da370f20476a2507e9097a789b5ef97269b4ca8d5e164ad82dab9d99892",
+    "/lib/x86_64-linux-gnu/liblzma.so.5": "696e868dd0700a19a6d65fc01608ec2d70d3cb91f65710e89180cd2e688f30cb",
+    "/lib/x86_64-linux-gnu/libzstd.so.1": "0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb",
+    "/lib/x86_64-linux-gnu/libbz2.so.1.0": "cc08c9f50a8009ffd6391e0116a100369b11ca9238fa52392c019e6645b122a1",
+    "/lib/x86_64-linux-gnu/libmd.so.0": "423e18586b6ea740f4465afd64f7a9a4cb7264ed979c8e7256f9085af5345fef",
+    "/lib/x86_64-linux-gnu/libc.so.6": "8db37cf3f2169f59a0f07ef1fea308c35656668c64c8ff294e1860f4121eb161"
+  },
+  "extraction_environment": {
+    "PATH": "/usr/sbin:/usr/bin:/sbin:/bin",
+    "LANG": "C",
+    "LC_ALL": "C"
+  },
+  "tree_members": 14127,
+  "full_result_sha256": "84cda43601acc8f547511d1c5106033c93a90ccff0d4ab12c637b4680da180f2",
+  "package_count": 205,
+  "converted_symlinks": 41,
+  "extraction_command_count": 205
+}

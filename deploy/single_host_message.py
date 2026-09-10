@@ -140,7 +140,7 @@ def snapshot(alpha, intent, release, transaction):
     state = {'v': 1, 'phase': 'prepared', 'mode': intent['mode'], 'unit': unit,
              'identity': identity(alpha, root, unit),
              'candidate_release': alpha.verify(release)['release'],
-             'config_after_sha256': kit.sha(kit.canonical(new_config)) if intent['profile'] == kit.PRODUCTION else kit.sha(old_config),
+             'config_after_sha256': kit.sha(kit.canonical(new_config)) if kit.relay_profile(intent['profile']) else kit.sha(old_config),
              'unit_after_sha256': None}
     save_journal(target, state)
     return target, state, config
@@ -186,7 +186,7 @@ def apply_existing(alpha, intent, release, transaction, secret):
     with alpha.v2_operation_lock(root):
         preflight(alpha, intent, release)
         target, state, config = snapshot(alpha, intent, release, transaction)
-        if intent['profile'] == kit.PRODUCTION:
+        if kit.relay_profile(intent['profile']):
             install_secret(root, secret)
         elif secret is not None or 'voice_turn' in config:
             raise ValueError('fixture cannot enable or adopt issuer credentials')
@@ -195,7 +195,7 @@ def apply_existing(alpha, intent, release, transaction, secret):
             state['phase'] = 'switch-intent'
             save_journal(target, state)
             switch_then_config(alpha, root, release, state['identity']['pg_system_id'], config,
-                               enable_voice=intent['profile'] == kit.PRODUCTION)
+                               enable_voice=kit.relay_profile(intent['profile']))
             new_unit = alpha.unit(root).encode()
             state['unit_after_sha256'] = kit.sha(new_unit)
             state['phase'] = 'unit-intent'
@@ -283,7 +283,7 @@ def main():
             raise ValueError('preflight must contain no credential or transaction')
         result = preflight(alpha, intent, release)
     elif operation == 'apply':
-        secret = request['secret'].encode('ascii') if intent['profile'] == kit.PRODUCTION else None
+        secret = request['secret'].encode('ascii') if kit.relay_profile(intent['profile']) else None
         if intent['profile'] == kit.FIXTURE and request['secret'] is not None:
             raise ValueError('fixture cannot receive issuer credentials')
         result = (apply_fresh if intent['mode'] == 'fresh' else apply_existing)(

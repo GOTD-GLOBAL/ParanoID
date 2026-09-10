@@ -6,6 +6,12 @@ last_reviewed: 2026-09-09
 
 # Threat model
 
+The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)
+adds explicit current-boot isolation and root-controlled execution-evidence binding.
+The full runner, packet/current-call acceptance and deployment remain pending;
+root-authored reports are not remote attestation and do not replace independent
+actual source/artifact/runtime review.
+
 This is an initial discovery scaffold, not evidence that ParanoID is secure.
 Update it whenever assets, actors, data flows, dependencies, or trust boundaries
 change.

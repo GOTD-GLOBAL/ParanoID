@@ -66,3 +66,9 @@ fresh independent Opus review under its actual identity. All substantive securit
 TDD, threat analysis, final source/artifact and deployment gates remain mandatory.
 This is a bounded review-process clarification, not permanent ADR acceptance or
 permission to replace a failed/missing test with approval.
+
+The [full VM rehearsal proposal](../operations/voice-vm-rehearsal.md) implements
+separate prerequisites and current-boot isolation without circular production
+acceptance. Candidate report/kit/log/intent verification is present; the actual
+full runner and relay/current-call results remain pending, with production
+availability closed. Independent actual Opus review corrections are retained.

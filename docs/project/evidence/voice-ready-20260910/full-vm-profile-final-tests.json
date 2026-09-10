@@ -1,0 +1,138 @@
+{
+  "source_sha256": {
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host.py": "2af48adbec96ca494bd9e9248bb544d5f9860890944f391b6bd577f0a6cbfb8f",
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_build.py": "e54884d3eb2efed740c3e6e3653ae913c081ed5eaae1c059ea296efe4f15a423",
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_message.py": "d23d244e6f253c5886f9a50db5b95e2ab5c6ae51b4ffbde1398fa170392efd6c",
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_network.py": "a67b89938c05f3e97ff788774b3c46c90956ed78bf7f058819dc97a6b89be121",
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_rehearsal.py": "12a0556b384962ff8b45ca768a7eb23880afb3326ebbdcdf98cfb7beaa055a95",
+    "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_vm.py": "cf80bbc4e63e64c4eaceaac8070e876617e76b3d8dcadce5807ed6a696782faf"
+  },
+  "tests": [
+    {
+      "test": "deploy/test_single_host.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host.py"
+      ],
+      "test_sha256": "482cdd4df98375f6fcc7b92380a1fb33e2fd554e419370abfbc98afcea1552fd",
+      "exit_code": 0,
+      "output_sha256": "cbc0cc5733063affd2635ac6d1c589ceb70ff725918f7fad4c36f567cbc39394",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host.log",
+      "tail": [
+        ".................",
+        "----------------------------------------------------------------------",
+        "Ran 17 tests in 0.183s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "deploy/test_single_host_message.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_message.py"
+      ],
+      "test_sha256": "63710dd1cbf4b0ed23c62e4755f53ab3cceeab585c256c7b0c1132872d0983f9",
+      "exit_code": 0,
+      "output_sha256": "6853edce80334b9b94a335b74e665876b9a2d568266d5bde4e5c53cb63612507",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host_message.log",
+      "tail": [
+        "......",
+        "----------------------------------------------------------------------",
+        "Ran 6 tests in 0.069s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "deploy/test_single_host_network.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_network.py"
+      ],
+      "test_sha256": "6fd20748cbc65e32f9ec3a91f3bf367761564ffbac10e01d18d37edc490b09c8",
+      "exit_code": 0,
+      "output_sha256": "32fb7f6166dfa2c14e45d8ada7c15b7af96bfe866c7d95f2b214166fdec3e0fa",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host_network.log",
+      "tail": [
+        ".................",
+        "----------------------------------------------------------------------",
+        "Ran 17 tests in 0.078s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "deploy/test_single_host_credentials.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_credentials.py"
+      ],
+      "test_sha256": "0fba08ff1b37d6d24102a339a20c713fb4c271dbe5114810fadd076c6af7394c",
+      "exit_code": 0,
+      "output_sha256": "96a785a02c5a40c662497b4005d9db3666ab278db6b0817c83c2fb42a8fa26bd",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host_credentials.log",
+      "tail": [
+        "................",
+        "----------------------------------------------------------------------",
+        "Ran 16 tests in 0.020s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "deploy/test_single_host_rehearsal.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_rehearsal.py"
+      ],
+      "test_sha256": "7724ac3b1d72f2326df00902cde1bb3ae5efdbc9276291e2185cc02bfaaea11c",
+      "exit_code": 0,
+      "output_sha256": "26f52187077595405163a119f85f7c99c23bfd500c2dba1e3bef606599b9a6d4",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host_rehearsal.log",
+      "tail": [
+        "...",
+        "----------------------------------------------------------------------",
+        "Ran 3 tests in 0.156s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "deploy/test_single_host_vm.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_vm.py"
+      ],
+      "test_sha256": "75a9674dc8f0af9b56671c54275a0bbaca93e1220ea18daa12fcf5611ec1bd63",
+      "exit_code": 0,
+      "output_sha256": "84bbf0946ffb6634ca29dd97e7f808b23986c76f716d6bf821bbb32542333486",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test_single_host_vm.log",
+      "tail": [
+        "...................",
+        "----------------------------------------------------------------------",
+        "Ran 19 tests in 4.248s",
+        "",
+        "OK"
+      ]
+    },
+    {
+      "test": "scripts/test-ci-wiring.py",
+      "argv": [
+        "/usr/bin/python3",
+        "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/scripts/test-ci-wiring.py"
+      ],
+      "test_sha256": "0e761dec4d8f0e3559842daf798f520538c72af6105226ac893d1d854a695a7f",
+      "exit_code": 0,
+      "output_sha256": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0",
+      "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-final-test-ci-wiring.log",
+      "tail": [
+        "...",
+        "----------------------------------------------------------------------",
+        "Ran 3 tests in 0.001s",
+        "",
+        "OK"
+      ]
+    }
+  ]
+}

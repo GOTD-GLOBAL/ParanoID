@@ -1,0 +1,106 @@
+import ast,os,tempfile,unittest,hashlib,stat,urllib.request,json
+from pathlib import Path
+from unittest.mock import patch
+E=Path(__file__).resolve().parent
+source=ast.parse((E/'acquire_full_guest.py').read_text())
+namespace={'Path':Path,'os':os,'stat':stat,'hashlib':hashlib,'urllib':urllib}
+nodes=[n for n in source.body if isinstance(n,(ast.FunctionDef,ast.ClassDef))]
+nodes.extend(n for n in source.body if isinstance(n,ast.Assign) and any(isinstance(t,ast.Name) and t.id=='FROZEN_NAMES' for t in n.targets))
+exec(compile(ast.Module(body=nodes,type_ignores=[]),'reviewed-acquisition-helpers','exec'),namespace)
+convert=namespace['guest_link_target']
+class GuestLinkTests(unittest.TestCase):
+    def test_merged_usr_link_preserves_absolute_guest_semantics(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);(root/'usr/lib64').mkdir(parents=True);(root/'usr/lib').mkdir();(root/'lib64').symlink_to('usr/lib64');(root/'lib').symlink_to('usr/lib')
+            target=convert(root,'./lib64/loader','/usr/lib/loader')
+            self.assertEqual(target,'../lib/loader')
+            self.assertEqual((root/'lib64'/target).resolve(),root/'usr/lib/loader')
+    def test_regular_guest_absolute_link_becomes_relative(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);(root/'usr/bin').mkdir(parents=True);(root/'etc').mkdir()
+            self.assertEqual(convert(root,'usr/bin/example','/etc/example'),'../../etc/example')
+    def test_traversal_and_existing_escaping_parent_are_refused(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);(root/'outside').symlink_to('/tmp')
+            for name,target in [('../bad','/etc/example'),('/bad','/etc/example'),('bin/example','relative'),('outside/example','/etc/example'),('bin/example','/../../etc/passwd')]:
+                with self.subTest(name=name,target=target),self.assertRaises(ValueError):convert(root,name,target)
+
+    def test_final_tree_change_is_rejected(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);(root/'usr/lib64').mkdir(parents=True);(root/'usr/lib').mkdir();(root/'lib64').symlink_to('usr/lib64')
+            target=convert(root,'lib64/loader','/usr/lib/loader')
+            (root/'lib64/loader').symlink_to(target)
+            entry={'path':'lib64/loader','source_target':'/usr/lib/loader','guest_equivalent_relative_target':target}
+            namespace['revalidate_links'](root,[entry])
+            (root/'usr/sub/other').mkdir(parents=True);(root/'lib64').unlink();(root/'lib64').symlink_to('usr/sub/other')
+            (root/'lib64/loader').symlink_to(target)
+            # The stored relative spelling is unchanged, but its final meaning differs.
+            with self.assertRaises(ValueError):namespace['revalidate_links'](root,[entry])
+
+class AcquisitionGuardTests(unittest.TestCase):
+    def test_tree_accepts_safe_files_and_rejects_unsafe_file_directory_modes(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);f=root/'file';f.write_bytes(b'owned');f.chmod(0o644);d=root/'dir';d.mkdir(mode=0o755)
+            self.assertEqual(namespace['tree_manifest'](root)['file']['sha256'],hashlib.sha256(b'owned').hexdigest())
+            for member,bad in [(f,0o666),(f,0o4644),(d,0o777),(d,0o2755)]:
+                with self.subTest(member=member,bad=bad):
+                    old=member.stat().st_mode;member.chmod(bad)
+                    with self.assertRaises(ValueError):namespace['tree_manifest'](root)
+                    member.chmod(stat.S_IMODE(old))
+
+    def test_unowned_tree_member_is_rejected(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);f=root/'file';f.write_bytes(b'owned');original=Path.lstat
+            def changed(path,*args,**kwargs):
+                result=original(path,*args,**kwargs)
+                if path==f:
+                    fields=list(result);fields[4]=65534;return os.stat_result(fields)
+                return result
+            with patch.object(Path,'lstat',changed),self.assertRaises(ValueError):namespace['tree_manifest'](root)
+
+    def test_absolute_escaping_symlink_and_fifo_are_rejected(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);link=root/'link'
+            for target in ['/tmp','../outside']:
+                link.symlink_to(target)
+                with self.assertRaises(ValueError):namespace['tree_manifest'](root)
+                link.unlink()
+            os.mkfifo(root/'fifo')
+            with self.assertRaises(ValueError):namespace['tree_manifest'](root)
+
+    def test_untrusted_cache_ancestor_rejected_with_owner_aware_policy(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw);d=root/'cache';d.mkdir(mode=0o755)
+            # Use a pure in-tree ancestor view to avoid /tmp's intentionally public mode.
+            original=Path.lstat
+            def safe_outer(path,*args,**kwargs):
+                result=original(path,*args,**kwargs)
+                if path not in (root,d):
+                    fields=list(result);fields[0]=stat.S_IFDIR|0o755;fields[4]=0;return os.stat_result(fields)
+                return result
+            with patch.object(Path,'lstat',safe_outer):
+                namespace['trusted_ancestors'](d,{0,os.geteuid()})
+                d.chmod(0o777)
+                with self.assertRaises(ValueError):namespace['trusted_ancestors'](d,{0,os.geteuid()})
+
+    def test_freeze_and_chain_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root=Path(raw)
+            for name in namespace['FROZEN_NAMES']:(root/name).write_bytes(b'offline fixture')
+            freeze={name:hashlib.sha256((root/name).read_bytes()).hexdigest() for name in namespace['FROZEN_NAMES']}
+            item={'package':'example','version':'1','size':1,'sha256':'a'*64,'filename':'pool/main/e/example.deb','uri':'https://archive.ubuntu.com/ubuntu/pool/main/e/example.deb'}
+            plan={'packages':[item]};chain={'result':'SIGNATURE_AND_PACKAGE_CHAIN_VERIFIED','plan_sha256':freeze['full-guest-media-plan.json'],'verifier_sha256':freeze['verify_full_guest_media_chain.py'],'packages':{'example':{'sha256':item['sha256'],'version':'1','stanza_verified':True}}}
+            namespace['validate_sources'](root,plan,chain,freeze)
+            freeze['acquire_full_guest.py']='0'*64
+            with self.assertRaisesRegex(ValueError,'freeze'):namespace['validate_sources'](root,plan,chain,freeze)
+            freeze['acquire_full_guest.py']=hashlib.sha256((root/'acquire_full_guest.py').read_bytes()).hexdigest()
+            chain['packages']['example']['version']='2'
+            with self.assertRaisesRegex(ValueError,'chain'):namespace['validate_sources'](root,plan,chain,freeze)
+
+    def test_noncanonical_uris_and_redirect_refused(self):
+        filename='pool/main/e/example.deb';uri='https://archive.ubuntu.com/ubuntu/'+filename
+        namespace['validate_uri']({'filename':filename,'uri':uri})
+        for bad in [uri.replace('https:','http:'),uri+'?x=1',uri.replace('archive.ubuntu.com','example.org')]:
+            with self.assertRaises(ValueError):namespace['validate_uri']({'filename':filename,'uri':bad})
+        with self.assertRaises(ValueError):namespace['NoRedirect']().redirect_request(None,None,None,None,None,None)
+if __name__=='__main__':unittest.main(verbosity=2)

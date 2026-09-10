@@ -1,0 +1,22 @@
+{
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/AGENTS.md": "7f6c1b6d253e1a144d421c82670b34c5f5743746378b50af59409601ebd1a627",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/governance/documentation-policy.md": "d34922ab52385cc51f0bf4d54156beec2b6ee72f4e3ce5299edbfaf4b8956234",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/decisions/0003-closed-alpha-review-policy.md": "500bce008f307e6c9bb845c3dcc37a51c9324f2341da07daf14281578027348d",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/operations/voice-vm-rehearsal.md": "b1ba52546f43bc9cd73295ab974405e5951a8e1ff61e2003a8e24b09c0090fa1",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/opus-full-guest-base-review/review.md": "cbb22eae057d7e60567f3f60eb6f74f88cac6bca6bee9c5553485b6e51482785",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-review-closure.md": "09c39cb789b347330e3fa61cdb2c89270405bf156623169fa9497c919e06b212",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-scope.md": "36a07b0c1c00ee67c3e5f34666ea5c9670ffbafe8e1738de02975698a8d53dc0",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/build_full_guest_base.py": "f8e5764c5c6fbe73fe6300214589c1e9d87d1d833042df425c7779a2b756f436",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full_guest_capability.py": "19f0901a106994c1289219cb7bf6820255eecb8d56d231fdeb04c414b451bcb4",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/boot_full_guest_base.py": "f64f82b4fe924a7eebe910b52e8fb45def4ea10504a542d2e30d9ed9df410243",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/kvm_base_dropper.py": "7838dde8ab534a07a89ffe722bacab73194402110c4a22b85e0c29d503077397",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_full_guest_base.py": "7bdb8aeab0f5df3fc473fa908911a349d2eb1ef1d51db24417aa62b7e5e51991",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-final-offline.log": "cf858709f387917fc7b4c578a0a6f05d7168b26f6a6f70ac6ab4a6e214400829",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-review-red.log": "2eb1fcd66204d6c17b740652ab8d3a1c88d3b5447a79a17a828e4957b6f0d6cb",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-boot-review-red.log": "80ef3f2acb6b5021a1955e010137197622abb596558325143970c278437d5aba",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-freeze.json": "fd9fb60c04e31f7f3e8e85b07720721d7dc7bb755a0a0ff8190220d25de40394",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-boot-freeze.json": "e4ff01237e01577522378a29ba438fcb676a3c05124316a6d8280321b5d9744f",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-artifact-summary.json": "433e3f6d9572431a97dcea3783c5ecb0fbf407e32233db4d710fb3d1f1dee14e",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-cpio-verification.json": "8b480847044ede7fb4a7bc980ee39a054c12ad3f88611e0106f7118243315d79",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/nested-android-vendor-support.json": "c4bf9eefd2e0fb350cb98cc3b794d0898ff48e523f5bffbc8bd14f14949e5fed"
+}

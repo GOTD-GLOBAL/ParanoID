@@ -41,6 +41,7 @@ jobs:
           python3 deploy/test_single_host_network.py
           python3 deploy/test_single_host_credentials.py
           python3 deploy/test_single_host_rehearsal.py
+          python3 deploy/test_single_host_vm.py
       - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
         # test_integration.py needs an explicitly provisioned user manager; never discover it here.
         run: python3 deploy/test_native.py

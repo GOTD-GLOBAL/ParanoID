@@ -1,0 +1,11 @@
+{
+  "v": 1,
+  "scope": "one reviewed KVM base prerequisite probe; no relay/AVD",
+  "boot_source_sha256": "f64f82b4fe924a7eebe910b52e8fb45def4ea10504a542d2e30d9ed9df410243",
+  "base_receipt_sha256": "594926d7a019149977c1457ec5a74141714e3e8f488cd44cb82a19188afd8948",
+  "cpio_verification_sha256": "8b480847044ede7fb4a7bc980ee39a054c12ad3f88611e0106f7118243315d79",
+  "dropper_sha256": "7838dde8ab534a07a89ffe722bacab73194402110c4a22b85e0c29d503077397",
+  "acquire_vm_tools_v2.py": "267bde389b8a29b8c0bc0f68bfd7b65c81277ae38ed08c38e170d477e15419ef",
+  "tooling-plan-v3.json": "7c8c54b6d72749cdc81b9913cf164f5c108aac79e037200377760f3f8c0103f6",
+  "apt-chain-v3.json": "9964a896b39b9b69bbf3733cbd93c62a6242fd269eae2960dcd0051af234eab8"
+}

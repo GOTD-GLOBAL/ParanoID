@@ -22,12 +22,15 @@ import time
 sys.dont_write_bytecode = True
 PRODUCTION = 'paranoid-single-host-v1'
 FIXTURE = 'paranoid-single-host-fixture-v1'
+VM_FIXTURE = 'paranoid-single-host-vm-fixture-v1'
 PUBLIC_IP = '157.180.49.125'
-# No available message-only fixture can attest full relay behavior.
+# Availability stays closed until the exact full runner and artifacts are reviewed.
+# The candidate verifier additionally rejects profile-name/hash-only PASS receipts.
 FULL_REHEARSAL_PROFILES = frozenset()
 STATE = Path('/var/lib/paranoid-single-host')
 GATES = {
     FIXTURE: ('design-review', 'offline-tests', 'artifact-verification'),
+    VM_FIXTURE: ('design-review', 'offline-tests', 'artifact-verification', 'current-boot-isolation'),
     PRODUCTION: ('design-review', 'offline-tests', 'artifact-verification',
                  'issuer-interoperability', 'turn-rt01', 'turn-acl02', 'relay-cli',
                  'relay-credentials-lifecycle', 'coordinated-full-rehearsal',
@@ -37,10 +40,16 @@ IDENTITY = {'release', 'manifest_sha256', 'pg_system_id', 'config_sha256',
             'tls_cert_sha256', 'tls_key_sha256', 'tls_spki', 'unit_sha256'}
 MAX_FILE = 128 * 1024 * 1024
 BASE_FILES = {'single_host.py', 'single_host_message.py', 'README.md'}
+RELAY_FILES = {'single_host_network.py', 'single_host_vm.py'}
+VM_FILES = {'single_host_vm_runner.py'}
 
 
 class FullRehearsalUnavailable(ValueError):
     """Fixed pre-mutation capability refusal; no transaction exists yet."""
+
+
+def relay_profile(profile):
+    return profile in (PRODUCTION, VM_FIXTURE)
 
 
 def unique(pairs):
@@ -190,7 +199,8 @@ def validate_intent(value):
     else:
         if (message['user'] != 'paranoid' or str(root) != '/home/paranoid/paranoid-alpha'
                 or message['unit'] != 'paranoid-alpha.service'
-                or not re.fullmatch(r'[A-Za-z0-9_.-]{1,15}', value['interface'])):
+                or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,14}', value['interface'])
+                or (value['profile'] == VM_FIXTURE and value['interface'] != 'vr-relay')):
             raise ValueError('exact approved host layout required')
         relay = value['relay']
         if (not isinstance(relay, dict) or set(relay) != {'user', 'uid', 'gid'}
@@ -212,23 +222,37 @@ def validate_intent(value):
     return decode_json(canonical(value))
 
 
-def validate_acceptance(value, profile, kit_sha256, plan_sha256):
+def validate_acceptance(value, profile, kit_sha256, plan_sha256, kit_root=None, intent=None):
     if (not isinstance(value, dict) or set(value) != {'v', 'profile', 'kit_sha256', 'plan_sha256', 'gates'}
             or type(value['v']) is not int or value['v'] != 1 or value['profile'] != profile
             or value['kit_sha256'] != kit_sha256 or not is_hash(plan_sha256)
             or value['plan_sha256'] != plan_sha256 or not isinstance(value['gates'], dict)
             or set(value['gates']) != set(GATES[profile])):
         raise ValueError('exact artifact-bound profile acceptance required')
+    rehearsal = None
     for name, result in value['gates'].items():
         required = {'result', 'evidence_sha256'}
         if name == 'coordinated-full-rehearsal':
-            required |= {'fixture_profile', 'fixture_kit_sha256'}
+            if not isinstance(result, dict) or result.get('fixture_profile') not in FULL_REHEARSAL_PROFILES:
+                raise FullRehearsalUnavailable('no reviewed full-relay rehearsal profile is available')
+            required |= {'fixture_profile', 'fixture_kit_sha256', 'evidence_path', 'fixture_kit_path'}
+        if name == 'current-boot-isolation':
+            required.add('boot_id')
         if (not isinstance(result, dict) or set(result) != required or result['result'] != 'PASS'
                 or not is_hash(result['evidence_sha256'])):
             raise ValueError('mandatory actual acceptance incomplete')
-        if name == 'coordinated-full-rehearsal' and (result['fixture_profile'] not in FULL_REHEARSAL_PROFILES
-                or not is_hash(result['fixture_kit_sha256'])):
-            raise FullRehearsalUnavailable('no reviewed full-relay rehearsal profile is available')
+        if name == 'coordinated-full-rehearsal':
+            if not is_hash(result['fixture_kit_sha256']):
+                raise ValueError('exact fixture kit digest required')
+            rehearsal = vm_module(kit_root).verify_rehearsal(sys.modules[__name__], result, kit_root,
+                                                             kit_sha256, plan_sha256, intent)
+        if name == 'current-boot-isolation' and (not isinstance(result['boot_id'], str)
+                or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', result['boot_id'])):
+            raise ValueError('exact current guest boot required')
+    if rehearsal is not None:
+        for name in set(value['gates']) & set(rehearsal['cases']):
+            if value['gates'][name]['evidence_sha256'] != rehearsal['cases'][name]['sha256']:
+                raise ValueError('production gate must reference its verified actual case log')
     return value
 
 
@@ -309,13 +333,15 @@ def verify_kit(root):
     hashes = manifest['sha256']
     if manifest['release'] != sha(canonical({'profile': manifest['profile'], 'sha256': hashes}))[:20]:
         raise ValueError('kit identity mismatch')
-    production = manifest['profile'] == PRODUCTION
+    production = relay_profile(manifest['profile'])
     components = {'message', 'relay'} if production else {'message'}
     if set(manifest['components']) != components:
         raise ValueError('profile component boundary')
     allowed = set(BASE_FILES)
     if production:
-        allowed.add('single_host_network.py')
+        allowed |= RELAY_FILES
+    if manifest['profile'] == VM_FIXTURE:
+        allowed |= VM_FILES
     for name in components:
         component = verify_component(root / name)
         if production and component.get('fixture_only'):
@@ -349,7 +375,7 @@ def copy_tree(source, destination, public=False, building=False):
 
 
 def build_kit(profile, message, relay, output, code_root=None):
-    if profile not in GATES or (profile == PRODUCTION) != (relay is not None):
+    if profile not in GATES or relay_profile(profile) != (relay is not None):
         raise ValueError('exact profile component selection required')
     code_root = Path(__file__).resolve().parent if code_root is None else Path(code_root)
     output = Path(output)
@@ -360,8 +386,10 @@ def build_kit(profile, message, relay, output, code_root=None):
     for source in components.values():
         verify_component(source, building=True)
     selected = set(BASE_FILES)
-    if profile == PRODUCTION:
-        selected.add('single_host_network.py')
+    if relay_profile(profile):
+        selected |= RELAY_FILES
+    if profile == VM_FIXTURE:
+        selected |= VM_FILES
     sources = {name: read_build_file(code_root / ('single_host_README.md' if name == 'README.md' and code_root == Path(__file__).resolve().parent else name)) for name in selected}
     output.mkdir(mode=0o700)  # Existing output is never reused or removed.
     for name, data in sources.items():
@@ -404,7 +432,7 @@ def extract_kit(archive_path, destination, expected_sha256):
             raise ValueError('archive size bound')
         with archive.extractfile('release/manifest.json') as stream:
             header = decode_json(stream.read(256 * 1024 + 1))
-        production = header.get('profile') == PRODUCTION
+        production = relay_profile(header.get('profile'))
         if header.get('profile') not in GATES or (production and os.geteuid() != 0):
             raise ValueError('production extraction requires root-owned files')
         destination.mkdir(mode=0o755 if production else 0o700)
@@ -444,15 +472,29 @@ def network_module(kit_root):
     return module
 
 
+def vm_module(kit_root):
+    if kit_root is None:
+        raise ValueError('verified kit path required for full rehearsal')
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('single_host_vm', Path(kit_root) / 'single_host_vm.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def vm_boundary(intent, kit_root):
+    return vm_module(kit_root).boundary(sys.modules[__name__], intent, kit_root)
+
+
 def network_spec(intent):
-    if intent['profile'] != PRODUCTION:
+    if not relay_profile(intent['profile']):
         raise ValueError('fixture has no network operation')
     return {'v': 1, 'profile': PRODUCTION, 'ip': intent['ip'],
             'interface': intent['interface'], 'relay_uid': intent['relay']['uid']}
 
 
 def coordinator_state(intent):
-    return STATE if intent['profile'] == PRODUCTION else Path(intent['message']['root'] + '-coordinator')
+    return STATE if relay_profile(intent['profile']) else Path(intent['message']['root'] + '-coordinator')
 
 
 def plan(intent, kit_root):
@@ -466,7 +508,7 @@ def plan(intent, kit_root):
               'state': str(coordinator_state(intent)), 'required_gates': list(GATES[intent['profile']]),
               'full_rehearsal_profiles': sorted(FULL_REHEARSAL_PROFILES),
               'phases': ['preflight', 'stage', 'message-same-data', 'postflight']}
-    if intent['profile'] == PRODUCTION:
+    if relay_profile(intent['profile']):
         network = network_module(kit_root)
         policy = network_spec(intent)
         result['network_policy_sha256'] = sha(network.render_nft(policy))
@@ -552,6 +594,8 @@ def require_message_ingress(intent, observation):
 
 def preflight(intent, kit_root):
     result = plan(intent, kit_root)
+    if intent['profile'] == VM_FIXTURE:
+        vm_boundary(intent, kit_root)
     if intent['profile'] == FIXTURE:
         fixture_boundary(intent)
         result['message'] = worker(intent, kit_root, 'preflight')
@@ -629,6 +673,8 @@ def status(state):
     value = state_record(state)
     if value['intent']['profile'] == FIXTURE:
         fixture_boundary(value['intent'])
+    elif value['intent']['profile'] == VM_FIXTURE:
+        vm_boundary(value['intent'], value['kit_path'])
     elif os.geteuid() != 0:
         raise ValueError('production status requires root read access')
     result = {'v': 1, 'phase': value['phase'], 'transaction': value['transaction'],
@@ -638,7 +684,7 @@ def status(state):
         if found['identity'] != value['message_result']['identity']:
             raise ValueError('installed message identity drift')
         result['identity'] = found['identity']
-        if value['intent']['profile'] == PRODUCTION:
+        if relay_profile(value['intent']['profile']):
             network = network_module(value['kit_path'])
             spec = network_spec(value['intent'])
             receipt = decode_json(read_file(state / 'network-receipt.json', private=True))
@@ -933,7 +979,7 @@ def stage_relay(state, value, secret):
 
 
 def recover(state, value):
-    production = value['intent']['profile'] == PRODUCTION
+    production = relay_profile(value['intent']['profile'])
     previous = None
     if production and value.get('previous_transaction'):
         previous = decode_json(read_file(state / 'transactions' / value['previous_transaction'] / 'journal.json', private=True))
@@ -989,13 +1035,21 @@ def recover(state, value):
 
 
 def apply(intent, kit_root, acceptance, expected_plan, updating=False):
+    if relay_profile(intent['profile']) and os.geteuid() != 0:
+        raise ValueError('production or VM apply requires root before loading a kit')
     desired = plan(intent, kit_root)
     if intent['profile'] == PRODUCTION and not FULL_REHEARSAL_PROFILES:
         raise FullRehearsalUnavailable('no reviewed full-relay rehearsal profile is available')
-    validate_acceptance(acceptance, intent['profile'], intent['kit_sha256'], desired['plan_sha256'])
+    if intent['profile'] == VM_FIXTURE:
+        boundary = vm_boundary(intent, kit_root)
+    validate_acceptance(acceptance, intent['profile'], intent['kit_sha256'], desired['plan_sha256'], kit_root, intent)
+    if intent['profile'] == VM_FIXTURE:
+        isolation = acceptance['gates']['current-boot-isolation']
+        if isolation['boot_id'] != boundary['boot_id'] or isolation['evidence_sha256'] != boundary['isolation_sha256']:
+            raise ValueError('acceptance must match the actual current guest isolation')
     if desired['plan_sha256'] != expected_plan:
         raise ValueError('reviewed plan digest mismatch')
-    production = intent['profile'] == PRODUCTION
+    production = relay_profile(intent['profile'])
     if production and os.geteuid() != 0:
         raise ValueError('production apply requires root')
     if not production:
@@ -1099,6 +1153,8 @@ def rollback(state, transaction, expected_state):
         raise ValueError('exact current transaction/state required')
     if value['intent']['profile'] == FIXTURE:
         fixture_boundary(value['intent'])
+    elif value['intent']['profile'] == VM_FIXTURE:
+        vm_boundary(value['intent'], value['kit_path'])
     elif os.geteuid() != 0:
         raise ValueError('production rollback requires root')
     with exclusive_lock(state / 'operator.lock'):

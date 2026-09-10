@@ -1,0 +1,15 @@
+{
+  "result": "COMPLETE_CPIO_MEMBER_VERIFICATION",
+  "image_sha256": "f90a9ec93662503943be7c7695201e498fc79cf55e77c150a34b34439bfb723a",
+  "members": 17100,
+  "regular_bytes": 3708965338,
+  "uid_gid": 0,
+  "nlink": 1,
+  "setuid_setgid_regular_files": false,
+  "only_guest_devices": [
+    "dev/console",
+    "dev/null"
+  ],
+  "elapsed_seconds": 14.714,
+  "base_receipt_sha256": "594926d7a019149977c1457ec5a74141714e3e8f488cd44cb82a19188afd8948"
+}

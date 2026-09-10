@@ -1,0 +1,10 @@
+{
+  "acquire_full_guest.py": "8b247ee5f164f0cd702a62fdee10438bbb4b07bb4046162f506d37d4654acc4c",
+  "full-guest-media-plan.json": "a36521153cd4280913af1075ada3b7458efbb63ddd6a4f85b51568852ba69108",
+  "full-guest-media-chain.json": "2fcab5b8e9cd65e4fa18114a05e8f58f260853d7099ea665a633d6d2cc981938",
+  "verify_full_guest_media_chain.py": "c945cd6b1d89f551da7aa3de01a0508b047e10f425cfde9c6009b357e2385418",
+  "dpkg-deb-toolchain.json": "c0aea7048c685b255412e83de6213bd6f00a508f16280d33adfd1716f4fa92ca",
+  "test_full_guest_acquisition.py": "ee95612e4ce5291adeb224123aa16c3646738c513956f6b1f18cc3d5a37ee042",
+  "full-guest-acquisition-scope.md": "527fca7b792ff683e9b071879cf6edb9cb27d7d93a3d94f08ee93e69f8c9fedf",
+  "full-guest-acquisition-offline.log": "8ad396110c2386fcc81ef36d8bd8202f13e49615278335fb26ca4f5902a2ab4c"
+}

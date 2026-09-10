@@ -20,8 +20,8 @@ A later targeted fresh-start run completed but has INVALID_RECEIPT acceptance:
 its prior offline report had an import error. The original records are preserved;
 a later passing offline run does not retroactively validate that receipt.
 
-Production activation is explicitly refused: no full-relay rehearsal profile is
-implemented, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
+Production activation is explicitly refused: the full-relay fixture runner and
+acceptance are unavailable, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
 unrun. The parent then executed the separately approved one-unit credential
 diagnostic exactly once: root0440 rejection at `credential_descriptor` was observed,
 with owned cleanup and unchanged scoped neighbors. The separately reviewed metadata measurement then observed exact root0550
@@ -46,6 +46,21 @@ no-NIC/no-disk isolation, loopback-only guest routes and clean poweroff. Officia
 pinned tools were extracted without a host installation. This establishes an
 isolation capability only; exact full guest fixture/packet scripts still need
 implementation, review and actual execution.
+The [new VM-profile contract](../operations/voice-vm-rehearsal.md) now has candidate
+dispatch, a separate current-boot boundary and real report/kit/log verification;
+19 offline regressions pass after independent Opus5 review corrections. Production
+availability stays empty while the full runner is implemented. Signed205-package
+guest acquisition completed, including OS/JRE/media dependencies. A base RAM image
+was then assembled and all17100 cpio records independently read back and verified;
+The first KVM prerequisite run stopped before guest continuation when its
+descriptor auditor rejected the observed read-only vCPU statistics object. The
+owned process stopped; no guest or relay executed. A narrow metadata-aware
+correction has thirteen passing offline tests and awaits independent review.
+Android's documented nested-emulator restriction
+is recorded as an unresolved compatibility limit, not current-call acceptance.
+One authorized read-only host check confirmed message UID1003/GID1004 and enp5s0;
+relay UID/GID1902 are free. The temporary SSH agent was cleaned up. No host account,
+credential source, service or firewall was changed by that check.
 CALL-CONNECT01 stays OPEN. No hosted deployment, firewall change, relay listener,
 public release or PR merge occurred.
 

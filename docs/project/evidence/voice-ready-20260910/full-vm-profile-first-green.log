@@ -1,0 +1,15 @@
+test_guest_boundary_never_runs_as_unprivileged_or_production_profile (__main__.GuestObservationTests.test_guest_boundary_never_runs_as_unprivileged_or_production_profile) ... ok
+test_real_host_nic_default_route_and_local_client_classification_refused (__main__.GuestObservationTests.test_real_host_nic_default_route_and_local_client_classification_refused) ... ok
+test_failed_check_output_corruption_missing_log_and_escape_refused (__main__.RehearsalFilesTests.test_failed_check_output_corruption_missing_log_and_escape_refused) ... ok
+test_hash_only_and_unbound_logs_cannot_authorize (__main__.RehearsalFilesTests.test_hash_only_and_unbound_logs_cannot_authorize) ... ok
+test_legacy_profile_wrong_kit_and_changed_shared_bytes_rejected (__main__.RehearsalFilesTests.test_legacy_profile_wrong_kit_and_changed_shared_bytes_rejected) ... ok
+test_production_apply_cannot_accept_a_hash_only_receipt (__main__.RehearsalFilesTests.test_production_apply_cannot_accept_a_hash_only_receipt) ... ok
+test_real_referenced_files_are_required_even_with_well_formed_hashes (__main__.RehearsalFilesTests.test_real_referenced_files_are_required_even_with_well_formed_hashes) ... ok
+test_report_hash_plan_and_kit_binding_are_enforced (__main__.RehearsalFilesTests.test_report_hash_plan_and_kit_binding_are_enforced) ... ok
+test_profile_has_separate_prerequisites_and_exact_production_layout (__main__.VmIntentTests.test_profile_has_separate_prerequisites_and_exact_production_layout) ... ok
+test_vm_requires_a_distinct_boundary_before_preflight_mutation (__main__.VmIntentTests.test_vm_requires_a_distinct_boundary_before_preflight_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.969s
+
+OK

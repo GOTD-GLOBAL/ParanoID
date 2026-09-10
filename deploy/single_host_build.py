@@ -12,7 +12,7 @@ import single_host as kit
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profile', choices=(kit.PRODUCTION, kit.FIXTURE), required=True)
+    parser.add_argument('--profile', choices=(kit.PRODUCTION, kit.FIXTURE, kit.VM_FIXTURE), required=True)
     parser.add_argument('--message', type=Path, required=True)
     parser.add_argument('--relay', type=Path)
     parser.add_argument('--output', type=Path, required=True)

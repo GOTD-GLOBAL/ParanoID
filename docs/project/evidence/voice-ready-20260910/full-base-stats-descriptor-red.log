@@ -1,0 +1,15 @@
+test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata (__main__.BootPredicatesTests.test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata) ... ERROR
+
+======================================================================
+ERROR: test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata (__main__.BootPredicatesTests.test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_full_guest_base.py", line 146, in test_measured_kvm_stats_descriptor_needs_exact_readonly_cloexec_metadata
+    self.assertTrue(check('anon_inode:kvm-vcpu-stats:'+str(number),*args,stats_fdinfo=metadata))
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: allowed_fd() got an unexpected keyword argument 'stats_fdinfo'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.006s
+
+FAILED (errors=1)

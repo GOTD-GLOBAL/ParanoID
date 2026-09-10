@@ -1,0 +1,11 @@
+{
+  "source": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-packages/sysroot/usr/share/man/man5/machine-id.5.gz",
+  "sha256": "e4fec0f1362979805dcc2cc2fad2a7d87b267c30fdb5484e9aa0698869d6d36b",
+  "raw_roff_excerpt": ".SH \"FIRST BOOT SEMANTICS\"\n.PP\n/etc/machine\\-id\nis used to decide whether a boot is the first one\\&. The rules are as follows:\n.sp\n.RS 4\n.ie n \\{\\\n\\h'-04' 1.\\h'+01'\\c\n.\\}\n.el \\{\\\n.sp -1\n.IP \"  1.\" 4.2\n.\\}\nThe kernel command argument\n\\fIsystemd\\&.condition\\-first\\-boot=\\fR\nmay be used to override the autodetection logic, see\n\\fBkernel-command-line\\fR(7)\\&.\n.RE\n.sp\n.RS 4\n.ie n \\{\\\n\\h'-04' 2.\\h'+01'\\c\n.\\}\n.el \\{\\\n.sp -1\n.IP \"  2.\" 4.2\n.\\}\nOtherwise, if\n/etc/machine\\-id\ndoes not exist, this is a first boot\\&. During early boot,\n\\fBsystemd\\fR\nwill write\n\"uninitialized\\en\"\nto this file and overmount a temporary file which contains the actual machine ID\\&. Later (after\nfirst\\-boot\\-complete\\&.target\nhas been reached), the real machine ID will be written to disk\\&.\n.RE\n.sp\n.RS 4\n.ie n \\{\\\n\\h'-04' 3.\\h'+01'\\c\n.\\}\n.el \\{\\\n.sp -1\n.IP \"  3.\" 4.2\n.\\}\nIf\n/etc/machine\\-id\ncontains the string\n\"uninitialized\", a boot is also considered the first boot\\&. The same mechanism as above applies\\&.\n.RE\n.sp\n.RS 4\n.ie n \\{\\\n\\h'-04' 4.\\h'+01'\\c\n.\\}\n.el \\{\\\n.sp -1\n.IP \"  4.\" 4.2\n.\\}\nIf\n/etc/machine\\-id\nexists and is empty, a boot is\n\\fInot\\fR\nconsidered the first boot\\&.\n\\fBsystemd\\fR\nwill still bind\\-mount a file containing the actual machine\\-id over it and later try to commit it to disk (if\n/etc/\nis writable)\\&.\n.RE\n.sp\n.RS 4\n.ie n \\{\\\n\\h'-04' 5.\\h'+01'\\c\n.\\}\n.el \\{\\\n.sp -1\n.IP \"  5.\" 4.2\n.\\}\nIf\n/etc/machine\\-id\nalready contains a valid machine\\-id, this is not a first boot\\&.\n.RE\n.PP\nIf according to the above rules a first boot is detected, units with\n\\fIConditionFirstBoot=yes\\fR\nwill be run and\n\\fBsystemd\\fR\nwill perform additional initialization steps, in particular presetting units\\&.\n",
+  "image_member": {
+    "mode": 33060,
+    "size": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source": null
+  }
+}

@@ -20,6 +20,10 @@ public contract is declared.
 
 ### Single-host installer candidate — 2026-09-10
 
+- Added candidate VM-profile dispatch and a rehearsal verifier that reads and
+  binds actual reports, execution logs, service identities and both kits to the
+  production plan. The availability gate remains closed pending the full runner,
+  exact artifact review and real acceptance. [Contract and limits](docs/operations/voice-vm-rehearsal.md).
 - Added a coordinated offline messaging/private-PostgreSQL/TURN kit with
   plan/preflight/apply/status/update/rollback, separate fresh and retained-v8
   paths, exact artifact/plan acceptance records, scoped network ownership and

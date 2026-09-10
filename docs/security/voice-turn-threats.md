@@ -63,7 +63,8 @@ journal and stop the verified previous relay before code/unit cutover. New and
 restored ingress require the expected active packaged executable hash; this is
 process identity evidence, not CLI/expiry/packet/media acceptance. These production
 paths have offline regressions only and remain behind the unavailable full-relay
-profile gate. Required final Fable review has not been obtained.
+profile gate. Final exact source/artifact review remains required; the owner's
+subsequent clarification accepts independent Opus under its actual identity.
 
 ## Measured systemd credential boundary — 2026-09-10
 
@@ -82,8 +83,8 @@ xattrs, bounded getter/ABI negatives, unsafe descriptors and paths, mixed layout
 format and metadata changes. Root ownership is simulated in those unprivileged
 fixtures; they are not actual root/systemd delivery or persistent-unit evidence.
 The separate actual metadata-only observation used a transient codex unit and
-read no credential content. Actual primitive matrix and exact production unit/UID
-confirmation remain needed. No relay/packet/CLI/expiry/full-rehearsal/current-call
+read no credential content. The six-case primitive matrix subsequently completed;
+exact production unit/UID confirmation remains needed. No relay/packet/CLI/expiry/full-rehearsal/current-call
 or deployment gate is closed by these results. Generic/source/installer/alpha/Rust
 credential guards remain unchanged and are rechecked at final review.
 
@@ -101,3 +102,25 @@ trust anchor and the owner-controlled runner remain trusted. It does not prove
 future test isolation or any relay/installer acceptance. Future fixture source
 and guest-only network changes require their own bounded independent review and
 fresh running isolation checks; no prior denied worker/resource may be rerouted.
+
+## Candidate full VM profile and evidence integrity — 2026-09-10
+
+The [full VM contract](../operations/voice-vm-rehearsal.md) keeps production
+availability closed during implementation. Once independently reviewed, the
+candidate verifier requires actual root-owned report/kit/log bytes, exact component
+and shared-source correspondence, production intent and plan, both synthetic
+fixture modes and matching gate-to-case hashes. Hash-only PASS objects cannot
+carry the rehearsal gate. This prevents accidental stale/mismatched evidence; it
+does not authenticate a malicious root author's account of execution. Independent
+source, artifact and actual runtime review remains necessary.
+
+The distinct VM boundary binds current boot/DMI/source/kit and an isolation digest
+computed from actual normalized topology, using bounded descriptor reads. Physical
+NICs, unexpected namespaces, default/external routes, non-veth impostors and
+unpaired peer indices are refused. Root inside the disposable guest remains
+trusted; the marker is not a hypervisor attestation. Actual turnserver namespace,
+effective kernel policy and same-destination positive controls remain runner
+requirements and have not been tested. The optional temporary KVM group adds real
+host-kernel attack surface; exact privilege-drop/source/artifact review and enabled
+KVM readback are required before use. Neither vendor-unsupported nested Android
+nor an acceleration probe can substitute for the original current-call matrix.

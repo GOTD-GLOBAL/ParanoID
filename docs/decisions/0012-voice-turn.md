@@ -46,3 +46,13 @@ fresh independent Opus review under its actual identity. All substantive securit
 TDD, threat analysis, final source/artifact and deployment gates remain mandatory.
 This is a bounded review-process clarification, not permanent ADR acceptance or
 permission to replace a failed/missing test with approval.
+
+## Full rehearsal implementation proposal — 2026-09-10
+
+The [separate VM profile and report contract](../operations/voice-vm-rehearsal.md)
+preserves fixed production gates while exercising the same source, units, numeric
+identities and policy inside a NIC-less disposable guest. Production availability
+stays closed until the full runner, artifacts and actual results are reviewed.
+The candidate now verifies real report/kit/log bytes and exact production plans;
+this is evidence integrity, not authority to synthesize passing results. This ADR
+remains proposed and no existing accepted decision is rewritten.

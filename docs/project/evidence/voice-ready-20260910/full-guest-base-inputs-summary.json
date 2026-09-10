@@ -1,0 +1,70 @@
+{
+  "packages": 205,
+  "signed_package_result": "GUEST_PACKAGES_VERIFIED_NO_VM_STARTED",
+  "expanded_package_bytes": 850958764,
+  "package_tree_entries": 14127,
+  "media": {
+    "python-media": {
+      "bytes": 192503442,
+      "members": 2140,
+      "root": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/aiortc-venv/lib/python3.12/site-packages"
+    },
+    "emulator": {
+      "bytes": 859352592,
+      "members": 395,
+      "root": "/home/codex/.local/share/paranoid-android-sdk/emulator"
+    },
+    "android-image": {
+      "bytes": 1777737048,
+      "members": 25,
+      "root": "/home/codex/.local/share/paranoid-android-sdk/system-images/android-35/default/x86_64"
+    },
+    "platform-tools": {
+      "bytes": 22199804,
+      "members": 13,
+      "root": "/home/codex/.local/share/paranoid-android-sdk/platform-tools"
+    }
+  },
+  "hashes": {
+    "build_full_guest_base.py": "0fbac1ba0fd586b133d72afc5839d910ed359c8a88c01ce82a727f7e9e45edd1",
+    "full_guest_capability.py": "9b007221b6a66fa921556ae63b464be8fbc738bd4bec9333ec459b1b168bc354",
+    "full-guest-packages/result.json": "84cda43601acc8f547511d1c5106033c93a90ccff0d4ab12c637b4680da180f2",
+    "vm-tooling-v2/result.json": "076588d4c03a283b2ebe1a85807d707f98c2e58ce92b187db0c759c8e2d803c5",
+    "full-media-inputs.json": "c2779b9962ecabe042417b8f989573d5b6796bc87afc466082f9f81cd2f2de8c",
+    "full-guest-busybox-aliases.json": "08d082efe2df1ef119ef20d7b9e7ff809d7e27ad91f18e0c9ba8f582b077efad",
+    "full-guest-hardlinks.json": "e44936118c69485cd2e9f0221bb5f9deec23f4b693cb37ae9917946134c56b76"
+  },
+  "hardlink_pairs": {
+    "usr/bin/perl": {
+      "dev": 2306,
+      "ino": 6834951,
+      "nlink": 2
+    },
+    "usr/bin/perl5.38.2": {
+      "dev": 2306,
+      "ino": 6834951,
+      "nlink": 2
+    },
+    "usr/bin/perlbug": {
+      "dev": 2306,
+      "ino": 6834897,
+      "nlink": 2
+    },
+    "usr/bin/perlthanks": {
+      "dev": 2306,
+      "ino": 6834897,
+      "nlink": 2
+    }
+  },
+  "all_regular_inputs_owner1003_and_non_group_other_writable": true,
+  "rootfs_metadata_observation": "full-guest-base-input-metadata.json",
+  "capabilities_not_yet_observed": [
+    "full systemd guest boot",
+    "KVM process",
+    "nested KVM ioctl",
+    "Android accel-check",
+    "full coordinator",
+    "relay packets",
+    "current calls"
+  ]
+}

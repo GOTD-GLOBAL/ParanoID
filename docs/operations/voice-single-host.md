@@ -243,3 +243,22 @@ and source received [credential-only Opus5 artifact approval](../project/evidenc
 The artifact is bound by member hashes (`source_dirty: true`); no previous runtime
 acceptance is transferred to it. The frozen external primitive matrix expires if
 its exact runtime source hash changes.
+
+## Isolated full-profile preparation — 2026-09-10
+
+The [VM rehearsal contract](voice-vm-rehearsal.md) now has a candidate profile and
+an implemented verifier for actual root-owned case files, exact kits, driver,
+boot, production plan, service identities and fresh/existing-v8 coverage. Its
+nineteen offline tests pass; synthetic parser documents are never runtime
+acceptance. The full packet/coordinator runner remains unimplemented and
+`FULL_REHEARSAL_PROFILES` remains empty. Production still refuses before mutation.
+
+All205 signed guest packages were acquired and a no-NIC RAM-only base image was
+assembled and fully checked. Initial TCG isolation was observed earlier; the new
+full systemd/KVM prerequisite attempt stopped before guest continuation on an
+unrecognized read-only vCPU statistics descriptor; owned cleanup completed.
+The precise auditor correction is tested and pending independent review.
+Neither establishes relay or Android acceptance. Independent Opus reviews record
+actual identity and findings. Production metadata was read without mutation:
+messaging UID1003/GID1004, interface `enp5s0`; prospective relay UID/GID1902 is
+available. No account, service, key, data or firewall change occurred there.
