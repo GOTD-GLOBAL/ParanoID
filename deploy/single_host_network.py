@@ -280,7 +280,7 @@ def _app_ports(raw):
         raise ValueError('bounded UFW app observation required')
     result, in_ports = [], False
     for line in raw.decode('utf-8').splitlines():
-        if line.startswith('Ports:'):
+        if line.startswith(('Ports:', 'Port:')):
             in_ports = True
             continue
         if in_ports:

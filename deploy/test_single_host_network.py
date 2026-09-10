@@ -327,6 +327,10 @@ class OperationsTests(unittest.TestCase):
         wide = network.resolve_app_rules(
             [dict(rules[1])], lambda argv, input=None: b'Ports:\n  34781/udp\n')
         self.assertEqual(wide[0]['dst_port'], [34781, 34781])
+        # Real-world single-port profiles print 'Port:' (singular).
+        singular = network.resolve_app_rules(
+            [dict(rules[1])], lambda argv, input=None: b'Profile: OpenSSH\n\nPort:\n  22/tcp\n')
+        self.assertEqual(singular[0]['dst_port'], [22, 22])
         with self.assertRaisesRegex(ValueError, 'application profile'):
             network.resolve_app_rules([dict(rules[1])], lambda argv, input=None: b'Ports:\n  weird\n')
 
