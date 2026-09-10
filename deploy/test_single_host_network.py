@@ -155,8 +155,12 @@ class RenderTests(unittest.TestCase):
             network.prepare_receipt(SPEC, observation, 'a' * 64)
         f.ufw = ['ufw allow 443/tcp comment web']
         network.prepare_receipt(SPEC, network.observe(SPEC, runner=f, read=f.read), 'a' * 64)
-        with self.assertRaises(ValueError):
-            network.parse_ufw_added(b'ufw allow UnknownApp\n')
+        # Application-profile rules now parse into an explicit 'app' marker and
+        # must be resolved to exact ports before any overlap decision.
+        parsed = network.parse_ufw_added(b'ufw allow UnknownApp\n')
+        self.assertEqual(parsed[0].get('app'), 'UnknownApp')
+        with self.assertRaises((ValueError, RuntimeError)):
+            network.resolve_app_rules(parsed, lambda argv, input=None: b'')
 
     def test_policy_unit_has_ordering_no_execstop_and_no_shell_or_force_escape(self):
         unit = network.render_policy_unit(Path('/opt/paranoid-single-host/release/single_host_network.py'),
@@ -303,6 +307,28 @@ class OperationsTests(unittest.TestCase):
         network.observe(SPEC, runner=deny_routed, read=self.fixture.read)
         with self.assertRaisesRegex(ValueError, 'loopback'):
             network.observe(SPEC, runner=self.fixture, read=lambda _: b'*filter\nCOMMIT\n')
+
+    def test_neighbor_app_profile_rules_resolve_to_exact_ports(self):
+        rules = network.parse_ufw_added(
+            b"Added user rules (see 'ufw status' for running firewall):\n"
+            b"ufw allow 22/tcp comment 'SSH'\nufw allow OpenSSH\n"
+            b"ufw allow from 172.16.0.0/12 to any port 18081 proto tcp\n")
+        self.assertEqual(rules[1].get('app'), 'OpenSSH')
+        def runner(argv, input=None):
+            self.assertEqual(argv, ['/usr/sbin/ufw', 'app', 'info', 'OpenSSH'])
+            return (b'Profile: OpenSSH\nTitle: Secure shell server\n'
+                    b'Description: OpenSSH server\n\nPorts:\n  22/tcp\n')
+        resolved = network.resolve_app_rules(rules, runner)
+        self.assertEqual(len(resolved), 3)
+        self.assertNotIn('app', resolved[1])
+        self.assertEqual(resolved[1]['proto'], 'tcp')
+        self.assertEqual(resolved[1]['dst_port'], [22, 22])
+        # A profile overlapping approved relay ports must stay visible as overlap.
+        wide = network.resolve_app_rules(
+            [dict(rules[1])], lambda argv, input=None: b'Ports:\n  34781/udp\n')
+        self.assertEqual(wide[0]['dst_port'], [34781, 34781])
+        with self.assertRaisesRegex(ValueError, 'application profile'):
+            network.resolve_app_rules([dict(rules[1])], lambda argv, input=None: b'Ports:\n  weird\n')
 
 
 class FileTests(unittest.TestCase):

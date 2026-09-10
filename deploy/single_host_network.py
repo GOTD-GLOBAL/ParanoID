@@ -222,13 +222,21 @@ def _parse_ufw_rule(args):
     if args and args[0] in ('log', 'log-all'):
         rule['log'] = args.pop(0)
     if len(args) == 1:
-        simple = args.pop().split('/')
-        rule['dst_port'] = _port(simple[0])
-        if len(simple) == 2 and simple[1] in ('tcp', 'udp'):
-            rule['proto'] = simple[1]
-        elif len(simple) != 1:
-            raise ValueError('unsupported UFW simple rule')
-        return rule
+        token = args.pop()
+        simple = token.split('/')
+        if re.fullmatch(r'[0-9]{1,5}(?::[0-9]{1,5})?(?:/(?:tcp|udp))?', token):
+            rule['dst_port'] = _port(simple[0])
+            if len(simple) == 2:
+                rule['proto'] = simple[1]
+            return rule
+        if re.fullmatch(r'[A-Za-z][A-Za-z0-9 _.+-]{0,63}', token):
+            # Neighboring application-profile rule (e.g. 'ufw allow OpenSSH').
+            # Ports are unknown at parse time: record the profile and keep the
+            # conservative full range so any potential overlap is visible until
+            # the observer resolves the profile's actual ports.
+            rule['app'] = token
+            return rule
+        raise ValueError('unsupported UFW simple rule')
     seen = set()
     while args:
         key = args.pop(0)
@@ -264,6 +272,45 @@ def parse_ufw_added(raw):
             raise ValueError('unsupported UFW output')
         result.append(_parse_ufw_rule(shlex.split(line)))
     return result
+
+
+def _app_ports(raw):
+    """Parse `ufw app info NAME` output into exact (proto, [lo, hi]) pairs."""
+    if not isinstance(raw, bytes) or len(raw) > MAX_BYTES:
+        raise ValueError('bounded UFW app observation required')
+    result, in_ports = [], False
+    for line in raw.decode('utf-8').splitlines():
+        if line.startswith('Ports:'):
+            in_ports = True
+            continue
+        if in_ports:
+            if not line.startswith((' ', '\t')):
+                break
+            match = re.fullmatch(r'([0-9,:]+)(?:/(tcp|udp))?', line.strip())
+            if not match:
+                raise ValueError('unsupported UFW application profile ports')
+            for piece in match.group(1).split(','):
+                for proto in ((match.group(2),) if match.group(2) else ('tcp', 'udp')):
+                    result.append((proto, _port(piece)))
+    if not result:
+        raise ValueError('unsupported UFW application profile ports')
+    return result
+
+
+def resolve_app_rules(rules, runner):
+    """Expand neighbor application-profile rules into their exact resolved
+    ports so overlap checks compare real scopes, never a guessed range."""
+    resolved = []
+    for rule in rules:
+        if 'app' not in rule:
+            resolved.append(rule)
+            continue
+        for proto, ports in _app_ports(runner(['/usr/sbin/ufw', 'app', 'info', rule['app']])):
+            expanded = {key: value for key, value in rule.items() if key != 'app'}
+            expanded['proto'] = proto
+            expanded['dst_port'] = ports
+            resolved.append(expanded)
+    return resolved
 
 
 def _overlaps(rule, target):
@@ -346,7 +393,7 @@ def observe(spec, runner=command, read=_read_regular):
         chain_rules = [line for line in lines if line[:2] == ['-A', chain]]
         if not chain_rules or chain_rules[0] != ['-A', chain, direction, 'lo', '-j', 'ACCEPT']:
             raise ValueError('unsupported UFW loopback policy')
-    ufw = parse_ufw_added(runner(['/usr/sbin/ufw', 'show', 'added']))
+    ufw = resolve_app_rules(parse_ufw_added(runner(['/usr/sbin/ufw', 'show', 'added'])), runner)
     listing = decode_json(runner(['/usr/sbin/nft', '--json', '--numeric', 'list', 'tables']))
     if not isinstance(listing, dict) or set(listing) != {'nftables'} or not isinstance(listing['nftables'], list):
         raise ValueError('unsupported nft table listing')
