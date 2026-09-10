@@ -263,12 +263,18 @@ path for the existing one-host rollout is:
    acceptance (CALL-CURRENT01 on hardware instead of the VM matrix).
 
 E2EE, authenticated call binding, issuer expiry/quotas, credential privacy,
-service isolation and update/rollback safety are not weakened. The immutable
-`coordinated-full-rehearsal` production gate in the current installer must be
-superseded by a reviewed source change binding gates to the evidence of steps
-1–2; until that change lands, `apply` still refuses. This owner decision
-supersedes the VM-rehearsal prerequisite wording in this document and in
-`voice-vm-rehearsal.md`; RFC-0018/ADR-0012 must record it before ADR acceptance.
+service isolation and update/rollback safety are not weakened. The reviewed
+source change replacing the immutable `coordinated-full-rehearsal` gate with
+`local-loopback-acceptance` has landed: the verifier reads the referenced
+executed report, checks digest/structure/required cases, binds the report to
+the exact kit turnserver digest, and requires the `turn-rt01`/`turn-acl02`
+gates to reference the same evidence. Step 1 has been executed with 6/6 PASS
+([evidence](../project/evidence/voice-local-acceptance-20260910/summary.md));
+its `harness_sha256` binds the exact harness bytes at execution revision
+`ad966cb`; later committed harness edits do not alter that historical record.
+This owner decision supersedes the VM-rehearsal prerequisite wording in this
+document and in `voice-vm-rehearsal.md`; RFC-0018/ADR-0012 must record it
+before ADR acceptance.
 
 ## Isolated full-profile preparation — 2026-09-10 (frozen)
 

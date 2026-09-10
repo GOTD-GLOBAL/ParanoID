@@ -8,6 +8,19 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Voice acceptance simplification — 2026-09-10
+
+- By owner decision, froze the isolated VM/KVM full-rehearsal programme and
+  replaced the production installer gate `coordinated-full-rehearsal` (and the
+  separate `current-call-acceptance` receipt entry) with
+  `local-loopback-acceptance`: an actually executed loopback TURN acceptance
+  report (TURN-RT01/TURN-ACL02, six required cases, all PASS) bound to the
+  exact kit turnserver digest and referenced by the `turn-rt01`/`turn-acl02`
+  gates. Executed the acceptance for real (6/6 PASS) with the committed
+  harness `deploy/turn/local_acceptance.py`;
+  [evidence](docs/project/evidence/voice-local-acceptance-20260910/summary.md).
+  The owner's physical two-phone call remains the final product acceptance.
+
 ### Runtime credential compatibility candidate — 2026-09-10
 
 - Added a dedicated systemd credential-copy reader for the measured root0550/0440

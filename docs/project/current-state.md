@@ -15,9 +15,14 @@ coturn acceptance (expiry, invalid HMAC, quota, denied-peer ACL, relayed media,
 lifetime), a controlled journaled installation on the existing `157.180.49.125`
 host within the authorized port scope, and the owner's physical two-phone call.
 Details: [voice-single-host.md](../operations/voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей).
-The frozen VM material remains preserved in branch history. The installer's
-`coordinated-full-rehearsal` gate still refuses production until a reviewed
-source change binds it to the new evidence; no security property is weakened.
+The frozen VM material remains preserved in branch history. The reviewed
+installer change landed: production `GATES` now carry
+`local-loopback-acceptance` instead of the frozen rehearsal gate, and the
+executed loopback acceptance (6/6 PASS, TURN-RT01/TURN-ACL02, evidence in
+`docs/project/evidence/voice-local-acceptance-20260910/`) satisfies it after
+independent review; the verifier additionally binds the report to the exact
+kit turnserver digest and required case set. The owner's physical two-phone
+call remains the final product acceptance; no security property is weakened.
 
 ## One-host installer candidate — 2026-09-10
 

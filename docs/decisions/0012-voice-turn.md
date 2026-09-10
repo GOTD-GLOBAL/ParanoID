@@ -56,3 +56,17 @@ stays closed until the full runner, artifacts and actual results are reviewed.
 The candidate now verifies real report/kit/log bytes and exact production plans;
 this is evidence integrity, not authority to synthesize passing results. This ADR
 remains proposed and no existing accepted decision is rewritten.
+
+## Owner acceptance simplification — 2026-09-10
+
+The owner (Сергей, Telegram, recorded in
+[voice-single-host.md](../operations/voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей))
+froze the VM full-rehearsal programme above. Production acceptance for this
+decision's scope is now: the executed local loopback TURN acceptance
+(TURN-RT01/TURN-ACL02, [evidence](../project/evidence/voice-local-acceptance-20260910/summary.md)),
+a controlled journaled installation on the existing authorized host, and the
+owner's physical two-phone call. The installer's `local-loopback-acceptance`
+gate binds the executed report to the exact kit turnserver digest. Credential
+expiry, quotas, ACL, E2EE, isolation and rollback obligations are unchanged.
+This ADR remains proposed; the simplification is owner operational authority,
+not permanent human ADR acceptance.

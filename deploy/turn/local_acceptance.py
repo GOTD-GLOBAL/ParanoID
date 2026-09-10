@@ -14,7 +14,8 @@ acceptance cases with a minimal pure-stdlib TURN/STUN UDP client:
      rejected
 
 Loopback only. No sudo, no firewall, no external addresses. Secret is
-synthetic, stored 0600, never printed. NOT FOR COMMIT.
+synthetic, stored 0600, never printed. Committed as acceptance tooling; the
+build-machine paths below are explicit inputs of this harness run.
 """
 import base64
 import hashlib

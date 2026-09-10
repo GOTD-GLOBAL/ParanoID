@@ -176,12 +176,19 @@ class StickyCreationTests(unittest.TestCase):
 
 
 class FullRehearsalBoundaryTests(unittest.TestCase):
+    CASE_NAMES = ('TURN-RT01-1 valid REST credential Allocate',
+                  'TURN-RT01-2 expired-timestamp credential rejected',
+                  'TURN-RT01-3 wrong-HMAC credential rejected',
+                  'TURN-RT01-4 user-quota=4 enforced',
+                  'TURN-ACL02-5 peer ACL denied and loopback echo',
+                  'TURN-RT01-6 lifetime and expired Refresh rejected')
+
     def loopback_report(self):
         return {'gates': ['TURN-RT01', 'TURN-ACL02'],
                 'scope': 'loopback-only local acceptance',
                 'binding': {'turnserver_sha256': 'e' * 64, 'git_head': 'f' * 40},
-                'cases': [{'name': f'case-{n}', 'result': 'PASS', 'observed': {'n': n}}
-                          for n in range(6)],
+                'cases': [{'name': name, 'result': 'PASS', 'observed': {'n': n}}
+                          for n, name in enumerate(self.CASE_NAMES)],
                 'overall': 'PASS'}
 
     def receipt(self, evidence_path, evidence_sha):
@@ -221,6 +228,40 @@ class FullRehearsalBoundaryTests(unittest.TestCase):
             unbound['gates']['turn-rt01']['evidence_sha256'] = 'b' * 64
             with self.assertRaisesRegex(ValueError, 'reference the loopback'):
                 installer.validate_acceptance(unbound, installer.PRODUCTION, 'a' * 64, 'c' * 64)
+
+    def test_loopback_gate_requires_semantic_case_coverage_and_kit_binding(self):
+        with tempfile.TemporaryDirectory(prefix='paranoid-loopback-unit-') as raw:
+            root = Path(raw)
+            root.chmod(0o700)
+            path = root / 'results.json'
+            # M2: six PASS entries with generic names cannot satisfy the gate.
+            generic = self.loopback_report()
+            generic['cases'] = [{'name': f'case-{n}', 'result': 'PASS', 'observed': {}}
+                                for n in range(6)]
+            data = installer.canonical(generic)
+            path.write_bytes(data)
+            with self.assertRaisesRegex(ValueError, 'must cover case'):
+                installer.validate_acceptance(self.receipt(str(path), installer.sha(data)),
+                                              installer.PRODUCTION, 'a' * 64, 'c' * 64)
+            # M1: with a kit present, the report must bind its exact turnserver.
+            kit = root / 'kit'
+            relay = kit / 'relay'
+            relay.mkdir(parents=True)
+            relay_manifest = installer.canonical({'sha256': {'bin/turnserver': 'e' * 64}})
+            (relay / 'manifest.json').write_bytes(relay_manifest)
+            good = installer.canonical(self.loopback_report())
+            path.write_bytes(good)
+            installer.verify_loopback_acceptance(
+                self.receipt(str(path), installer.sha(good))['gates']['local-loopback-acceptance'],
+                self.receipt(str(path), installer.sha(good))['gates'], kit)
+            mismatched = self.loopback_report()
+            mismatched['binding']['turnserver_sha256'] = 'd' * 64
+            bad = installer.canonical(mismatched)
+            path.write_bytes(bad)
+            with self.assertRaisesRegex(ValueError, 'exact kit turnserver'):
+                installer.verify_loopback_acceptance(
+                    self.receipt(str(path), installer.sha(bad))['gates']['local-loopback-acceptance'],
+                    self.receipt(str(path), installer.sha(bad))['gates'], kit)
 
     def test_frozen_vm_rehearsal_gate_is_no_longer_accepted_in_production_receipts(self):
         receipt = {'v': 1, 'profile': installer.PRODUCTION, 'kit_sha256': 'a' * 64,

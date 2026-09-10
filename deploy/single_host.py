@@ -227,13 +227,19 @@ def validate_intent(value):
 
 LOOPBACK_EVIDENCE_LIMIT = 1024 * 1024
 LOOPBACK_BOUND_GATES = ('turn-rt01', 'turn-acl02')
+# Review condition M2: the report must cover these exact acceptance cases,
+# not merely any six PASS entries.
+LOOPBACK_REQUIRED_CASES = ('TURN-RT01-1', 'TURN-RT01-2', 'TURN-RT01-3',
+                           'TURN-RT01-4', 'TURN-ACL02-5', 'TURN-RT01-6')
 
 
-def verify_loopback_acceptance(result, gates):
+def verify_loopback_acceptance(result, gates, kit_root=None):
     """Owner-simplified gate (2026-09-10): bind an actually executed loopback
     TURN acceptance report covering TURN-RT01/TURN-ACL02. The report must be a
     real readable structured file whose digest matches the receipt; a bare hash
-    or a failed/partial report cannot authorize production."""
+    or a failed/partial report cannot authorize production. When the kit is
+    available (production apply), the report's turnserver digest must equal the
+    exact relay component member being installed (review condition M1)."""
     path = simple_path(result['evidence_path'])
     data = read_file(path, LOOPBACK_EVIDENCE_LIMIT)
     if sha(data) != result['evidence_sha256']:
@@ -248,11 +254,20 @@ def verify_loopback_acceptance(result, gates):
             or 'loopback' not in str(report.get('scope', ''))
             or not isinstance(cases, list) or len(cases) < 6
             or any(not isinstance(case, dict) or case.get('result') != 'PASS'
-                   or not case.get('name') or 'observed' not in case for case in cases)
+                   or not isinstance(case.get('name'), str) or 'observed' not in case
+                   for case in cases)
             or not isinstance(binding, dict)
             or not is_hash(binding.get('turnserver_sha256') or '')
             or not re.fullmatch(r'[0-9a-f]{40}', binding.get('git_head') or '')):
         raise ValueError('complete executed loopback acceptance report required')
+    names = [case['name'] for case in cases]
+    for marker in LOOPBACK_REQUIRED_CASES:
+        if not any(name == marker or name.startswith(marker + ' ') for name in names):
+            raise ValueError('loopback acceptance must cover case ' + marker)
+    if kit_root is not None:
+        relay = decode_json(read_file(Path(kit_root) / 'relay' / 'manifest.json', 256 * 1024))
+        if binding['turnserver_sha256'] != relay['sha256'].get('bin/turnserver'):
+            raise ValueError('loopback acceptance must bind the exact kit turnserver')
     for name in LOOPBACK_BOUND_GATES:
         if gates[name]['evidence_sha256'] != result['evidence_sha256']:
             raise ValueError('turn gates must reference the loopback acceptance evidence')
@@ -275,7 +290,7 @@ def validate_acceptance(value, profile, kit_sha256, plan_sha256, kit_root=None, 
                 or not is_hash(result['evidence_sha256'])):
             raise ValueError('mandatory actual acceptance incomplete')
         if name == 'local-loopback-acceptance':
-            verify_loopback_acceptance(result, value['gates'])
+            verify_loopback_acceptance(result, value['gates'], kit_root)
         if name == 'current-boot-isolation' and (not isinstance(result['boot_id'], str)
                 or not re.fullmatch(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}', result['boot_id'])):
             raise ValueError('exact current guest boot required')
