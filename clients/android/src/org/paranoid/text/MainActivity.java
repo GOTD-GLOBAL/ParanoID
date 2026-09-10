@@ -44,6 +44,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private EditText draft;
     private Button create,send,share,copy,navChats,navContacts,navIdentity,background;
     private ImageButton leading,trailing;
+    private ImageButton menuAction;
     private ImageButton callAction;
     private android.app.Dialog callDialog;
     private TextView callName,callStatus,callTrust,callPrivacy;
@@ -52,15 +53,20 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private String displayedCall="",permissionAccount="",permissionCall="";
     private boolean resumed,permissionAnswer,pendingCallIntent;
     private boolean waitingForMicrophone;
+    private boolean lockScreenShown;
     private long callIntentGeneration,callIntentDeadline;
     private Runnable callIntentRetry;
-    private static final int MICROPHONE_PERMISSION=95;
+    private static final int MICROPHONE_PERMISSION=95,BLUETOOTH_PERMISSION=96;
     private final TextEngine.CallListener callListener=this::renderCall;
     private String page="dialogs",selectedAccount="",displayedQr="",lastStatus="Открываем сохранённые данные…",renderedHistory="",renderedDialogs="";
     private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false;
     private boolean backgroundPromptShowing;
     private TextView backgroundHint;
-    private static final String UI_PREFS="paranoid-ui",BACKGROUND_PROMPT_KEY="background_prompt_v1";
+    private TextView updateHint,updateHeading;
+    private UpdateController updateController;
+    private static boolean updateAutoChecked;
+    private static final String UI_PREFS="paranoid-ui",BACKGROUND_PROMPT_KEY="background_prompt_v1",
+        UPDATE_CHECK_AT_KEY="update_autocheck_at_v1",BLUETOOTH_PROMPT_KEY="bluetooth_prompt_v1";
     private JSONObject latest=new JSONObject();
     private MessagePresentation.Drafts drafts=new MessagePresentation.Drafts();
     private Palette colors;
@@ -93,6 +99,18 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         pages=new FrameLayout(this);root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
         buildWelcome();buildDialogs();buildContacts();buildIdentity();buildChat();restoreDraft();buildNavigation();
         show(page);
+        updateLockScreen(engine.calls().snapshot().optString("state"));
+    }
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        updateLockScreen(engine.calls().snapshot().optString("state"));
+    }
+    /** Over-lock display only while an incoming call rings; never a permanent lock bypass. */
+    private void updateLockScreen(String state){
+        if(Build.VERSION.SDK_INT<27)return;
+        boolean visible=state.equals("incoming");
+        if(visible==lockScreenShown)return;lockScreenShown=visible;
+        setShowWhenLocked(visible);setTurnScreenOn(visible);
     }
 
     private void buildHeader(){
@@ -105,6 +123,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         trailing=iconButton("compose","Добавить контакт",()->{if(page.equals("chat"))contactDetails();else addContact();});
         callAction=iconButton("phone","Аудиозвонок",this::requestCall);row.addView(callAction,box(48,48));callAction.setVisibility(View.GONE);
         row.addView(trailing,box(48,48));
+        menuAction=iconButton("more","Меню",this::showMenu);row.addView(menuAction,box(48,48));menuAction.setVisibility(View.GONE);
         LinearLayout rail=row();rail.setGravity(Gravity.CENTER_VERTICAL);rail.setPadding(dp(12),dp(2),dp(8),0);header.addView(rail);
         View orbit=new View(this);orbit.setBackground(shape(colors.action,8));rail.addView(orbit,box(7,7));
         View line=new View(this);line.setBackgroundColor(colors.border);LinearLayout.LayoutParams lineParams=box(24,1);lineParams.setMargins(dp(5),0,dp(7),0);rail.addView(line,lineParams);
@@ -124,6 +143,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     private void buildDialogs(){
         dialogs=column();dialogs.setPadding(dp(12),dp(8),dp(12),dp(16));addScrollablePage(dialogs);
+        updateHint=text("",13,colors.actionText,false);
+        updateHint.setPadding(dp(12),dp(10),dp(12),dp(10));updateHint.setMinimumHeight(dp(40));updateHint.setBackground(ripple(colors.canvas,12));
+        updateHint.setOnClickListener(v->openUpdates());updateHint.setFocusable(true);
+        updateHint.setVisibility(View.GONE);dialogs.addView(updateHint,full());
         backgroundHint=text("Входящие в фоне отключены — включить",13,colors.actionText,false);
         backgroundHint.setPadding(dp(12),dp(10),dp(12),dp(10));backgroundHint.setMinimumHeight(dp(40));backgroundHint.setBackground(ripple(colors.canvas,12));
         backgroundHint.setOnClickListener(v->enableBackground());backgroundHint.setFocusable(true);backgroundHint.setContentDescription("Входящие в фоне отключены. Включить фоновое подключение");
@@ -154,8 +177,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         copy=secondary("Копировать контакт",()->copyPublic(displayedQr,"Контакт скопирован. Сравните отпечаток отдельно."));space(identity,8);identity.addView(copy,full());
         space(identity,24);identity.addView(text("Отпечаток контакта",16,colors.text,true));space(identity,8);
         fingerprint=text("Появится после регистрации",13,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
-        space(identity,24);identity.addView(text("Приложение",16,colors.text,true));space(identity,8);
-        new UpdateController(this,engine,identity);
+        space(identity,24);updateHeading=text("Приложение",16,colors.text,true);identity.addView(updateHeading);space(identity,8);
+        updateController=new UpdateController(this,engine,identity);
         space(identity,16);String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
         identity.addView(text("ParanoID · "+version+"\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно.",12,colors.muted,false));
         space(identity,20);identity.addView(text("Получать в фоне",16,colors.text,true));space(identity,8);
@@ -231,6 +254,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         nav.setVisibility(hasIdentity&&!next.equals("chat")?View.VISIBLE:View.GONE);
         boolean inChat=hasIdentity&&next.equals("chat");
         callAction.setVisibility(inChat?View.VISIBLE:View.GONE);
+        menuAction.setVisibility(hasIdentity&&!inChat?View.VISIBLE:View.GONE);
         screenTitle.setText(!hasIdentity?"ParanoID":inChat?MessagePresentation.title(selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
         leading.setImageDrawable(new Symbol(inChat?"back":"identity",colors.action));leading.setContentDescription(inChat?"Назад в чаты":"Мой ID");
@@ -241,6 +265,60 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
 
     private void selectNavigation(Button button,boolean selected){button.setSelected(selected);button.setTextColor(selected?colors.actionText:colors.muted);button.setBackground(ripple(selected?colors.actionSoft:colors.surface,20));button.setCompoundDrawablesWithIntrinsicBounds(null,new Symbol((String)button.getTag(),selected?colors.action:colors.muted),null,null);}
+
+    /** Programmatic ⋮ menu: explicit update check and an about dialog only. */
+    private void showMenu(){
+        PopupMenu menu=new PopupMenu(this,menuAction);
+        menu.getMenu().add(0,1,0,"Проверить обновления");
+        menu.getMenu().add(0,2,1,"О приложении");
+        menu.setOnMenuItemClickListener(item->{
+            if(item.getItemId()==1)openUpdates();else showAbout();
+            return true;
+        });
+        menu.show();
+    }
+    private void showAbout(){
+        String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
+        String fp=latest.optString("contact_fingerprint","");if(fp.isEmpty())fp="появится после регистрации";
+        new AlertDialog.Builder(this).setTitle("О приложении")
+            .setMessage("ParanoID · версия "+version+"\n\nОтпечаток идентичности:\n"+fp+"\n\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно.")
+            .setPositiveButton("Закрыть",null).show();
+    }
+    /** Opens the existing update block; downloading and verification stay in UpdateController. */
+    private void openUpdates(){
+        if(!hasIdentity||broken)return;
+        if(updateHint!=null)updateHint.setVisibility(View.GONE);
+        show("identity");
+        if(updateHeading!=null&&identity.getParent() instanceof ScrollView){
+            ScrollView scroll=(ScrollView)identity.getParent();
+            scroll.post(()->scroll.smoothScrollTo(0,updateHeading.getTop()));
+        }
+        if(updateController!=null)updateController.trigger();
+    }
+    /** Silent startup check: once per process, at most every six hours, only after registration. */
+    private void autoCheckUpdates(){
+        if(updateAutoChecked||broken||!hasIdentity||!active)return;
+        updateAutoChecked=true;
+        long last=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getLong(UPDATE_CHECK_AT_KEY,0);
+        if(System.currentTimeMillis()-last<6*60*60*1000L)return;
+        engine.updateTrust(trust->{
+            if(trust==null||isFinishing()||isDestroyed())return;
+            new Thread(()->{
+                try{
+                    UpdateManifest found=new UpdateClient(trust[0],trust[1]).check();
+                    boolean availableNow=found!=null&&UpdatePolicy.available(found,
+                        AndroidUpdateVerifier.version(AndroidUpdateVerifier.installed(this)),Build.VERSION.SDK_INT,Build.SUPPORTED_ABIS);
+                    getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putLong(UPDATE_CHECK_AT_KEY,System.currentTimeMillis()).apply();
+                    if(availableNow)runOnUiThread(()->{
+                        if(isFinishing()||isDestroyed()||updateHint==null)return;
+                        updateHint.setText("Доступна версия "+found.versionName+" — обновить");
+                        updateHint.setContentDescription("Доступна версия "+found.versionName+". Открыть обновление");
+                        updateHint.setVisibility(View.VISIBLE);
+                    });
+                }catch(Exception ignored){/* Тихая проверка: сетевые ошибки не показываются. */}
+            },"paranoid-update-autocheck").start();
+        });
+    }
 
     private void openChat(String account){
         selectedAccount=account;restoreDraft();renderedHistory="";show("chat");renderHistory(true);
@@ -287,7 +365,17 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         permissionAccount=account;permissionAnswer=answer;permissionCall=engine.calls().snapshot().optString("call_id");
         if(checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
             waitingForMicrophone=true;
-            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO},MICROPHONE_PERMISSION);return;
+            // BLUETOOTH_CONNECT is requested alongside but never blocks the call when denied.
+            String[] wanted=Build.VERSION.SDK_INT>=31
+                &&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
+                ?new String[]{android.Manifest.permission.RECORD_AUDIO,android.Manifest.permission.BLUETOOTH_CONNECT}
+                :new String[]{android.Manifest.permission.RECORD_AUDIO};
+            requestPermissions(wanted,MICROPHONE_PERMISSION);return;
+        }
+        if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
+            &&!getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BLUETOOTH_PROMPT_KEY,false)){
+            getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(BLUETOOTH_PROMPT_KEY,true).apply();
+            requestPermissions(new String[]{android.Manifest.permission.BLUETOOTH_CONNECT},BLUETOOTH_PERMISSION);
         }
         queueCallIntent();
     }
@@ -380,6 +468,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private void renderCall(JSONObject value){
         if(isFinishing()||isDestroyed())return;
         String state=value.optString("state"),id=value.optString("call_id");
+        updateLockScreen(state);
         if(resumed&&engine.calls().active()&&!id.equals(displayedCall)){displayedCall=id;showCall();}
         if(callDialog==null)return;
         callName.setText(MessagePresentation.title(value.optString("account")));callStatus.setText(callLabel(value));
@@ -435,7 +524,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         super.onRequestPermissionsResult(request,permissions,results);
         if(request==MICROPHONE_PERMISSION){
             waitingForMicrophone=false;
-            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){queueCallIntent();}
+            boolean microphone=false;
+            for(int n=0;n<permissions.length&&n<results.length;n++)
+                if(android.Manifest.permission.RECORD_AUDIO.equals(permissions[n]))microphone=results[n]==android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if(microphone){queueCallIntent();}
             else {
                 cancelCallIntent();
                 if(permissionAnswer&&engine.calls().snapshot().optString("call_id").equals(permissionCall))engine.calls().answer(false);
@@ -443,6 +535,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             }
             return;
         }
+        if(request==BLUETOOTH_PERMISSION)return; // Optional: the call proceeds without Bluetooth routing.
         if(request==BackgroundConnectionService.NOTIFICATION_PERMISSION) {
             if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){BackgroundConnectionService.requestStart(this);requestBatteryException();}
             else Toast.makeText(this,"Фоновое подключение выключено: разрешите уведомления, чтобы видеть его статус.",Toast.LENGTH_LONG).show();
@@ -525,6 +618,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             renderLists();renderHistory(false);
             if(!hadIdentity&&hasIdentity)show(page);else buttons();
             if(broken)show(page);
+            autoCheckUpdates();
         }catch(Exception ignored){lastStatus="Не удалось обновить экран. Данные сохранены.";status.setText("Ошибка отображения · подробнее");}
     }
 

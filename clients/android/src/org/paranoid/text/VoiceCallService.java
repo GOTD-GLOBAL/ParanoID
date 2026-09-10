@@ -8,7 +8,7 @@ import android.os.*;
 
 /** Microphone service starts only from a visible explicit call/answer action. */
 public final class VoiceCallService extends Service {
-    private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming",STOP="org.paranoid.devtext.END_CALL";
+    private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming-v2",LEGACY_INCOMING="paranoid-call-incoming",STOP="org.paranoid.devtext.END_CALL";
     private static final int ACTIVE_ID=51,INCOMING_ID=52;
     private static Runnable pending;
     private static boolean running;
@@ -25,11 +25,19 @@ public final class VoiceCallService extends Service {
     public static void incoming(Context context){
         try{
             NotificationManager manager=context.getSystemService(NotificationManager.class);
+            try{manager.deleteNotificationChannel(LEGACY_INCOMING);}catch(RuntimeException ignored){}
             NotificationChannel channel=new NotificationChannel(INCOMING,"Входящие звонки",NotificationManager.IMPORTANCE_HIGH);
-            channel.setDescription("Откройте ParanoID, чтобы ответить. Микрофон выключен.");channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);manager.createNotificationChannel(channel);
+            channel.setDescription("Откройте ParanoID, чтобы ответить. Микрофон выключен.");channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            channel.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE),
+                new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+            channel.enableVibration(true);manager.createNotificationChannel(channel);
+            PendingIntent full=PendingIntent.getActivity(context,53,new Intent(context,MainActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
             manager.notify(INCOMING_ID,new Notification.Builder(context,INCOMING).setSmallIcon(android.R.drawable.sym_call_incoming)
                 .setContentTitle("Входящий звонок ParanoID").setContentText("Откройте приложение, чтобы ответить")
-                .setCategory(Notification.CATEGORY_CALL).setContentIntent(open(context)).setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build());
+                .setCategory(Notification.CATEGORY_CALL).setContentIntent(open(context)).setFullScreenIntent(full,true)
+                .setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE).build());
         }catch(RuntimeException ignored){/* Never grant microphone access from a notification failure. */}
     }
     public static void clearIncoming(Context context){context.getSystemService(NotificationManager.class).cancel(INCOMING_ID);}

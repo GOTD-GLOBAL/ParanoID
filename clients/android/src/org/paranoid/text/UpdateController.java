@@ -27,6 +27,8 @@ public final class UpdateController {
         button.setOnClickListener(v->tap());
     }
     private boolean alive(){return !activity.isFinishing()&&!activity.isDestroyed();}
+    /** External "check now" entry: reuses the explicit button, only for a fresh check. */
+    public void trigger(){if(stage==0&&!BUSY.get()&&button.isEnabled())button.performClick();}
     private void reset(String message){stage=0;manifest=null;apk=null;button.setText("Обновить — Повторить проверку");status.setText(message);}
     private void finish(){BUSY.set(false);if(alive())button.setEnabled(true);}
     private interface Job{Runnable run()throws Exception;}

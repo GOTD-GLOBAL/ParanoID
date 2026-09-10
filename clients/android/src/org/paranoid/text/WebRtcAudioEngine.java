@@ -83,6 +83,8 @@ public final class WebRtcAudioEngine {
     private int previousMode;
     private boolean previousSpeaker, routeOwned;
     private AudioDeviceInfo previousDevice;
+    private android.media.AudioDeviceCallback deviceCallback;
+    private boolean legacyScoStarted;
     private String pendingDescription;
     private boolean localPublished, connected;
     private boolean localSetSucceeded, relayPublicationScheduled, relayPublicationWindowElapsed;
@@ -239,6 +241,12 @@ public final class WebRtcAudioEngine {
             proximity.setReferenceCounted(false);
         }
         applyRoute();
+        // Re-route when a headset (Bluetooth/wired) appears or disappears mid-call.
+        deviceCallback = new android.media.AudioDeviceCallback() {
+            @Override public void onAudioDevicesAdded(AudioDeviceInfo[] added) { post(WebRtcAudioEngine.this::applyRoute); }
+            @Override public void onAudioDevicesRemoved(AudioDeviceInfo[] removed) { post(WebRtcAudioEngine.this::applyRoute); }
+        };
+        audio.registerAudioDeviceCallback(deviceCallback, main);
     }
     private void applyRoute() {
         if (!routeOwned) return;
@@ -250,9 +258,42 @@ public final class WebRtcAudioEngine {
                         selected = audio.setCommunicationDevice(device); break;
                     }
                 if (!selected) throw new IllegalStateException("Speaker unavailable");
-            } else audio.clearCommunicationDevice();
-        } else audio.setSpeakerphoneOn(speaker);
+            } else {
+                // Explicit speaker off: prefer a Bluetooth headset, then wired, then earpiece.
+                AudioDeviceInfo headset = preferredHeadset();
+                if (headset == null || !audio.setCommunicationDevice(headset)) audio.clearCommunicationDevice();
+            }
+        } else {
+            legacyBluetooth(!speaker && legacyBluetoothAvailable());
+            audio.setSpeakerphoneOn(speaker);
+        }
         updateProximity();
+    }
+    /** SDK>=31 headset priority: BLE/SCO Bluetooth (with runtime BLUETOOTH_CONNECT) over wired. */
+    private AudioDeviceInfo preferredHeadset() {
+        if (Build.VERSION.SDK_INT < 31) return null;
+        boolean allowed = context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+        AudioDeviceInfo bluetooth = null, wired = null;
+        for (AudioDeviceInfo device : audio.getAvailableCommunicationDevices()) {
+            int type = device.getType();
+            if (allowed && bluetooth == null
+                    && (type == AudioDeviceInfo.TYPE_BLE_HEADSET || type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO)) bluetooth = device;
+            if (wired == null && (type == AudioDeviceInfo.TYPE_WIRED_HEADSET || type == AudioDeviceInfo.TYPE_USB_HEADSET)) wired = device;
+        }
+        return bluetooth != null ? bluetooth : wired;
+    }
+    /** Simplified pre-31 fallback: classic SCO only when a Bluetooth output is attached. */
+    private boolean legacyBluetoothAvailable() {
+        if (!audio.isBluetoothScoAvailableOffCall()) return false;
+        for (AudioDeviceInfo device : audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS))
+            if (device.getType() == AudioDeviceInfo.TYPE_BLUETOOTH_SCO) return true;
+        return false;
+    }
+    private void legacyBluetooth(boolean enable) {
+        try {
+            if (enable && !legacyScoStarted) { audio.startBluetoothSco(); audio.setBluetoothScoOn(true); legacyScoStarted = true; }
+            else if (!enable && legacyScoStarted) { audio.setBluetoothScoOn(false); audio.stopBluetoothSco(); legacyScoStarted = false; }
+        } catch (RuntimeException ignored) { /* A failed SCO switch must not end the call. */ }
     }
     private void updateProximity() {
         if (proximity == null) return;
@@ -411,12 +452,14 @@ public final class WebRtcAudioEngine {
         try { if (audioDevice != null) audioDevice.release(); } catch (Exception ignored) { }
         audioDevice = null;
         try { if (proximity != null && proximity.isHeld()) proximity.release(); } catch (Exception ignored) { }
+        try { if (deviceCallback != null && audio != null) audio.unregisterAudioDeviceCallback(deviceCallback); } catch (Exception ignored) { }
+        deviceCallback = null;
         try {
             if (routeOwned) {
                 if (Build.VERSION.SDK_INT >= 31) {
                     if (previousDevice == null) audio.clearCommunicationDevice();
                     else audio.setCommunicationDevice(previousDevice);
-                } else audio.setSpeakerphoneOn(previousSpeaker);
+                } else { legacyBluetooth(false); audio.setSpeakerphoneOn(previousSpeaker); }
                 audio.setMode(previousMode);
             }
         } catch (Exception ignored) { }

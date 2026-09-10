@@ -5,8 +5,33 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="org.paranoid.devtext"',manifest)
-        self.assertIn('android:versionCode="12"',manifest)
-        self.assertIn('android:versionName="0.0.12-voice"',manifest)
+        self.assertIn('android:versionCode="13"',manifest)
+        self.assertIn('android:versionName="0.0.13-voice"',manifest)
+
+    def test_incoming_call_menu_and_update_autocheck_contract(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        service=(ROOT/'src/org/paranoid/text/VoiceCallService.java').read_text()
+        audio=(ROOT/'src/org/paranoid/text/WebRtcAudioEngine.java').read_text()
+        manifest=(ROOT/'AndroidManifest.xml').read_text()
+        # Full incoming call: ringtone channel, full-screen intent, ongoing category call.
+        for token in ['setFullScreenIntent','TYPE_RINGTONE','enableVibration(true)','USAGE_NOTIFICATION_RINGTONE','setOngoing(true)']:
+            self.assertIn(token,service)
+        self.assertIn('android.permission.USE_FULL_SCREEN_INTENT',manifest)
+        self.assertIn('android.permission.VIBRATE',manifest)
+        # Lock-screen display exists but only tracks the incoming state.
+        self.assertIn('setShowWhenLocked(visible)',ui)
+        self.assertIn('setTurnScreenOn(visible)',ui)
+        self.assertIn('state.equals("incoming")',ui)
+        # Bluetooth routing: modern communication-device path plus legacy SCO fallback.
+        self.assertIn('android.permission.BLUETOOTH_CONNECT',manifest)
+        for token in ['setCommunicationDevice','TYPE_BLE_HEADSET','TYPE_BLUETOOTH_SCO','registerAudioDeviceCallback','startBluetoothSco','stopBluetoothSco','BLUETOOTH_CONNECT']:
+            self.assertIn(token,audio)
+        # Overflow menu and quiet startup update check with a dismissible banner.
+        for caption in ['Проверить обновления','О приложении','Доступна версия ']:
+            self.assertIn(caption,ui)
+        self.assertIn('updateController.trigger()',ui)
+        self.assertIn('update_autocheck_at_v1',ui)
+        self.assertIn('6*60*60*1000L',ui)
 
     def test_self_service_ui_is_contacts_dialogs_and_chat_not_operator_json(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
