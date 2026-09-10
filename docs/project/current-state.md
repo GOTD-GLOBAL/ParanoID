@@ -6,6 +6,21 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Bounded incoming-call diagnostic — 2026-09-10
+
+One fresh ordinary baseline/fixed comparison used the same reviewed test observer
+and unchanged local fixture. The baseline naturally failed through SDK safe error
+`connection` then controller `mediaState`, 16.496 seconds after accepted Answer
+with 23.357 seconds of setup budget remaining. The fixed arm published once,
+installed the answer and decoded relay/relay Opus with complete normal cleanup.
+[The evidence](evidence/call-connect-ordinary-20260910/README.md) preserves the
+setup-only correction, partial native coverage, differing pre-Answer timing and
+unmeasured Android process start/maps. Final Fable evidence review approved the
+test-only publication and kept CALL-CONNECT01 OPEN; this does not
+establish the native cause or identify every historical failure. Only test/docs
+changes occurred; production sources and retained ARM64 APK are unchanged.
+Missing TURN/phone gates and deployment/merge blocks remain unchanged.
+
 ## Current voice relay extension — 2026-09-10
 
 The direct-call checkpoint below passed fresh final Fable review. The original

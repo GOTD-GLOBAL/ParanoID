@@ -1,0 +1,317 @@
+"""Fresh, bounded ordinary-call fixture; no retained state is opened or removed.
+
+Creates only private PG/TLS, a normal local issuer/relay and one synthetic JNI
+peer. The caller owns emulator/build/observers and the two ordinary arms. This
+file contains no negative security, fault, expiry, cache, ACL or systemd tests.
+Run once after the parent has reviewed it. A failed launch is not an arm result.
+"""
+from pathlib import Path
+import argparse
+import datetime
+import getpass
+import hashlib
+import json
+import os
+import secrets
+import selectors
+import signal
+import socket
+import socketserver
+import ssl
+import subprocess
+import tempfile
+import threading
+import time
+import urllib.request
+
+
+ROOT = Path('/home/codex/projects/paranoid-worktrees/voice-calls-20260909')
+EVIDENCE = Path('/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z')
+PG = Path('/usr/lib/postgresql/16/bin')
+SERVER = EVIDENCE / 'turn-server-target/release/paranoid-server'
+RELAY = EVIDENCE / 'turn-offline-build-6/relocated'
+JNI = ROOT / 'clients/core/target/release'
+SERVER_SHA = 'ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099'
+RELAY_SHA = 'b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551'
+
+
+def sha(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def stamp():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+
+def save(path, value):
+    path.write_text(json.dumps(value, indent=2) + '\n')
+
+
+def process_identity(process):
+    raw = Path('/proc') / str(process.pid) / 'stat'
+    # Split after the comm closing parenthesis, which can contain spaces.
+    fields = raw.read_text().rsplit(')', 1)[1].split()
+    return dict(pid=process.pid, start_ticks=int(fields[19]))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--run-dir', type=Path, required=True)
+    parser.add_argument('--bridge-classes', type=Path, default=EVIDENCE / 'voice-jvm')
+    parser.add_argument('--lifetime-seconds', type=int, default=900)
+    args = parser.parse_args()
+    if not 600 <= args.lifetime_seconds <= 900:
+        parser.error('fixture lifetime must be 600 through 900 seconds')
+    os.umask(0o077)
+    run = args.run_dir.resolve()
+    run.mkdir(mode=0o700, exist_ok=False)
+    started = time.monotonic()
+    deadline = started + args.lifetime_seconds
+    stop = threading.Event()
+    for name in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(name, lambda *_: stop.set())
+    record = dict(scope='one fresh ordinary incoming baseline/fixed comparison',
+                  started_at=stamp(), result='SETUP_RUNNING',
+                  lifetime_seconds=args.lifetime_seconds, commands=[], processes={},
+                  cleanup={}, data_preserved=True, negative_security_tests='NOT_RUN')
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith(('PG', 'PARANOID_'))}
+    owned = {}
+    logs = {}
+    rpc_server = None
+    bridge_lock = threading.Lock()
+
+    def command(label, argv, command_env=env, timeout=30):
+        record['stage'] = label
+        command_record = dict(label=label, argv=list(map(str, argv)), started_at=stamp())
+        record['commands'].append(command_record)
+        # Private logs are retained but never printed or returned through RPC.
+        with (run / (label + '.private.log')).open('wb') as output:
+            result = subprocess.run(command_record['argv'], env=command_env,
+                                    stdout=output, stderr=subprocess.STDOUT,
+                                    timeout=timeout)
+        command_record.update(exit=result.returncode, finished_at=stamp())
+        if result.returncode:
+            raise RuntimeError(label + '_failed')
+
+    def launch(label, argv, command_env=env, pipe=False):
+        record['stage'] = label + '_launch'
+        log = (run / (label + '.private.log')).open('wb')
+        logs[label] = log
+        process = subprocess.Popen(list(map(str, argv)), env=command_env,
+                                   stdin=subprocess.PIPE if pipe else subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE if pipe else log,
+                                   stderr=log, text=pipe, bufsize=1 if pipe else -1)
+        owned[label] = process
+        record['commands'].append(dict(label=label, argv=list(map(str, argv)),
+                                       started_at=stamp(), process=process_identity(process)))
+        record['processes'][label] = process_identity(process)
+        return process
+
+    def rpc(operation, value=None):
+        if operation not in {'create', 'pair', 'view', 'start', 'answer', 'reject',
+                             'hangup', 'local_description', 'media_state'}:
+            raise ValueError('operation_not_allowed')
+        request = dict(operation=operation)
+        if operation == 'pair':
+            request['contact'] = value if isinstance(value, str) else json.dumps(value)
+        elif isinstance(value, dict):
+            request.update(value)
+            request['operation'] = operation
+        encoded = json.dumps(request)
+        if len(encoded.encode()) > 65536:
+            raise ValueError('request_bound')
+        with bridge_lock:
+            bridge = owned['bridge']
+            if bridge.poll() is not None:
+                raise RuntimeError('bridge_exited')
+            bridge.stdin.write(encoded + '\n')
+            bridge.stdin.flush()
+            with selectors.DefaultSelector() as selector:
+                selector.register(bridge.stdout, selectors.EVENT_READ)
+                if not selector.select(15):
+                    raise TimeoutError('bridge_deadline')
+            line = bridge.stdout.readline(200000)
+            if not line or not line.endswith('\n'):
+                raise RuntimeError('bridge_response_bound')
+            response = json.loads(line)
+            if 'error' in response:
+                raise RuntimeError('bridge_operation_failed')
+            return response
+
+    try:
+        record['stage'] = 'pinned_binary_verification'
+        if sha(SERVER) != SERVER_SHA or sha(RELAY / 'bin/turnserver') != RELAY_SHA:
+            raise RuntimeError('pinned_binary_mismatch')
+        record['stage'] = 'own_loopback_bind_readiness'
+        for port, kind in ((38443, socket.SOCK_STREAM), (34781, socket.SOCK_STREAM),
+                           (34781, socket.SOCK_DGRAM)):
+            # Own loopback bind readiness only; no packets or service probes.
+            with socket.socket(socket.AF_INET, kind) as available:
+                available.bind(('127.0.0.1', port))
+        socket_parent = Path(tempfile.mkdtemp(prefix='paranoid-ordinary-'))
+        sockets = socket_parent / 'socket'
+        sockets.mkdir(mode=0o700)
+        rpc_path = sockets / 'peer.sock'
+        record['socket_directory'] = str(sockets)
+        command('initdb', [PG / 'initdb', '-D', run / 'pg', '--auth-local=trust',
+                           '--auth-host=scram-sha-256', '--no-locale', '-E', 'UTF8'])
+        launch('postgres', [PG / 'postgres', '-D', run / 'pg', '-k', sockets,
+                            '-c', 'listen_addresses=', '-c', 'unix_socket_permissions=0700',
+                            '-c', 'log_statement=none', '-c', 'log_min_error_statement=panic',
+                            '-c', 'log_parameter_max_length_on_error=0'])
+        pg_ready = time.monotonic() + 10
+        record['stage'] = 'own_postgres_readiness'
+        while time.monotonic() < pg_ready and not stop.is_set():
+            result = subprocess.run([str(PG / 'pg_isready'), '-h', str(sockets)],
+                                    env=env, stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL, timeout=2)
+            if result.returncode == 0:
+                break
+            if owned['postgres'].poll() is not None:
+                raise RuntimeError('own_postgres_exited')
+            time.sleep(.1)
+        else:
+            raise TimeoutError('own_postgres_readiness')
+        command('create_tls', ['python3', ROOT / 'scripts/create-test-tls.py',
+                               '--ip', '127.0.0.1', '--output', run / 'tls'])
+        public = json.loads((run / 'tls/public-connection.json').read_text())
+        realm, pin = public['server_url'], public['tls_spki_sha256']
+        if realm != 'https://127.0.0.1:38443':
+            raise RuntimeError('unexpected_fixture_realm')
+        # Fresh synthetic secret stays in private files/process environment only.
+        secret = secrets.token_hex(32)
+        secret_path = run / 'turn-issuer.secret'
+        secret_path.write_text(secret)
+        env.update(PARANOID_DATABASE_URL=(f'postgresql://{getpass.getuser()}'
+                   f'@localhost/postgres?host={sockets}'), PARANOID_KEY_REALM=realm,
+                   PARANOID_KEY_PIN=pin, PARANOID_MODE='self-service-v2-local',
+                   PARANOID_BIND='127.0.0.1:38443',
+                   PARANOID_TLS_CERT=str(run / 'tls/server.crt'),
+                   PARANOID_TLS_KEY=str(run / 'tls/server.key'),
+                   PARANOID_TURN_SECRET_FILE=str(secret_path), PARANOID_TURN_RELAY_IP='127.0.0.1')
+        ordinary_config = [
+            'listening-ip=127.0.0.1', 'relay-ip=127.0.0.1', 'listening-port=34781',
+            'min-port=40000', 'max-port=40015', 'realm=paranoid-voice-v1',
+            'fingerprint', 'use-auth-secret', 'user-quota=4', 'total-quota=16',
+            'max-bps=128000', 'bps-capacity=512000', 'max-allocate-lifetime=60',
+            'stale-nonce=60', 'relay-threads=1', 'cli=0', 'no-tls', 'no-stun',
+            'no-tcp-relay', 'no-multicast-peers', 'no-stdout-log', 'simple-log',
+            'syslog=0', 'allow-loopback-peers',
+            'log-file=' + str(run / 'relay.private.log'), 'pidfile=' + str(run / 'relay.pid')]
+        config_path = run / 'relay.private.conf'
+        config_path.write_text('\n'.join(ordinary_config + ['static-auth-secret=' + secret]) + '\n')
+        del secret
+        save(run / 'relay-config-public.json', dict(config=ordinary_config,
+             omitted_field='static-auth-secret', config_sha256=sha(config_path),
+             reference='run-app-turn-local-4.py; verbose diagnostics omitted',
+             policy='same configuration and same relay process for both ordinary arms'))
+        launch('relay', [RELAY / 'bin/turnserver', '-c', config_path],
+               {**env, 'LD_LIBRARY_PATH': str(RELAY / 'lib')})
+        command('self_service_init', [SERVER, 'self-service-init'])
+        launch('server', [SERVER])
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                 urllib.request.HTTPSHandler(context=ssl.create_default_context(
+                     cafile=str(run / 'tls/server.crt'))))
+        ready = time.monotonic() + 12
+        record['stage'] = 'own_tls_readiness'
+        while time.monotonic() < ready and not stop.is_set():
+            if owned['server'].poll() is not None or owned['relay'].poll() is not None:
+                raise RuntimeError('own_service_exited')
+            try:
+                with opener.open(realm + '/health', timeout=1) as response:
+                    if json.load(response).get('realtime') == 'signed-long-poll-v1':
+                        break
+            except OSError:
+                pass
+            time.sleep(.1)
+        else:
+            raise TimeoutError('own_tls_readiness')
+        classpath = ':'.join(map(str, [args.bridge_classes,
+                    ROOT / 'clients/android/out/deps/json-20240303.jar',
+                    ROOT / 'clients/android/out/deps/zxing-core-3.5.3.jar']))
+        launch('bridge', ['java', '-Djava.library.path=' + str(JNI), '-cp', classpath,
+                         'VoicePeerBridge', run / 'peers', realm, pin], pipe=True)
+        record['stage'] = 'synthetic_registration'
+        rpc('create')
+        ready = time.monotonic() + 15
+        while time.monotonic() < ready and not stop.is_set():
+            peer = rpc('view')
+            if peer.get('active') and peer.get('contact') and peer.get('connected'):
+                break
+            time.sleep(.1)
+        else:
+            raise TimeoutError('synthetic_peer_readiness')
+        save(run / 'synthetic-peer-contact.json', peer['contact'])
+
+        class Handler(socketserver.StreamRequestHandler):
+            def handle(self):
+                self.request.settimeout(18)
+                try:
+                    line = self.rfile.readline(65537)
+                    if len(line) > 65536 or not line.endswith(b'\n'):
+                        raise ValueError('request_bound')
+                    value = json.loads(line)
+                    answer = rpc(value['operation'], value.get('value'))
+                except Exception as error:
+                    # Never expose response bodies, private objects or raw exceptions.
+                    answer = dict(error='fixture_rpc', category=type(error).__name__)
+                self.wfile.write((json.dumps(answer) + '\n').encode())
+
+        rpc_server = socketserver.UnixStreamServer(str(rpc_path), Handler)
+        rpc_server.timeout = .25
+        record.update(result='READY', stage='ordinary_fixture_ready', ready_at=stamp())
+        runtime = dict(realm=realm, pin=pin, rpc_socket=str(rpc_path),
+                       server_binary=str(SERVER), server_sha256=SERVER_SHA,
+                       relay_binary_sha256=RELAY_SHA,
+                       jni_sha256=sha(JNI / 'libparanoid_client_core.so'),
+                       bridge_classes=str(args.bridge_classes),
+                       processes=record['processes'], controller_pid=os.getpid(),
+                       deadline_monotonic=deadline,
+                       boundary='fresh private loopback synthetic ordinary call only')
+        save(run / 'runtime.json', runtime)
+        save(run / 'runtime-lifecycle.json', record)
+        print(json.dumps(dict(status='READY', runtime=str(run / 'runtime.json'))), flush=True)
+        while not stop.is_set() and time.monotonic() < deadline:
+            if any(process.poll() is not None for process in owned.values()):
+                raise RuntimeError('owned_process_exited')
+            rpc_server.handle_request()
+        record.update(result='STOPPED', stop_reason='requested' if stop.is_set() else 'lifetime_bound')
+    except BaseException as error:
+        record.update(result='SETUP_OR_RUNTIME_FAILED', error_category=type(error).__name__)
+        print(json.dumps(dict(status=record['result'], stage=record.get('stage'),
+                              error_category=type(error).__name__)), flush=True)
+    finally:
+        if rpc_server is not None:
+            rpc_server.server_close()
+        for name in ('bridge', 'server', 'relay', 'postgres'):
+            process = owned.get(name)
+            if process is None:
+                continue
+            try:
+                if process.poll() is None:
+                    if name == 'bridge':
+                        process.stdin.close()  # Bridge.close delegates normal controller hangup.
+                    else:
+                        process.send_signal(signal.SIGINT if name == 'postgres' else signal.SIGTERM)
+                    try:
+                        process.wait(timeout=20 if name == 'postgres' else 10)
+                    except subprocess.TimeoutExpired:
+                        process.kill()  # Exact child only; never a pid-file or process-name target.
+                        process.wait(timeout=5)
+                        record['cleanup'][name + '_forced'] = True
+                record['cleanup'][name] = dict(stopped=True, exit=process.returncode)
+            except Exception as error:
+                record['cleanup'][name] = dict(stopped=False, error_category=type(error).__name__)
+        for log in logs.values():
+            log.close()
+        record['finished_at'] = stamp()
+        record['elapsed_seconds'] = time.monotonic() - started
+        save(run / 'runtime-lifecycle.json', record)
+        print(json.dumps(dict(status=record['result'], cleanup=record['cleanup'],
+                              data_preserved=True)), flush=True)
+    return 0 if record['result'] == 'STOPPED' else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

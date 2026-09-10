@@ -1,0 +1,49 @@
+{
+  "verified_at": "2026-09-10T02:29:59.395469+00:00",
+  "reviewer": "/root/fixture_plan",
+  "method": "Independently hashed every actual copied source file and DEX bytes read directly from both signed observer APK ZIPs; did not rely on artifact claim hashes",
+  "copied_source_file_count": {
+    "baseline": 62,
+    "fixed": 62
+  },
+  "copied_source_differences": [
+    "clients/android/__pycache__/webrtc_dependency.cpython-312.pyc",
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java"
+  ],
+  "engine_sha256": {
+    "baseline": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2",
+    "fixed": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8"
+  },
+  "observer_source_sha256": {
+    "baseline": "4d349e120d785a43bc39ea683a05984b82e2979c492a05066a40bf4a01b5c9e5",
+    "fixed": "4d349e120d785a43bc39ea683a05984b82e2979c492a05066a40bf4a01b5c9e5"
+  },
+  "observer_apk_dex_sha256": {
+    "baseline": {
+      "classes.dex": "55e287c68952b57f3ccaf2b3ce2c771babe70cac31fd5c0b8244c9ec6dc50b24"
+    },
+    "fixed": {
+      "classes.dex": "55e287c68952b57f3ccaf2b3ce2c771babe70cac31fd5c0b8244c9ec6dc50b24"
+    }
+  },
+  "installed_running_identity": "NOT_RECHECKED; outside this read-only artifact comparison",
+  "boundary": "No fixture execution, source mutation, network, denied tests or private data reads",
+  "initial_all_tree_result": "FAIL",
+  "initial_all_tree_scope_explanation": "All tree files include generated Python import bytecode, which is neither copied product input nor packaged APK content.",
+  "result": "PASS",
+  "copied_input_manifests_have_identical_paths": true,
+  "copied_product_input_count": 59,
+  "copied_product_differences": [
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java"
+  ],
+  "generated_python_bytecode": {
+    "path": "clients/android/__pycache__/webrtc_dependency.cpython-312.pyc",
+    "not_in_input_manifests": true,
+    "only_code_filename_difference": true,
+    "normalized_code_sha256": [
+      "c2957e3fda7c2071931d3ceeb777abd9cda4bc949e6b918f7431cacdae2dd0a6",
+      "c2957e3fda7c2071931d3ceeb777abd9cda4bc949e6b918f7431cacdae2dd0a6"
+    ],
+    "packaged_pyc_entries": []
+  }
+}

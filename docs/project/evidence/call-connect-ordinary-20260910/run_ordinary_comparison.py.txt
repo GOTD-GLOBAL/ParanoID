@@ -1,0 +1,441 @@
+"""ONE baseline + ONE fixed ordinary incoming call; no infrastructure setup.
+
+Prepared only. Root must review this exact script before execution. Requires its
+own disposable loopback fixture/AVD and reviewed APKs already built. No production
+build, relay restart, packet probe, fault injection, state reset, or retries.
+"""
+import asyncio
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+import urllib.request
+import xml.etree.ElementTree as ET
+
+E = Path(__file__).resolve().parent
+R = Path('/home/codex/projects/paranoid-worktrees/voice-calls-20260909')
+sys.path.insert(0, str(R / 'clients/android'))
+sys.path.insert(0, str(R / 'clients/android/test'))
+from call_connect_sampler import Sampler, safe_media_summary
+from ordinary_host_peer import ObservedPeer
+import aioice.ice
+
+ADB = '/home/codex/.local/share/paranoid-android-sdk/platform-tools/adb'
+SERIAL = 'emulator-5590'
+PACKAGE = 'org.paranoid.devtext'
+TEST_PACKAGE = PACKAGE + '.voice.tests'
+COMPONENT = TEST_PACKAGE + '/org.paranoid.text.VoiceAppInstrumentation'
+APP_URL = 'http://127.0.0.1:18890/'
+COMMANDS = []
+
+
+class DiagnosticError(Exception):
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
+
+
+def sha(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def adb(action, *args, timeout=30):
+    try:
+        result = subprocess.run([ADB, '-s', SERIAL, *args], capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        COMMANDS.append(dict(action=action, exit=None, timeout=True))
+        raise DiagnosticError('owned_adb_timeout') from None
+    COMMANDS.append(dict(action=action, exit=result.returncode))
+    if result.returncode:
+        raise DiagnosticError('owned_adb_failed')
+    return result.stdout
+
+
+def app(command='view', **values):
+    command = 'controller_view' if command == 'view' else command
+    if command not in ('controller_view', 'media_settings', 'safe_media_summary',
+                       'setup_public_contact', 'arm_terminal_observer', 'terminal_events',
+                       'clipboard', 'finish'):
+        raise DiagnosticError('command_not_allowed')
+    request = urllib.request.Request(APP_URL, json.dumps(dict(command=command, **values)).encode(),
+                                     {'Content-Type': 'application/json'}, method='POST')
+    with urllib.request.urlopen(request, timeout=8) as response:
+        raw = response.read(262145)
+    if len(raw) > 262144:
+        raise DiagnosticError('observer_response_bound')
+    result = json.loads(raw)
+    if 'error' in result or 'fixture_error' in result:
+        raise DiagnosticError('observer_transport_error')
+    return result
+
+
+def nodes():
+    # Public setup data may be visible. Keep XML memory-only; never save it.
+    temporary = '/sdcard/call-connect-ordinary-window.xml'
+    adb('ui_dump_own_temporary', 'shell', 'uiautomator', 'dump', temporary, timeout=12)
+    try:
+        raw = adb('ui_read_memory', 'exec-out', 'cat', temporary)
+    finally:
+        adb('ui_remove_own_temporary', 'shell', 'rm', temporary)
+    start, end = raw.find(b'<?xml'), raw.rfind(b'</hierarchy>')
+    if start < 0 or end < 0:
+        raise DiagnosticError('ui_xml_unavailable')
+    return list(ET.fromstring(raw[start:end + len(b'</hierarchy>')]).iter('node'))
+
+
+def tap(label, optional=False):
+    for node in nodes():
+        a = node.attrib
+        if any(label.casefold() == a.get(key, '').casefold()
+               for key in ('text', 'content-desc', 'resource-id')) and a.get('enabled') == 'true':
+            points = [int(x) for x in re.findall(r'\d+', a.get('bounds', ''))]
+            if len(points) != 4:
+                raise DiagnosticError('ui_bounds_invalid')
+            adb('ui_tap', 'shell', 'input', 'tap', str((points[0] + points[2]) // 2),
+                str((points[1] + points[3]) // 2))
+            return True
+    if optional:
+        return False
+    raise DiagnosticError('ui_action_absent')
+
+
+def focus_contact_input():
+    for node in nodes():
+        a = node.attrib
+        if a.get('class') == 'android.widget.EditText':
+            points = [int(x) for x in re.findall(r'\d+', a['bounds'])]
+            adb('public_contact_input_focus', 'shell', 'input', 'tap',
+                str((points[0] + points[2]) // 2), str((points[1] + points[3]) // 2))
+            return
+    raise DiagnosticError('public_contact_input_absent')
+
+
+async def ui(label, optional=False):
+    value = await asyncio.to_thread(tap, label, optional)
+    await asyncio.sleep(.25)
+    return value
+
+
+async def wait_controller(predicate, seconds=35):
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        value = await asyncio.to_thread(app)
+        if predicate(value):
+            return value
+        await asyncio.sleep(.2)
+    raise DiagnosticError('setup_readiness_bound')
+
+
+def installed_identity(apk, test_apk):
+    result = {}
+    paths = {}
+    for key, package, expected in (('product', PACKAGE, apk), ('observer', TEST_PACKAGE, test_apk)):
+        output = adb('installed_' + key + '_path', 'shell', 'pm', 'path', package).decode().splitlines()
+        matching = [x[len('package:'):] for x in output if x.startswith('package:') and x.endswith('/base.apk')]
+        if len(matching) != 1:
+            raise DiagnosticError('installed_artifact_path_count')
+        paths[key] = matching[0]
+        actual = hashlib.sha256(adb('installed_' + key + '_hash', 'exec-out', 'cat', matching[0])).hexdigest()
+        expected_hash = sha(expected)
+        result[key] = dict(expected_sha256=expected_hash, installed_sha256=actual,
+                           installed_match=actual == expected_hash)
+        if actual != expected_hash:
+            raise DiagnosticError('installed_artifact_mismatch')
+    pids = adb('product_pid', 'shell', 'pidof', PACKAGE).decode().split()
+    if len(pids) != 1 or not pids[0].isdigit():
+        raise DiagnosticError('product_pid_ambiguous')
+    pid = pids[0]
+    result['process'] = dict(pid=int(pid), stat='NOT_MEASURED', maps='NOT_MEASURED')
+    try:
+        stat = adb('product_process_start', 'shell', 'run-as', PACKAGE,
+                   'cat', '/proc/' + pid + '/stat').decode()
+        fields = stat[stat.rfind(')') + 2:].split()
+        result['process'].update(stat='MEASURED', start_ticks=int(fields[19]))
+        maps = adb('product_loaded_paths', 'shell', 'run-as', PACKAGE,
+                   'cat', '/proc/' + pid + '/maps').decode()
+        result['process'].update(maps='MEASURED', product_apk_mapped=paths['product'] in maps,
+                                 observer_apk_mapped=paths['observer'] in maps,
+                                 native_webrtc_mapped='libjingle_peerconnection_so.so' in maps)
+    except (DiagnosticError, ValueError, IndexError):
+        result['process']['loaded_identity_incomplete'] = True
+    return result
+
+
+def cleanup_safe(raw):
+    result = {}
+    for key in ('media_present',):
+        if type(raw.get(key)) is bool:
+            result[key] = raw[key]
+    for key in ('media_closing', 'active_recordings', 'audio_mode'):
+        if type(raw.get(key)) is int:
+            result[key] = raw[key]
+    if 'cleanup_observation_error' in raw:
+        result['cleanup_observation_error'] = 'internal'
+    return result
+
+
+def clean(value, idle_mode):
+    return (value.get('media_present') is False and value.get('media_closing') == 0
+            and value.get('active_recordings') == 0 and value.get('audio_mode') == idle_mode)
+
+
+def media_proven(android, host):
+    return (android.get('summary_available') is True and android.get('still_current') is True
+            and any(x.get('codec') == 'audio/opus' and x.get('dtls_state') == 'connected'
+                    and x.get('selected_local_candidate_type') == 'relay'
+                    and x.get('selected_remote_candidate_type') == 'relay'
+                    and x.get('total_samples_received', 0) > 0 and x.get('total_audio_energy', 0) > 0
+                    for x in android.get('inbound_audio', []))
+            and host.get('decoded_opus_frames', 0) > 0
+            and host.get('decoded_sample_frames', 0) > 0
+            and host.get('set_remote_answer_successes', 0) == 1)
+
+
+def save(result):
+    result['commands'] = COMMANDS
+    temporary = E / 'ordinary-comparison-result.next'
+    temporary.write_text(json.dumps(result, indent=2, allow_nan=False))
+    temporary.replace(E / 'ordinary-comparison-result.json')
+
+
+async def setup(peer):
+    await ui('Создать ID')
+    await wait_controller(lambda x: x.get('call', {}).get('auth_online_observed') is True)
+    android_public = await asyncio.to_thread(app, 'setup_public_contact')
+    if not isinstance(android_public.get('account'), str) or not android_public.get('contact'):
+        raise DiagnosticError('android_public_contact_unavailable')
+    # Runtime already created this fresh synthetic peer exactly once.
+    deadline = time.monotonic() + 30
+    while True:
+        host_public = await peer.command('view', {})
+        if host_public.get('connected') and host_public.get('active') and host_public.get('contact'):
+            break
+        if time.monotonic() >= deadline:
+            raise DiagnosticError('host_registration_bound')
+        await asyncio.sleep(.2)
+    contact = android_public['contact']
+    await peer.command('pair', {'contact': contact if isinstance(contact, str) else json.dumps(contact)})
+    contact = host_public['contact']
+    await asyncio.to_thread(app, 'clipboard', text=contact if isinstance(contact, str) else json.dumps(contact))
+    await ui('Добавить контакт')
+    await ui('Вставить контакт')
+    await asyncio.to_thread(focus_contact_input)
+    await asyncio.to_thread(adb, 'public_contact_paste', 'shell', 'input', 'keyevent', '279')
+    await ui('Продолжить')
+    await ui('Отпечаток совпадает')
+    # No contact or account is persisted in diagnostic evidence.
+    await asyncio.sleep(.5)
+    return android_public['account']
+
+
+async def arm_run(name, peer, android_account, result, record):
+    sampler = Sampler(capacity=512)
+    record['sampler'] = dict(timeline=sampler.timeline)
+    idle = await asyncio.to_thread(app)
+    record['idle_cleanup'] = cleanup_safe(idle)
+    idle_mode = idle.get('audio_mode')
+    if not clean(idle, idle_mode):
+        raise DiagnosticError('prearm_cleanup_incomplete')
+    record['observer_arm'] = await asyncio.to_thread(app, 'arm_terminal_observer')
+    if record['observer_arm'].get('armed') is not True:
+        raise DiagnosticError('terminal_observer_not_armed')
+    record['began'] = True
+    record['classification'] = 'OBSERVING'
+    save(result)
+    start = time.monotonic()
+    original_deadline = start + 45.0  # Conservative host original setup limit.
+    connected_at = None
+    answer_clicked = False
+    answer_task = None
+    poll_task = asyncio.create_task(peer.poll())
+    try:
+        await peer.command('start', {'account': android_account})
+        while True:
+            sample = await asyncio.to_thread(sampler.step, app)
+            record['sampler'].update(result=sampler.result,
+                    observation_incomplete=sampler.observation_incomplete,
+                    controller_error=sampler.controller_error, truncated_count=sampler.truncated_count)
+            record['host'] = peer.safe_snapshot()
+            save(result)
+            if sample:
+                budgets = sample.get('budgets', {})
+                if budgets.get('available') and 'setup_remaining_ms' in budgets and sample['call_state'] != 'connected':
+                    original_deadline = min(original_deadline, time.monotonic() + budgets['setup_remaining_ms'] / 1000)
+                if sample['call_state'] == 'ended':
+                    record['natural_terminal'] = dict(reason=sample['call_reason'], seconds=sample['seconds'])
+                    record['classification'] = ('OBSERVED_FAILED' if sample['call_reason'] in ('failed', 'timeout')
+                                                else 'OBSERVED_ENDED')
+                    break
+                if sample['call_state'] == 'incoming' and not answer_clicked:
+                    record['before_answer'] = {k: sample[k] for k in ('call_state', 'media_active',
+                                              'media_present', 'active_recordings') if k in sample}
+                    if sample.get('media_active') or sample.get('media_present') or sample.get('active_recordings') != 0:
+                        raise DiagnosticError('microphone_before_answer_observed')
+                    answer_clicked = True
+                    # Genuine UI Answer; permission granted only if its native prompt appears.
+                    async def answer():
+                        await ui('Ответить')
+                        await ui('com.android.permissioncontroller:id/permission_allow_foreground_only_button', optional=True)
+                    answer_task = asyncio.create_task(answer())
+                if sample['call_state'] == 'connected' and sample.get('media_active'):
+                    if connected_at is None:
+                        connected_at = time.monotonic()
+                    # Sampler retained controller first. Java additionally rejects stale or ended media.
+                    summary = await asyncio.to_thread(app, 'safe_media_summary')
+                    record['android_media'] = safe_media_summary(summary)
+                    record['host'] = peer.safe_snapshot()
+                    if time.monotonic() >= connected_at + 5:
+                        record['decoded_bidirectional_relay_media'] = media_proven(record['android_media'], record['host'])
+                        record['classification'] = 'NOT_REPRODUCED'
+                        record['normal_hangup_requested'] = True
+                        await peer.command('hangup', {})
+                        break
+            if answer_task is not None and answer_task.done():
+                await answer_task
+                answer_task = None
+            if poll_task.done():
+                await poll_task
+                raise DiagnosticError('host_poll_stopped')
+            if connected_at is None and time.monotonic() > original_deadline + 12:
+                sampler.censor()
+                record['classification'] = 'CENSORED'
+                break
+            await asyncio.sleep(.15)
+    finally:
+        if answer_task and not answer_task.done():
+            answer_task.cancel()
+            await asyncio.gather(answer_task, return_exceptions=True)
+        if record.get('classification') not in ('OBSERVED_FAILED', 'OBSERVED_ENDED', 'NOT_REPRODUCED'):
+            sampler.censor()
+        # This is ordinary user hangup/owned media close, never a fault profile.
+        try:
+            await peer.command('hangup', {})
+            record['cleanup_hangup_completed'] = True
+        except Exception:
+            record['cleanup_hangup_completed'] = False
+        deadline = time.monotonic() + 15
+        cleanup = []
+        while time.monotonic() < deadline:
+            try:
+                controller = await asyncio.to_thread(app)
+                item = cleanup_safe(controller)
+                item['call_state'] = controller.get('call', {}).get('state', 'unknown')
+                item['call_reason'] = controller.get('call', {}).get('reason', 'unknown')
+                if sampler.result != 'OBSERVED_ENDED' and not sampler._censored:
+                    sampler._controller(lambda: controller)  # Independent controller only, never media after terminal.
+                item['seconds'] = time.monotonic() - start
+                cleanup.append(item)
+                if clean(controller, idle_mode):
+                    record['android_cleanup_complete'] = True
+                    break
+            except Exception:
+                record['cleanup_observation_error'] = 'internal'
+                break
+            await asyncio.sleep(.25)
+        record['cleanup'] = cleanup
+        record.setdefault('android_cleanup_complete', False)
+        try:
+            record['terminal_events'] = await asyncio.to_thread(app, 'terminal_events')
+        except Exception:
+            record['terminal_observer_error'] = 'internal'
+        poll_task.cancel()
+        await asyncio.gather(poll_task, return_exceptions=True)
+        try:
+            await peer.close()
+        except Exception:
+            record['host_close_error'] = 'internal'
+        record['host'] = peer.finish_observer()
+        record['host_microphone_energy_limit'] = 'Actual host decoded PCM energy is measured; zero may be emulator microphone silence, not a synthetic tone claim.'
+        record['sampler'].update(result=sampler.result, observation_incomplete=sampler.observation_incomplete,
+                controller_error=sampler.controller_error, truncated_count=sampler.truncated_count)
+        record['coverage_limit'] = 'partial_no_sdk_precleanup_hook; source-time native causal chain not guaranteed'
+        save(result)
+
+
+async def main():
+    # External fixture runtime stays private; only its own Unix IPC path is used by Peer.
+    runtime = json.loads((E / 'fixture-corrected/runtime.json').read_text())
+    if not isinstance(runtime.get('rpc_socket'), str):
+        raise DiagnosticError('runtime_rpc_socket_missing')
+    aioice.ice.get_host_addresses = lambda use_ipv4, use_ipv6: ['127.0.0.1']
+    result = dict(scope='ONE_BASELINE_ONE_FIXED_ORDINARY_INCOMING', arms=[],
+                  outcome='NOT_RUN', call_connect01='OPEN',
+                  driver_sha256=sha(__file__), host_observer_sha256=sha(E / 'ordinary_host_peer.py'),
+                  android_observer_sha256=sha(R / 'clients/android/test/VoiceAppInstrumentation.java'),
+                  sampler_sha256=sha(R / 'clients/android/test/call_connect_sampler.py'))
+    test_apk = E / 'fixed-build/paranoid-voice-app-instrumentation.apk'
+    android_account = None
+    try:
+        await asyncio.to_thread(adb, 'install_same_test_observer_once', 'install', '-r', str(test_apk), timeout=60)
+        for name in ('baseline', 'fixed'):
+            apk = E / (name + '-build') / 'paranoid-0.0.10-voice-app-fixture-x86_64.apk'
+            record = dict(arm=name, began=False, classification='NOT_RUN')
+            record['engine_source_sha256'] = sha(apk.parent / 'source/clients/android/src/org/paranoid/text/WebRtcAudioEngine.java')
+            record['product_source_manifest_sha256'] = sha(apk.parent / 'product-source-sha256.json')
+            result['arms'].append(record)
+            await asyncio.to_thread(adb, 'install_' + name + '_product', 'install', '-r', str(apk), timeout=60)
+            instrument = subprocess.Popen([ADB, '-s', SERIAL, 'shell', 'am', 'instrument', '-w', COMPONENT],
+                                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            record['owned_instrument_command_pid'] = instrument.pid
+            COMMANDS.append(dict(action='start_fresh_instrument_instance', exit=None))
+            peer = ObservedPeer(runtime)
+            try:
+                ready_deadline = time.monotonic() + 30
+                while True:
+                    try:
+                        await asyncio.to_thread(app)
+                        break
+                    except Exception:
+                        if instrument.poll() is not None or time.monotonic() > ready_deadline:
+                            raise DiagnosticError('instrumentation_start_bound')
+                        await asyncio.sleep(.25)
+                await asyncio.to_thread(adb, 'open_owned_activity', 'shell', 'am', 'start', '-n',
+                                        PACKAGE + '/org.paranoid.text.MainActivity')
+                if android_account is None:
+                    android_account = await setup(peer)
+                else:
+                    await wait_controller(lambda x: x.get('call', {}).get('auth_online_observed') is True)
+                record['identity'] = await asyncio.to_thread(installed_identity, apk, test_apk)
+                peer.finish_observer()  # Setup had no media. Fresh observer lifetime for the actual arm.
+                peer = ObservedPeer(runtime)
+                await arm_run(name, peer, android_account, result, record)
+                record['identity_after'] = await asyncio.to_thread(installed_identity, apk, test_apk)
+                before_process = record['identity']['process']
+                after_process = record['identity_after']['process']
+                record['same_process_association'] = (before_process.get('stat') == 'MEASURED'
+                        and after_process.get('stat') == 'MEASURED'
+                        and before_process.get('pid') == after_process.get('pid')
+                        and before_process.get('start_ticks') == after_process.get('start_ticks'))
+            finally:
+                try:
+                    await asyncio.to_thread(app, 'finish')
+                except Exception:
+                    record['instrument_finish_error'] = 'internal'
+                try:
+                    record['instrument_exit'] = await asyncio.to_thread(instrument.wait, 15)
+                except subprocess.TimeoutExpired:
+                    record['instrument_exit'] = 'NOT_EXITED'
+                save(result)
+            if not record.get('android_cleanup_complete') or record.get('classification') == 'CENSORED':
+                raise DiagnosticError('arm_cleanup_or_observation_incomplete')
+        result['outcome'] = 'COMPARISON_OBSERVED'
+    except Exception as error:
+        result['outcome'] = 'BOUNDED_STOP'
+        result['error'] = error.code if isinstance(error, DiagnosticError) else 'internal'
+        if result['arms']:
+            record = result['arms'][-1]
+            if record['classification'] == 'OBSERVING':
+                record['classification'] = 'CENSORED'
+    finally:
+        save(result)
+    print(json.dumps(dict(outcome=result['outcome'], call_connect01='OPEN',
+                          arm_results=[dict(arm=x['arm'], classification=x['classification'], began=x['began'])
+                                       for x in result['arms']])))
+    return 0 if result['outcome'] == 'COMPARISON_OBSERVED' else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(asyncio.run(main()))

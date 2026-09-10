@@ -8,6 +8,13 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Incoming-call diagnostics — 2026-09-10
+
+- Added test-only controller-first sampling and bounded sanitized SDK/host
+  observations. One ordinary baseline failed naturally while its fixed companion
+  decoded relay audio; [evidence and remaining unknowns](docs/project/evidence/call-connect-ordinary-20260910/README.md)
+  keep CALL-CONNECT01 open. Production source and APK are unchanged.
+
 ### Voice relay client — 2026-09-10
 
 - Added strict, volatile relay credential retrieval before media creation, with

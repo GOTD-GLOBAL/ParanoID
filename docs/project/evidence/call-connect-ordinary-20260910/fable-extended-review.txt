@@ -1,0 +1,42 @@
+The root driver `run_ordinary_comparison.py` does not exist yet, so per the instruction I reviewed everything else and treat driver-side usage as an unverified contract. All bounded files read; no tests executed, no research beyond the exact set.
+
+## Verdict: APPROVE (test-only observer additions), with minor non-blocking defects and preserved unknowns below
+
+### Evidence checked
+
+- `safe-stats-javac.json`: exit 0 with the current `VoiceAppInstrumentation.java` compiled against the real product sources and webrtc/zxing jars; `product_before` == `product_after` hash-for-hash across all 28 product files. `safe-stats-javac.log` shows only obsolete `--release 8` and deprecation warnings.
+- `build-comparison.json`: both APK builds exit 0, the only product delta between arms is the intentionally copied old `WebRtcAudioEngine.java` publication engine in the baseline arm, `observer_source_equal` and `test_dex_equal` are true, and the non-packaged `.pyc` delta is explained and not an APK input. This matches the claim of a same-observer, engine-only two-arm comparison.
+
+### New instrumentation additions (`VoiceAppInstrumentation.java`)
+
+**`safeMediaSummary` / `projectSafeMedia` (lines 256–335)** — sound. Stats are queried only when the main-sync guard sees `state == "connected" && media_active` (line 298), and the result is re-validated afterward with a same-instance + same-generation + still-connected recheck; `summary_available` requires both `still_current` and no `observation_error` (lines 325–334). `projectSafeMedia` never serializes the report or stat IDs: it emits only enum-allowlisted codec/dtls/candidate-type strings via `statsEnum`/`safeEnum` and two validated scalars (`total_samples_received` with NaN/Inf/negative/non-integer/≥2^63 rejection, `total_audio_energy` with NaN/Inf/negative rejection), capped at 8 inbound-audio items with an explicit `truncated_count`. Every failure path (closed engine, dead owner, deadline, projection exception) collapses to a bounded `observation_error` enum via the `command()` catch (lines 612–615); no exception text or report contents can escape, and the read-only reflection cannot become a call failure.
+
+**`setupPublicContact` (lines 336–360)** — acceptable. The guard is strict: refuses unless not terminal-armed, never previously read, controller idle at generation 0, no media, and the worker-side read additionally requires `active`, exactly zero dialogs, and a present contact object — i.e., only a fresh synthetic in-memory account. The disclosed material (`account` + `contact` from `publicView()`) is a strict subset of what the previously approved `view` command already returned (line 215 embeds the full `publicView()`), so this introduces no new disclosure class; it only travels over the loopback IPC and persistence avoidance is a driver obligation (see unknowns). Single-shot via `setupContactRead`, which is race-free given the serialized single-threaded accept loop.
+
+**Controller cleanup / PC state additions** — `media_closing` surfaced in both `view()` (line 216) and `controllerView()` (line 598) as the raw product int; `peer_connection_state` added to `mediaSettings` (lines 410–411) using the same owner-thread lowercased-enum pattern as the existing ICE states. `controllerView` persists the controller/budgets snapshot before the optional platform cleanup observation so an `AudioManager` failure degrades to `cleanup_observation_error` without losing the call state.
+
+**Retained prior-approved surfaces** — the terminal observer still declares `causal_coverage: "partial_no_sdk_precleanup_hook"` in both `armTerminalObserver` and `terminalEvents` (lines 576, 584); the port-proxy delegation still unwraps `InvocationTargetException` to preserve original exceptions; `finish` still disarms and nulls retained `firstDescription` raw SDP (lines 690–691). No new writes to product fields exist beyond the previously approved listener/port interception — all additions are read-only reflection.
+
+### Sampler (`call_connect_sampler.py`) and tests
+
+`safe_media_summary` (lines 31–57) independently re-validates everything the Java side already bounds: enum allowlists per field, `number()` rejecting bools (Python `type(...) is int` excludes `bool`), energy requiring finite non-negative, an 8-item cap with truncation accounting even if the fixture misbehaves, and unknown keys dropped. `media_closing` sits in the numeric allowlist (line 104), consistent with the int product field. The controller sample is still appended before any media query (line 127 invariant), terminal `ended` survives observer failure, censoring never fabricates a terminal, and the post-failure follow-up read is a real observation rather than an inferred terminal. The test file covers all of these paths plus `PRIVATE_PAYLOAD` non-retention across every projection, including the new `safe_media_summary` allowlist/numeric/truncation tests (lines 172–196). The baseline AST-extraction comparator remains anonymous control flow only.
+
+### Host wrapper (`ordinary_host_peer.py`)
+
+Delegation is clean throughout: every override (`rpc`, `make_pc`, `command`, wrapped PC operations, `track.recv`) passes original arguments/results through and re-raises original exceptions unstringified, with all observation confined to the `_observe` fence, which counts failures and censors after the 90 s deadline without touching delegation. `_DiscardWrites` replaces the evidence sink so the original raw SDP/stat write sites go nowhere; frames are reduced to enum/numeric aggregates (frame count, samples, normalized energy/peak) with the PCM neither retained nor modified. The committed-answer event is honestly named `host_committed_answer_ipc_received` with `native_commit_source_time="NOT_MEASURED"` in the snapshot — the receipt-after-commit semantics the task requires. The `RLock` is correctly reentrant for `safe_snapshot`/`finish_observer` calling `_observe` while holding it, covering worker-thread `rpc` and event-loop callbacks. A second media instance censors observation rather than guessing (`host_extra_media_instance_unobserved`).
+
+### Minor defects (non-blocking)
+
+1. `call_connect_sampler.py:45` — a malformed (non-dict) inbound-audio item sets `observation_error = 'internal'`, which can overwrite a more specific category (e.g. `owner_deadline`) already copied from `raw` at line 38. Both are error signals, so evidence is not corrupted, but the more informative category can be lost.
+2. `setupPublicContact` does not size/type-validate the returned contact the way the `clipboard` command does (`paranoid-contact-v2`, ≤4096). Redundant given the fresh-state guard and existing `view` exposure, but a cheap hardening if revisited.
+3. `safeMediaSummary` collapses a failed initial main-sync guard into `summary_available: false`, indistinguishable from "not connected". Honest but slightly lossy; bounded, so acceptable.
+
+### Preserved unknowns
+
+- The root driver is absent, so the contract that `setup_public_contact` output stays in memory (never written to evidence) and that `safe_media_summary` is invoked once per arm within the original deadline is asserted, not verified.
+- `test_voice_app_peer.Peer` internals are outside the bounded set; `_DiscardWrites` compatibility with *all* of Peer's evidence-sink call sites (`/` and `write_text` only) is claimed by the docstring, not verified. A mismatch would fail loudly (host fixture crash), not silently corrupt evidence.
+- `publicView().contact` is assumed to be public pairing material only, consistent with its prior exposure through `view`; its exact composition is defined in `SelfServiceClient`, outside this bounded set.
+- The SDK-listener attachment gap (`attachment_gap_possible`, `partial_no_sdk_precleanup_hook`) remains an acknowledged coverage hole, unchanged from the prior approval.
+- Sampler tests were read, not executed; the instrumentation was compile-verified only, not run.
+
+No production seam is demanded, CALL-CONNECT01 is not closed by this review, and nothing here approves deploy, merge, or all-voice scope. This review does not touch the separately denied TURN security test task.

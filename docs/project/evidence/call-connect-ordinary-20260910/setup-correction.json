@@ -1,0 +1,9 @@
+{
+  "arms_begun": 0,
+  "setup_correction_count": 1,
+  "first_setup_result": "self_service_init_exit_1",
+  "raw_error": "generic_product_start_error_only",
+  "identified_fixture_defect": "socket must be private directory under a private paranoid-prefixed parent per development_database_allowed",
+  "correction": "nested socket directory; fresh fixture-corrected; preserve first data",
+  "runtime_source_sha256": "a8a17bbfd5fdf21fa004f4c98dfe3bf427f96e365931a9eb51f9abfc5ff067fc"
+}
