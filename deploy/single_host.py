@@ -1024,6 +1024,10 @@ def recover(state, value):
     previous = None
     if production and value.get('previous_transaction'):
         previous = decode_json(read_file(state / 'transactions' / value['previous_transaction'] / 'journal.json', private=True))
+        if previous.get('phase') == 'rolled-back':
+            # That predecessor's own rollback already removed its relay
+            # artifacts; there is nothing to quiesce or restart from it.
+            previous = None
     if previous is not None and value.get('prior_relay_stop_intent') and not value.get('relay_staged'):
         restart_previous_relay(state, previous)
         value['phase'] = 'rolled-back'
@@ -1094,17 +1098,19 @@ def apply(intent, kit_root, acceptance, expected_plan, updating=False):
     if not production:
         fixture_boundary(intent)
     state = coordinator_state(intent)
+    recheck = None
     if os.path.lexists(state / 'current.json'):
-        previous = state_record(state)
+        previous = recheck = state_record(state)
         if previous['phase'] == 'active' and previous['plan_sha256'] == expected_plan:
             result = status(state)
             result['phase'] = 'already-applied'
             return result
         if not updating and previous['phase'] == 'rolled-back':
-            # A completed rollback is a terminal recovered state: a fresh apply
-            # (new transaction, prior journal retained) is the legitimate next
-            # step. Interrupted/ambiguous phases still refuse below.
-            pass
+            # A completed rollback is a terminal recovered state: its relay and
+            # units were already stopped/removed by recover(), so it is not an
+            # active predecessor. A fresh apply opens a new transaction; the
+            # rolled-back journal stays retained under transactions/.
+            previous = None
         elif not updating or previous['phase'] != 'active':
             raise ValueError('existing transaction requires explicit update or rollback')
         else:
@@ -1120,7 +1126,7 @@ def apply(intent, kit_root, acceptance, expected_plan, updating=False):
         # A concurrent operator may have completed after our first read.
         if os.path.lexists(state / 'current.json'):
             now = state_record(state)
-            if previous is None or now != previous:
+            if recheck is None or now != recheck:
                 raise ValueError('coordinator state changed while acquiring lock')
         checked = preflight(intent, kit_root)
         make_private(state / 'transactions')
