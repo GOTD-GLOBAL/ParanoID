@@ -64,3 +64,40 @@ restored ingress require the expected active packaged executable hash; this is
 process identity evidence, not CLI/expiry/packet/media acceptance. These production
 paths have offline regressions only and remain behind the unavailable full-relay
 profile gate. Required final Fable review has not been obtained.
+
+## Measured systemd credential boundary — 2026-09-10
+
+[The runtime-copy contract](../protocol/voice-turn-v1.md#systemd-runtime-copy-compatibility-2026-09-10)
+separates source0400/0600 from systemd's measured root-owned named-UID ACL copy.
+Ordinary0440 group access remains rejected. Exact fd-based five-entry ACL checks
+require GROUP_OBJ/OTHER0 and sole named service-UID access, with fixed-size typed
+libc inspection and metadata rechecks. Both launcher operations pin the literal
+production paths; no arbitrary-path compatibility or secret fixup is introduced.
+The zero-mask service-owned0500/0400 fallback avoids an unnecessary ACL dependency.
+Root/mount administration and installed Python/libc remain trusted. Systemd layout
+changes fail closed; no unmeasured0750 alternative is accepted.
+
+[Offline tests](../../deploy/turn/test_systemd_credentials.py) cover real synthetic
+xattrs, bounded getter/ABI negatives, unsafe descriptors and paths, mixed layouts,
+format and metadata changes. Root ownership is simulated in those unprivileged
+fixtures; they are not actual root/systemd delivery or persistent-unit evidence.
+The separate actual metadata-only observation used a transient codex unit and
+read no credential content. Actual primitive matrix and exact production unit/UID
+confirmation remain needed. No relay/packet/CLI/expiry/full-rehearsal/current-call
+or deployment gate is closed by these results. Generic/source/installer/alpha/Rust
+credential guards remain unchanged and are rechecked at final review.
+
+## Disposable verification boundary — 2026-09-10
+
+The [source-bound VM capability observation](../project/evidence/voice-ready-20260910/vm-isolation-result.json)
+ran on the separate development host, with an unprivileged TCG QEMU process,
+no NIC, disk, host filesystem share, vsock, guest agent or control listener.
+QMP used inherited pipes. Official signed Ubuntu kernel/BusyBox inputs formed a
+RAM-only initramfs; complete tooling and library hashes were retained. Before
+cont, actual argv/fd/device inventory was checked; the guest then reported only
+loopback, no external routes and no production markers, and powered off cleanly.
+This proves the observed run only. QEMU, its resolved host libraries, signed input
+trust anchor and the owner-controlled runner remain trusted. It does not prove
+future test isolation or any relay/installer acceptance. Future fixture source
+and guest-only network changes require their own bounded independent review and
+fresh running isolation checks; no prior denied worker/resource may be rerouted.

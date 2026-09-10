@@ -249,3 +249,54 @@ before restoring owned ingress. Process identity alone is not transport readines
 or relay acceptance. No full-relay rehearsal profile is currently implemented,
 so the mandatory production gate remains structurally unsatisfiable in this
 candidate; message-only fixture results cannot authorize exposure.
+
+## Systemd runtime-copy compatibility 2026-09-10
+
+The source/master/installer and both issuer loaders retain the0400/0600 contract
+above. The dedicated relay runtime reader is now implemented separately, following
+[actual synthetic metadata measurement and Opus design review](../project/evidence/voice-ready-20260910/README.md).
+Offline descriptor tests pass; actual system/user primitive delivery and persistent
+production-unit acceptance remain separate pending gates at this checkpoint.
+
+Both launcher operations require literal `CREDENTIALS_DIRECTORY` equal to
+`/run/credentials/paranoid-turn.service`, literal `RUNTIME_DIRECTORY=/run/paranoid-turn`
+and nonzero effective UID. There is no runtime pathname or policy override for
+fixtures. Traverse `/`, `run`, `credentials`, and the fixed unit component using
+held directory descriptors, single components, `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`.
+Ancestors must be root-owned real directories without special bits or group/other
+write. The final directory/file pair must be exactly one of:
+
+- Root-owned0550 directory and root-owned0440 regular file with exactly five
+  version2 Linux access-ACL entries: USER_OBJ, USER=current service UID, GROUP_OBJ,
+  MASK, OTHER, in that order. Non-USER IDs equal0xffffffff. Directory permissions
+  are5/5/0/5/0; file permissions4/4/0/4/0. The owning numeric GID is unrestricted
+  because its ACL permission is zero. No other named grant or permission is allowed.
+- Service-euid-owned0500 directory and service-euid-owned0400 regular file. Group
+  mask and other bits are zero, so no effective non-owner access is possible;
+  this branch makes no ACL call. It is a retained safe fallback, not a newly
+  observed system-manager result.
+
+Mixed pairs, runtime0600, speculative0750 directories and mode-only0440 acceptance
+are refused. Select the pair by fd metadata before invoking any ACL syscall.
+For the ACL pair only, use already-loaded libc via `ctypes.CDLL(None,use_errno=True)`
+and one fixed44byte `fgetxattr` per descriptor with explicit integer/pointer/ssize_t
+ABI. Reject missing symbol, every error or other length; decode explicit
+little-endian version/entries and compare the complete ordered tuple. No library
+search, size-discovery loop, alternative parser or permission fixup.
+
+The file must have one link and size64. Open it relative to the held credential
+directory with `O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC`, then inspect ACL, read at
+most65bytes and require the unchanged64 lowercase ASCII hex format on that same
+fd. Recheck dev/inode/mode/uid/gid/nlink/size/ctime_ns of file and final directory
+after reading. Directory nlink/size are compared only against their own initial
+snapshot, never pinned to fixture constants. Unrelated global `/run` directory
+ctime changes are not a rejection condition. Root remains trusted, including
+mount replacement; nofollow does not prevent a malicious root mount substitution.
+
+The temporary-directory `runtime.py check` recipe is withdrawn. Offline tests
+use private descriptor primitives; production check/run have identical path and
+credential restrictions. No plan/preflight or builder caller used that recipe.
+A systemd layout change fails relay startup and requires a newly reviewed owned
+synthetic measurement plus TDD/code/artifact review, never chmod/chown/ACL removal
+or a second secret-copy path. Runtime changes require a new manifest and package;
+old artifacts do not acquire these semantics retroactively.

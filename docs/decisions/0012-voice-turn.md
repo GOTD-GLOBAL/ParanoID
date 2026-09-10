@@ -37,3 +37,12 @@ permanent human ADR acceptance. It supersedes the earlier absence of bounded
 public-listener authority after mandatory tests and fresh review; this ADR
 remains proposed. REQ-DEPLOY-003 adds one coordinated installer, with current
 TLS/data/identity and neighboring services preserved.
+
+## Subsequent reviewer identity clarification — 2026-09-10
+
+The [direct owner clarification](../operations/voice-single-host.md#owner-clarification-of-independent-reviewer-identity-2026-09-10)
+retains the completed original Fable architecture review and accepts subsequent
+fresh independent Opus review under its actual identity. All substantive security,
+TDD, threat analysis, final source/artifact and deployment gates remain mandatory.
+This is a bounded review-process clarification, not permanent ADR acceptance or
+permission to replace a failed/missing test with approval.

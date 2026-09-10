@@ -22,12 +22,30 @@ a later passing offline run does not retroactively validate that receipt.
 
 Production activation is explicitly refused: no full-relay rehearsal profile is
 implemented, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
-unrun. Two inert credential positive cases stopped; their delivered descriptor is
-still unmeasured, and no loader guard changed. Initial Fable design review was
-verified; a later requested Fable review and one capability probe returned actual
-Opus models, so the required diagnostic/final approval cannot be counted.
+unrun. The parent then executed the separately approved one-unit credential
+diagnostic exactly once: root0440 rejection at `credential_descriptor` was observed,
+with owned cleanup and unchanged scoped neighbors. The separately reviewed metadata measurement then observed exact root0550
+directory and root0440 file ACLs: five entries granting only the service UID,
+with owning-group/other permissions zero. Cleanup passed. After Opus5 design confirmation and its corrections, a dedicated
+reader now implements the measured pair and private0400 fallback. Twenty-two
+offline tests pass; generic/source/issuer guards remain unchanged. Fresh independent
+Opus5 code review found no blocking runtime issue. After its required fixture
+corrections, all six actual inert system/user-manager cases completed, including
+planned restarts, missing-source243 failures, malformed-value rejection and verified
+cleanup. User cases are informational; persistent production-unit/static-UID and
+relay acceptance remain pending. No relay or deployment gate has passed. Initial Fable architecture review is
+valid historical evidence. The owner explicitly accepts fresh independent Opus
+review recorded as Opus; model branding is no longer a gate. All substantive
+security findings, actual tests and final source/artifact review remain mandatory.
+[The continuation record](evidence/voice-ready-20260910/README.md) supersedes the
+prior unrun-diagnostic and named-reviewer-availability statements.
 [Durable evidence](evidence/voice-single-host-20260910/README.md) preserves the
 failures, exact model provenance, candidate artifacts and remaining next steps.
+A reviewed disposable RAM-only development VM has now booted and verified live
+no-NIC/no-disk isolation, loopback-only guest routes and clean poweroff. Official
+pinned tools were extracted without a host installation. This establishes an
+isolation capability only; exact full guest fixture/packet scripts still need
+implementation, review and actual execution.
 CALL-CONNECT01 stays OPEN. No hosted deployment, firewall change, relay listener,
 public release or PR merge occurred.
 

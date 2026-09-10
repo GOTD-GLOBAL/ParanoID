@@ -1,0 +1,148 @@
+{
+  "verifier_sha256": "a26a283d2c56ae612757011c8b9a894be83d85ae803109e72fd06f43d4ffe9bb",
+  "plan_sha256": "7c8c54b6d72749cdc81b9913cf164f5c108aac79e037200377760f3f8c0103f6",
+  "trust_anchor": "/usr/share/keyrings/ubuntu-archive-keyring.gpg",
+  "keyring_sha256": "80a36b0a6de2f69f49d2df75ef473ccde121e9e190b9ea01d20a4f63778d5c31",
+  "required_fingerprint": "F6ECB3762474EDA9D21B7022871920D1991BC93C",
+  "indexes": {
+    "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages": {
+      "release": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_InRelease",
+      "release_sha256": "90963a9fb4d5806e350e9c7b0502140d97158b95fd7db1773a9b4dfbba4918c1",
+      "member": "main/binary-amd64/Packages",
+      "sha256": "0437b8a83e2d2cc2129f2b197ee4d90267eaa1c1c89da8edd3faa4d7bda9d43b",
+      "bytes": 6802674,
+      "signature_status": "[GNUPG:] NEWSIG\n[GNUPG:] KEY_CONSIDERED F6ECB3762474EDA9D21B7022871920D1991BC93C 0\n[GNUPG:] SIG_ID Z3lk4Lu8FyQe873FU6S9298TTqg 2026-09-10 1789010291\n[GNUPG:] GOODSIG 871920D1991BC93C Ubuntu Archive Automatic Signing Key (2018) <ftpmaster@ubuntu.com>\n[GNUPG:] VALIDSIG F6ECB3762474EDA9D21B7022871920D1991BC93C 2026-09-10 1789010291 0 4 0 1 10 01 F6ECB3762474EDA9D21B7022871920D1991BC93C",
+      "validity": {
+        "date": "Thu, 10 Sep 2026  3:17:37 UTC",
+        "valid_until": null,
+        "checked_at": "2026-09-10T08:13:06.581163+00:00",
+        "expiry_policy": "enforced when publisher provides Valid-Until; absence recorded, never inferred"
+      }
+    },
+    "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages": {
+      "release": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_InRelease",
+      "release_sha256": "cdb2f31d809f589719a53c6ad15f255b27569c4059542ada282aaa21b8e164b0",
+      "member": "main/binary-amd64/Packages",
+      "sha256": "8f6f71ae839c8cba390a7643fcbbdacddb0bc7d12c1583a2dd80a1f8443a30e5",
+      "bytes": 7165069,
+      "signature_status": "[GNUPG:] NEWSIG\n[GNUPG:] KEY_CONSIDERED F6ECB3762474EDA9D21B7022871920D1991BC93C 0\n[GNUPG:] SIG_ID GVnDvebl2qOVy2n1fx2yPFLiSUA 2024-04-25 1714057881\n[GNUPG:] GOODSIG 871920D1991BC93C Ubuntu Archive Automatic Signing Key (2018) <ftpmaster@ubuntu.com>\n[GNUPG:] VALIDSIG F6ECB3762474EDA9D21B7022871920D1991BC93C 2024-04-25 1714057881 0 4 0 1 10 01 F6ECB3762474EDA9D21B7022871920D1991BC93C",
+      "validity": {
+        "date": "Thu, 25 Apr 2024 15:10:33 UTC",
+        "valid_until": null,
+        "checked_at": "2026-09-10T08:13:06.748922+00:00",
+        "expiry_policy": "enforced when publisher provides Valid-Until; absence recorded, never inferred"
+      }
+    }
+  },
+  "packages": {
+    "busybox-static": {
+      "version": "1:1.36.1-6ubuntu3.1",
+      "sha256": "944b2728f53ceb3916cec2c962873c9951e612408099601751db2a0a5d81e0ed",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "librdmacm1t64": {
+      "version": "50.0-2ubuntu0.2",
+      "sha256": "7b7cc2fa16564bf301751b43d05d16f0846288b080d9a25a92a691d0df33fc68",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libslirp0": {
+      "version": "4.7.0-1ubuntu3.1",
+      "sha256": "4efa2d1c509de4d10fe965e86a3d864bf542996caf476d9111fd882c73857164",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "linux-image-6.8.0-139-generic": {
+      "version": "6.8.0-139.139",
+      "sha256": "99d9e27b999f5c3d26377822212198b3ee664735f758c7cefdf8fd93f2ba138a",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "qemu-system-common": {
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "sha256": "0a0b744f31e87d72dd0465436b8dfbb1ef9f574ecd0d5a2e9dd8c5cb7d0fef1f",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "qemu-system-data": {
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "sha256": "a14b88d864859bd61c8a3274971da4ecb7da6cec15be6c265d0d411f783d5f2e",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "qemu-system-x86": {
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "sha256": "14602e262627adac030329d2cecfee5f6c0938b34566ff2ea2d4c9a9eb02430d",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "qemu-utils": {
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "sha256": "10695e57937d8a1d0ec6d017a6770d02353ec0c9500e4a36928230b2d39026c5",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble-updates_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "ipxe-qemu": {
+      "version": "1.21.1+git-20220113.fbbdc3926-0ubuntu2",
+      "sha256": "1f1612934b6ddaf4dd633760dfe5ef2a79ea2507341fd5efe394ff589a044707",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libbrlapi0.8": {
+      "version": "6.6-4ubuntu5",
+      "sha256": "82272b3090c912e45d92ff7ed200de289c47e504513559377a6f6c5a372cbcf5",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libcacard0": {
+      "version": "1:2.8.0-3build4",
+      "sha256": "7a75de14b0fdff2828a3d218a49e7fe4da2df533185ba9ccbabd0647db05e33c",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libdaxctl1": {
+      "version": "77-2ubuntu2",
+      "sha256": "c6629b49c79343fb11ae404aeaa3156f051168da6c6d3d9d8d516acd94705061",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libfdt1": {
+      "version": "1.7.0-2build1",
+      "sha256": "274d20dfab9d6b216b5de85446a93f6ce5b2cd82c847b8dfdc508577f76eb96a",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libndctl6": {
+      "version": "77-2ubuntu2",
+      "sha256": "4eab53588a8fa9e3192635e118c2d91bc069cde46a4a3785c77a0bb1ae001d02",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libpmem1": {
+      "version": "1.13.1-1.1ubuntu2",
+      "sha256": "8f1be1cc834a98f0cf5c0950153f7f939a0c2c92095e98cd7bb40c752c545c1b",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "liburing2": {
+      "version": "2.5-1build1",
+      "sha256": "c2aef62accee92a06263c3ad4ef46132c13e409b54296c44792a20491830a7b0",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "libusbredirparser1t64": {
+      "version": "0.13.0-2.1build1",
+      "sha256": "78be9176f05512bcac369fcada499686b1dd34320965d27e3405c7aacbc4e461",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    },
+    "seabios": {
+      "version": "1.16.3-2",
+      "sha256": "cac4e59a66c834d19cae751c22ab3a0391c22f78010fd11aa2e3fe630e6bc0e0",
+      "index": "/var/lib/apt/lists/archive.ubuntu.com_ubuntu_dists_noble_main_binary-amd64_Packages",
+      "stanza_verified": true
+    }
+  },
+  "result": "SIGNATURE_AND_PACKAGE_CHAIN_VERIFIED"
+}

@@ -57,15 +57,35 @@ coturn stdout/stderr/file/syslog outputs are suppressed; this package does not
 implement aggregate operational counters. `runtime.py check` validates files
 and credentials without starting a listener or writing the secret config.
 
-For an offline check with an exclusively owned temporary credential directory,
-set `CREDENTIALS_DIRECTORY` to that directory and `RUNTIME_DIRECTORY` to the
-literal `/run/paranoid-turn`, then run `python3 -I -B RELEASE/runtime.py check`.
-Check mode does not create or inspect `/run/paranoid-turn`; the literal selects
-the intended template destination. Use private synthetic test data, not a
-deployment secret. `systemd-analyze verify` checks a rendered system unit;
+Both `check` and `run` require the exact production systemd credential path
+`/run/credentials/paranoid-turn.service`, exact `RUNTIME_DIRECTORY=/run/paranoid-turn`
+and a nonzero effective UID. The former temporary-directory check recipe is
+withdrawn; no plan/preflight or package-builder caller depended on it. For offline
+synthetic descriptor checks, run `python3 -B deploy/turn/test_systemd_credentials.py`
+from the repository. These tests do not establish actual unit delivery.
+`systemd-analyze verify` checks a rendered system unit;
 `systemd-analyze --user verify` checks the controller's generated user unit.
 Neither command starts or installs a service. Syntax checks do not establish
 actual LoadCredential delivery, restart or isolation.
+
+The dedicated runtime reader supports the measured root-owned0550 directory and
+root-owned0440 file only with an exact five-entry Linux access ACL granting the
+current service UID read/execute on the directory and read on the file. Owning
+group and other permissions are zero; mode bits alone do not establish privacy.
+The ACL-free effective-permission fallback is service-owned0500/0400. Mixed
+layouts, runtime0600, unobserved0750 directories, unsafe ancestors and changed
+descriptor metadata fail closed. Source/master/issuer0400/0600 policy is unchanged.
+[The exact contract](../../docs/protocol/voice-turn-v1.md#systemd-runtime-copy-compatibility-2026-09-10)
+separates these two boundaries and their evidence.
+
+A future systemd update that changes this layout must leave the relay stopped.
+Do not chmod/chown/remove ACLs or copy the delivered credential to make startup
+succeed. Prepare a new reviewed synthetic metadata measurement recording source
+uid/mode/nlink/size, delivered file/directory fd metadata and bounded numeric ACL
+entries/errno, with no credential content or digest output. Use one fresh owned
+no-network unit, retain failure stages and verify cleanup; require renewed design,
+TDD and exact code/artifact review before adding any layout. The two completed
+2026-09-10 diagnostic/measurement runs must not be repeated as release checks.
 
 Later installation must create a root-owned private master and separate 0400
 relay/root and issuer/messaging-user sources with the same newly generated

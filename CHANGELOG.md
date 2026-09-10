@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Runtime credential compatibility candidate — 2026-09-10
+
+- Added a dedicated systemd credential-copy reader for the measured root0550/0440
+  named-service-UID ACL pair, with exact fd/path/ACL checks and the private0400
+  fallback. Generic/source/issuer0400/0600 policies remain unchanged. The former
+  temporary-path launcher check recipe is withdrawn. Offline TDD and all six
+  actual inert transient-unit cases pass. Persistent production-unit/static-UID
+  delivery, relay acceptance and deployment remain pending.
+  [Evidence and limits](docs/project/evidence/voice-ready-20260910/README.md).
+
 ### Single-host installer candidate — 2026-09-10
 
 - Added a coordinated offline messaging/private-PostgreSQL/TURN kit with

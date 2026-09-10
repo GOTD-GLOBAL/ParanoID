@@ -1,0 +1,50 @@
+{
+  "old": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/turn-policy-build/release/bin/turnserver",
+  "new": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/turn-credential-build/release/bin/turnserver",
+  "old_sha256": "8fee750c78ef8920fd890ac70ae9b3dac85bd94a1968a2415733ee2c12ecbdb2",
+  "new_sha256": "e13597df18552665aa445c86c2b2ec111b19ea62a56adc774b2d7a9271ea368c",
+  "different_sections": {
+    ".note.gnu.build-id": {
+      "old": {
+        "sha256": "8a6a91f94dec62f6a32bc482be8029fde84984c7ec2cd1185cd8a2263f43c613",
+        "size": 36
+      },
+      "new": {
+        "sha256": "356ef939193ac7edc7a82b5c2720e7399efec9aad7e1b48e06f36ff667e7d021",
+        "size": 36
+      }
+    },
+    ".debug_info": {
+      "old": {
+        "sha256": "bd7a5b2f713c09ee7be76e8a7942b958f437c3a076755f95f442b07192c1e617",
+        "size": 755931
+      },
+      "new": {
+        "sha256": "92304f493adf483f65dc847679cef72101b0cf8a9e6c875c338fef0e3b765b3b",
+        "size": 755931
+      }
+    },
+    ".debug_line": {
+      "old": {
+        "sha256": "6924e46b7396f0dcb3b626e5636473f0df06d317e6a9c12c3c94d262a7956b3f",
+        "size": 260897
+      },
+      "new": {
+        "sha256": "e466ad0f752bdd45ed49f5f06cd5f8447dd68af015d29caa3b66e2cbc4973f14",
+        "size": 260897
+      }
+    },
+    ".debug_line_str": {
+      "old": {
+        "sha256": "2acfd787bd9e6bc8a5bf9949597174eb9941e2a1a425fbe7ead837760b56704e",
+        "size": 3024
+      },
+      "new": {
+        "sha256": "19d1fbf0b310113abd057ea66d77f223a9d0378bcf3ca27db2dd459996a084be",
+        "size": 3018
+      }
+    }
+  },
+  "debug_line_str_equal_after_build_directory_normalization": true,
+  "claim": "Code/data section contents match; only listed debug sections and GNU build ID differ. No runtime acceptance is inherited."
+}

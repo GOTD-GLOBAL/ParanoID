@@ -1,0 +1,13 @@
+test_acquisition_and_boot_share_exact_tree_validation (__main__.VmTests.test_acquisition_and_boot_share_exact_tree_validation) ... ok
+test_all_network_pci_subclasses_and_nested_devices_are_rejected (__main__.VmTests.test_all_network_pci_subclasses_and_nested_devices_are_rejected) ... ok
+test_complete_synthetic_parser_fixture (__main__.VmTests.test_complete_synthetic_parser_fixture) ... ok
+test_initramfs_is_bounded_newc_with_only_owned_guest_inputs (__main__.VmTests.test_initramfs_is_bounded_newc_with_only_owned_guest_inputs) ... ok
+test_rejects_extra_interface_default_route_and_network_pci (__main__.VmTests.test_rejects_extra_interface_default_route_and_network_pci) ... ok
+test_rejects_missing_duplicate_or_wrong_nonce_observations (__main__.VmTests.test_rejects_missing_duplicate_or_wrong_nonce_observations) ... ok
+test_requires_explicit_ipv6_presence_or_absence (__main__.VmTests.test_requires_explicit_ipv6_presence_or_absence) ... ok
+test_tree_inventory_detects_changes_and_refuses_escape_or_writable_file (__main__.VmTests.test_tree_inventory_detects_changes_and_refuses_escape_or_writable_file) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.007s
+
+OK

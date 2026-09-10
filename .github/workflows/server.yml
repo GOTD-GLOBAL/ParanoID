@@ -31,6 +31,7 @@ jobs:
         run: |
           python3 deploy/turn/test_package.py
           python3 deploy/turn/test_runtime.py
+          python3 deploy/turn/test_systemd_credentials.py
           python3 deploy/test_turn_environment.py
       - name: Unified installer offline safety and ownership regressions
         # No service, firewall, packet, namespace or privileged credential test runs here.

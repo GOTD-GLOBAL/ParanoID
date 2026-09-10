@@ -1,0 +1,145 @@
+## Reviewer and method
+
+This review was produced by **Claude Opus 5 (`claude-opus-5`)** in a fresh context with **read-only tools only**. I am not Fable and claim no Fable identity; the owner instruction in `bounded-scope.md:4` accepts an actual independent Opus reviewer as Opus, and I treat reviewer branding as a non-gate.
+
+I read, in AGENTS order: `server/README.md`, `server/docs/README.md`, `server/docs/project/current-state.md`, `server/CONTRIBUTING.md`, `server/AGENTS.md`, `ADR-0003`, then `bounded-scope.md`, `measure_credentials.py`, `test_measure_credentials.py`, `metadata-offline.log`, `previous/credentials/diagnostic/runtime/result.json`, both prior reviews, `previous/credential-acl-design.md`, `server/deploy/turn/runtime.py`, `voice-single-host.md`, `voice-turn-threats.md`.
+
+I executed nothing: I did not recompute `source_sha256`, did not re-run the six offline tests (`metadata-offline.log` is accepted as a recorded artifact, not reproduced), and `alpha.py`/`voice_turn.rs` are **not in this tree**, so their guards can only be re-verified at final code review.
+
+**Stale-status correction accepted as stated by the user:** the original Fable architecture review was completed; the parent has run **exactly one** approved unchanged-guard diagnostic (`source0fba08ff…`), which observed root `0440`/`credential_descriptor` rejection with verified cleanup (`previous/credentials/diagnostic/runtime/result.json:23,66-98,480`). `current-state.md:21-30` and `voice-single-host.md:78,163-166` are stale on this and on reviewer availability. I do not ask for that diagnostic to be repeated.
+
+---
+
+## Verdict summary
+
+| | Verdict |
+|---|---|
+| **A** — one fresh synthetic no-network metadata measurement | **CONDITIONAL** — safety envelope is sound; the instrument cannot report the unknown it exists to measure. Fix A‑1…A‑5 before the single run. |
+| **B** — QEMU/Ubuntu acquisition + NIC-less disposable VM boot/isolation observation | **CONDITIONAL** — genuinely different from the rejected `media_discovery` work and legitimate; B‑1…B‑8 must land before acquisition or boot. |
+| **C** — remaining sequence | **Confirmed**, with two documentation discrepancies to correct. |
+
+Nothing here authorizes merge, ADR acceptance, deployment, relay exposure, packet tests, or any retry of the rejected worker. TURN-RT01, TURN-ACL02, effective CLI/5766 closure, credential delivery + relay lifecycle, coordinated rehearsal and CALL-CURRENT01 remain **NOT RUN**. CALL-CONNECT01 remains **OPEN**.
+
+---
+
+## Review A — `measure_credentials.py`: CONDITIONAL
+
+### What I verified as correct
+
+- **No credential content is read anywhere.** The helper opens the fd (`:39`), `fstat`s, calls `fgetxattr`, `fstat`s again (`:45-57`). There is no `os.read`/`pread`/`mmap`/`sendfile`/digest on the delivered credential, and no `chmod`/`chown`/`setxattr`/`acl_set` on it. The parent never opens `/run/credentials/**` at all. The generated secret value (`:129`) is never bound to a variable that reaches `report`.
+- **Ownership/root/sudo gating** (`:96`): `geteuid()==0`, `uid!=0`, `SUDO_UID==uid`. Correct.
+- **Evidence-path predicate** (`:98`) is component-based via `Path.parents`, so `/home/codex/paranoid-self-service-evidence-other/x` and the anchor directory itself are both rejected. Correct.
+- **fd/nofollow ancestor discipline in the helper** (`:26-35`) validates `/`, `/run`, `/run/credentials` for root ownership and `& 0o7022 == 0` (no setuid/setgid/sticky, no group/other write), opens each child by single component with `dir_fd=` + `O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC`, and opens the credential `O_RDONLY|O_NOFOLLOW|O_NONBLOCK|O_CLOEXEC`. This implements the prior review's correction #4 correctly.
+- **Explicit little-endian decode** (`:52`, `<I` / `<HHI`) — prior correction #2 satisfied. **Typed ctypes binding on already-loaded libc** (`:41-44`, `CDLL(None, use_errno=True)`, `argtypes=[c_int, c_char_p, c_void_p, c_size_t]`, `restype=c_ssize_t`) — prior correction #1 satisfied; no `find_library`, no ambient search.
+- **Post-read metadata recheck** (`:53-56`) over dev/ino/mode/uid/gid/nlink/size/ctime_ns. Correct.
+- **Confinement request is byte-identical to the approved diagnostic.** `PROPERTIES` (`:65-71`) matches the prior run's argv (`result.json:164-177`): `NoNewPrivileges=yes`, `RestrictAddressFamilies=AF_UNIX`, `SystemCallFilter=~@network-io`, `Restart=no`, `LimitCORE=0`, `TasksMax=4`, `MemoryMax=64M`, `RuntimeMaxSec=30`, `TimeoutStartSec=5`, `TimeoutStopSec=3`. `--uid/--gid` replace the equivalent `User=/Group=` properties.
+- **Bounded, single-start, exclusive cleanup.** One `systemd-run` call, no loop, no retry (`:136`). Fixture root is a 128-bit random name under `/var/tmp` created exclusively at `0700` with post-creation `lstat` verification (`:126-127`), and `rmtree` is guarded by a `(st_dev, st_ino)` identity comparison (`:154-156`). The `0711` chmod (`:130`) grants traverse only — no write bit for group/other — so the root-owned `0400` secret cannot be replaced by another local user. `systemctl stop` is issued only against the own random unit name (`:149`).
+- **No relay/packet/firewall/namespace/discovery action.** The only external commands are `systemd-run`, `systemctl show`, `systemctl stop`, and `sudo -n -u codex … systemctl --user show`. No `nft`/`ufw`/`ip`/coturn.
+- **No acceptance PASS is producible.** `parse_observation` (`:74-92`) allowlists exactly `{v,scope,euid,directory,file}` with a fixed scope literal, rejects duplicate keys via `object_pairs_hook`, bounds output to 2048 bytes/one newline, and uses `type(x) is not int` (correctly rejecting `bool`). `relay_acceptance` is pinned `NOT_RUN` (`:102`). Exit 0 means "observed + clean", nothing more.
+- **`-I -B`** (`:134`) isolates the interpreter from the codex-writable environment.
+- **Re-run guard exists incidentally**: `output.mkdir(mode=0o700)` (`:99`) is exclusive, so a second run against the same evidence directory fails closed.
+
+### Blocking issues — the instrument cannot measure its own stated unknown
+
+**A‑1. A non-44-byte or absent ACL destroys the entire observation, including the file.** (`:48-51`)
+
+```python
+n = getter(fd, b'system.posix_acl_access', buffer, 44)
+if n != 44:
+    raise ValueError()
+```
+
+`bounded-scope.md:12-13` states the remaining unknown is "file and credential-directory ACL shape, especially directory 0550 versus 0750", and the prior Opus review's sharpest finding was that the directory branch is probably mis-specified. This code hard-rejects any shape other than exactly five entries. Concretely:
+
+- If systemd took the **chown fallback** (no ACL on the copy — the ACL-free path the prior review said should remain *primary*), `fgetxattr` returns `-1/ENODATA` → `ValueError` → the run yields nothing. The stat block that would have shown `uid == euid, mode 0400` — i.e. "the existing `read_secret` already accepts this and no new reader is needed" — is discarded.
+- If the directory ACL has 4 or 6+ entries, same total loss.
+- Because `:58` builds the dict left-to-right (`'directory':snapshot(directory),'file':snapshot(credential)`), a **directory** surprise also destroys the **file** observation — the one shape the prior review considered self-consistent and on which the Gate 2 reader depends.
+
+"Reject unsupported shape and stop" is the correct rule for the **runtime reader** (Gate 2). Applying it to the **measuring instrument** is a category error, and under the no-repeat rule it burns the single authorized observation for zero information.
+
+Required change: keep the buffer fixed and bounded, but make shape a *recorded numeric outcome*. Use a fixed `68`-byte buffer (header + up to 8 entries), accept any `n` where `n >= 4 and (n-4) % 8 == 0 and n <= 68`, decode `(n-4)//8` entries, and emit `acl: {version, entry_count, entries}`. On `n < 0`, emit `acl: null` plus `acl_errno: <int>` and still return the full stat block. `parse_observation` (`:89`) must then accept `1 <= entry_count <= 8` and any bounded int `version` rather than hard-requiring `version==2` and `len(entries)==5`. Output stays purely numeric and bounded; nothing is widened at runtime.
+
+**A‑2. `use_errno=True` is set but `ctypes.get_errno()` is never called.** (`:41`) Distinguishing `ENODATA(61)` / `ENOTSUP(95)` / `ERANGE(34)` is exactly the difference between "chown fallback taken", "filesystem has no ACL support", and "larger ACL than expected". Record the errno as a bounded integer.
+
+**A‑3. The helper's failure envelope is computed and then thrown away.** The helper prints `{'v':1,'error':'METADATA_MEASUREMENT_FAILED','stage':stage}` and exits 1 (`:61-63`), but the parent only parses stdout when `returncode == 0` (`:137-142`) and stores only `error='unit_or_measurement_failed'`. With `--collect` the unit is garbage-collected, so no manager-side `Result=`/`ExecMainStatus=` survives either. A failed one-shot therefore yields **an exit code and nothing else** — and cannot be retried. This is a regression against a lesson already paid for: the earlier attempt "lost helper output" (`voice-single-host.md:151-153`), which is why the prior diagnostic added stage/descriptor reporting (`result.json:23-36`). Parse the failure envelope through a strict allowlist (`{v, error, stage}`, `error` a fixed literal, `stage` from a closed enum) and record it.
+
+**A‑4. `stage` granularity is too coarse to localize a failure.** (`:40-58`) All ancestor validation, both opens' metadata work, both ACL calls and both rechecks collapse into `stage='metadata'`. Split into `directory_stat`, `directory_acl`, `directory_recheck`, `file_stat`, `file_acl`, `file_recheck`. Cheap, and it is the difference between an interpretable and an uninterpretable one-shot.
+
+**A‑5. The synthetic source descriptor is never verified or recorded.** `create()` (`:121`) passes mode to `os.open`, which is masked by the **process umask** — never set explicitly anywhere in this script. Under a restrictive root umask, `helper.py` would land at `0400` and be unreadable by codex; the direction is always fail-closed, so this is not a privilege issue, but the delivered-copy observation is only interpretable relative to a known source shape (root-owned, `0400`, regular, `nlink 1`, 64 bytes). The prior diagnostic recorded exactly this (`result.json:17-22`); this script records nothing. Add `os.umask(0o022)` at entry, `fstat` the fd inside `create()`, and write the numeric source descriptor into the report before the unit starts.
+
+### Non-blocking findings, worth fixing in the same pass
+
+**A‑6. Root-to-codex TOCTOU on the evidence path.** (`:98-99`) `evidence.resolve()==evidence` plus `evidence.stat()` is a path-based check followed by a path-based `mkdir`/`chown` as root. A swap of a component between check and use would have root create and chown a directory elsewhere. The helper already demonstrates the right discipline; apply it here: open the evidence directory `O_DIRECTORY|O_NOFOLLOW`, `fstat`-validate ownership, then `os.mkdir('metadata-runtime', dir_fd=…)` and `os.chown(…, dir_fd=…)`.
+
+**A‑7. Evidence file is world-readable and the tmp path can wedge saving.** (`:106`) `tmp.open('x')` uses default `0666 & ~umask` → typically `0644`. Contents are numeric plus argv (no secret), but there is no reason for it to be world-readable. Worse: if an exception occurs between `open('x')` and `os.replace`, the stale `.result.tmp` makes **every subsequent `save()`** raise `FileExistsError`, including the one in `finally`. Use `os.open(..., O_WRONLY|O_CREAT|O_TRUNC, 0o600)` or unlink-first.
+
+**A‑8. The `finally` block can abort mid-cleanup and lose the most security-relevant outcome.** (`:146-159`)
+- `show()` raises `'manager read refused'` on an unexpected `systemctl` return (`:116`). Called at `:148`, `:150`, `:158`, a transient failure propagates out of `finally`, so `shutil.rmtree(root)` never runs and the fixture — including the synthetic secret — is left on disk with no record.
+- `:155` raises `'fixture root changed; refusing cleanup'` **inside** `finally`. Refusing the `rmtree` is right; aborting before `fixture_sources_removed`, `neighbors_after` and `save()` is backwards — tampering with the fixture root is precisely the outcome that must be persisted. Record `fixture_root_tampered: true`, `save()`, then surface it.
+
+Wrap each cleanup step individually so cleanup always attempts fixture removal and always writes the final report.
+
+**A‑9. Manager-side evidence is strictly weaker than the approved prior run.** `SHOW` (`:72`) is six properties; the prior diagnostic recorded 25, including `NoNewPrivileges`, `RestrictAddressFamilies`, `SystemCallFilter`, `User`, `Group`, `Result`, `ExecMainCode/Status` (`result.json:108`). Post-`--collect` readback returns defaults and is worthless (visible at `result.json:44-64`), and `--quiet` (`:131`) suppresses the invocation-ID line the prior run captured. Net effect: **"confinement unchanged" is supported only by the argv this script constructs, not by any manager readback.** That is acceptable — the helper never runs network code — but the artifact must say so. Add `"confinement_effectiveness": "NOT_PROVEN_REQUESTED_ONLY"` to `report` (`:102`) rather than leaving it only in `bounded-scope.md:28-29`; the JSON is what gets cited later. Add `InvocationID` to `SHOW` for a durable manager-side handle.
+
+**A‑10. Remove `StandardError=inherit` (`:70`).** `--pipe` (`:131`) already connects all three streams; a redundant explicit property adds avoidable startup-shape uncertainty, and under the no-retry rule any avoidable startup failure burns the one permitted run. Behaviourally the current code is safe either way — stderr is captured by `subprocess.run` and never written to the report (`:110`, `:140`), which is the correct redaction.
+
+**A‑11. Documented deviation, not a defect:** `report['commands']` and `planned_command` record the fixture credential **path** (`:132`), which `bounded-scope.md:27` nominally excludes. It is the synthetic `/var/tmp` fixture path, never a production credential path, and it is necessary provenance. Flag it explicitly in the scope string so the record is not challenged later.
+
+**A‑12. Test-suite gaps.** The six tests pass (`metadata-offline.log`) and the AST guard (`test_measure_credentials.py:25-28`) is a useful tripwire, but it checks attribute *names* only — it would not catch `os.pread`, `mmap`, `os.sendfile`, or a rebound name. The real assurance is human reading of the 50-line frozen `HELPER`, which I did. Missing: no test for absent/short/long ACL handling (because it aborts — add with A‑1), no test of the failure-envelope parse (add with A‑3), no test that `version != 2` is handled, and no extracted/unit-tested form of the `run()` guards or the ancestor predicate. Add these as RED cases before the run.
+
+### A verdict
+
+**CONDITIONAL.** The safety envelope is correct and I found no path by which this reads credential bytes, mutates a delivered credential, touches the relay/packets/firewall/namespaces, retries toward PASS, or produces an acceptance value. It is not blocked on safety. It is blocked on fitness for purpose: as written, the single authorized measurement returns nothing at all under precisely the outcomes the measurement exists to discriminate. Land A‑1…A‑5 (and preferably A‑6…A‑12), re-run the offline suite, re-pin the source hash, then run **once**.
+
+---
+
+## Review B — VM acquisition + NIC-less boot: CONDITIONAL
+
+**This is not the rejected work.** `media_discovery` was a media/packet-discovery worker rejected before execution (`voice-single-host.md:81-88`). B acquires signed official tooling and boots a disposable guest **with no NIC** to *observe* isolation. It performs no discovery, no scanning, no third-party target contact, no packet test. Approving the direction does not pre-approve the later defensive suite, and I explicitly do not reroute or re-attempt the rejected job. The scope's own rule — a concrete refusal stops that operation, with no alternate tool/provider and no guard change (`bounded-scope.md:69-71`) — is correct and I reaffirm it: a platform refusal here is a recorded capability failure, not license to weaken `measure_credentials` guards, re-run A, or revisit `media_discovery`.
+
+### Concrete changes required before acquisition or boot
+
+**B‑1 (sharpest). The VM is disposable; its host is not.** B as written puts a multi-GB image download, a package tree, and QEMU disk writes on `157.180.49.125` — the live host running nginx, the retained PostgreSQL cluster and the messaging alpha. `bounded-scope.md:50` says "No production host operations", but downloading and materializing several GB *is* an operation on that host, and filling the filesystem backing a retained production database is a real availability risk to data the project has repeatedly committed to preserving (`voice-single-host.md:31`). Required: (a) explicit owner authorization for **outbound HTTPS** to `archive.ubuntu.com`/`cloud-images.ubuntu.com` — the current authority record covers a bounded *inbound* port scope and a conditional install, not arbitrary egress; (b) a preflight free-space check with a stated margin and a hard total-byte budget; (c) confirmation that the evidence directory is not on the filesystem backing PG data, or an explicit quota; (d) cleanup-on-failure of partial downloads.
+
+**B‑2. Name the full signature chain, not "SHA256".** `bounded-scope.md:46-51` says "verified against locally signed apt index SHA256" and "verified release manifest/signature". A hash checked against an index fetched from the same place is circular. Required, recorded at every level: pinned Ubuntu archive key fingerprint (`F6ECB3762474EDA9D21B7022871920D1991BC93C`) and the cloud-image signing key, `gpgv --keyring <pinned>` over `InRelease`/`SHA256SUMS.gpg`, then `InRelease → Packages` hash, then `Packages → each .deb` hash, then `SHA256SUMS → .img` hash. Record all four levels plus the keyring's own hash. State plainly that the host keyring is the trust anchor.
+
+**B‑3. The extracted binary keeps every network backend; argv is the only control.** Ubuntu's `qemu-system-x86_64` is dynamically linked and links slirp. `-nic none` is a configuration choice, not a capability removal. Therefore: the shared-library closure is part of the TCB and every resolved library must be hashed and recorded (running from an extracted tree means `LD_LIBRARY_PATH`, which must point only inside the owned tree); and argv verification must read `/proc/<pid>/cmdline` of the **running** process (NUL-separated, exact), not the intended string. Add `/proc/<pid>/fd/*` enumeration asserting no `socket:[…]` descriptors and no `/dev/kvm`.
+
+**B‑4. Resolve the monitor contradiction.** `bounded-scope.md:57-61` demands a "QEMU device inventory" but permits only serial stdio and forbids a TCP control listener. `info qtree`/`info network` require a monitor. Either add an owned **AF_UNIX** QMP socket inside the evidence directory (`-qmp unix:<owned>,server,nowait` — a local socket, not a network NIC, consistent with the stated ban on TCP control), or drop the device-inventory claim to "argv + guest-side observation only". Left unresolved, this stalls at execution time.
+
+**B‑5. `-nodefaults` removes the serial device too.** Specify the full set explicitly: `-nodefaults -no-user-config -display none -serial stdio -monitor none` (plus B‑4's QMP), `-machine q35,accel=tcg -accel tcg` — never `kvm:tcg`, which silently uses KVM if permissions change. `-no-user-config` correctly suppresses `/etc/qemu/*.conf`, which can inject netdevs; additionally assert the extracted `qemu-bridge-helper` is not setuid and is never invoked.
+
+**B‑6. The device denylist is missing vsock.** `bounded-scope.md:55-56` bans netdev/tap/bridge/slirp/guest-agent/9p/USB passthrough but not **`-device vhost-vsock-pci`** — a host↔guest channel that "no NIC" does not cover. Add explicit prohibitions on vhost-vsock, `-fsdev`/`-virtfs`/virtiofsd, `usb-net`, and any `-chardev socket` pointing outside the owned directory.
+
+**B‑7. Disk and seed specifics.** Base image `0444` and never a writable backing target — use an explicit overlay (`qemu-img create -f qcow2 -b <base> -F qcow2`) or a copy; attach seed/package media `readonly=on`. The NoCloud seed must set `network: {config: disabled}` in meta-data and `datasource_list: [ NoCloud, None ]` via a `cloud.cfg.d` fragment, so cloud-init never probes `169.254.169.254`. No host SSH keys, no host `authorized_keys`. Guest assertions should be non-interactive `runcmd` output to `/dev/ttyS0` (`ip -o link`, `ip route`, `/sys/class/net/*`, `/sys/bus/pci/devices`), not interactive serial parsing. Add a hard wall-clock timeout — TCG boot of 24.04 at 2 vCPU/2 GiB is slow, and the process must be finite by construction, matching A's discipline.
+
+**B‑8. Structural warning: a NIC-less VM cannot host the tests this is ultimately for.** TURN-ACL02 and effective own-host port denial require actual packets. A guest with zero network devices proves isolation and nothing else. The eventual suite will need either two guests joined by an owned `-netdev socket` pair — which **is** a host TCP listener and contradicts the current no-TCP rule — or a single guest exercising loopback/dummy interfaces with guest-only nftables. Decide which now, so B is not built into a dead end. Both remain unapproved and require their own review of exact fixture and test source before execution, exactly as `bounded-scope.md:66-68` states.
+
+### B verdict
+
+**CONDITIONAL.** The isolation design is genuinely different, defensively motivated, and correctly bounded in intent. Approve acquisition + NIC-less boot + isolation observation **after** B‑1 (authority, budget and host-safety) and B‑2 (real signature chain) land, with B‑3…B‑8 specified in the design before any command runs. No packet test, no defensive suite, and no relay work is approved by this.
+
+---
+
+## C — Remaining sequence: confirmed
+
+1. **A's single amended measurement** (never a repeat of `source0fba08ff…`).
+2. **Exact measured directory contract**, written down, then a **brief bounded post-observation confirmation** — reaffirming the prior Opus requirement. It must now cover the file ACL, the directory ACL (`USER_OBJ` 5 vs 7), **and** the ACL-absent/chown-fallback outcome, which the amended instrument can finally report. Do not broaden a recognizer to accept two values speculatively.
+3. **Runtime-only strict TDD**, carrying every prior Opus correction: `CDLL(None, use_errno=True)`, explicit LE `struct`, exact id/perm equality (`USER` id `== euid != 0`; others `0xffffffff`), fd-only `O_NOFOLLOW` ancestors, post-inspection metadata recheck, and an explicit **RED** case proving the generic reader still rejects the root-`0440`+ACL file.
+4. **Unchanged guards.** I verified in this tree that `runtime.py:17-31` `read_secret` still requires `nlink==1`, `st_uid in (0, euid)`, mode `∈ {0o400, 0o600}` and the 64-hex predicate — unchanged. Source-master/source-copy/installer, alpha issuer and Rust issuer guards **cannot** be verified here: `alpha.py` and `voice_turn.rs` are absent from this tree. They must be re-verified byte-unchanged at final code review, as the prior review also flagged.
+5. **Fresh code/artifact review + manifest re-pin.** Changing `runtime.py` bytes invalidates the package manifest, the TURN kit hash and acceptance component hashes; the prior packaged-launcher check does not cover new bytes.
+6. **Then, and only then:** TURN-RT01, TURN-ACL02, effective CLI/5766 closure, actual credential delivery + relay lifecycle, the coordinated full-relay rehearsal in a disposable environment, and CALL-CURRENT01 with all three scenarios frozen before execution — all still **NOT RUN**.
+7. **Final independent review** before any live exposure.
+
+**CALL-CONNECT01 stays OPEN** and remains distinct from the approved finite CALL-CURRENT01 matrix (`voice-single-host.md:72,140-147`). No number of successful current-build calls closes the historical unknown.
+
+**Owner permission is explicit but conditional on tests.** `voice-single-host.md:25-32` grants the existing-host scope only "After mandatory actual tests and fresh independent Fable review pass". The unmet condition is the **tests**, not the reviewer.
+
+Two discrepancies to correct under `AGENTS.md:49-50`:
+
+- **`current-state.md:21-30` and `voice-single-host.md:78,163-166` are stale.** They record the delivered descriptor as unmeasured and treat model branding as the blocker. Update after A's run to record the observed `root 0440` / `credential_descriptor` rejection and verified cleanup, while keeping the INVALID_RECEIPT finding and the unmeasured native-hash difference (`voice-single-host.md:186-189`) visible. Do not let a later passing run retroactively validate the invalid receipt.
+- **Bind the gate to "fresh independent review", not a vendor model name.** `voice-single-host.md:59,78` conditions authority on a specific model brand; that is what produced the deadlock. Per the owner instruction, an actual independent fresh-context review satisfies it.
+
+One boundary the owner should acknowledge rather than have inferred: **ADR-0003** permits independent AI review to replace the *second human* only, and reserves independent qualified human review for "public release, production/security/privacy claims or expansion outside the approved private test scope" (`0003-closed-alpha-review-policy.md:25-32`). A publicly reachable TURN listener on TCP/UDP 34781 and UDP 40000–40015 is a new externally reachable surface on a live host. That should be an explicit owner decision, not something read into the existing exception.
+
+**This review authorizes no merge, no ADR acceptance, no deployment, no relay exposure, and no live action.** Raw process exit codes are not acceptance; the load-bearing outputs are the recorded observations and the named NOT RUN gates.

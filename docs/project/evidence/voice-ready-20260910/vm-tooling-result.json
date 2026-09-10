@@ -1,0 +1,456 @@
+{
+  "result": "TOOLS_VERIFIED_NO_VM_STARTED",
+  "packages": [
+    {
+      "package": "qemu-system-x86",
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "filename": "pool/main/q/qemu/qemu-system-x86_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "sha256": "14602e262627adac030329d2cecfee5f6c0938b34566ff2ea2d4c9a9eb02430d",
+      "size": 11222476,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu-system-x86_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libfdt1",
+      "version": "1.7.0-2build1",
+      "filename": "pool/main/d/device-tree-compiler/libfdt1_1.7.0-2build1_amd64.deb",
+      "sha256": "274d20dfab9d6b216b5de85446a93f6ce5b2cd82c847b8dfdc508577f76eb96a",
+      "size": 20128,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/d/device-tree-compiler/libfdt1_1.7.0-2build1_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "librdmacm1t64",
+      "version": "50.0-2ubuntu0.2",
+      "filename": "pool/main/r/rdma-core/librdmacm1t64_50.0-2ubuntu0.2_amd64.deb",
+      "sha256": "7b7cc2fa16564bf301751b43d05d16f0846288b080d9a25a92a691d0df33fc68",
+      "size": 70698,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/r/rdma-core/librdmacm1t64_50.0-2ubuntu0.2_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libbrlapi0.8",
+      "version": "6.6-4ubuntu5",
+      "filename": "pool/main/b/brltty/libbrlapi0.8_6.6-4ubuntu5_amd64.deb",
+      "sha256": "82272b3090c912e45d92ff7ed200de289c47e504513559377a6f6c5a372cbcf5",
+      "size": 31388,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/b/brltty/libbrlapi0.8_6.6-4ubuntu5_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libslirp0",
+      "version": "4.7.0-1ubuntu3.1",
+      "filename": "pool/main/libs/libslirp/libslirp0_4.7.0-1ubuntu3.1_amd64.deb",
+      "sha256": "4efa2d1c509de4d10fe965e86a3d864bf542996caf476d9111fd882c73857164",
+      "size": 63830,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/libs/libslirp/libslirp0_4.7.0-1ubuntu3.1_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-security",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-security",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "ipxe-qemu",
+      "version": "1.21.1+git-20220113.fbbdc3926-0ubuntu2",
+      "filename": "pool/main/i/ipxe/ipxe-qemu_1.21.1+git-20220113.fbbdc3926-0ubuntu2_all.deb",
+      "sha256": "1f1612934b6ddaf4dd633760dfe5ef2a79ea2507341fd5efe394ff589a044707",
+      "size": 1564600,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/i/ipxe/ipxe-qemu_1.21.1+git-20220113.fbbdc3926-0ubuntu2_all.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "qemu-utils",
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "filename": "pool/main/q/qemu/qemu-utils_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "sha256": "10695e57937d8a1d0ec6d017a6770d02353ec0c9500e4a36928230b2d39026c5",
+      "size": 2220842,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu-utils_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libusbredirparser1t64",
+      "version": "0.13.0-2.1build1",
+      "filename": "pool/main/u/usbredir/libusbredirparser1t64_0.13.0-2.1build1_amd64.deb",
+      "sha256": "78be9176f05512bcac369fcada499686b1dd34320965d27e3405c7aacbc4e461",
+      "size": 16508,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/u/usbredir/libusbredirparser1t64_0.13.0-2.1build1_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libdaxctl1",
+      "version": "77-2ubuntu2",
+      "filename": "pool/main/n/ndctl/libdaxctl1_77-2ubuntu2_amd64.deb",
+      "sha256": "c6629b49c79343fb11ae404aeaa3156f051168da6c6d3d9d8d516acd94705061",
+      "size": 21404,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/n/ndctl/libdaxctl1_77-2ubuntu2_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "liburing2",
+      "version": "2.5-1build1",
+      "filename": "pool/main/libu/liburing/liburing2_2.5-1build1_amd64.deb",
+      "sha256": "c2aef62accee92a06263c3ad4ef46132c13e409b54296c44792a20491830a7b0",
+      "size": 21092,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/libu/liburing/liburing2_2.5-1build1_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "seabios",
+      "version": "1.16.3-2",
+      "filename": "pool/main/s/seabios/seabios_1.16.3-2_all.deb",
+      "sha256": "cac4e59a66c834d19cae751c22ab3a0391c22f78010fd11aa2e3fe630e6bc0e0",
+      "size": 174648,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/s/seabios/seabios_1.16.3-2_all.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libcacard0",
+      "version": "1:2.8.0-3build4",
+      "filename": "pool/main/libc/libcacard/libcacard0_2.8.0-3build4_amd64.deb",
+      "sha256": "7a75de14b0fdff2828a3d218a49e7fe4da2df533185ba9ccbabd0647db05e33c",
+      "size": 36546,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/libc/libcacard/libcacard0_2.8.0-3build4_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "qemu-system-common",
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "filename": "pool/main/q/qemu/qemu-system-common_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "sha256": "0a0b744f31e87d72dd0465436b8dfbb1ef9f574ecd0d5a2e9dd8c5cb7d0fef1f",
+      "size": 1255316,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu-system-common_8.2.2+ds-0ubuntu1.18_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libndctl6",
+      "version": "77-2ubuntu2",
+      "filename": "pool/main/n/ndctl/libndctl6_77-2ubuntu2_amd64.deb",
+      "sha256": "4eab53588a8fa9e3192635e118c2d91bc069cde46a4a3785c77a0bb1ae001d02",
+      "size": 62750,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/n/ndctl/libndctl6_77-2ubuntu2_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "libpmem1",
+      "version": "1.13.1-1.1ubuntu2",
+      "filename": "pool/main/p/pmdk/libpmem1_1.13.1-1.1ubuntu2_amd64.deb",
+      "sha256": "8f1be1cc834a98f0cf5c0950153f7f939a0c2c92095e98cd7bb40c752c545c1b",
+      "size": 84760,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/p/pmdk/libpmem1_1.13.1-1.1ubuntu2_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "qemu-system-data",
+      "version": "1:8.2.2+ds-0ubuntu1.18",
+      "filename": "pool/main/q/qemu/qemu-system-data_8.2.2+ds-0ubuntu1.18_all.deb",
+      "sha256": "a14b88d864859bd61c8a3274971da4ecb7da6cec15be6c265d0d411f783d5f2e",
+      "size": 1796342,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/q/qemu/qemu-system-data_8.2.2+ds-0ubuntu1.18_all.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        },
+        {
+          "origin": "Ubuntu",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "linux-image-6.8.0-139-generic",
+      "version": "6.8.0-139.139",
+      "filename": "pool/main/l/linux-signed/linux-image-6.8.0-139-generic_6.8.0-139.139_amd64.deb",
+      "sha256": "99d9e27b999f5c3d26377822212198b3ee664735f758c7cefdf8fd93f2ba138a",
+      "size": 14820646,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/l/linux-signed/linux-image-6.8.0-139-generic_6.8.0-139.139_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "site": "archive.ubuntu.com",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    },
+    {
+      "package": "busybox-static",
+      "version": "1:1.36.1-6ubuntu3.1",
+      "filename": "pool/main/b/busybox/busybox-static_1.36.1-6ubuntu3.1_amd64.deb",
+      "sha256": "944b2728f53ceb3916cec2c962873c9951e612408099601751db2a0a5d81e0ed",
+      "size": 1008874,
+      "uri": "https://archive.ubuntu.com/ubuntu/pool/main/b/busybox/busybox-static_1.36.1-6ubuntu3.1_amd64.deb",
+      "origins": [
+        {
+          "origin": "Ubuntu",
+          "site": "archive.ubuntu.com",
+          "archive": "noble-updates",
+          "trusted": true
+        }
+      ]
+    }
+  ],
+  "host_install": false,
+  "source_sha256": "267bde389b8a29b8c0bc0f68bfd7b65c81277ae38ed08c38e170d477e15419ef",
+  "plan_sha256": "7c8c54b6d72749cdc81b9913cf164f5c108aac79e037200377760f3f8c0103f6",
+  "chain_sha256": "9964a896b39b9b69bbf3733cbd93c62a6242fd269eae2960dcd0051af234eab8",
+  "expanded_bytes": 111894365,
+  "omitted_absolute_symlinks": [],
+  "plan_origins_claim": "advisory only; actual trust is the verified signed stanza chain",
+  "host_tools": {
+    "/usr/bin/dpkg-deb": "fc9dde782ca8309b65ab92e61d13318bf463cd1aa71daa8967b87b81b48b63d2"
+  },
+  "qemu-system-x86_64": {
+    "sha256": "8a35ccba41582fc6c38b9df85fc9e35fa1d42f414d2d7d8090ee9b2f5e7c0854",
+    "version": "QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)\nCopyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers"
+  },
+  "qemu-img": {
+    "sha256": "634320b91165669917123e8e79cce1c4d00cee0a4aa4d662d7c0a8186479b3fb",
+    "version": "qemu-img version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)\nCopyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers"
+  },
+  "libraries": {
+    "/usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2": "cd4df4f3c7b83673d61189bf2eaebd33ca4f2853ab9772b8a25e025ef99b1e81",
+    "/usr/lib/x86_64-linux-gnu/libpixman-1.so.0.42.2": "73aa0daeedb7228754d798b194e2ff69c8b82a689b9aa4f1d8ab32a8763b0cc5",
+    "/usr/lib/x86_64-linux-gnu/libgnutls.so.30.37.1": "ddbae2995750875c07bc218d12a062d73f8250678f54dedda7e9be5068781c98",
+    "/usr/lib/x86_64-linux-gnu/libpng16.so.16.43.0": "eac265b3506df0d9110dd9143e1d0503e2daabafe1d98b23fac8ca17b71d1f6b",
+    "/usr/lib/x86_64-linux-gnu/libz.so.1.3": "86200da370f20476a2507e9097a789b5ef97269b4ca8d5e164ad82dab9d99892",
+    "/usr/lib/x86_64-linux-gnu/libjpeg.so.8.2.2": "ac09f2cd6f8a3b8e3cb123999ce275f9bcbe31c6cf9e20212c8f297772591d15",
+    "/usr/lib/x86_64-linux-gnu/libsasl2.so.2.0.25": "a0f410ad093236856eee59c4ff2838dc04d932ea0993400f23ed77d67d85af34",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/libfdt-1.7.0.so": "66c111808e61c7f6be6715b4b03d0fe75beb5bc5b3a8809608d58d99a6bc9828",
+    "/usr/lib/x86_64-linux-gnu/libudev.so.1.7.8": "4298228175fa62a36af88b1afd4406cdd8b1bf166621f957d0dbbde45a698fe5",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/libpmem.so.1.0.0": "52f14a3f2a80464be81a56ac7098ba1a457309cd353e05a319ce55a915def9c0",
+    "/usr/lib/x86_64-linux-gnu/libseccomp.so.2.5.5": "b4d9140a7797ccf3ac14f5d9d579b64f157111662940cb8330c632b11a8cea8e",
+    "/usr/lib/x86_64-linux-gnu/libnuma.so.1.0.0": "02d7582c5d391e460e56aa67a414360e3183b968206645b9123f9dc7bff5d009",
+    "/usr/lib/x86_64-linux-gnu/libgio-2.0.so.0.8000.0": "d8c4cf698e9b8790584cc5ede813a86ec4f041c0d58daa452b72431572685a87",
+    "/usr/lib/x86_64-linux-gnu/libgobject-2.0.so.0.8000.0": "99bf0727e0ca4faf12ab09b753b3d03294562c29c559b970c4dad435f9ec2bc6",
+    "/usr/lib/x86_64-linux-gnu/libglib-2.0.so.0.8000.0": "42467d0dbcc0a6c9e0a31f05a5944095504ce98f093c3fe0825f0a1533fa8207",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/librdmacm.so.1.3.50.0": "18609553ba84c9206739d0a6d62ae5371d4713058ed4b68c665e627d967df648",
+    "/usr/lib/x86_64-linux-gnu/libibverbs.so.1.14.50.0": "249242c3ba29d72b7a9be560b768bf43fc5924c8a166f4e3bbb224bd81ade3ab",
+    "/usr/lib/x86_64-linux-gnu/libzstd.so.1.5.5": "0a2128bc10841fb29e76d08d945864dfb0b6a66da5df6df5d8299197439e54bb",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/libslirp.so.0.4.0": "1f71a24af59f3aa76c1e0bcf7852de08c1c21c40524479b9d5df404d903b2280",
+    "/usr/lib/x86_64-linux-gnu/libbpf.so.1.3.0": "0e9998e17e38d78e5ce953f89a5e6a7c8b457d3e1bfe71e3ec5a1cfb05bbd1c3",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/liburing.so.2.5": "51594b92ac35f96595d3fcec9c3ec5d190637d9b426d5f8a8f4207875d2962f6",
+    "/usr/lib/x86_64-linux-gnu/libgmodule-2.0.so.0.8000.0": "f8445c01952fd3ff0bb4f17f73be821af3e4b9b61546ff517392e9baeb8f2126",
+    "/usr/lib/x86_64-linux-gnu/libm.so.6": "e9c4b28d340e415b8137480ec442662f981e1399386c5931dae0e886e3639e91",
+    "/usr/lib/x86_64-linux-gnu/libnettle.so.8.8": "a245ed916229583d6fe0b07657b3ed945bc148c28cc08b5266295f620d2b91cc",
+    "/usr/lib/x86_64-linux-gnu/libgmp.so.10.5.0": "0ccdfb6d6f5c039465f6d002cf7e4c072d48ac6a2cffc8dd6c748dec31592804",
+    "/usr/lib/x86_64-linux-gnu/libhogweed.so.6.8": "c3c606139d4f7776efa4dbd4a6b62e30c916b07a0cafd8c3ef173d6f093607e3",
+    "/usr/lib/x86_64-linux-gnu/libfuse3.so.3.14.0": "f1e75247f42d414df611ee554c8399bfe74565f89eed7c4501e2d97c48f21eab",
+    "/usr/lib/x86_64-linux-gnu/libaio.so.1t64.0.2": "9dbba7441fe096f6654bfd31bfdbba52f41a209bd4a560468293c226ff63c998",
+    "/usr/lib/x86_64-linux-gnu/libc.so.6": "8db37cf3f2169f59a0f07ef1fea308c35656668c64c8ff294e1860f4121eb161",
+    "/usr/lib/x86_64-linux-gnu/libp11-kit.so.0.3.1": "a59efd4792d3343dedea1d26a28f5597abfe3369082deb504c4802a31b014897",
+    "/usr/lib/x86_64-linux-gnu/libidn2.so.0.4.0": "6e632fd9a3125db60bbc623719bbc17b0470330321c5b1c57f1ff7190e5551ad",
+    "/usr/lib/x86_64-linux-gnu/libunistring.so.5.0.0": "7bcf825cd449892db5105ad2aed91dcf94a27b796426600c765720c584c54dd1",
+    "/usr/lib/x86_64-linux-gnu/libtasn1.so.6.6.3": "59994414d0cdec4f678ef91eaaafc44b26b00bca507e4cc7978caaf79f584173",
+    "/usr/lib/x86_64-linux-gnu/libcrypto.so.3": "6a66c3ba6b3749aacc9497973fff00f6ba61c703ba7015d0d7ab3fd9510974b6",
+    "/usr/lib/x86_64-linux-gnu/libcap.so.2.66": "6ac6abc86ac891c6e13486470e26f1d939f47fda9e6b5d5508a7f5ec881adc84",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/libndctl.so.6.1.21": "97859d906e55e67786f6c3d2f568553f8638d9c717880cf1295cc53e6b0d433c",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/lib/x86_64-linux-gnu/libdaxctl.so.1.2.5": "9b81e8d837bc49013099d5dc8b5263772d645dfcb205d9566e91e7d414839b59",
+    "/usr/lib/x86_64-linux-gnu/libmount.so.1.1.0": "7472255ae5799059b37ddd544788f5665dbd3e1cb78259f52180293039efc2a5",
+    "/usr/lib/x86_64-linux-gnu/libselinux.so.1": "0ec0843463f90e227b0e138e1f379774f50b5514bd7f5dbd4c8a87aca0aa6670",
+    "/usr/lib/x86_64-linux-gnu/libffi.so.8.1.4": "00f593fe192f2851b8ce23b25cec2488d769beb5a8f63e8c9e563071e1075153",
+    "/usr/lib/x86_64-linux-gnu/libpcre2-8.so.0.11.2": "e00576d71d81d3ba0cfa4903c835a44a8723aac96f72f79ff75200b4cff9071b",
+    "/usr/lib/x86_64-linux-gnu/libnl-3.so.200.26.0": "afcb69e2ef0b46c2ce7b7483848332fa9462776d33163f64209acf01f86eddd7",
+    "/usr/lib/x86_64-linux-gnu/libnl-route-3.so.200.26.0": "088b0021d638306f5541e7baab06a0182b07db0a280e19b3b40c746f729b3773",
+    "/usr/lib/x86_64-linux-gnu/libelf-0.190.so": "248c989360783cdc52f3659921de852c2efcc2097253ce58e34443f856412814",
+    "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0": "78d7f4d6f27b7dffc1c84dfe2f83e84aefa6f6ceeffc6ac4bc41f9fbc61cb84e",
+    "/usr/lib/x86_64-linux-gnu/libkmod.so.2.4.1": "6108903e15200313fd0bb71bb7e17d8fb8d01a01fa7f3dd1649d4f0c6187c8d3",
+    "/usr/lib/x86_64-linux-gnu/libblkid.so.1.1.0": "9c3860ffab5422410ff9e073d3e82267f00bc68ff1248cbb191640ee2ff045bc",
+    "/usr/lib/x86_64-linux-gnu/liblzma.so.5.4.5": "696e868dd0700a19a6d65fc01608ec2d70d3cb91f65710e89180cd2e688f30cb"
+  },
+  "boot_inputs": {
+    "boot/vmlinuz-6.8.0-139-generic": "0066409132868538bc0c9076f60131025775d5bbd8617df074d059f91b584918",
+    "usr/bin/busybox": "dbac288c29ba568459550a2da9e7ae0ded6b1fc728ee9fad3044c44e62d6ac14",
+    "usr/share/seabios/bios-256k.bin": "1a9ea4f17bcfb27bda5728e2c21d9fa074cf7947b9b4910bb28213a735c96735"
+  },
+  "busybox_applets": {
+    "required": [
+      "cat",
+      "id",
+      "ip",
+      "ls",
+      "mount",
+      "poweroff",
+      "sh",
+      "uname"
+    ],
+    "verified": true,
+    "list_sha256": "c1bd44f588e4c1e16512e5417c8b46c997947a4b6cff8bc4ee3f344d64dbc63c"
+  },
+  "whole_tree_manifest_sha256": "076588d4c03a283b2ebe1a85807d707f98c2e58ce92b187db0c759c8e2d803c5",
+  "whole_tree_record_scope": "473-member full tree retained in external original result; this canonical copy omits the inventory only"
+}

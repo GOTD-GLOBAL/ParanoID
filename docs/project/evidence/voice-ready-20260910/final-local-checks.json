@@ -1,0 +1,48 @@
+{
+  "scope": "credential change documentation/links/CI; no relay runtime claim",
+  "checks": [
+    {
+      "name": "markdown",
+      "exit_code": 0,
+      "argv": [
+        "node",
+        "/home/codex/.npm/_npx/8d2a7e72b070c959/node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs"
+      ],
+      "log_sha256": "e846621a7a1c7d3697194989c1aebeb5b8330413988f010e3ada974c88faf36d",
+      "output": "markdownlint-cli2 v0.20.0 (markdownlint v0.40.0)\nFinding: **/*.md !tmp/**\nLinting: 125 file(s)\nSummary: 0 error(s)\n"
+    },
+    {
+      "name": "local-links",
+      "exit_code": 0,
+      "argv": [
+        "python3",
+        "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-server-local-links.py"
+      ],
+      "log_sha256": "3b97efdf9141247422a420e812de543487ba4b48d19cd0961be7cc015583c40c",
+      "output": "{\n  \"local_links_checked\": 613,\n  \"external_links_not_checked\": 41,\n  \"errors\": []\n}\n"
+    },
+    {
+      "name": "ci-wiring",
+      "exit_code": 0,
+      "argv": [
+        "python3",
+        "scripts/test-ci-wiring.py"
+      ],
+      "log_sha256": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0",
+      "output": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "name": "whitespace",
+      "exit_code": 0,
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output": ""
+    }
+  ],
+  "private_provenance": "exact parent issue comment retrieved by authenticated GitHub API; only that new private URL excluded from unauthenticated lychee",
+  "prior_link_failure": "Four heading fragments failed initially; corrected two heading slugs, original result retained externally"
+}

@@ -1,0 +1,12 @@
+{
+  "acquire_vm_tools_v2.py": "267bde389b8a29b8c0bc0f68bfd7b65c81277ae38ed08c38e170d477e15419ef",
+  "boot_ram_vm.py": "0f89d07b567a2c8db3802a1109e6edbe72c7e65918ec5c08023b7159730efc06",
+  "test_ram_vm.py": "fa2d67007f7b36c58c2b2fe0bff0c351108b9de67781bedcca24b6de78c017c3",
+  "tooling-plan-v3.json": "7c8c54b6d72749cdc81b9913cf164f5c108aac79e037200377760f3f8c0103f6",
+  "apt-chain-v3.json": "9964a896b39b9b69bbf3733cbd93c62a6242fd269eae2960dcd0051af234eab8",
+  "verify_apt_chain_v3.py": "a26a283d2c56ae612757011c8b9a894be83d85ae803109e72fd06f43d4ffe9bb",
+  "ram-vm-scope.md": "48a911b84d98068748d14b7dd2e09d311f2b988f6237a180f439c5529a03b01a",
+  "ram-vm-review-closure.md": "33bee21dc7e3d8b2619409daddd8a68a487a6a5dd1217e28e2daa98d4e898ca8",
+  "ram-vm-final-offline.log": "81643e4c4ffddf131514a788463cd8cebb2707479b3e04940220ff154eaac490",
+  "boot_source_sha256": "0f89d07b567a2c8db3802a1109e6edbe72c7e65918ec5c08023b7159730efc06"
+}

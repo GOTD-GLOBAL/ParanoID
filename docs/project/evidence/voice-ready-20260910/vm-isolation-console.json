@@ -1,0 +1,7 @@
+{
+  "encoding": "UTF-8",
+  "raw_bytes": 926,
+  "raw_sha256": "f240fa2ae7bc0e72922e43ad6139430832ecd84777feeeb15767ecb92cd68cf1",
+  "raw_text": "VOICE_READY_BEGIN 52eeb5b18ce44a928ad992d9deb9b648\r\nuid=0\r\nkernel=6.8.0-139-generic\r\ninterfaces=lo\r\nROUTE4_BEGIN\r\nIface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT                                                       \r\nROUTE4_END\r\nROUTE6_BEGIN\r\nipv6_route=present\r\n00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\r\n00000000000000000000000000000001 80 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000002 00000000 80200001       lo\r\n00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo\r\nROUTE6_END\r\nPCI_BEGIN\r\n0x060000\r\n0x060100\r\n0x010601\r\n0x0c0500\r\nPCI_END\r\nproduction_markers=absent\r\nVOICE_READY_END 52eeb5b18ce44a928ad992d9deb9b648\r\n[    2.490207] reboot: Power down\r\n",
+  "note": "Lossless JSON envelope preserves original whitespace and CRLF. Detailed original remains in external evidence."
+}

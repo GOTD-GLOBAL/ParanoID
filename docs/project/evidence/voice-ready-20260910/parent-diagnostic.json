@@ -1,0 +1,25 @@
+{
+  "source_sha256": "0fba08ff1b37d6d24102a339a20c713fb4c271dbe5114810fadd076c6af7394c",
+  "retained_result_sha256": "ba5413664e6b1ee8882cd9ae1f6708e96c7dc7dc0a8a57cadd294f803458b59f",
+  "result": "DIAGNOSTIC_COMPLETE",
+  "case_result": "DIAGNOSTIC_FAILURE_OBSERVED",
+  "observation": {
+    "v": 1,
+    "category": "credential_validation_failed",
+    "stage": "credential_descriptor",
+    "descriptor": {
+      "uid": 0,
+      "mode": 288,
+      "nlink": 1,
+      "type": 32768
+    }
+  },
+  "acceptance": "NOT_RUN_DIAGNOSTIC_ONLY",
+  "own_cleanup": true,
+  "fixture_sources_removed": true,
+  "neighbors_unchanged": true,
+  "TURN_RT01": "NOT_RUN",
+  "TURN_ACL02": "NOT_RUN",
+  "record": "https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5614383522",
+  "rerun": "PROHIBITED"
+}

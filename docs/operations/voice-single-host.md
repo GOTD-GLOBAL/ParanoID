@@ -23,7 +23,7 @@ an original Telegram permalink, or permanent ADR acceptance. The current direct
 user instruction confirms this bounded operational authority.
 
 The selected placement is the existing `157.180.49.125` host. After mandatory
-actual tests and fresh independent Fable review pass, the authorized scope is
+actual tests and fresh independent AI review pass, the authorized scope is
 messaging on retained TLS TCP 38443; a dedicated TURN account and system unit on
 TCP/UDP 34781 and UDP 40000–40015; scoped network rules; and a reviewed same-data
 issuer update with rollback. Preserve DNS, TLS key/pin, identities, all retained
@@ -55,8 +55,8 @@ release/config/unit bytes and retained current data through failed updates and
 rollback. Lock, path, symlink, overwrite and interruption safety are mandatory.
 The [corrected design and independent review](../project/evidence/voice-single-host-20260910/README.md)
 define the coordinator. Actual message-phase tests pass; final lifecycle
-corrections and artifact freeze are recorded in the evidence. Required final
-Fable approval is unavailable through the requested model invocation.
+corrections and artifact freeze are recorded in the evidence. Final exact source/artifact review remains required; the owner now explicitly
+accepts an independent Opus review recorded under its actual identity.
 
 ## Acceptance and current result
 
@@ -75,7 +75,7 @@ Full tracked-file hashes and initial clean status are preserved outside Git in
 | Actual CLI closure, credential delivery and relay lifecycle | NOT RUN |
 | Unified coordinator and owned message-phase rehearsal | Earlier fresh/update/rollback/failure/idempotence execution PASS; later fresh-boundary acceptance INVALID_RECEIPT; full relay NOT RUN |
 | Fresh installer design | Fable conditional; A1–A5 corrected before implementation |
-| Final exact Fable code/artifact review | Unavailable via requested model path; actual Opus usage cannot count |
+| Final exact independent code/artifact review | Pending; actual reviewer identity must be recorded, including Opus |
 | Hosted installation and external registration/text/call | NOT ATTEMPTED |
 
 The prior rejection was `Agent errored: This content was flagged for possible
@@ -146,28 +146,41 @@ CALL-CONNECT01 remains an explicit historical unknown. No new diagnostic seam or
 Android version is justified before a failure requiring it. This matrix is NOT RUN
 until relay gates pass; another identical short A/B is not useful evidence.
 
-## Credential compatibility finding — investigation open
+## Credential compatibility — measured reader implemented, runtime acceptance pending
 
-Two bounded inert system-manager attempts stopped before acceptance: the first
-lost helper output and had a reproduced fixture permission bug; the corrected
-run preserved `credential_validation_failed`. The other five planned fixtures
-were not run in either attempt. Original source/results remain preserved; owned
-units/files were cleaned and scoped neighboring unit properties were unchanged.
-No confinement setting was changed and these were not TURN/network operations.
+Two earlier inert system-manager positive cases stopped and remain preserved.
+The parent subsequently executed the approved unchanged-guard diagnostic exactly
+once. The delivered synthetic descriptor was root-owned0440, regular, one link;
+`credential_descriptor` rejected it. Owned units/sources were removed and scoped
+neighbor properties were unchanged. The helper did not measure ACLs or prove
+effective in-process confinement. Do not repeat that completed diagnostic.
+[The source-bound record](../project/evidence/voice-ready-20260910/parent-diagnostic.json)
+and [retrieved issue comment](https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5614383522)
+replace the previous unmeasured-owner/mode hypothesis with observed evidence.
 
-[The source-supported compatibility finding](../project/evidence/voice-single-host-20260910/credential-compatibility-finding.md)
-identifies systemd255's root-owned named-user ACL representation, which can
-conflict with the current strict runtime ownership/mode checks. Failed-descriptor
-metadata is not yet measured, so this is not declared the observed runtime cause.
-Loader behavior changes are paused. The minimal unchanged-guard diagnostic has
-16 passing offline tests, but is NOT RUN: the requested fresh `claude-fable-5`
-review returned actual Opus model usage, and one no-tool capability probe confirmed
-the mismatch. This is a named-reviewer availability constraint, not a platform
-safety rejection or evidence that systemd is unavailable. The supplemental report
-and [exact credential handoff](../project/evidence/voice-single-host-20260910/credential-final-handoff.md)
-retain its findings; they do not supply the required Fable approval. Any ACL-aware
-runtime contract still needs observed metadata, design and final code review. Source credentials
-remain strict private0400/0600; no broad group-readable exception is authorized.
+The original architecture review actually used Fable. The later diagnostic/design
+review used actual Opus models; its approval of the diagnostic was valid under
+the owner's current identity clarification and the accepted independent-AI policy.
+Keep actual model provenance, not the requested label. That review's substantive
+conditions still require exact file/directory ACL measurement, the fd-only bounded
+recognizer corrections, TDD, and fresh final code/artifact review with manifest
+re-pin. No speculative0550/0750 directory alternative or blanket0440 acceptance.
+
+The separately reviewed one-unit synthetic metadata measurement completed:
+root-owned0550 directory with ACL permissions5/5/0/5/0, root-owned0440 file with
+permissions4/4/0/4/0; version2, five entries, named UID1003, all non-named IDs
+0xffffffff. File size64/nlink1 and post-inspection metadata stability were observed;
+owned cleanup and scoped neighbor readback passed. No credential content was read.
+[Actual metadata evidence](../project/evidence/voice-ready-20260910/metadata-result.json).
+Post-observation Opus5 confirmation and its five corrections now precede the
+implemented dedicated reader. Twenty-two offline descriptor tests pass, including
+actual synthetic xattrs with simulated root ownership. The actual inert matrix
+has since completed all six cases; persistent production-unit/UID confirmation
+remains pending. The repinned credential-only artifact received independent Opus5
+approval. Source/master/installer, alpha issuer and Rust issuer policies remain
+private0400/0600. The dedicated systemd-runtime reader pins production paths and
+distinguishes the exact named-service-UID ACL from ordinary group access. This primitive cannot close TURN-RT01,
+TURN-ACL02, real relay lifecycle, full coordinator or current-call acceptance.
 
 ## Current production refusal and reproducibility limits
 
@@ -195,3 +208,38 @@ preserved; a separately corrected offline invocation does not retroactively
 approve the run. Earlier message-phase receipts bind retained passing reports,
 but those plain logs do not prove exact offline-tested source identity. Final
 structured evidence must keep that uncertainty visible and reject failed reports.
+
+## Owner clarification of independent reviewer identity 2026-09-10
+
+The direct continuation instruction states: “Actual independent Opus review must
+be named honestly; original Fable architecture already done, do not turn
+modelbranding into an artificial inertdiagnostic blocker.” This supersedes earlier
+Fable-only wording for subsequent independent diagnostic/design/code reviews.
+It preserves fresh-context independence, all blocking findings, actual tests,
+threat analysis, final artifact review and bounded deployment authorization.
+No accepted ADR or review outcome is rewritten and no model/provider probes or
+guard changes are authorized. [Continuation evidence](../project/evidence/voice-ready-20260910/README.md).
+
+## Actual credential primitive delivery matrix — 2026-09-10
+
+[The source-bound matrix](../project/evidence/voice-ready-20260910/credential-matrix-result.json)
+completed all six owned synthetic cases once after independent Opus5 code review
+and its required fixture corrections. Both managers accepted valid values before
+and after the single planned restart; missing sources failed at243/CREDENTIALS;
+malformed64-byte values failed at the actual reader format check. The system
+runtime used measured root0550/0440 ACLs, the user manager used private0500/0400.
+Cleanup and scoped neighbor readback passed. User-manager results are informational,
+not a production entry-point claim. No specific network-denial syscall was tested.
+Persistent production unit/UID, full relay lifecycle/packet/CLI checks, coordinator,
+CALL-CURRENT01 and deployment are still pending. The old one-unit diagnostic and
+metadata observation were not repeated.
+
+The later credential-only rebuild948cec15b9f186a7ddbf has a measured comparison
+against9eff656b71da22a57e24: executable code/data sections match; only debug sections
+and GNU build ID differ, with debug-line strings equal after build-path
+normalization. This narrows the cause for this pair only, without claiming full
+bit reproducibility or explaining every earlier artifact pair. The new archive
+and source received [credential-only Opus5 artifact approval](../project/evidence/voice-ready-20260910/opus-credential-artifact-review.md.txt).
+The artifact is bound by member hashes (`source_dirty: true`); no previous runtime
+acceptance is transferred to it. The frozen external primitive matrix expires if
+its exact runtime source hash changes.

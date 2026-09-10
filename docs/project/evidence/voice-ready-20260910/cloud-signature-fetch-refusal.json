@@ -1,0 +1,14 @@
+{
+  "tool": "web.run",
+  "operation": "open",
+  "urls": [
+    "https://cloud-images.ubuntu.com/noble/20260826/SHA256SUMS",
+    "https://cloud-images.ubuntu.com/noble/20260826/SHA256SUMS.gpg"
+  ],
+  "result": "URL is not safe to open (non-retryable error)",
+  "classification": "tool refusal, underlying cause unknown",
+  "same_fetch_retry": "NOT_ATTEMPTED",
+  "alternate_tool_fetch": "NOT_ATTEMPTED",
+  "image_download": "NOT_ATTEMPTED",
+  "isolation": "NOT_ESTABLISHED"
+}

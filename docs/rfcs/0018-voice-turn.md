@@ -57,3 +57,12 @@ fixture has no relay/network activation path and cannot produce full production
 rehearsal acceptance. The separate inert systemd credential test proves only that
 primitive. Missing runtime expiry/ACL and actual coordinated relay tests remain
 mandatory.
+
+## Subsequent reviewer identity clarification — 2026-09-10
+
+The [direct owner clarification](../operations/voice-single-host.md#owner-clarification-of-independent-reviewer-identity-2026-09-10)
+retains the completed original Fable architecture review and accepts subsequent
+fresh independent Opus review under its actual identity. All substantive security,
+TDD, threat analysis, final source/artifact and deployment gates remain mandatory.
+This is a bounded review-process clarification, not permanent ADR acceptance or
+permission to replace a failed/missing test with approval.

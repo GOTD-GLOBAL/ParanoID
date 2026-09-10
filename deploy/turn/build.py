@@ -113,7 +113,8 @@ def main(inputs, output):
                   'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=HERE, text=True).strip(),
                   'source_dirty': bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=HERE)),
                   'acceptance': {'expiry_regression': 'NOT RUN', 'acl_packets': 'NOT RUN',
-                                 'new_network_tests': 'NOT RUN', 'live_deployment': 'NOT AUTHORIZED'}}
+                                 'new_network_tests': 'NOT RUN', 'live_deployment': 'NOT RUN'},
+                  'deployment_authority': 'existing host only, conditional on actual acceptance and final review'}
     manifest = package.write_manifest(release, provenance)
     package.verify(release)
     artifact = output / ('paranoid-turn-' + manifest['release'] + '-linux-x86_64.tar')
