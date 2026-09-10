@@ -1,0 +1,62 @@
+All evidence is read (six chunks plus manifest; one extra read used, one unused). The manifest confirms the change set is exactly the engine, the test instrumentation, and docs — no server or package source changed — and the before/after engine hashes match the RED and GREEN evidence. Here is my closure report.
+
+---
+
+# ParanoID relay SDP publication — fresh independent closure review (claude-fable-5, read-only)
+
+## Reviewed identities
+
+- **Server:** head `923e11b1f0a5ba8709002d21e282778123c2bfe5`, unchanged from the previous review; the CI audit's source validation confirms all 14 runtime inputs match the locally validated release binary `ade6c835…9099` on both exact heads.
+- **Client:** head `811e0840c88a72c7c4c6e42137796a9d137481ad` **plus one uncommitted product delta**: `WebRtcAudioEngine.java` now `41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8` (the RED-measured predecessor was `7124221552a4…`). Candidate source manifest `3e0be6f1bb5a…4405`. The manifest's change list contains only this engine file, the test-package `VoiceAppInstrumentation.java`, and documentation/evidence files — no other executable change.
+- **Signed APK:** `paranoid-0.0.10-voice-arm64.apk`, SHA256 `a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d`, 15 712 851 bytes, versionCode 10, retained signer cert `82b29cc0…5926`. The independent artifact audit (PASS, 44 product inputs) ties the APK to the frozen source including the new engine hash, confirms no instrumentation classes or fixture pins in the product dex, and confirms current product inputs still equal the build freeze.
+- TURN package `2c27f4fc…b25` is unchanged and outside this closure's changed set.
+
+## Verdict A — source/correctness closure: **VOICE-PUB-01 is CLOSED for this local candidate; CALL-CONNECT-01 remains OPEN**
+
+The implementation matches every constraint of the prior conditional approval, and I verified each in the actual source rather than taking the summaries on trust:
+
+- **Publication gate** (`WebRtcAudioEngine.java:267-293`): requires non-closed engine, live peer, `localSetSucceeded` (set only inside the `setLocalDescription` success callback, posted back to the worker owner, lines 325-333), a pending type matching the *current* SDK local description, and — relay-only — a usable component-1 UDP relay candidate with a literal non-zero IPv4 and valid port (`hasUsableRelayCandidate`, lines 296-318). The 6144-byte bound and the empty-`a=candidate` guard are retained. Direct mode still requires gathering COMPLETE (line 282), byte-compatible with prior behavior.
+- **Bounded coalescing:** exactly one 500 ms `postDelayed` on the worker handler, armed only after the first usable relay candidate while not COMPLETE (lines 275-281); `relayPublicationWindowElapsed` prevents any second window; COMPLETE publishes earlier and `removeCallbacks` cancels the timer at the latch (line 290). The timer runnable and the queued main callback are both closed-guarded, and `cleanup()` calls `removeCallbacksAndMessages(null)` (line 426), so close/fail/generation supersession fence the timer. All timer/latch state is confined to the worker thread.
+- **Immutability/idempotence:** `localPublished` latches once before the main-thread callback with the exactly captured type/string; later candidates and COMPLETE hit the latch and return. Only one `setLocalDescription` ever occurs, so fingerprint/ICE context cannot drift; offer and answer share the same observer and gate.
+- **Runtime RED→GREEN on the same oracle:** RED on old source `7124…` (two relay candidates at 0.1546 s, unpublished at 5.0924 s); GREEN twice on new source (publication effectively immediate after candidate, relay/relay selected, decoded audio, cleanup).
+- **Full-app both-role regression (PASS):** caller published once at COMPLETE; recipient exercised the *actual timer path* — scheduled at 2.296 s, published at 2.778 s (~482 ms, within the conservative 0.545 s sampling bound) while gathering was still in progress — with `count == 1` and fingerprint/ICE context equality maintained through later observed real COMPLETE on both roles. Cancel during an armed coalescing window produced zero publications from the cancelled engine and one from the replacement generation. Both roles carried decoded relay/relay Opus over DTLS-SRTP through the real issuer path, with mute/unmute, reverse audio during mute, two-way text, recipient no-capture, cleanup, and identity/contact/history preservation. The instrumentation observer proves attachment before publication and is a separate same-signer test APK absent from the product artifact.
+- **Readiness sub-fix:** the address-literal RED/GREEN (23 mandatory cases + 3 previously-accepted malformed addresses now rejected, unchanged oracle) closes the hostname/`999.1.1.1`/expanded-IPv6 acceptance found in the pre-fix compiled class.
+- **No downgrade:** absent a usable relay candidate the relay branch never publishes; the existing 45-second controller deadline ends the call. Direct-mode SDK regression (tone, mute silence, route restore, redial, close completions) passed on the exact new engine source.
+- **Parser compatibility** is demonstrated in-band: both-role calls authenticated the earlier snapshot through the unchanged native validator (`voice_v1.rs` hash unchanged).
+
+**CALL-CONNECT-01 stays OPEN.** No failing-before/passing-after evidence for the intermittent ~15 s incoming pre-answer failures exists, and no instrumented failing run established a cause. The new fast publications and the ~17 s connected caller in the regression are consistent with the fix helping, but the universal-STUN-cause inference was retracted and nothing in this bundle re-establishes a cause. I do not infer closure.
+
+## Verdict B — fully tested local candidate acceptance: **BLOCKED**
+
+VOICE-PUB-01 no longer blocks, but acceptance still fails on:
+
+1. **TURN-RT-01 (Blocker, NOT RUN):** retained-allocation elapsed-expiry RED/GREEN, async key-cache race, ChannelData/Send drain and scheduling margin, own-host destination-port ACL packet enforcement, effective `cli=0` port-5766 closure, and actual systemd credential delivery/relay lifecycle — all still NOT RUN per the manifest, after the prior platform interruption. Not retried, per instruction; normal relay media and compilation do not substitute.
+2. **CALL-CONNECT-01 (Blocker):** open as above.
+3. **PUB-COMMIT-01 (Medium, new process finding):** the accepted engine exists only as an uncommitted delta on head `811e0840` (`source_dirty: true` at build). The exact-head CI correspondence therefore does not cover the shipped engine byte-for-byte at a committed head. Minimum fix: commit the engine (and test/doc) delta, refresh CI/head correspondence, and re-freeze; the existing independent audit already ties APK↔dirty-source, so no rebuild is strictly required if the commit reproduces the same hashes.
+4. **Governance:** ADR-0012 remains PROPOSED. Recorded as status only; this review neither accepts it (no AI review can) nor invents new permission requirements for the already-authorized local implementation.
+
+## Verdict C — deployment readiness/authorization: **BLOCKED — not ready, not authorized**
+
+Unchanged from the prior review: TURN-ACL-02 (coturn cannot express the own-host destination-port boundary; UID-scoped egress rules plus isolated packet tests are still absent), all of TURN-RT-01, and the absence of owner authorization. No public network, firewall, DNS, server, or phone action was taken or is endorsed here.
+
+## Remaining findings
+
+| ID | Severity | Location | Trigger | Minimum fix / closure evidence |
+|---|---|---|---|---|
+| TURN-RT-01 | Blocker | coturn package/runtime | Any live relay operation | Run the six specified negative/lifecycle tests (RED/GREEN where specified) |
+| CALL-CONNECT-01 | Blocker | incoming pre-answer path | Intermittent, unreproduced | Instrumented failing run, or failing-before/passing-after incoming evidence with justified cause |
+| TURN-ACL-02 | Medium (deploy) | `deploy/turn/turnserver.conf.in:42` | Authenticated client relays UDP to own-host services | Prepared UID-scoped egress rules + isolated allow/deny packet tests before exposure |
+| PUB-COMMIT-01 | Medium (process) | client head `811e0840` + dirty engine | Acceptance at an exact committed head | Commit delta, refresh CI/artifact correspondence |
+| PUB-RED-CAPTURE-01 | Low | `readiness-reflection-red.json` | `pre_fix_source_sha256: null` — RED taken from retained compiled class after source was fixed | Note only; retained compiled class `a1d64050…` keeps the RED credible |
+| PUB-DRIVER-01 | Low | regression attempt 1 (`missing_fast_ui_action`) | First run failed on a driver UI-timing assertion before any check; passing run used a revised driver (`50b9aa74…` → `13fbe373…`), identical product source | Note only; failure honestly retained, no product change between attempts |
+| PUB-RACE-01 | Info | `WebRtcAudioEngine.java:126-128, 289-292` | Close between worker latch and main callback | Source-guarded by the closed check in `publish()`; confirmed by independent source review, not separately runtime-raced |
+
+Also informational: `relayPublicationScheduled` is never reset after publication (visible as `true` in recipient telemetry); harmless in a single-use engine. `isRelayAddress` rejects leading-zero octets, which is conservative and safe given libwebrtc emits canonical addresses.
+
+## Evidence read vs. claims not established
+
+**Read (hashes as declared in-bundle):** prior Fable report `5a868c4c…`; full new `WebRtcAudioEngine.java`; `VoiceAppInstrumentation.java` diff; CHANGELOG/current-state/voice-calls/voice-v1/voice-turn-v1/RFC-0017/threat-model diffs; compiled readiness source review; readiness RED JSON and full oracle source; publication RED and both GREENs; failed regression attempt 1; passing full regression + timeline; design constraints; independent artifact audit + build metadata; exact-engine direct fixture build + sanitized result; exact-committed-head CI audit (85 server tests, exact legacy-14 set on both heads); network-fault note; manifest.
+
+**Not established (absent, not inferred):** any TURN-RT-01 item; cause or fix of the ~15 s incoming failures; physical acoustics/Bluetooth/Doze/handover; public reachability; committed-head coverage of the new engine; ADR acceptance; any deployment authorization. Successful test-driver execution is not candidate acceptance, and none is claimed.
+
+**Summary: A — VOICE-PUB-01 closed on this exact source/APK with complete RED→GREEN, timer-path, no-republish, cancellation, symmetry, direct-regression and artifact-correspondence evidence; CALL-CONNECT-01 open. B — acceptance BLOCKED (TURN-RT-01, CALL-CONNECT-01, uncommitted delta, ADR-0012 proposed). C — deployment BLOCKED and unauthorized (TURN-ACL-02, TURN-RT-01, no owner authorization).**

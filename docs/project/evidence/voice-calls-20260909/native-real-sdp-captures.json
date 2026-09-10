@@ -1,0 +1,67 @@
+{
+  "result": "PASS",
+  "jni_sha256": "d740c48ff02501dc439edc4a409fadbd3d0de2d7814125357c2b8af1fc51c221",
+  "captures": [
+    {
+      "directory": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/media-direct-8",
+      "kind": "offer",
+      "bytes": 1166,
+      "sha256": "fea499e0e33c6bdb2f4daf0a974cde2eb1f6f9a7510e698f8e0e4d2944cd41b2",
+      "candidate_count": 2,
+      "result": "PASS",
+      "binding_substitutions_rejected": [
+        "fingerprint",
+        "ice_ufrag",
+        "ice_pwd",
+        "offer_digest"
+      ]
+    },
+    {
+      "directory": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/media-direct-8",
+      "kind": "answer",
+      "bytes": 783,
+      "sha256": "c636efd48da293203d7319bed304137e47c48a9c56fd4365f7404e053f8fb2b9",
+      "candidate_count": 1,
+      "result": "PASS",
+      "binding_substitutions_rejected": [
+        "fingerprint",
+        "ice_ufrag",
+        "ice_pwd"
+      ]
+    },
+    {
+      "directory": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/media-relay-1",
+      "kind": "offer",
+      "bytes": 1064,
+      "sha256": "6eb9b7a6c32dad2c5c773971e9fd4f642f728f8a0f07f7c28878c66a87ecc030",
+      "candidate_count": 1,
+      "result": "PASS",
+      "binding_substitutions_rejected": [
+        "fingerprint",
+        "ice_ufrag",
+        "ice_pwd",
+        "offer_digest"
+      ]
+    },
+    {
+      "directory": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/media-relay-1",
+      "kind": "answer",
+      "bytes": 786,
+      "sha256": "1d3f3a1a0b91f110bf08e8f4bd0bf24817398bd1ef86e0e4c71315bda09626ac",
+      "candidate_count": 1,
+      "result": "PASS",
+      "binding_substitutions_rejected": [
+        "fingerprint",
+        "ice_ufrag",
+        "ice_pwd"
+      ]
+    }
+  ],
+  "checks": [
+    "Exact M150 offer and aiortc answer bytes accepted by native outgoing parser",
+    "Real Olm/frame2 recipient accepted exact same SDP as authenticated transient event",
+    "Fingerprint, ICE credentials and offer digest substitutions rejected",
+    "No text/history, delivery receipt, or durable text Event rows created"
+  ],
+  "network": "NOT RUN; captured successful media SDP only"
+}

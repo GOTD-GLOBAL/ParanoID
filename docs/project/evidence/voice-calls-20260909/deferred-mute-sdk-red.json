@@ -1,0 +1,18 @@
+{
+  "result": "EXPECTED RED",
+  "boundary": "Actual current WebRTC SDK AudioTrack properties observed on media owner after deferred TextEngine creation; no RTP frame-count inference",
+  "controller_muted": true,
+  "sdk": {
+    "media_present": true,
+    "engine_muted": false,
+    "engine_speaker": false,
+    "track_present": true,
+    "track_enabled": true,
+    "engine_closed": false,
+    "observed_on_media_owner": true,
+    "still_current": true
+  },
+  "raw_result_sha256": "f66857c0a540f942b8278505515a9650b5193af8413a34e2f513aee53ccf931f",
+  "green": "PENDING fixed-build same-oracle run",
+  "invalid_prior_probe": "Preliminary decoded-frame count after mute did not measure mute energy or SDK track enablement; not accepted as RED/GREEN evidence"
+}

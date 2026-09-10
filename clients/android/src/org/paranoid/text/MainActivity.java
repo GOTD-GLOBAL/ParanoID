@@ -44,8 +44,29 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private EditText draft;
     private Button create,send,share,copy,navChats,navContacts,navIdentity,background;
     private ImageButton leading,trailing;
+    private ImageButton menuAction;
+    private ImageButton callAction;
+    private android.app.Dialog callDialog;
+    private TextView callName,callStatus,callTrust,callPrivacy;
+    private static final String VOICE_PRIVACY="Звук защищён сквозным шифрованием. При соединении через ретранслятор оператор ретранслятора видит ваш IP-адрес, время и объём трафика. Если сервер не поддерживает ретрансляцию, используется прямое соединение: собеседник может видеть ваш IP-адрес. В некоторых сетях прямое соединение недоступно.";
+    private Button callAnswer,callEnd,callMute,callSpeaker;
+    private String displayedCall="",permissionAccount="",permissionCall="";
+    private boolean resumed,permissionAnswer,pendingCallIntent;
+    private boolean waitingForMicrophone;
+    private boolean lockScreenShown;
+    private long callIntentGeneration,callIntentDeadline;
+    private Runnable callIntentRetry;
+    private static final int MICROPHONE_PERMISSION=95,BLUETOOTH_PERMISSION=96;
+    private final TextEngine.CallListener callListener=this::renderCall;
     private String page="dialogs",selectedAccount="",displayedQr="",lastStatus="Открываем сохранённые данные…",renderedHistory="",renderedDialogs="";
     private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false;
+    private boolean backgroundPromptShowing;
+    private TextView backgroundHint;
+    private TextView updateHint,updateHeading;
+    private UpdateController updateController;
+    private static boolean updateAutoChecked;
+    private static final String UI_PREFS="paranoid-ui",BACKGROUND_PROMPT_KEY="background_prompt_v1",
+        UPDATE_CHECK_AT_KEY="update_autocheck_at_v1",BLUETOOTH_PROMPT_KEY="bluetooth_prompt_v1";
     private JSONObject latest=new JSONObject();
     private MessagePresentation.Drafts drafts=new MessagePresentation.Drafts();
     private Palette colors;
@@ -78,6 +99,18 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         pages=new FrameLayout(this);root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
         buildWelcome();buildDialogs();buildContacts();buildIdentity();buildChat();restoreDraft();buildNavigation();
         show(page);
+        updateLockScreen(engine.calls().snapshot().optString("state"));
+    }
+    @Override protected void onNewIntent(Intent intent){
+        super.onNewIntent(intent);
+        updateLockScreen(engine.calls().snapshot().optString("state"));
+    }
+    /** Over-lock display only while an incoming call rings; never a permanent lock bypass. */
+    private void updateLockScreen(String state){
+        if(Build.VERSION.SDK_INT<27)return;
+        boolean visible=state.equals("incoming");
+        if(visible==lockScreenShown)return;lockScreenShown=visible;
+        setShowWhenLocked(visible);setTurnScreenOn(visible);
     }
 
     private void buildHeader(){
@@ -88,7 +121,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         screenTitle=text("Чаты",28,colors.text,true);screenTitle.setMaxLines(1);screenTitle.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(0,-2,1);titleParams.setMargins(dp(8),0,dp(8),0);row.addView(screenTitle,titleParams);
         trailing=iconButton("compose","Добавить контакт",()->{if(page.equals("chat"))contactDetails();else addContact();});
+        callAction=iconButton("phone","Аудиозвонок",this::requestCall);row.addView(callAction,box(48,48));callAction.setVisibility(View.GONE);
         row.addView(trailing,box(48,48));
+        menuAction=iconButton("more","Меню",this::showMenu);row.addView(menuAction,box(48,48));menuAction.setVisibility(View.GONE);
         LinearLayout rail=row();rail.setGravity(Gravity.CENTER_VERTICAL);rail.setPadding(dp(12),dp(2),dp(8),0);header.addView(rail);
         View orbit=new View(this);orbit.setBackground(shape(colors.action,8));rail.addView(orbit,box(7,7));
         View line=new View(this);line.setBackgroundColor(colors.border);LinearLayout.LayoutParams lineParams=box(24,1);lineParams.setMargins(dp(5),0,dp(7),0);rail.addView(line,lineParams);
@@ -108,6 +143,14 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     private void buildDialogs(){
         dialogs=column();dialogs.setPadding(dp(12),dp(8),dp(12),dp(16));addScrollablePage(dialogs);
+        updateHint=text("",13,colors.actionText,false);
+        updateHint.setPadding(dp(12),dp(10),dp(12),dp(10));updateHint.setMinimumHeight(dp(40));updateHint.setBackground(ripple(colors.canvas,12));
+        updateHint.setOnClickListener(v->openUpdates());updateHint.setFocusable(true);
+        updateHint.setVisibility(View.GONE);dialogs.addView(updateHint,full());
+        backgroundHint=text("Входящие в фоне отключены — включить",13,colors.actionText,false);
+        backgroundHint.setPadding(dp(12),dp(10),dp(12),dp(10));backgroundHint.setMinimumHeight(dp(40));backgroundHint.setBackground(ripple(colors.canvas,12));
+        backgroundHint.setOnClickListener(v->enableBackground());backgroundHint.setFocusable(true);backgroundHint.setContentDescription("Входящие в фоне отключены. Включить фоновое подключение");
+        backgroundHint.setVisibility(View.GONE);dialogs.addView(backgroundHint,full());
         LinearLayout title=row();title.setGravity(Gravity.CENTER_VERTICAL);TextView label=text("Личные диалоги",13,colors.muted,true);label.setPadding(dp(12),0,0,dp(8));title.addView(label);dialogs.addView(title);
         dialogList=column();dialogs.addView(dialogList);
     }
@@ -134,16 +177,40 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         copy=secondary("Копировать контакт",()->copyPublic(displayedQr,"Контакт скопирован. Сравните отпечаток отдельно."));space(identity,8);identity.addView(copy,full());
         space(identity,24);identity.addView(text("Отпечаток контакта",16,colors.text,true));space(identity,8);
         fingerprint=text("Появится после регистрации",13,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
-        space(identity,24);identity.addView(text("Приложение",16,colors.text,true));space(identity,8);
-        new UpdateController(this,engine,identity);
+        space(identity,24);updateHeading=text("Приложение",16,colors.text,true);identity.addView(updateHeading);space(identity,8);
+        updateController=new UpdateController(this,engine,identity);
         space(identity,16);String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
         identity.addView(text("ParanoID · "+version+"\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно.",12,colors.muted,false));
         space(identity,20);identity.addView(text("Получать в фоне",16,colors.text,true));space(identity,8);
         identity.addView(text("Поддерживает подключение с постоянным уведомлением и расходует заряд. Google не требуется. После принудительной остановки откройте приложение; доставка в режиме сна пока не проверена на телефонах.",13,colors.muted,false));space(identity,12);
         background=secondary("Включить фоновое подключение",()->{
             if(BackgroundConnectionService.running())BackgroundConnectionService.requestStop(this);
-            else BackgroundConnectionService.requestStart(this);
+            else enableBackground();
         });identity.addView(background,full());
+    }
+
+    /** Single opt-in path: user-visible foreground start plus the OPPO-critical battery exception. */
+    private void enableBackground(){
+        BackgroundConnectionService.requestStart(this);
+        if(Build.VERSION.SDK_INT<33||checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)==android.content.pm.PackageManager.PERMISSION_GRANTED)requestBatteryException();
+    }
+    private void requestBatteryException(){
+        try{
+            android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+            if(power!=null&&!power.isIgnoringBatteryOptimizations(getPackageName()))
+                startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,android.net.Uri.parse("package:"+getPackageName())));
+        }catch(RuntimeException unavailable){/* На части прошивок этот системный экран отсутствует; фоновое подключение продолжит работать без исключения. */}
+    }
+    /** One-time onboarding offer; a later manual switch-off is respected without re-asking. */
+    private void offerBackground(){
+        if(backgroundPromptShowing||isFinishing()||isDestroyed())return;
+        backgroundPromptShowing=true;
+        getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(BACKGROUND_PROMPT_KEY,true).apply();
+        new AlertDialog.Builder(this).setTitle("Работа в фоне")
+            .setMessage("Разрешить ParanoID поддерживать подключение в фоне? Без этого входящие звонки и сообщения не приходят, пока приложение закрыто. Появится постоянное уведомление.")
+            .setPositiveButton("Разрешить",(dialog,which)->enableBackground())
+            .setNegativeButton("Не сейчас",null)
+            .setOnDismissListener(dialog->backgroundPromptShowing=false).show();
     }
 
     private void buildChat(){
@@ -186,6 +253,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         chat.setVisibility(hasIdentity&&next.equals("chat")?View.VISIBLE:View.GONE);
         nav.setVisibility(hasIdentity&&!next.equals("chat")?View.VISIBLE:View.GONE);
         boolean inChat=hasIdentity&&next.equals("chat");
+        callAction.setVisibility(inChat?View.VISIBLE:View.GONE);
+        menuAction.setVisibility(hasIdentity&&!inChat?View.VISIBLE:View.GONE);
         screenTitle.setText(!hasIdentity?"ParanoID":inChat?MessagePresentation.title(selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
         leading.setImageDrawable(new Symbol(inChat?"back":"identity",colors.action));leading.setContentDescription(inChat?"Назад в чаты":"Мой ID");
@@ -196,6 +265,60 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
 
     private void selectNavigation(Button button,boolean selected){button.setSelected(selected);button.setTextColor(selected?colors.actionText:colors.muted);button.setBackground(ripple(selected?colors.actionSoft:colors.surface,20));button.setCompoundDrawablesWithIntrinsicBounds(null,new Symbol((String)button.getTag(),selected?colors.action:colors.muted),null,null);}
+
+    /** Programmatic ⋮ menu: explicit update check and an about dialog only. */
+    private void showMenu(){
+        PopupMenu menu=new PopupMenu(this,menuAction);
+        menu.getMenu().add(0,1,0,"Проверить обновления");
+        menu.getMenu().add(0,2,1,"О приложении");
+        menu.setOnMenuItemClickListener(item->{
+            if(item.getItemId()==1)openUpdates();else showAbout();
+            return true;
+        });
+        menu.show();
+    }
+    private void showAbout(){
+        String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
+        String fp=latest.optString("contact_fingerprint","");if(fp.isEmpty())fp="появится после регистрации";
+        new AlertDialog.Builder(this).setTitle("О приложении")
+            .setMessage("ParanoID · версия "+version+"\n\nОтпечаток идентичности:\n"+fp+"\n\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно.")
+            .setPositiveButton("Закрыть",null).show();
+    }
+    /** Opens the existing update block; downloading and verification stay in UpdateController. */
+    private void openUpdates(){
+        if(!hasIdentity||broken)return;
+        if(updateHint!=null)updateHint.setVisibility(View.GONE);
+        show("identity");
+        if(updateHeading!=null&&identity.getParent() instanceof ScrollView){
+            ScrollView scroll=(ScrollView)identity.getParent();
+            scroll.post(()->scroll.smoothScrollTo(0,updateHeading.getTop()));
+        }
+        if(updateController!=null)updateController.trigger();
+    }
+    /** Silent startup check: once per process, at most every six hours, only after registration. */
+    private void autoCheckUpdates(){
+        if(updateAutoChecked||broken||!hasIdentity||!active)return;
+        updateAutoChecked=true;
+        long last=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getLong(UPDATE_CHECK_AT_KEY,0);
+        if(System.currentTimeMillis()-last<6*60*60*1000L)return;
+        engine.updateTrust(trust->{
+            if(trust==null||isFinishing()||isDestroyed())return;
+            new Thread(()->{
+                try{
+                    UpdateManifest found=new UpdateClient(trust[0],trust[1]).check();
+                    boolean availableNow=found!=null&&UpdatePolicy.available(found,
+                        AndroidUpdateVerifier.version(AndroidUpdateVerifier.installed(this)),Build.VERSION.SDK_INT,Build.SUPPORTED_ABIS);
+                    getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putLong(UPDATE_CHECK_AT_KEY,System.currentTimeMillis()).apply();
+                    if(availableNow)runOnUiThread(()->{
+                        if(isFinishing()||isDestroyed()||updateHint==null)return;
+                        updateHint.setText("Доступна версия "+found.versionName+" — обновить");
+                        updateHint.setContentDescription("Доступна версия "+found.versionName+". Открыть обновление");
+                        updateHint.setVisibility(View.VISIBLE);
+                    });
+                }catch(Exception ignored){/* Тихая проверка: сетевые ошибки не показываются. */}
+            },"paranoid-update-autocheck").start();
+        });
+    }
 
     private void openChat(String account){
         selectedAccount=account;restoreDraft();renderedHistory="";show("chat");renderHistory(true);
@@ -220,11 +343,143 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         create.setEnabled(!hasIdentity&&!broken&&!creating);create.setText(creating?"Создаём ID…":"Создать ID");create.setAlpha(create.isEnabled()?1f:.45f);
         share.setEnabled(active&&!displayedQr.isEmpty()&&!broken);copy.setEnabled(share.isEnabled());share.setAlpha(share.isEnabled()?1f:.45f);copy.setAlpha(copy.isEnabled()?1f:.45f);
         JSONObject dialog=selectedDialog();boolean allowed=DialogPolicy.canReply(dialog,active,broken,drafts.sending());
+        callAction.setEnabled(allowed||engine.calls().active());callAction.setAlpha(callAction.isEnabled()?1f:.45f);
         send.setEnabled(allowed&&MessagePresentation.canSend(draft.getText().toString()));send.setAlpha(send.isEnabled()?1f:.45f);
         boolean blocked=dialog!=null&&dialog.optBoolean("blocked");draft.setEnabled(!broken&&!blocked);
         int bytes=MessagePresentation.byteCount(draft.getText().toString());
         String hint=blocked?"Контакт заблокирован. Откройте сведения, чтобы разблокировать.":broken?"Локальное хранение недоступно. Сообщения не отправляются.":bytes>2048?"Сообщение слишком длинное: "+bytes+" из 2048 байт.":drafts.sending()?"Сохраняем сообщение…":"";
         draftHint.setText(hint);draftHint.setTextColor(bytes>2048?colors.danger:colors.muted);draftHint.setVisibility(hint.isEmpty()?View.GONE:View.VISIBLE);
+    }
+
+    private void requestCall(){
+        if(engine.calls().active()){showCall();return;}
+        JSONObject selected=selectedDialog();
+        if(!DialogPolicy.canReply(selected,active,broken,false))return;
+        final String account=selectedAccount;
+        new AlertDialog.Builder(this).setTitle("Позвонить собеседнику?")
+            .setMessage(VOICE_PRIVACY)
+            .setPositiveButton("Позвонить",(dialog,which)->requestMicrophone(account,false)).setNegativeButton("Отмена",null).show();
+    }
+    private void requestMicrophone(String account,boolean answer){
+        cancelCallIntent();
+        permissionAccount=account;permissionAnswer=answer;permissionCall=engine.calls().snapshot().optString("call_id");
+        if(checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            waitingForMicrophone=true;
+            // BLUETOOTH_CONNECT is requested alongside but never blocks the call when denied.
+            String[] wanted=Build.VERSION.SDK_INT>=31
+                &&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
+                ?new String[]{android.Manifest.permission.RECORD_AUDIO,android.Manifest.permission.BLUETOOTH_CONNECT}
+                :new String[]{android.Manifest.permission.RECORD_AUDIO};
+            requestPermissions(wanted,MICROPHONE_PERMISSION);return;
+        }
+        if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
+            &&!getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BLUETOOTH_PROMPT_KEY,false)){
+            getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(BLUETOOTH_PROMPT_KEY,true).apply();
+            requestPermissions(new String[]{android.Manifest.permission.BLUETOOTH_CONNECT},BLUETOOTH_PERMISSION);
+        }
+        queueCallIntent();
+    }
+    private void cancelCallIntent(){
+        callIntentGeneration++;pendingCallIntent=false;
+        if(callIntentRetry!=null)handler.removeCallbacks(callIntentRetry);callIntentRetry=null;
+    }
+    private void queueCallIntent(){
+        waitingForMicrophone=false;pendingCallIntent=true;
+        callIntentDeadline=android.os.SystemClock.elapsedRealtime()+10000;completeCallIntent();
+    }
+    private void completeCallIntent(){
+        if(!pendingCallIntent||!resumed)return;
+        if(broken||checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){cancelCallIntent();return;}
+        if(android.os.SystemClock.elapsedRealtime()>=callIntentDeadline){
+            cancelCallIntent();Toast.makeText(this,"Нет подключения для звонка. Повторите после восстановления связи.",Toast.LENGTH_LONG).show();return;
+        }
+        final boolean answer=permissionAnswer;final String account=permissionAccount,callId=permissionCall;
+        if(answer&&(!engine.calls().snapshot().optString("state").equals("incoming")||!engine.calls().snapshot().optString("call_id").equals(callId))){cancelCallIntent();return;}
+        if(!answer&&engine.calls().active()){cancelCallIntent();return;}
+        final long intentGeneration=callIntentGeneration;
+        if(!engine.calls().connected()){
+            if(callIntentRetry!=null)handler.removeCallbacks(callIntentRetry);
+            callIntentRetry=()->{if(intentGeneration==callIntentGeneration)completeCallIntent();};
+            handler.postDelayed(callIntentRetry,100);return;
+        }
+        pendingCallIntent=false;if(callIntentRetry!=null)handler.removeCallbacks(callIntentRetry);callIntentRetry=null;
+        VoiceCallService.begin(this,()->{
+            if(!resumed||intentGeneration!=callIntentGeneration||android.os.SystemClock.elapsedRealtime()>=callIntentDeadline){VoiceCallService.stop(this);return;}
+            if(answer){if(engine.calls().snapshot().optString("call_id").equals(callId))engine.calls().answer(true);}
+            else engine.calls().start(account,true);
+        });
+    }
+    private void showCall(){
+        if(callDialog!=null&&callDialog.isShowing())return;
+        hideKeyboard();
+        callDialog=new android.app.Dialog(this,colors.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(colors.canvas);
+        LinearLayout body=column();body.setGravity(Gravity.CENTER_HORIZONTAL);body.setPadding(dp(24),dp(24),dp(24),dp(24));scroll.addView(body,new ScrollView.LayoutParams(-1,-1));
+        TextView heading=text("Аудиозвонок",14,colors.muted,true);heading.setGravity(Gravity.CENTER);body.addView(heading,full());space(body,40);
+        ImageView orbit=new ImageView(this);orbit.setImageDrawable(new Symbol("identity",colors.action));orbit.setBackground(shape(colors.actionSoft,80));orbit.setPadding(dp(32),dp(32),dp(32),dp(32));orbit.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);body.addView(orbit,box(144,144));space(body,24);
+        callName=text("",26,colors.text,true);callName.setGravity(Gravity.CENTER);body.addView(callName,full());space(body,12);
+        callStatus=text("",18,colors.muted,false);callStatus.setGravity(Gravity.CENTER);callStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(callStatus,full());space(body,12);
+        callTrust=text("",13,colors.muted,false);callTrust.setGravity(Gravity.CENTER);body.addView(callTrust,full());space(body,24);
+        callPrivacy=text(VOICE_PRIVACY,14,colors.muted,false);body.addView(callPrivacy,full());space(body,12);
+        callAnswer=action("Ответить",()->requestMicrophone(engine.calls().snapshot().optString("account"),true));body.addView(callAnswer,full());space(body,12);
+        LinearLayout controls=row();body.addView(controls,full());
+        callMute=secondary("Выключить микрофон",()->engine.calls().mute(!engine.calls().snapshot().optBoolean("muted")));
+        callSpeaker=secondary("Громкая связь",()->engine.calls().speaker(!engine.calls().snapshot().optBoolean("speaker")));
+        LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1);left.rightMargin=dp(6);controls.addView(callMute,left);
+        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1);right.leftMargin=dp(6);controls.addView(callSpeaker,right);space(body,16);
+        callEnd=secondary("Завершить",()->{if(engine.calls().snapshot().optString("state").equals("incoming"))engine.calls().reject();else if(engine.calls().active())engine.calls().hangup();else callDialog.dismiss();});
+        callEnd.setTextColor(colors.dark?colors.canvas:0xffffffff);callEnd.setBackground(ripple(colors.danger,24));body.addView(callEnd,full());space(body,12);
+        body.addView(secondary("К переписке",()->callDialog.dismiss()),full());space(body,24);
+        TextView note=text("До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием.",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());
+        callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->callDialog=null);callDialog.show();
+        if(Build.VERSION.SDK_INT>=30){
+            callDialog.getWindow().setDecorFitsSystemWindows(false);
+            scroll.setOnApplyWindowInsetsListener((view,insets)->{
+                android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());
+                view.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;
+            });
+            scroll.requestApplyInsets();
+        }
+        callDialog.getWindow().getDecorView().setSystemUiVisibility(colors.dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        callDialog.getWindow().setLayout(-1,-1);callDialog.getWindow().setStatusBarColor(colors.canvas);callDialog.getWindow().setNavigationBarColor(colors.canvas);
+        renderCall(engine.calls().snapshot());
+    }
+    private static String callLabel(JSONObject value){
+        if(value.optBoolean("reconnecting"))return "Восстанавливаем соединение…";
+        String state=value.optString("state");
+        if(state.equals("starting"))return "Проверяем доступность…";
+        if(state.equals("authorizing"))return "Подготавливаем защищённое соединение…";
+        if(state.equals("outgoing"))return "Вызываем…";
+        if(state.equals("incoming"))return "Входящий звонок";
+        if(state.equals("connecting"))return "Устанавливаем соединение…";
+        if(state.equals("connected")){
+            long seconds=value.optLong("elapsed_ms")/1000;
+            return String.format(java.util.Locale.ROOT,"%02d:%02d · Соединение установлено",seconds/60,seconds%60);
+        }
+        if(state.equals("reconnecting"))return "Восстанавливаем соединение…";
+        String reason=value.optString("reason");
+        if(reason.equals("busy"))return "Собеседник занят";
+        if(reason.equals("reject"))return "Звонок отклонён";
+        if(reason.equals("timeout"))return "Нет ответа или связь потеряна";
+        if(reason.equals("failed")||reason.equals("unavailable"))return "Не удалось установить связь";
+        if(reason.equals("cancel"))return "Вызов отменён";
+        return "Звонок завершён";
+    }
+    private void renderCall(JSONObject value){
+        if(isFinishing()||isDestroyed())return;
+        String state=value.optString("state"),id=value.optString("call_id");
+        updateLockScreen(state);
+        if(resumed&&engine.calls().active()&&!id.equals(displayedCall)){displayedCall=id;showCall();}
+        if(callDialog==null)return;
+        callName.setText(MessagePresentation.title(value.optString("account")));callStatus.setText(callLabel(value));
+        JSONObject peer=null;JSONArray entries=latest.optJSONArray("dialogs");if(entries!=null)for(int n=0;n<entries.length();n++){JSONObject item=entries.optJSONObject(n);if(item!=null&&item.optString("account").equals(value.optString("account")))peer=item;}
+        callTrust.setText(peer==null?"Личность не проверена":DialogPolicy.trustLabel(peer));
+        callAnswer.setVisibility(state.equals("incoming")?View.VISIBLE:View.GONE);
+        callPrivacy.setVisibility(state.equals("incoming")?View.VISIBLE:View.GONE);
+        boolean live=value.optBoolean("media_active")||state.equals("authorizing");callMute.setEnabled(live);callSpeaker.setEnabled(live);
+        callMute.setText(value.optBoolean("muted")?"Включить микрофон":"Выключить микрофон");callMute.setSelected(value.optBoolean("muted"));
+        callSpeaker.setText(value.optBoolean("speaker")?"Телефонный динамик":"Громкая связь");callSpeaker.setSelected(value.optBoolean("speaker"));
+        callEnd.setText(state.equals("incoming")?"Отклонить":engine.calls().active()?"Завершить":"Закрыть");
     }
 
     private void addContact(){
@@ -267,8 +522,22 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request!=45||result!=RESULT_OK||data==null)return;String raw=data.getStringExtra("public_qr");if(raw!=null&&raw.length()<=4096)confirmContact(raw);}
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){
         super.onRequestPermissionsResult(request,permissions,results);
+        if(request==MICROPHONE_PERMISSION){
+            waitingForMicrophone=false;
+            boolean microphone=false;
+            for(int n=0;n<permissions.length&&n<results.length;n++)
+                if(android.Manifest.permission.RECORD_AUDIO.equals(permissions[n]))microphone=results[n]==android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if(microphone){queueCallIntent();}
+            else {
+                cancelCallIntent();
+                if(permissionAnswer&&engine.calls().snapshot().optString("call_id").equals(permissionCall))engine.calls().answer(false);
+                Toast.makeText(this,"Для звонка нужен доступ к микрофону. Переписка доступна без него.",Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        if(request==BLUETOOTH_PERMISSION)return; // Optional: the call proceeds without Bluetooth routing.
         if(request==BackgroundConnectionService.NOTIFICATION_PERMISSION) {
-            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)BackgroundConnectionService.requestStart(this);
+            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){BackgroundConnectionService.requestStart(this);requestBatteryException();}
             else Toast.makeText(this,"Фоновое подключение выключено: разрешите уведомления, чтобы видеть его статус.",Toast.LENGTH_LONG).show();
         }
     }
@@ -331,6 +600,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         try{
             boolean hadIdentity=hasIdentity;latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;
             background.setText(view.optBoolean("background_enabled")?"Отключить фоновое подключение":"Включить фоновое подключение");background.setEnabled(hasIdentity&&!broken);
+            boolean backgroundEnabled=view.optBoolean("background_enabled");
+            boolean backgroundPrompted=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BACKGROUND_PROMPT_KEY,false);
+            backgroundHint.setVisibility(hasIdentity&&!broken&&!backgroundEnabled&&backgroundPrompted?View.VISIBLE:View.GONE);
+            if(hasIdentity&&!broken&&!backgroundEnabled&&!backgroundPrompted&&resumed)offerBackground();
             lastStatus=view.optBoolean("unsupported_snapshot")?"Сохранённые данные относятся к предыдущей тестовой версии. Эта сборка предназначена для новой установки. Данные не изменены.":broken?"Локальные данные недоступны. Ключи и история не сброшены. Не удаляйте приложение.":message;
             String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?"Регистрируем ID · ключи сохранены":view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
@@ -345,11 +618,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             renderLists();renderHistory(false);
             if(!hadIdentity&&hasIdentity)show(page);else buttons();
             if(broken)show(page);
+            autoCheckUpdates();
         }catch(Exception ignored){lastStatus="Не удалось обновить экран. Данные сохранены.";status.setText("Ошибка отображения · подробнее");}
     }
 
-    @Override public void onResume(){super.onResume();engine.listen(this);handler.removeCallbacks(poll);handler.post(poll);}
-    @Override public void onPause(){handler.removeCallbacks(poll);engine.unlisten(this);super.onPause();}
+    @Override public void onResume(){super.onResume();resumed=true;engine.listen(this);engine.listenCalls(callListener);handler.removeCallbacks(poll);handler.post(poll);if(pendingCallIntent)handler.post(this::completeCallIntent);}
+    @Override public void onPause(){resumed=false;if(!waitingForMicrophone)cancelCallIntent();handler.removeCallbacks(poll);engine.unlisten(this);engine.unlistenCalls(callListener);super.onPause();}
+    @Override public void onDestroy(){if(callDialog!=null){callDialog.dismiss();callDialog=null;}super.onDestroy();}
     @Override public void onBackPressed(){if(page.equals("chat")){show("dialogs");}else if(!page.equals("dialogs")){show("dialogs");}else super.onBackPressed();}
     @Override public Object onRetainNonConfigurationInstance(){return new Retained(drafts,page,selectedAccount);}
     private static final class Retained{final MessagePresentation.Drafts drafts;final String page,account;Retained(MessagePresentation.Drafts d,String p,String a){drafts=d;page=p;account=a;}}
@@ -387,6 +662,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             else if(name.equals("send")){p.moveTo(4,11);p.lineTo(21,3);p.lineTo(13,21);p.lineTo(10,14);p.lineTo(4,11);p.moveTo(10,14);p.lineTo(21,3);c.drawPath(p,paint);}
             else if(name.equals("compose")){p.moveTo(15,4);p.lineTo(20,9);p.lineTo(10,19);p.lineTo(4,20);p.lineTo(5,14);p.close();c.drawPath(p,paint);c.drawLine(13,6,18,11,paint);}
             else if(name.equals("more")){c.drawCircle(12,5,1,paint);c.drawCircle(12,12,1,paint);c.drawCircle(12,19,1,paint);}
+            else if(name.equals("phone")){p.moveTo(5,3);p.lineTo(9,3);p.lineTo(11,8);p.lineTo(8,10);p.quadTo(11,16,15,16);p.lineTo(17,13);p.lineTo(22,15);p.lineTo(22,19);p.quadTo(13,25,4,11);p.quadTo(2,5,5,3);c.drawPath(p,paint);}
             else{c.drawCircle(12,9,3,paint);c.drawArc(6,14,18,25,180,180,false,paint);c.drawArc(2,2,22,22,30,280,false,paint);c.drawCircle(21,7,1.3f,paint);}
             c.restore();}
         @Override public void setAlpha(int alpha){paint.setAlpha(alpha);}@Override public void setColorFilter(ColorFilter filter){paint.setColorFilter(filter);}@Override public int getOpacity(){return PixelFormat.TRANSLUCENT;}

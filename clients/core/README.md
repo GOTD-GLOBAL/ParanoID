@@ -1,5 +1,14 @@
 # Development client core
 
+The [voice extension](../../docs/clients/core/voice-calls.md) now adds strict
+typed E2EE controls while retaining core3 state, immutable contacts and the
+existing server transport. Call controls commit ratchets/cursors before transient
+dispatch and create no text Event rows or receipts. Retained-session replay
+protection and bounded call outbox admission preserve text resources. The
+[actual supported checks](../../docs/project/evidence/voice-calls-20260909/README.md)
+pass, including v8/current Java/JNI interoperability; actual audio and final
+candidate review remain separate gates.
+
 The issue #16 candidate now uses an explicit schema3 clean-install first-contact
 adapter. Previous version0/v1/v2 source and tests remain historical compatibility
 evidence, with actual failures reported separately. [Client contract and historical
@@ -19,6 +28,7 @@ Clean acceptance and historical compatibility are run/reported separately:
 
 ```sh
 cargo test --offline --locked --manifest-path clients/core/Cargo.toml --lib --test clean_first_contact
+cargo test --offline --locked --manifest-path clients/core/Cargo.toml --test voice_calls
 cargo test --offline --locked --manifest-path clients/core/Cargo.toml --test self_service --no-fail-fast
 ```
 

@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-09-09T23:34:54.065666+00:00",
+  "source": "Coordinator instruction received during immutable final-review invocation",
+  "review_source_commit": "5e776b2e74f346909183bbb1b00439488618fc20",
+  "review_scope": "Direct-ICE voice checkpoint only",
+  "entire_user_task_complete": false,
+  "remaining_scope": "Fully implement and test local TURN credential issuer/client/config package under a fresh concrete design gate before a ready-to-execute public deployment request; no live changes authorized",
+  "invocation_changed": false,
+  "reviewer_not_steered": "CLI prompt submitted once and stdin closed; restarting or modifying frozen input would invalidate this exact review",
+  "result_interpretation": "Any passing review applies only to the named frozen checkpoint and cannot close the remaining local TURN work"
+}

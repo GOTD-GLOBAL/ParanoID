@@ -1,0 +1,287 @@
+{
+  "result": "ALL_SUPPORTED_CHECKS_PASS_BOTH_EXACT_HEADS",
+  "verified_at": "2026-09-10T00:57:23.790101+00:00",
+  "prs": [
+    {
+      "result": "ALL_SUPPORTED_PASS_EXPECTED_LEGACY14_FAIL",
+      "head": "923e11b1f0a5ba8709002d21e282778123c2bfe5",
+      "base": "main",
+      "server_counts": {
+        "passed": 85,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered": 0
+      },
+      "explicit_ignored_test": "actual_build_apk_snapshot_roundtrips_exact_bytes_and_digest requires explicit PARANOID_TEST_APK",
+      "postgres_cleanup_verified": true,
+      "postgres_log_sha256": "87da4fe6e50208d62ec600de047d49d96c1fab94f33c08b8b68d7a788df4db5c",
+      "checks": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:32:22Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34421701839/job/102698333725",
+          "name": "markdown",
+          "startedAt": "2026-09-10T00:32:12Z",
+          "status": "COMPLETED",
+          "workflowName": "Documentation"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:35:27Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34421701862/job/102698332956",
+          "name": "native-package",
+          "startedAt": "2026-09-10T00:32:12Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:50:34Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34421701862/job/102698332797",
+          "name": "postgres-http",
+          "startedAt": "2026-09-10T00:32:12Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:34:51Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34421701862/job/102698332718",
+          "name": "client-core-and-tls",
+          "startedAt": "2026-09-10T00:32:11Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:33:04Z",
+          "conclusion": "FAILURE",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34421701862/job/102698332934",
+          "name": "Legacy client history (informational, failures retained)",
+          "startedAt": "2026-09-10T00:32:11Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        }
+      ],
+      "legacy_raw_verification": {
+        "pr": 21,
+        "head_prefix": "923e11b",
+        "failures": [
+          "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history",
+          "asymmetric_retained_pair_requires_bidirectional_text_and_receipts",
+          "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts",
+          "installed_verified_peer_routes_and_history_survive_without_readding_contact",
+          "new_conversations_between_original_labels_keep_account_context_and_strict_rejection",
+          "sender_intro_authenticates_exact_pending_bytes_without_installing_contact",
+          "sender_intro_does_not_change_a_retained_legacy_profile",
+          "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id",
+          "sender_intro_rejects_forged_nested_bindings_and_malformed_frames",
+          "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback",
+          "signed_v2_qr_does_not_disclose_retained_peer_profile",
+          "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority",
+          "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account",
+          "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs"
+        ],
+        "expected_failure_count": 14,
+        "actual_failure_count": 14,
+        "exact_expected_set": true,
+        "missing": [],
+        "unexpected": [],
+        "summary": [
+          "10 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.30s"
+        ],
+        "raw_exit": [
+          "101"
+        ],
+        "log_sha256": "ee3d595f0c0f1be52f1e9abc2a0230eb8191b289924debca67a2cde70891b125"
+      },
+      "pr": 21,
+      "url": "https://github.com/GOTD-GLOBAL/ParanoID/pull/21",
+      "supported_core_counts": {
+        "passed": 48,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_legacy": 14
+      },
+      "package_test_counts": [
+        2,
+        15,
+        2,
+        2,
+        2,
+        3,
+        1
+      ],
+      "offline_turn_package_runtime_tests": 4,
+      "versioned_controller_tests": 3,
+      "actual_packaged_pg_tls_update_rollback": true
+    },
+    {
+      "result": "ALL_SUPPORTED_PASS_EXPECTED_LEGACY14_FAIL",
+      "head": "811e0840c88a72c7c4c6e42137796a9d137481ad",
+      "base": "feat/voice-turn-server-20260909",
+      "server_counts": {
+        "passed": 85,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered": 0
+      },
+      "explicit_ignored_test": "actual_build_apk_snapshot_roundtrips_exact_bytes_and_digest requires explicit PARANOID_TEST_APK",
+      "postgres_cleanup_verified": true,
+      "postgres_log_sha256": "aba7b7a62c2c55338de599b89e223bfa08d35c1b4ed24d15385afde3da4d6eec",
+      "checks": [
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:37:29Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34422065582/job/102699449640",
+          "name": "markdown",
+          "startedAt": "2026-09-10T00:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "Documentation"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:40:46Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34422065569/job/102699449526",
+          "name": "native-package",
+          "startedAt": "2026-09-10T00:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:55:47Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34422065569/job/102699449444",
+          "name": "postgres-http",
+          "startedAt": "2026-09-10T00:37:19Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:40:05Z",
+          "conclusion": "SUCCESS",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34422065569/job/102699449496",
+          "name": "client-core-and-tls",
+          "startedAt": "2026-09-10T00:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        },
+        {
+          "__typename": "CheckRun",
+          "completedAt": "2026-09-10T00:38:15Z",
+          "conclusion": "FAILURE",
+          "detailsUrl": "https://github.com/GOTD-GLOBAL/ParanoID/actions/runs/34422065569/job/102699449266",
+          "name": "Legacy client history (informational, failures retained)",
+          "startedAt": "2026-09-10T00:37:20Z",
+          "status": "COMPLETED",
+          "workflowName": "Server transport"
+        }
+      ],
+      "legacy_raw_verification": {
+        "pr": 20,
+        "head_prefix": "811e084",
+        "failures": [
+          "adding_contact_retries_previously_unverified_ciphertext_without_duplicate_history",
+          "asymmetric_retained_pair_requires_bidirectional_text_and_receipts",
+          "consumed_original_prekey_legacy_ratchets_and_exact_outbox_survive_two_new_contacts",
+          "installed_verified_peer_routes_and_history_survive_without_readding_contact",
+          "new_conversations_between_original_labels_keep_account_context_and_strict_rejection",
+          "sender_intro_authenticates_exact_pending_bytes_without_installing_contact",
+          "sender_intro_does_not_change_a_retained_legacy_profile",
+          "sender_intro_preparation_is_exact_read_only_and_refuses_missing_pending_id",
+          "sender_intro_rejects_forged_nested_bindings_and_malformed_frames",
+          "sender_intro_signed_wrong_recipient_or_profile_is_not_route_authority",
+          "sender_intro_rejects_genuinely_signed_replacement_of_pinned_fallback",
+          "signed_v2_qr_does_not_disclose_retained_peer_profile",
+          "unbound_legacy_history_stays_visible_but_cannot_be_routed_to_an_unverified_account",
+          "unverified_sender_is_not_decrypted_or_receipted_and_does_not_block_verified_dialogs"
+        ],
+        "expected_failure_count": 14,
+        "actual_failure_count": 14,
+        "exact_expected_set": true,
+        "missing": [],
+        "unexpected": [],
+        "summary": [
+          "10 passed; 14 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.75s"
+        ],
+        "raw_exit": [
+          "101"
+        ],
+        "log_sha256": "aad3999365b9b4eb000380d088abc625b2dc589dc2e29463c60f4fde64eafeee"
+      },
+      "pr": 20,
+      "url": "https://github.com/GOTD-GLOBAL/ParanoID/pull/20",
+      "supported_core_counts": {
+        "passed": 63,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered_legacy": 14
+      },
+      "package_test_counts": [
+        2,
+        15,
+        2,
+        2,
+        2,
+        3,
+        1
+      ],
+      "offline_turn_package_runtime_tests": 4,
+      "versioned_controller_tests": 3,
+      "actual_packaged_pg_tls_update_rollback": true,
+      "voice_checks": [
+        "CallControllerSmoke",
+        "Voice relay config:49 strict negatives",
+        "Actual JNI/Olm voice adapter commit/freeze tests",
+        "10 real pinned HTTPS/JNI voice lane scenarios"
+      ]
+    }
+  ],
+  "source_validation": {
+    "result": "PASS",
+    "exact_heads": [
+      "923e11b1f0a5ba8709002d21e282778123c2bfe5",
+      "811e0840c88a72c7c4c6e42137796a9d137481ad"
+    ],
+    "server_runtime_inputs_match_locally_validated_release_on_both_commits": true,
+    "release_binary_sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+    "runtime_manifest_sha256": "92c310a0bedf54d36f89d88baab62e2be2da362fb1f5fda5df664908303e92f5",
+    "runtime_input_sha256": {
+      "server/Cargo.lock": "d08c85292457f24153b14b717dbae91edfe46936addd87fec332d1c99ff4e282",
+      "server/Cargo.toml": "acb8b438bcc6f5f00ac8454d2b60c6d6c6149ec4ff507f322d7830bb084c371a",
+      "server/src/android_updates.rs": "b5fa31404f28d80f393a6e36f96cff3bed0d9ea7be5b5804a14b5049ab454938",
+      "server/src/key_http.rs": "d06311ff2aa465879a6848c79c4c00c9cc390617d36ec53c876d8683ffb8e0b3",
+      "server/src/key_transport.rs": "be0eb6d2d1daab080f508a93832baae99e9c2c35bc6ecda87ad251abf9d8c28f",
+      "server/src/lib.rs": "0ae9e13771f09d5a065909e3658b0707866c385031e9dc82834c781c0f865bb7",
+      "server/src/limited_accept.rs": "4b62272f2e783550ae18a20a28ba6511f60fee3ed5915e7a6559632b5bd046ee",
+      "server/src/main.rs": "6077732f63af78356ebd443de28e85c9f57f50f6bf16a49d49c5b0430ccb5b38",
+      "server/src/registration.rs": "d474279e42646d6de99ff2c2c484df58d9a98e34a2f6a08aed8d3c7a8e5ea9f0",
+      "server/src/self_service.rs": "f13cf55d6c9910e71eaf6391e27fe87cfd418a20f35943523a69c87fbb8acfc1",
+      "server/src/self_service_http.rs": "46af8cc5f1d7795e5f206e0f4623c6e3d7835641563e744a38ac6c3e9609f7dc",
+      "server/src/self_service_messages.rs": "f87a9037749c5570192feeef096439d6773b772da9cca19fb007d626fa2617a2",
+      "server/src/self_service_migration.rs": "8dfbb746542ad3292eceb463020ce0097a8265b66dbbe64025fe3bb768de55b5",
+      "server/src/voice_turn.rs": "babc1eace0cb9268357849b3c083a2242860d25ed4ee9ce2f1d435f80ecdeb63"
+    },
+    "legacy_target_unchanged_from_exact_pr18_base": true,
+    "legacy_target_sha256": "a2843d8e54df652215f53c3d7a7a96f6ae7964ffa9ef6dc3fbd3d3ca01517bb8",
+    "client_pr_files_count": 128,
+    "client_pr_server_deploy_changed_files": [],
+    "github_client_pr_file_list_sha256": "499d87041a3461aa4807118d5c3be0eccc86e9a48a767d873ef3ea128f5b1659",
+    "basis": "Exact local git objects plus authenticated GitHub128-file diff; not a claim about later pushes."
+  },
+  "failure_classification": "Both Server transport workflows retain FAILURE due solely to the exact14 historical client failures. All supported jobs and documentation jobs succeed. No failures were masked or omitted from raw historical execution.",
+  "scope": "Read-only authenticated GitHub audit of listed exact commits; no code changes, reruns, approval, merge or deployment. Later pushes require fresh check correspondence.",
+  "evidence_sanitization": "This aggregate contains exact commit and source hashes, public check URLs, counts and test names. No private keys, credentials, packet bodies or synthetic snapshots are included."
+}

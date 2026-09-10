@@ -1,0 +1,40 @@
+{
+  "scope": "Supplemental read-only source audit of TURN client integration, not final independent Fable review and not execution evidence",
+  "source_hashes": {
+    "RealtimeLoop.java": "8f15a0c9d23541fba6729110c88519a0336445fd1448f04b1be6a43be037b183",
+    "VoiceRelayTransport.java": "4a4619de42a550fe06f74b98c70d6ae79042c7014ad10fedce5944eee16184f1",
+    "TextEngine.java": "b8dec3bafefd84006a931bcf5460b0f1617fd9a3bcdaa8dc965a45ad69d00897",
+    "CallController.java": "868d46a66d6d2dc1b60c670b26a01624835c760ad3c27ea479a7555893375eb2",
+    "VoiceRelayConfig.java": "c9f4827a44c0406dbed92983482608804bc0c16f3fed919f6bf8e3752af10d2e",
+    "WebRtcAudioEngine.java": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2"
+  },
+  "findings": [
+    {
+      "id": "TURN-CLIENT-01",
+      "severity": "medium",
+      "status": "closed by actual RED/GREEN",
+      "location": "RealtimeLoop.java runVoiceRequest exception catch -> authorityFailure; TextEngine.java Listener.authorizationLost",
+      "finding": "A confirmed voice 401 queues the generic realtime-generation-only authorityFailure callback. Cancellation/replacement after enqueue suppresses normal deliverVoice but does not suppress this global authority callback; a stale request can terminate a replacement call in the same realtime generation.",
+      "basis": "Initial source interleaving corroborated by actual pinned HTTPS/JNI red-2 and green runtime tests; original source hashes retained.",
+      "minimal_fix": "Keep voice authorization failure inside request-scoped delivery and the call-generation checked UI callback, or add equivalent checks at both owners. Preserve generic text authority handling.",
+      "test_oracle": "Hold owner/UI delivery after old voice 401 twice, cancel and replace that call without restarting RealtimeLoop, release delayed notification; replacement call remains active and no stale authorization loss is applied.",
+      "closure": "turn-client-lane-tdd.json"
+    }
+  ],
+  "verified_by_inspection": [
+    "Voice executor has one worker and one queued slot; replacement cancels/removes superseded queued FutureTask",
+    "Cancellation marks request before off-owner disconnect; guards check cancellation before sign/after response and deliver checks current request identity",
+    "Success metadata remains volatile and native state actions/signing run on supplied owner",
+    "Separate pinned-origin voice transport disables proxy, redirects, caches and bounds body size/timeouts",
+    "Only pinned 404 or confirmed pre-session legacy capability selects direct; 429/session-busy/malformed 200/other HTTP failures do not",
+    "Optional voice 404 bypasses sessionCall invalidation and preserves retained text session",
+    "Voice 401 retries once with freshly native-signed nonce; no other implicit credential retries",
+    "Controller authorizing state grants no media; generation, permission, setup deadline and adequate wall/monotonic credential lifetime rechecked before engine dispatch",
+    "Existing-engine close is awaited before credential request; latest mute/route intent applied before createOffer/createAnswer",
+    "Engine uses relay-only policy when credentials present and empty direct ICE only on disclosed compatibility outcome"
+  ],
+  "limitations": [
+    "Actual TLS cancellation/queue/401/404 and full relay media tests are root-owned and pending for this code checkpoint",
+    "Parser and early controller implementation authored by this auditor; this is supplemental review, not independent final qualification"
+  ]
+}

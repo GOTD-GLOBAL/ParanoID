@@ -8,11 +8,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Two network lanes; all native state and commits stay on the supplied owner. */
 public final class RealtimeLoop implements AutoCloseable {
-    public interface Listener {void changed(boolean connected,String status);}
+    public interface Listener {
+        void changed(boolean connected,String status);
+        default void authorizationLost(){}
+    }
     private final ExecutorService owner;
     private final SelfServiceClient client;
     private final Listener listener;
     private final ExecutorService network=Executors.newFixedThreadPool(2,r->{Thread t=new Thread(r,"paranoid-network");t.setDaemon(true);return t;});
+    public interface VoiceRelayReply { void done(VoiceRelayConfig config,boolean success); }
+    private final ThreadPoolExecutor voiceNetwork=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,
+        new ArrayBlockingQueue<Runnable>(1),r->{Thread t=new Thread(r,"paranoid-voice-auth");t.setDaemon(true);return t;});
+    private final ThreadPoolExecutor voiceCancel=new ThreadPoolExecutor(1,1,0,TimeUnit.SECONDS,
+        new ArrayBlockingQueue<Runnable>(1),r->{Thread t=new Thread(r,"paranoid-voice-cancel");t.setDaemon(true);return t;},new ThreadPoolExecutor.DiscardPolicy());
+    private final Object voiceGate=new Object();
+    private VoiceRequest voiceRequest;
+    private static final class VoiceRequest {
+        final long run;final VoiceRelayReply reply;
+        volatile boolean cancelled;
+        volatile VoiceRelayTransport lane;
+        Future<?> task;
+        VoiceRequest(long run,VoiceRelayReply reply){this.run=run;this.reply=reply;}
+    }
     private final Object lifecycle=new Object(),sessionGate=new Object(),proofGate=new Object(),wakeGate=new Object();
     private final Semaphore outbound=new Semaphore(0);
     private final AtomicBoolean cancelling=new AtomicBoolean();
@@ -37,6 +54,7 @@ public final class RealtimeLoop implements AutoCloseable {
     public void kick(){synchronized(wakeGate){if(outbound.availablePermits()==0)outbound.release();}}
     public void stop(){
         synchronized(lifecycle){enabled=false;generation++;lifecycle.notifyAll();}kick();
+        cancelVoiceRelay();
         RealtimeTransport current=transport;
         if(current!=null&&cancelling.compareAndSet(false,true)) {
             Thread cancel=new Thread(()->{try{current.cancelActive();}finally{cancelling.set(false);}},"paranoid-cancel");cancel.setDaemon(true);cancel.start();
@@ -53,7 +71,7 @@ public final class RealtimeLoop implements AutoCloseable {
             guard(run);
             if(client.broken())throw new IOException("local state frozen");
             try{return task.call();}
-            catch(Exception failure){if(client.broken()){enabled=false;listener.changed(false,"Ошибка хранения. Данные сохранены; подключение остановлено.");}throw failure;}
+            catch(Exception failure){if(client.broken()){enabled=false;listener.authorizationLost();listener.changed(false,"Ошибка хранения. Данные сохранены; подключение остановлено.");}throw failure;}
         });
         try{return result.get();}
         catch(ExecutionException failure){Throwable cause=failure.getCause();if(cause instanceof Exception)throw (Exception)cause;throw new IOException("state operation failed");}
@@ -61,6 +79,76 @@ public final class RealtimeLoop implements AutoCloseable {
     private void publish(long run,boolean connected,String message) {
         if(!current(run))return;
         owner.execute(()->{if(current(run))listener.changed(connected,message);});
+    }
+    private void authorityFailure(long run,Exception failure){
+        if(failure instanceof SyncCycle.Rejected&&((SyncCycle.Rejected)failure).status==401)
+            owner.execute(()->{if(current(run))listener.authorizationLost();});
+    }
+    /** Explicit call consent owns this request; ringing never invokes it. */
+    public void requestVoiceRelay(VoiceRelayReply reply){
+        synchronized(voiceGate){
+            cancelVoiceLocked();
+            VoiceRequest request=new VoiceRequest(generation,reply);voiceRequest=request;
+            try{request.task=voiceNetwork.submit(()->runVoiceRequest(request));}
+            catch(RejectedExecutionException stopped){deliverVoice(request,null,false);}
+        }
+    }
+    public void cancelVoiceRelay(){synchronized(voiceGate){cancelVoiceLocked();}}
+    private void cancelVoiceLocked(){
+        VoiceRequest request=voiceRequest;voiceRequest=null;if(request==null)return;
+        request.cancelled=true;
+        if(request.task!=null){request.task.cancel(true);if(request.task instanceof Runnable)voiceNetwork.remove((Runnable)request.task);}
+        VoiceRelayTransport lane=request.lane;
+        // HttpsURLConnection.disconnect may wait; keep it off both state/UI owners.
+        if(lane!=null)voiceCancel.execute(lane::close);
+    }
+    private void guardVoice(VoiceRequest request)throws InterruptedException {
+        guard(request.run);if(request.cancelled)throw new InterruptedException();
+    }
+    private void deliverVoice(VoiceRequest request,VoiceRelayConfig config,boolean success){
+        try{owner.execute(()->{
+            synchronized(voiceGate){
+                if(voiceRequest!=request||request.cancelled||!current(request.run))return;
+                voiceRequest=null;
+            }
+            if(client.broken()){listener.authorizationLost();request.reply.done(null,false);}
+            else request.reply.done(config,success);
+        });}catch(RejectedExecutionException stopped){/* Owner already closed. */}
+    }
+    private void runVoiceRequest(VoiceRequest request){
+        VoiceRelayConfig result=null;boolean success=false;
+        try{
+            guardVoice(request);Session context=connection(request.run);guardVoice(request);
+            if(context==null){
+                // A busy capable server is not a legacy-server downgrade signal.
+                if(realtime)throw new IOException("voice session unavailable");
+                success=true;
+            }else{
+                String[] trust=state(request.run,()->{guardVoice(request);return client.updateTrust();});
+                request.lane=new VoiceRelayTransport(trust[0],trust[1]);guardVoice(request);
+                for(int attempt=0;;attempt++){
+                    JSONObject signed=state(request.run,()->{guardVoice(request);return client.sessionRequest(context.context,"turn",null);});
+                    if(!signed.getString("method").equals("GET")||!signed.getString("path").equals("/v2/voice/turn")||!signed.getString("body").isEmpty())
+                        throw new IOException("voice request mismatch");
+                    guardVoice(request);
+                    try{
+                        byte[] bytes=request.lane.get(signed.getString("authorization"));guardVoice(request);
+                        result=VoiceRelayConfig.parse(bytes,trust[0],System.currentTimeMillis(),System.nanoTime());
+                        success=true;break;
+                    }catch(SyncCycle.Rejected rejected){
+                        guardVoice(request);
+                        if(rejected.status==401&&attempt==0)continue;
+                        if(rejected.status==404){success=true;break;}
+                        throw rejected;
+                    }
+                }
+            }
+        }catch(InterruptedException cancelled){/* Superseded/paused generation grants no authority. */}
+        catch(Exception failure){/* Failure belongs only to this request and call generation. */}
+        finally{
+            VoiceRelayTransport lane=request.lane;if(lane!=null)lane.close();request.lane=null;
+        }
+        deliverVoice(request,result,success);
     }
     private void pause(long run,long millis)throws InterruptedException {
         long end=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(millis);
@@ -145,6 +233,7 @@ public final class RealtimeLoop implements AutoCloseable {
             catch(InterruptedException interrupted){if(closed)return;}
             catch(Exception failure) {
                 if(!current(run))continue;
+                authorityFailure(run,failure);
                 publish(run,false,errorMessage(failure));
                 try{pause(run,backoff(++failures));kick();}catch(InterruptedException ignored){}
             }
@@ -152,6 +241,7 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     private void receiveLoop() {
         int failures=0;
+        long observedRun=-1;
         while(!closed) {
             long run=0;
             try {
@@ -159,28 +249,34 @@ public final class RealtimeLoop implements AutoCloseable {
                 long after=state(run,client::receiveCursor);JSONObject page;boolean polling=context==null;
                 if(context==null)page=proof(run,"message","GET","/v2/messages?after="+after+"&limit=20","");
                 else {
-                    try{page=sessionCall(run,context,"events",null);}
+                    // A resumed empty inbox must confirm actual authenticated
+                    // readiness before waiting through a full long-poll timeout.
+                    try{page=sessionCall(run,context,observedRun==run?"events":"messages",null);}
                     catch(SyncCycle.Rejected busy){if(busy.status!=429||!busy.code.equals("waiter_busy"))throw busy;page=sessionCall(run,context,"messages",null);polling=true;}
                 }
                 JSONArray messages=page.getJSONArray("messages");
                 if(messages.length()>20)throw new IOException("page limit");
                 state(selected,()->{
                     if(client.receiveCursor()!=after)throw new IOException("stale receive page");
+                    // Connection is reported before delivering this page so call
+                    // signaling (CallController) observes online=true when events arrive.
+                    listener.changed(true,"Подключено");
                     for(int n=0;n<messages.length();n++) {
                         client.received(messages.getJSONObject(n));
                         // Persist succeeded. UI notification is issued before a receipt
                         // can enter the send lane, even if that network is stalled.
                         listener.changed(true,"Подключено");
                     }
-                    if(messages.length()==0)listener.changed(true,"Подключено");
                     return null;
                 });
+                observedRun=run;
                 kick();failures=0;
                 if(polling&&messages.length()<20)pause(run,3000);
             } catch(Idle idle){try{pause(run,500);}catch(InterruptedException ignored){}}
             catch(InterruptedException interrupted){if(closed)return;}
             catch(Exception failure) {
                 if(!current(run))continue;
+                authorityFailure(run,failure);
                 publish(run,false,errorMessage(failure));
                 try{pause(run,backoff(++failures));}catch(InterruptedException ignored){}
             }
@@ -196,5 +292,5 @@ public final class RealtimeLoop implements AutoCloseable {
         }
         return "Нет подключения. Сообщения сохранены в очереди.";
     }
-    @Override public void close(){closed=true;stop();network.shutdownNow();RealtimeTransport current=transport;if(current!=null)current.close();}
+    @Override public void close(){closed=true;stop();network.shutdownNow();voiceNetwork.shutdownNow();voiceCancel.shutdown();RealtimeTransport current=transport;if(current!=null)current.close();}
 }

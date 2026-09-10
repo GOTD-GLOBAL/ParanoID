@@ -1,0 +1,69 @@
+{
+  "pass": true,
+  "frames": 367,
+  "unmuted_rms_median": 1189.2627533056975,
+  "mute_received_frames": 0,
+  "muted_rms_median": 0.0,
+  "resumed_880_amplitude_median": 1967.461801623254,
+  "idle": {
+    "connected": false,
+    "capture_starts": 0,
+    "capture_stops": 0,
+    "close_completions": 1,
+    "capture_frames": 0,
+    "decoded_frames": 0,
+    "decoded_samples": 0,
+    "audio_mode": 0,
+    "speaker": false,
+    "decoded_rms": 0,
+    "decoded_440_amplitude": 0
+  },
+  "android": {
+    "connected": true,
+    "capture_starts": 2,
+    "capture_stops": 1,
+    "close_completions": 1,
+    "capture_frames": 59200,
+    "decoded_frames": 499200,
+    "decoded_samples": 499200,
+    "audio_mode": 3,
+    "speaker": false,
+    "decoded_rms": 2977.115670416728,
+    "decoded_440_amplitude": 4179.766902977317
+  },
+  "closed": {
+    "connected": false,
+    "capture_starts": 2,
+    "capture_stops": 2,
+    "close_completions": 2,
+    "capture_frames": 61120,
+    "decoded_frames": 509280,
+    "decoded_samples": 509280,
+    "audio_mode": 0,
+    "speaker": false,
+    "decoded_rms": 2977.115670416728,
+    "decoded_440_amplitude": 4179.766902977317
+  },
+  "redial_closed": {
+    "connected": false,
+    "capture_starts": 3,
+    "capture_stops": 3,
+    "close_completions": 3,
+    "capture_frames": 61600,
+    "decoded_frames": 509280,
+    "decoded_samples": 509280,
+    "audio_mode": 0,
+    "speaker": false,
+    "decoded_rms": 2977.115670416728,
+    "decoded_440_amplitude": 4179.766902977317
+  },
+  "engine_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "raw_result_sha256": "cfff0cc8ba1f16c507eadd32e489e9e58cf73162669a3bb568d2686c5597b3c8",
+  "actual_path": "exact product WebRtcAudioEngine in separate signed x86 fixture; real direct ICE/DTLS/Opus with440/880Hz bidirectional synthetic tone",
+  "first_attempt": {
+    "pass": false,
+    "failure": "Audio engine failed",
+    "context": "Activity was opened before instrumentation restarted target; after opening Activity with instrumentation running, same source passed. No runtime change; initial failure retained; exact native exception not recorded."
+  },
+  "scope": "SDK direct-mode regression; full app relay/authenticated signaling covered separately; physical acoustic quality NOT RUN"
+}

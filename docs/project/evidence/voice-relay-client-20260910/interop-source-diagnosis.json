@@ -1,0 +1,147 @@
+{
+  "status": "SOURCE_PATH_CONFIRMED_UNCONDITIONAL_DELAY_INFERENCE_RETRACTED",
+  "at": "2026-09-10T00:42:51.475436+00:00",
+  "scope": "Read-only ordinary full-app relay interoperation diagnosis; no relay expiry/ACL/race test or infrastructure operation",
+  "exact_webrtc_source": {
+    "commit": "73cb8180f7258ee292878d6edd05177f41883962",
+    "files": {
+      "p2p/client/basic_port_allocator.cc": {
+        "url": "https://raw.githubusercontent.com/webrtc-sdk/webrtc/73cb8180f7258ee292878d6edd05177f41883962/p2p/client/basic_port_allocator.cc",
+        "sha256": "c10c9c105cc753a2406d7a5d509b6641e8a671de5f1d99816d2a55e9117a9d6b",
+        "local_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/m150-exact-source-diagnosis-p2p_client_basic_port_allocator.cc",
+        "bytes": 64313
+      },
+      "pc/peer_connection.cc": {
+        "url": "https://raw.githubusercontent.com/webrtc-sdk/webrtc/73cb8180f7258ee292878d6edd05177f41883962/pc/peer_connection.cc",
+        "sha256": "09c89271b0cac92654d380d72d5b8a070f98016546c278c357384c57623e3fc1",
+        "local_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/m150-exact-source-diagnosis-pc_peer_connection.cc",
+        "bytes": 118409
+      },
+      "p2p/base/stun_request.cc": {
+        "url": "https://raw.githubusercontent.com/webrtc-sdk/webrtc/73cb8180f7258ee292878d6edd05177f41883962/p2p/base/stun_request.cc",
+        "sha256": "26b968d1338b38545295caa70bf61b43f82422de6e8795cc40501fabb9cafbed",
+        "local_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/m150-exact-source-diagnosis-p2p_base_stun_request.cc",
+        "bytes": 12196
+      },
+      "p2p/base/stun_port.cc": {
+        "url": "https://raw.githubusercontent.com/webrtc-sdk/webrtc/73cb8180f7258ee292878d6edd05177f41883962/p2p/base/stun_port.cc",
+        "sha256": "fa20c9efac26c8e64f45573a025b0d782adefc65a23ef8542c5b24a226cab5c6",
+        "local_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/m150-exact-source-diagnosis-p2p_base_stun_port.cc",
+        "bytes": 24172
+      }
+    }
+  },
+  "coturn_source": {
+    "ns_turn_server.c_sha256": "85b978f28028148955cbf07d829de1beeb8e5e4a03691ad843c83786e879619f",
+    "ns_turn_msg.c_sha256": "16e738eaf816d25b15a198348ca6b736cbba4cbd73f92f4d752c2a18e1415a42",
+    "patch_delta": "Exactly reviewed callback key-clear, first-pass fresh auth lookup, and normalized lifetime-cap hunks; userdb/netengine/ioaddr match retained pristine source"
+  },
+  "confirmed_source_facts": [
+    {
+      "fact": "Every configured UDP TURN address is also added to the implicit STUN server list when no explicit STUN address exists.",
+      "file": "p2p/client/basic_port_allocator.cc",
+      "line": 1729
+    },
+    {
+      "fact": "PeerConnection enables shared UDP allocation and maps RELAY to a candidate filter; this initialization does not set PORTALLOCATOR_DISABLE_STUN.",
+      "file": "pc/peer_connection.cc",
+      "line": 2251
+    },
+    {
+      "fact": "UDP port does not mark itself complete while any STUN Binding response remains pending; allocator completion waits every port.",
+      "file": "p2p/base/stun_port.cc",
+      "line": 603
+    },
+    {
+      "fact": "Default silent STUN request schedule totals 39750ms before OnTimeout, absent network errors or cancellation.",
+      "file": "p2p/base/stun_request.cc",
+      "line": 43,
+      "delays_ms": [
+        250,
+        500,
+        1000,
+        2000,
+        4000,
+        8000,
+        8000,
+        8000,
+        8000
+      ]
+    },
+    {
+      "fact": "Coturn no-stun silently ignores Binding requests with no_response=1.",
+      "file": "src/server/ns_turn_server.c",
+      "line": 3967
+    },
+    {
+      "fact": "Product WebRtcAudioEngine waits for IceGatheringState.COMPLETE before publishing any local SDP.",
+      "file": "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java",
+      "method": "maybePublishDescription"
+    },
+    {
+      "fact": "Strict aioice has no host sockets after fixture policy override; TURN channel/permission is first created when send_data sends a check, requiring remote SDP/ICE start.",
+      "files": [
+        "aioice/ice.py:561",
+        "aioice/turn.py:262",
+        "clients/android/test_voice_app_peer.py:89"
+      ]
+    },
+    {
+      "fact": "Coturn peer input drops packets when its allocation lacks permission for the peer address.",
+      "file": "src/server/ns_turn_server.c",
+      "line": 5444
+    },
+    {
+      "fact": "Send indications and ChannelData bypass modified control authentication; CreatePermission/ChannelBind use fresh lookup and synchronous resumed verification before original handlers.",
+      "file": "src/server/ns_turn_server.c",
+      "lines": [
+        3573,
+        3842,
+        4129,
+        4195,
+        4205,
+        4266,
+        5100
+      ]
+    },
+    {
+      "fact": "Local config explicitly permits loopback peers and contains no peer deny list; built-in internal-scope default denies linklocal/IPv6local but not127/8 or ordinary RFC1918.",
+      "files": [
+        "run-app-turn-local-2.py",
+        "src/client/ns_turn_ioaddr.c:631"
+      ]
+    }
+  ],
+  "causal_inference": "The exact source contains an implicit STUN transaction path whose silent timeout is39750ms if it is started and remains pending. Successful TURN/shared-socket events, errors, pruning, network changes or other completion paths may resolve gathering sooner. Current normal no-stun relay-to-relay fast PASS disproves unconditional delay and leaves earlier failure cause unresolved; no production change is justified solely by this diagnosis.",
+  "observed_prior_incoming_timing_utc": {
+    "host_offer_file_mtime": "2026-09-10T00:28:08.242776Z",
+    "incoming_no_capture_file_mtime": "2026-09-10T00:28:08.351776Z",
+    "android_capture_start": "2026-09-10T00:28:13.082Z",
+    "android_capture_stop": "2026-09-10T00:28:28.188Z",
+    "native_ice_enum": "NOT LOGGED; exact reason cannot be independently recovered"
+  },
+  "no_claims": [
+    "No change to production no-stun policy authorized by this diagnosis.",
+    "No relay secret file read or credentials printed.",
+    "No packet parsing, attacks, scans, expiry/ACL test, config mutation or listener operation by this agent.",
+    "Root owns any ordinary media comparison and fresh Fable review of a bounded candidate-publication change."
+  ],
+  "correction": {
+    "superseded_v1_sha256": "01574053b5b8e4a79fedd570962a0edef5bf06f3a30041609ec749f33c24a5c3",
+    "superseded_v1_path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-turn-ordinary-interop-source-diagnosis-v1-before-fast-counterevidence.json",
+    "reason": "Root normal strict relay-to-relay call connected rapidly with identical product and package6/no-stun configuration, after relay restart for private logging. Independently inspected retained timeline confirms connected states and decoded frames. Therefore source silence-delay path must not be described as unconditional or established cause.",
+    "counterevidence": {
+      "timeline_sha256": "36a52be2eeca339c259edf3685f68d05bad5654c150233b722acd1f8674064aa",
+      "samples": 209,
+      "elapsed_seconds": 24.93953611701727,
+      "first_state_seconds": {
+        "android:connected": 0.017378433141857386,
+        "host:connected": 0.017378433141857386
+      },
+      "host_final_connection": "connected",
+      "host_final_decoded_frames": 1244,
+      "host_final_decoded_samples": 1194240
+    }
+  },
+  "source_followup": "Need exact full shared-socket completion/port pruning path or native gather state from failing run; no further network operations by this agent. Earlier fixtures used16 relay ports and multiple attempts; retained allocation capacity is another unverified possibility, not a finding."
+}

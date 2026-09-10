@@ -1,0 +1,83 @@
+{
+  "base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "reviews": [
+    {
+      "stage": "design",
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "session_id": "33cd8569-f6c8-4dfb-a074-48f88d8f4d56",
+      "duration_ms": 406371,
+      "num_turns": 30,
+      "modelUsage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 1150,
+          "outputTokens": 18,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.00124,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-fable-5": {
+          "inputTokens": 30,
+          "outputTokens": 27165,
+          "cacheReadInputTokens": 799429,
+          "cacheCreationInputTokens": 96969,
+          "webSearchRequests": 0,
+          "costUSD": 4.097359,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-fable-5",
+          "provider": "firstParty"
+        }
+      },
+      "raw_result_sha256": "4737f7337d5c8649cc4471e88e8f48a2f8b10416f3581709cabc81e98057ecc3",
+      "report_file": "fable-design-review.md.txt",
+      "report_sha256": "1ab472e511ba3f3d061cf0879fb5745a8e835e4e451a851e13a76fcf06f8c9f3",
+      "scope": "Independent fresh-context design only; no final-code/phone/ADR acceptance"
+    },
+    {
+      "stage": "design_closure",
+      "type": "result",
+      "subtype": "success",
+      "is_error": false,
+      "session_id": "21ce2a92-0acf-43aa-a904-be10ba07f767",
+      "duration_ms": 222947,
+      "num_turns": 21,
+      "modelUsage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 802,
+          "outputTokens": 19,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.000897,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-fable-5": {
+          "inputTokens": 26,
+          "outputTokens": 15821,
+          "cacheReadInputTokens": 410266,
+          "cacheCreationInputTokens": 55614,
+          "webSearchRequests": 0,
+          "costUSD": 2.3138560000000004,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-fable-5",
+          "provider": "firstParty"
+        }
+      },
+      "raw_result_sha256": "811c88f0bb12e955a7346f3e95c5da6c7a44dafb54a3b0f87875575a85d0f9c2",
+      "report_file": "fable-design-closure.md.txt",
+      "report_sha256": "2fbcba19c7dc84fc42fa1f4c3e91a2393ab98f48c708592375b9f1cdf63503fa",
+      "scope": "Independent fresh-context design only; no final-code/phone/ADR acceptance"
+    }
+  ]
+}

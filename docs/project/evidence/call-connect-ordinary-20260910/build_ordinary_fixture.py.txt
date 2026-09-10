@@ -1,0 +1,95 @@
+from pathlib import Path
+import datetime, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, zipfile
+os.umask(0o077)
+E=Path(__file__).resolve().parent
+BASE=E.parent
+ROOT=Path('/home/codex/projects/paranoid-worktrees/voice-calls-20260909')
+SDK=Path('/home/codex/.local/share/paranoid-android-sdk')
+OLD=Path('/home/codex/projects/paranoid-worktrees/server-text-v0/clients/android')
+CERT='82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926'
+TOOLS=SDK/'build-tools/35.0.0'; PLATFORM=SDK/'platforms/android-35/android.jar'
+revision=sys.argv[1]; assert re.fullmatch(r'[a-z0-9-]+',revision)
+run=E/revision;run.mkdir(exist_ok=False)
+runtime=json.loads((E/'fixture-corrected/runtime.json').read_text())
+assert runtime['realm']=='https://127.0.0.1:38443' and re.fullmatch(r'[0-9a-f]{64}',runtime['pin'])
+def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+paths=set(ROOT.glob('clients/android/src/org/paranoid/text/*.java'))
+paths.update([ROOT/'clients/android/AndroidManifest.xml',ROOT/'clients/android/test/VoiceAppInstrumentation.java',ROOT/'clients/android/notices.py',ROOT/'clients/android/webrtc_dependency.py'])
+for pattern in ['clients/android/licenses/**/*','clients/core/src/*.rs','clients/core/Cargo.*','key-protocol/src/*.rs','key-protocol/Cargo.*','spikes/002-android-bootstrap/licenses/*']:
+ paths.update(p for p in ROOT.glob(pattern) if p.is_file())
+manifest={str(p.relative_to(ROOT)):sha(p) for p in sorted(paths)}
+(run/'product-source-sha256.json').write_text(json.dumps(manifest,indent=2)+'\n')
+for name in manifest:
+ target=run/'source'/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copy2(ROOT/name,target)
+android=run/'source/clients/android';out=run/'out';out.mkdir()
+engine_path=android/'src/org/paranoid/text/WebRtcAudioEngine.java'
+assert revision in ('baseline-build','fixed-build')
+if revision=='baseline-build':
+ baseline=BASE/'app-turn-fixture-1/source/clients/android/src/org/paranoid/text/WebRtcAudioEngine.java'
+ assert sha(baseline)=='7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2'
+ shutil.copy2(baseline,engine_path)
+else:
+ assert sha(engine_path)=='41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8'
+(run/'engine-identity.json').write_text(json.dumps({'arm':revision,'engine_sha256':sha(engine_path),'only_comparison_delta':'already-reviewed publication engine'},indent=2)+'\n')
+for name in ['classes','dex','test-classes','test-dex','deps']:(out/name).mkdir()
+keyclient=android/'src/org/paranoid/text/KeyClient.java'
+original=keyclient.read_text()
+fixture,nrealm=re.subn(r'(public static final String DEFAULT_REALM=)"[^"]+";',lambda m:m[1]+json.dumps(runtime['realm'])+';',original)
+fixture,npin=re.subn(r'(public static final String DEFAULT_PIN=)"[^"]+";',lambda m:m[1]+json.dumps(runtime['pin'])+';',fixture)
+assert nrealm==1 and npin==1 and fixture!=original
+keyclient.write_text(fixture)
+(run/'fixture-delta.json').write_text(json.dumps({'only_product_source_delta':'clients/android/src/org/paranoid/text/KeyClient.java DEFAULT_REALM/DEFAULT_PIN','original_sha256':manifest['clients/android/src/org/paranoid/text/KeyClient.java'],'fixture_sha256':sha(keyclient),'realm':runtime['realm'],'pin':runtime['pin'],'abi':'x86_64 fixture only','release_use':False},indent=2)+'\n')
+# Use exact verified payload from the pinned AAR, not mutable extracted cache.
+cache=ROOT/'clients/android/out/deps';shutil.copy2(cache/'android-150.7871.01.aar',out/'deps/android-150.7871.01.aar')
+spec=importlib.util.spec_from_file_location('fixture_webrtc',android/'webrtc_dependency.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);module.prepare(out/'deps')
+zxing=out/'deps/zxing-core-3.5.3.jar';shutil.copy2(cache/'zxing-core-3.5.3.jar',zxing)
+assert sha(zxing)=='8d8064c1636fdaef7189dd9055c7d59950a8940a12f2293956446ec3c109fd82'
+jni=BASE/'x86-target/x86_64-linux-android/release/libparanoid_client_core.so';assert jni.is_file()
+# Retained-key acquisition mirrors the reviewed candidate driver: memory/env only.
+match=re.search(r'--ks-pass\s+pass:([^\s]+)',(OLD/'build.sh').read_text());assert match
+secret=match[1].strip(chr(34)+chr(39))
+env={**os.environ,'ANDROID_SDK_ROOT':str(SDK),'PYTHONDONTWRITEBYTECODE':'1','CARGO_NET_OFFLINE':'true','PARANOID_ANDROID_KS_PASSWORD':secret}
+def execute(label,args,cwd=ROOT):
+ result=subprocess.run(list(map(str,args)),cwd=cwd,env=env,capture_output=True,text=True)
+ output=(result.stdout+'\n'+result.stderr).replace(secret,'[REDACTED]')
+ (run/(label+'.log')).write_text(output+'\nACTUAL_EXIT='+str(result.returncode)+'\n')
+ print(label,'exit',result.returncode,flush=True)
+ if result.returncode:raise RuntimeError(label+' failed; see sanitized log')
+ return output
+(android/'out').mkdir()
+execute('notices',['python3','notices.py'],android)
+webrtc=out/'deps/webrtc-classes.jar';native=out/'deps/webrtc/x86_64/libjingle_peerconnection_so.so'
+java=sorted((android/'src/org/paranoid/text').glob('*.java'))
+execute('app-javac',['javac','--release','8','-Xlint:-options','-encoding','UTF-8','-classpath',str(PLATFORM)+':'+str(zxing)+':'+str(webrtc),'-d',out/'classes',*java])
+classes=sorted((out/'classes').rglob('*.class'))
+assert not any('Instrumentation' in p.name for p in classes)
+execute('app-d8',[TOOLS/'d8','--lib',PLATFORM,'--min-api','26','--output',out/'dex',*classes,zxing,webrtc])
+execute('app-aapt',[TOOLS/'aapt','package','-f','-M',android/'AndroidManifest.xml','-I',PLATFORM,'-F',out/'app-unsigned.apk'])
+with zipfile.ZipFile(out/'app-unsigned.apk','a',compression=zipfile.ZIP_DEFLATED) as z:
+ for dex in sorted((out/'dex').glob('*.dex')):z.write(dex,dex.name)
+ z.write(jni,'lib/x86_64/libparanoid_client_core.so',compress_type=zipfile.ZIP_STORED)
+ z.write(native,'lib/x86_64/libjingle_peerconnection_so.so',compress_type=zipfile.ZIP_STORED)
+ z.write(android/'out/THIRD_PARTY_NOTICES.txt','assets/THIRD_PARTY_NOTICES.txt')
+with zipfile.ZipFile(out/'app-classes.jar','w',compression=zipfile.ZIP_DEFLATED) as z:
+ for p in classes:z.write(p,str(p.relative_to(out/'classes')))
+testmanifest=run/'test/AndroidManifest.xml';testmanifest.parent.mkdir()
+testmanifest.write_text('<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.paranoid.devtext.voice.tests" android:versionCode="1" android:versionName="1"><uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35"/><uses-permission android:name="android.permission.INTERNET"/><application android:label="ParanoID actual-app voice fixture" android:debuggable="true"/><instrumentation android:name="org.paranoid.text.VoiceAppInstrumentation" android:targetPackage="org.paranoid.devtext" android:functionalTest="true" android:handleProfiling="false"/></manifest>')
+execute('test-javac',['javac','--release','8','-Xlint:-options','-encoding','UTF-8','-classpath',str(PLATFORM)+':'+str(out/'app-classes.jar')+':'+str(webrtc),'-d',out/'test-classes',android/'test/VoiceAppInstrumentation.java'])
+execute('test-d8',[TOOLS/'d8','--lib',PLATFORM,'--classpath',out/'app-classes.jar','--classpath',webrtc,'--min-api','26','--output',out/'test-dex',*sorted((out/'test-classes').rglob('*.class'))])
+execute('test-aapt',[TOOLS/'aapt','package','-f','-M',testmanifest,'-I',PLATFORM,'-F',out/'test-unsigned.apk'])
+with zipfile.ZipFile(out/'test-unsigned.apk','a',compression=zipfile.ZIP_DEFLATED) as z:
+ for dex in sorted((out/'test-dex').glob('*.dex')):z.write(dex,dex.name)
+artifacts={}
+for kind,name in [('app','paranoid-0.0.10-voice-app-fixture-x86_64.apk'),('test','paranoid-voice-app-instrumentation.apk')]:
+ execute(kind+'-align',[TOOLS/'zipalign','-P','16','-f','4',out/(kind+'-unsigned.apk'),out/(kind+'-aligned.apk')])
+ apk=run/name
+ execute(kind+'-sign',[TOOLS/'apksigner','sign','--ks',OLD/'out/test.keystore','--ks-pass','env:PARANOID_ANDROID_KS_PASSWORD','--key-pass','env:PARANOID_ANDROID_KS_PASSWORD','--out',apk,out/(kind+'-aligned.apk')])
+ signature=execute(kind+'-signature',[TOOLS/'apksigner','verify','--verbose','--print-certs',apk]);assert CERT in signature and 'Number of signers: 1' in signature
+ execute(kind+'-alignment',[TOOLS/'zipalign','-c','-P','16','4',apk])
+ badging=execute(kind+'-badging',[TOOLS/'aapt','dump','badging',apk])
+ assert ("package: name='org.paranoid.devtext'" if kind=='app' else "package: name='org.paranoid.devtext.voice.tests'") in badging
+ if kind=='app':assert "native-code: 'x86_64'" in badging and "versionCode='10'" in badging
+ artifacts[kind]={'path':str(apk),'sha256':sha(apk),'bytes':apk.stat().st_size};apk.chmod(0o444)
+assert {name:sha(ROOT/name) for name in manifest}==manifest,'Product inputs changed during build; rebuild fixture'
+record={'result':'BUILT_ONLY','fixture':True,'release_use':False,'installed':False,'started':False,'created_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'base':subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),'artifacts':artifacts,'signer_sha256':CERT,'product_source_manifest_sha256':sha(run/'product-source-sha256.json'),'only_product_source_delta':'KeyClient DEFAULT_REALM/DEFAULT_PIN','jni_sha256':sha(jni),'webrtc_aar_sha256':module.SHA256,'webrtc_native_sha256':sha(native),'realm':runtime['realm'],'pin':runtime['pin'],'control':'ordinary-only safe controller/media/terminal observer; public-contact setup; normal UI consent; owned ADB forwarding','instrumentation_component':'org.paranoid.devtext.voice.tests/org.paranoid.text.VoiceAppInstrumentation'}
+(run/'artifact.json').write_text(json.dumps(record,indent=2)+'\n');print('fixture_build_complete',revision,flush=True)

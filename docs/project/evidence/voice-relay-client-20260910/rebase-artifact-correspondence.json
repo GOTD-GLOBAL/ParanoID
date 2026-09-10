@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "client_head": "811e0840c88a72c7c4c6e42137796a9d137481ad",
+  "server_base": "923e11b1f0a5ba8709002d21e282778123c2bfe5",
+  "product_inputs_matched": 44,
+  "build_manifest_sha256": "480d676bc1ce9817d224b7421758a3e60663d099feec4a78b2084eaf5c71a2b7",
+  "history_rebased": true,
+  "server_or_deploy_diff_in_client_pr": []
+}

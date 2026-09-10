@@ -35,6 +35,9 @@ class FaultProxy:
         self.lock = threading.Lock()
         self.block_sender = None
         self.drop_sender = None
+        self.consume_401_sender = None
+        self.consumed_401 = threading.Event()
+        self.consumed_401_id = None
         self.blocked = threading.Event()
         self.release = threading.Event()
         self.dropped = threading.Event()
@@ -47,6 +50,9 @@ class FaultProxy:
         self.timings = []
         self.before_session_challenge = None
         self.challenge_observations = []
+        self.successful_message_polls = {}
+        self.started_event_polls = {}
+        self.completed_event_polls = {}
         proxy = self
 
         class Server(http.server.ThreadingHTTPServer):
@@ -80,6 +86,8 @@ class FaultProxy:
                     with proxy.lock:
                         sender = proxy.sessions.get(session)
                         proxy.protocol_requests[self.path.split('?', 1)[0]] = proxy.protocol_requests.get(self.path.split('?', 1)[0], 0) + 1
+                        if self.command == 'GET' and self.path.startswith('/v2/events?') and sender is not None:
+                            proxy.started_event_polls[sender] = proxy.started_event_polls.get(sender, 0) + 1
                     envelope = json.loads(body) if self.command == 'POST' and self.path == '/v2/messages' else None
                     challenge = json.loads(body) if self.command == 'POST' and self.path == '/v2/auth/challenge' else None
                     if challenge is not None and challenge.get('purpose') == 'session':
@@ -101,18 +109,45 @@ class FaultProxy:
                     response = connection.getresponse()
                     response_status = response.status
                     data = response.read(2 * 1024 * 1024 + 1)
+                    if self.command == 'GET' and self.path.startswith('/v2/events?') and sender is not None:
+                        with proxy.lock:
+                            proxy.completed_event_polls[sender] = proxy.completed_event_polls.get(sender, 0) + 1
+                    if envelope is not None and response.status == 200:
+                        with proxy.lock:
+                            consume_401 = sender is not None and sender == proxy.consume_401_sender
+                            if consume_401:
+                                proxy.consume_401_sender = None
+                                proxy.consumed_401_id = envelope['id']
+                        if consume_401:
+                            # First request actually committed. Replaying its exact
+                            # consumed authorization produces a genuine backend401;
+                            # the client must retry unchanged ciphertext with a new
+                            # native signed nonce before declaring authority lost.
+                            connection.close()
+                            connection = http.client.HTTPSConnection(proxy.front_ip, 38443, context=proxy.context, timeout=32)
+                            connection._create_connection = lambda address, timeout, source_address=None: socket.create_connection((proxy.back_ip, 38443), timeout, source_address)
+                            connection.request(self.command, self.path, body=body, headers=headers)
+                            response = connection.getresponse()
+                            response_status = response.status
+                            data = response.read(2 * 1024 * 1024 + 1)
+                            assert response.status == 401, 'backend did not reject genuinely consumed signed nonce'
+                            proxy.consumed_401.set()
                     if challenge is not None and challenge.get('purpose') == 'session':
                         with proxy.lock:
                             proxy.challenge_observations.append({'account': challenge.get('account'), 'purpose': 'session', 'status': response.status})
                     if len(data) > 2 * 1024 * 1024:
                         raise AssertionError('fixture response exceeds bound')
+                    if self.command == 'GET' and self.path.startswith('/v2/messages?') and response.status == 200 and sender is not None:
+                        with proxy.lock:
+                            proxy.successful_message_polls[sender] = proxy.successful_message_polls.get(sender, 0) + 1
                     if response.status == 200 and self.path == '/v2/session':
                         context = json.loads(data)
                         with proxy.lock:
                             proxy.sessions[context['id']] = context['account']
                     if envelope is not None:
                         with proxy.lock:
-                            proxy.posts.append({'sender': sender, 'id': envelope['id'], 'ciphertext': envelope['ciphertext'], 'status': response.status})
+                            proxy.posts.append({'sender': sender, 'id': envelope['id'], 'ciphertext': envelope['ciphertext'], 'status': response.status,
+                                                'authorization_sha256': hashlib.sha256(authorization.encode()).hexdigest()})
                             drop = response.status == 200 and proxy.drop_sender is not None and sender == proxy.drop_sender
                             if drop:
                                 proxy.drop_sender = None
@@ -159,14 +194,14 @@ class FaultProxy:
         self.thread.join(timeout=5)
 
 
-def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None):
+def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None, authority_only=False, readiness_only=False):
     os.umask(0o077)
     server_binary = server_binary.resolve()
     evidence_dir.mkdir(parents=True, exist_ok=True)
     jni_library_dir = jni_library_dir.resolve()
     server_digest = hashlib.sha256(server_binary.read_bytes()).hexdigest()
     jni_digest = hashlib.sha256((jni_library_dir / 'libparanoid_client_core.so').read_bytes()).hexdigest()
-    source_paths = [ANDROID / f'src/org/paranoid/text/{name}.java' for name in ['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','RealtimeLoop','RealtimeTransport']]
+    source_paths = [ANDROID / f'src/org/paranoid/text/{name}.java' for name in ['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','RealtimeLoop','RealtimeTransport','VoiceRelayConfig','VoiceRelayTransport']]
     source_paths += [ANDROID / 'test/RealtimeBridge.java', Path(__file__).resolve()]
     source_hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in source_paths}
     (evidence_dir / 'source-start-sha256.json').write_text(json.dumps(source_hashes, indent=2) + '\n')
@@ -176,7 +211,7 @@ def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None)
     assert all(path.is_file() for path in dependencies), 'Run the existing dependency preparation first'
     cp = ':'.join(str(path) for path in [classes, *dependencies])
     subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-encoding', 'UTF-8', '-cp', cp,
-                    '-sourcepath', str(ANDROID / 'src'), '-d', str(classes), str(ANDROID / 'test/RealtimeBridge.java')], check=True)
+                    '-d', str(classes), *[str(path) for path in source_paths if path.suffix == '.java']], check=True)
     env = {k: v for k, v in os.environ.items() if not k.startswith(('PG', 'PARANOID_'))}
     result = {'result': 'RUNNING', 'server_binary': str(server_binary), 'server_sha256': server_digest,
               'jni_sha256': jni_digest, 'physical_phone_benchmark': 'NOT RUN', 'ui_render': 'JVM durable publicView listener, not phone pixels'}
@@ -300,8 +335,80 @@ def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None)
                 rpc(phone, 'start')
                 users[phone] = eventually(lambda p=phone: (lambda v: v if v['active'] and v.get('contact') else None)(rpc(p, 'view')), phone + ' auto registration')
                 assert users[phone]['account'] == created['account'] and users[phone]['dialogs'] == []
+            if readiness_only or authority_only:
+                account = users['one']['account']
+                eventually(lambda: account in proxy.sessions.values(), 'existing authenticated session before pause')
+                eventually(lambda: proxy.started_event_polls.get(account, 0) > 0, 'real empty-inbox longpoll before pause')
+                assert stored_messages() == [], 'readiness probe must have an empty inbox/outbox'
+                before = rpc('one', 'stop')['online_notifications']
+                old_waiters = proxy.started_event_polls.get(account, 0)
+                # Finish the prior actual backend wait while the client is paused.
+                # Otherwise waiter_busy429 gives the old implementation an
+                # accidental immediate messages fallback and hides this defect.
+                eventually(lambda: proxy.completed_event_polls.get(account, 0) >= old_waiters,
+                           'previous real empty longpoll fully drained while paused', 30)
+                before_polls = proxy.successful_message_polls.get(account, 0)
+                started_resume = time.monotonic()
+                rpc('one', 'start')
+                resumed = None
+                try:
+                    resumed = eventually(lambda: (lambda v: v if v['online_notifications'] > before else None)(rpc('one', 'view')),
+                                         'new authenticated online callback within3s after empty-inbox resume', 3)
+                finally:
+                    result['resume_readiness'] = {'deadline_ms': 3000, 'elapsed_ms': (time.monotonic()-started_resume)*1000,
+                        'new_authenticated_online_callback': resumed is not None,
+                        'successful_nonblocking_signed_polls': proxy.successful_message_polls.get(account, 0)-before_polls,
+                        'empty_inbox': True, 'prior_backend_wait_fully_drained': True, 'optimistic_callback': False}
+                assert result['resume_readiness']['successful_nonblocking_signed_polls'] >= 1, 'online readiness needs actual successful signed fetch'
+                assert resumed['authorization_failures'] == 0
+                print('PASS actual start/stop/start with empty inbox reports authenticated online within3s', flush=True)
+                if readiness_only:
+                    assert not proxy.errors, proxy.errors
+                    result.update(result='PASS', elapsed_seconds=time.monotonic()-started,
+                                  checks=['actual empty-inbox resumed generation performs signed nonblocking fetch before readiness'])
+                    return
             rpc('one', 'pair', users['two']['contact'])
             assert rpc('two', 'view')['dialogs'] == [], 'receiver must begin with zero contacts'
+            if authority_only:
+                assert rpc('one', 'view')['authorization_failures'] == 0
+                proxy.consume_401_sender = users['one']['account']
+                rpc('one', 'send', {'account': users['two']['account'], 'text': 'synthetic-consumed-nonce-recovery'})
+                rpc('one', 'kick')
+                assert proxy.consumed_401.wait(10), 'did not reach actual backend consumed-nonce401'
+                eventually(lambda: has_text('one', users['two']['account'], 'synthetic-consumed-nonce-recovery', True), 'fresh signed-nonce retry and actual receipt', 20)
+                attempts = [row for row in proxy.posts if row['id'] == proxy.consumed_401_id]
+                assert len(attempts) >= 2 and [row['status'] for row in attempts[:2]] == [401, 200]
+                assert attempts[0]['authorization_sha256'] != attempts[1]['authorization_sha256'], 'retry reused consumed authorization'
+                assert all(row['ciphertext'] == attempts[0]['ciphertext'] for row in attempts), 'retry changed ciphertext'
+                recovered = rpc('one', 'view')
+                result['recoverable_401'] = {'actual_backend_statuses': [row['status'] for row in attempts],
+                    'fresh_native_signed_nonce': True, 'immutable_ciphertext': True, 'authenticated_receipt': True,
+                    'authorization_lost_callbacks': recovered['authorization_failures']}
+                assert recovered['authorization_failures'] == 0, 'recoverable consumed-nonce401 incorrectly notified authorizationLost before successful retry'
+                print('PASS actual backend consumed-nonce401 -> fresh native retry200, no authorization-loss callback', flush=True)
+
+                account = users['one']['account']
+                assert len(account) == 64 and all(c in '0123456789abcdef' for c in account)
+                subprocess.run([str(PG / 'psql'), '-X', '-h', str(sock), '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c',
+                                "UPDATE ss_accounts SET mode='revoked' WHERE account='" + account + "'"],
+                               env=env, check=True, stdout=log, stderr=log)
+                before_posts = len(proxy.posts)
+                rpc('one', 'send', {'account': users['two']['account'], 'text': 'synthetic-revoked-must-stay-pending'})
+                rpc('one', 'kick')
+                revoked = eventually(lambda: (lambda v: v if v['authorization_failures'] > 0 else None)(rpc('one', 'view')), 'persistent actual revocation callback', 15)
+                failures = eventually(lambda: (lambda rows: rows if len(rows) >= 2 else None)([
+                    row for row in proxy.posts[before_posts:] if row['sender'] == account and row['status'] == 401]), 'one bounded retry still denied after actual revocation', 15)
+                assert not has_text('two', account, 'synthetic-revoked-must-stay-pending')
+                assert rpc('one', 'pending')['pending'], 'revocation deleted immutable pending state'
+                result['persistent_401'] = {'actual_backend_statuses': [row['status'] for row in failures[:2]],
+                    'authorization_lost_callbacks': revoked['authorization_failures'], 'plaintext_delivered': False,
+                    'pending_preserved': True, 'revocation': 'only isolated synthetic fixture account changed'}
+                assert not proxy.errors, proxy.errors
+                result.update(result='PASS', elapsed_seconds=time.monotonic()-started,
+                              checks=['recoverable backend401 bounded native retry without false authority loss',
+                                      'actual persistent revocation401 remains fail closed with pending preserved'])
+                print('PASS actual revoked account remains denied after existing bounded retry and notifies authority loss', flush=True)
+                return
             proxy.block_sender = users['two']['account']
             first = rpc('one', 'send', {'account': users['two']['account'], 'text': 'synthetic-first-contact'})
             rpc('one', 'kick')
@@ -517,5 +624,7 @@ if __name__ == '__main__':
     parser.add_argument('--evidence-dir', type=Path, required=True)
     parser.add_argument('--jni-library-dir', type=Path, required=True, help='Explicit already-built JNI; never builds in shared output')
     parser.add_argument('--legacy-server-binary', type=Path, help='Optional exact v7-compatible binary for live same-data rollback test')
+    parser.add_argument('--authority-only', action='store_true', help='Bounded real consumed-nonce recovery and actual revocation regression')
+    parser.add_argument('--readiness-only', action='store_true', help='Actual empty-inbox stop/resume authenticated readiness regression')
     args = parser.parse_args()
-    run(args.server_binary, args.evidence_dir, args.jni_library_dir, args.legacy_server_binary)
+    run(args.server_binary, args.evidence_dir, args.jni_library_dir, args.legacy_server_binary, args.authority_only, args.readiness_only)

@@ -1,0 +1,8 @@
+{
+  "clients/android/test/VoiceAppInstrumentation.java": "4d349e120d785a43bc39ea683a05984b82e2979c492a05066a40bf4a01b5c9e5",
+  "clients/android/test/call_connect_sampler.py": "0d26e4fe7345c40360a51f9ead72c22a2f211f7deddf99460c85ce62bc743147",
+  "clients/android/test/test_call_connect_sampler.py": "d213b0d7579ed5480b2a3aba17d7cd4049dabdeadfc87990edc5fa2915a26a34",
+  "clients/android/test/test_call_connect_instrumentation.py": "eb9a9d8253a5c725335a339f710752775bbda91da342fa7ae400d016f80224bc",
+  "clients/android/test/CALL-CONNECT01.md": "c1ac7d66dd2e80324f6a30f37add411a7786c7d34247d61df7f9a0297e4e887e",
+  "ordinary_host_peer.py": "c0e98712eb0fb9cf61795a748226961f2fd5c12f2acea9627e37a789f25f1be0"
+}

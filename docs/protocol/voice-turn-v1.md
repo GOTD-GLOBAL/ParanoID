@@ -107,6 +107,12 @@ all existing E2EE/control checks still apply. Failure to allocate/connect ends t
 call within its existing deadline; no silent direct fallback after credentials
 were offered. Neither retransmission nor network change resets consent/deadlines.
 
+The client publishes one full authenticated SDP snapshot under the bounded
+relay-only [voice-v1 publication rule](voice-v1.md): after local installation and
+a usable relay candidate, coalesce for500 ms unless gathering completes sooner.
+Late candidates never trigger trickle or republishing. Slower alternatives may be
+omitted; failure requires fresh consent and never downgrades to direct mode.
+
 One cancellable, bounded voice network lane is separate from text send/receive.
 At most one current request and one latest replacement may exist; superseded
 queued work is removed. Responses must pass transport-generation and call-generation

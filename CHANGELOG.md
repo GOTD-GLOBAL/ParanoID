@@ -46,6 +46,27 @@ public contract is declared.
   Relay expiry/access-control/lifecycle and full call acceptance are still
   unverified; no hosted deployment or relay exposure has occurred.
 
+### Incoming-call diagnostics — 2026-09-10
+
+- Added test-only controller-first sampling and bounded sanitized SDK/host
+  observations. One ordinary baseline failed naturally while its fixed companion
+  decoded relay audio; [evidence and remaining unknowns](docs/project/evidence/call-connect-ordinary-20260910/README.md)
+  keep CALL-CONNECT01 open. Production source and APK are unchanged.
+
+### Voice relay client — 2026-09-10
+
+- Added strict, volatile relay credential retrieval before media creation, with
+  bounded independent I/O and generation-safe cancellation. Call and Answer now
+  disclose relay/direct metadata before consent. Signed v10 builds and preserves
+  owned-emulator v9 identity/contact/history. Parser, HTTPS/JNI and text checks
+  pass; full extension acceptance, final review and missing relay packet gates
+  remain explicit in [the local record](docs/operations/voice-calls-local.md).
+- Added a reviewed500 ms relay-candidate publication window to prevent unrelated
+  gathering delays consuming nearly the entire45-second call setup deadline.
+  Actual both-role relay, cancellation/redial, late-callback, direct tone and
+  rebuilt-artifact checks pass. Direct mode and authenticated immutable SDP
+  retain their existing contracts; missing relay runtime gates remain explicit.
+
 ### Voice relay foundation — 2026-09-10
 
 - Added an optional signed-session TURN credential issuer with locked active-device
@@ -54,6 +75,19 @@ public contract is declared.
   a patched coturn build and a separate relay unit; [the runbook](deploy/turn/README.md)
   records actual offline checks and missing expiry/ACL packet gates. No live
   server, firewall, DNS, phone or public listener changes were performed.
+
+### Voice implementation checkpoint — 2026-09-09
+
+- Added native authenticated 1:1 call controls on the retained Olm channel,
+  Android answer/reject/cancel/mute/routing lifecycle, microphone foreground
+  service and pinned WebRTC/Opus integration. Calls retain core3/sealed4 identity,
+  history and TLS trust. Fresh design closure and native/JNI/controller checks
+  pass, including actual v8 text/receipt continuation and 3700 encrypted controls
+  without exhausting the text replay ledger. Real Android/aiortc direct and local
+  TURN relay audio pass decoded-tone, mute/unmute and teardown checks. [Exact
+  evidence and remaining gates](docs/operations/voice-calls-local.md) record 14 app acceptance steps passing, with final inset UI
+  and signed voice APK checks passing; independent final review remains pending. No new live listener,
+  server change, physical-phone test or production quality claim is included.
 
 ### Realtime rollout — 2026-09-09
 

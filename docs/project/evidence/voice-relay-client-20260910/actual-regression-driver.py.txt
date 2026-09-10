@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Prepared ordinary-call regression; execution requires --execute.
+
+Uses only the already owned emulator and loopback app18870/peer18871 drivers.
+No service installation, relay expiry/allocation retention, ACL, namespace, race,
+firewall or external-network tests. Requires fresh observer instrumentation.
+All saved results are aggregate states, counters and booleans, never SDP/ICE/TURN.
+"""
+import argparse
+import hashlib
+import importlib.util
+import json
+import os
+from pathlib import Path
+import re
+import time
+import xml.etree.ElementTree as ET
+
+E = Path(__file__).resolve().parent
+ROOT = Path('/home/codex/projects/paranoid-worktrees/voice-calls-20260909')
+
+
+class NotEstablished(Exception):
+    """The observation did not establish the requested regression precondition."""
+
+
+class Driver:
+    def __init__(self, args, ui):
+        self.args, self.ui = args, ui
+        self.out = args.evidence_dir.resolve()
+        self.out.mkdir(parents=True, exist_ok=False, mode=0o700)
+        self.records, self.timeline = [], []
+        self.owns_call = self.held = False
+        self.timer_observed = False
+        self.timer_published_before_complete = False
+        self.started = time.monotonic()
+        self.baseline = None
+
+    @staticmethod
+    def require(condition, code):
+        if not condition:
+            raise AssertionError(code)
+
+    def record(self, name, **values):
+        self.records.append(dict(check=name, elapsed_seconds=time.monotonic() - self.started, **values))
+
+    def app(self, command='view', **values):
+        return self.ui.app(command, **values)
+
+    def host(self, operation='view', **values):
+        return self.ui.host(operation, **values)
+
+    def labels(self):
+        return [item['text'] or item['content-desc'] for item in self.ui.labels()]
+
+    def tap(self, text, fast=False):
+        if not fast:
+            return self.ui.tap(text)
+        # Avoid the helper's deliberate400ms post-tap pause in the500ms pending-timer test.
+        for node in ET.fromstring(self.ui.dump()).iter('node'):
+            attrs = node.attrib
+            if any(attrs.get(key, '').casefold() == text.casefold() for key in ('text', 'content-desc', 'resource-id')):
+                self.require(attrs.get('enabled') == 'true', 'disabled_ui_action')
+                x1, y1, x2, y2 = map(int, re.findall(r'\d+', attrs['bounds']))
+                self.ui.adb('shell', 'input', 'tap', str((x1+x2)//2), str((y1+y2)//2))
+                return
+        raise AssertionError('missing_fast_ui_action')
+
+    def wait(self, callback, seconds, code):
+        end = time.monotonic() + seconds
+        while time.monotonic() < end:
+            result = callback()
+            if result:
+                return result
+            time.sleep(.1)
+        raise AssertionError(code)
+
+    def dismiss_ended(self):
+        if any(label.casefold() == 'закрыть' for label in self.labels()):
+            self.tap('Закрыть')
+
+    def chat(self):
+        self.dismiss_ended()
+        if not any(label.casefold() == 'аудиозвонок' for label in self.labels()):
+            self.tap('Контакт ' + self.host()['account'][:6])
+
+    def arm(self):
+        armed = self.app('arm_publication_observer')
+        self.require(armed.get('armed'), 'observer_not_armed')
+        return armed['observer_id']
+
+    def observer(self, identifier):
+        return self.app('publication_observer', observer_id=identifier)
+
+    def start_android(self, observer=True):
+        self.chat()
+        identifier = self.arm() if observer else None
+        self.tap('Аудиозвонок')
+        self.require(any('ретранслятора' in label.casefold() for label in self.labels()), 'caller_disclosure_missing')
+        start = time.monotonic()
+        self.owns_call = True
+        self.tap('Позвонить', fast=True)
+        return identifier, start
+
+    def safe_settings(self, value):
+        names = ('media_present', 'generation', 'engine_muted', 'track_enabled', 'engine_closed',
+                 'local_description_published', 'relay_publication_scheduled', 'ice_gathering_state',
+                 'ice_connection_state', 'local_candidate_count', 'local_candidate_types',
+                 'observed_on_media_owner', 'still_current')
+        return {key: value[key] for key in names if key in value}
+
+    def publication(self, identifier, start, case):
+        # The last zero-candidate request START is a conservative lower bound on
+        # first relay arrival; the published response END is an upper bound on publication.
+        no_relay_lower = start
+        first_observed = None
+        deadline = start + 15
+        while time.monotonic() < deadline:
+            before = time.monotonic()
+            value = self.app('media_settings')
+            after = time.monotonic()
+            self.timeline.append(dict(case=case, seconds=after-start, settings=self.safe_settings(value)))
+            if value.get('relay_publication_scheduled') is True:
+                self.timer_observed = True
+            relays = value.get('local_candidate_types', {}).get('relay', 0)
+            if not relays:
+                no_relay_lower = before
+            else:
+                if first_observed is None:
+                    first_observed = after
+                self.require(value.get('still_current') and value.get('observed_on_media_owner'), 'stale_or_wrong_owner_publication_observation')
+                if value.get('local_description_published'):
+                    upper = after - no_relay_lower
+                    if upper >= 5:
+                        raise NotEstablished('publication_upper_bound_not_under_5s')
+                    seen = self.observer(identifier)
+                    self.require(seen.get('attached_before_publication') and seen.get('attachment_checked')
+                                 and not seen.get('attachment_failed') and seen['count'] == 1
+                                 and seen.get('current_context_matches') is True, 'publication_observer_invariant')
+                    self.record(case+'_publication', publication_after_first_relay_upper_bound_seconds=upper,
+                                first_relay_observed_seconds=first_observed-start,
+                                publication_observed_seconds=after-start, count=seen['count'], context_matches=True,
+                                relay_publication_scheduled=value.get('relay_publication_scheduled'),
+                                gathering_state_at_publication=value.get('ice_gathering_state'))
+                    if value.get('relay_publication_scheduled') is True and value.get('ice_gathering_state') == 'gathering':
+                        self.timer_published_before_complete = True
+                    return
+                if after - first_observed >= 5:
+                    raise AssertionError('actual_relay_present_but_unpublished_for_5s')
+            self.require(self.app()['call']['state'] != 'ended', 'call_ended_before_publication')
+            time.sleep(.05)
+        raise AssertionError('publication_observation_deadline')
+
+    def incoming_no_media(self, android):
+        read = self.app if android else self.host
+        incoming = self.wait(lambda: (v if (v := read())['call']['state'] == 'incoming' else None), 10, 'incoming_deadline')
+        for _ in range(5):
+            value = read()
+            self.require(value['call']['state'] == 'incoming' and not value['call']['media_active'], 'recipient_media_authority_before_answer')
+            if android:
+                self.require(not value['media_present'] and value['active_recordings'] == 0, 'android_recipient_capture_before_answer')
+            else:
+                self.require(value['media']['connection'] == 'closed', 'host_recipient_peerconnection_before_answer')
+            time.sleep(.15)
+        self.record('android_recipient_no_capture' if android else 'host_recipient_no_peerconnection', passed=True)
+        return incoming
+
+    def connected(self):
+        self.wait(lambda: self.app()['call']['state'] == 'connected' and self.host()['call']['state'] == 'connected', 15, 'connected_deadline')
+
+    def media(self):
+        stats = self.app('media_stats')['stats']
+        by_id = {item['id']: item for item in stats}
+        transport = next(item for item in stats if item.get('type') == 'transport' and item.get('selectedCandidatePairId'))
+        pair = by_id[transport['selectedCandidatePairId']]
+        local, remote = by_id[pair['localCandidateId']], by_id[pair['remoteCandidateId']]
+        self.require(local.get('candidateType') == remote.get('candidateType') == 'relay', 'selected_pair_not_relay_relay')
+        self.require(transport.get('dtlsState') == 'connected', 'dtls_not_connected')
+        inbound = next(item for item in stats if item.get('type') == 'inbound-rtp' and item.get('kind', item.get('mediaType')) == 'audio')
+        outbound = next(item for item in stats if item.get('type') == 'outbound-rtp' and item.get('kind', item.get('mediaType')) == 'audio')
+        self.require(by_id[inbound['codecId']]['mimeType'].lower() == 'audio/opus'
+                     and by_id[outbound['codecId']]['mimeType'].lower() == 'audio/opus', 'selected_codec_not_opus')
+        return dict(local_candidate_type='relay', remote_candidate_type='relay', dtls='connected', codec='audio/opus',
+                    android_samples=int(inbound.get('totalSamplesReceived', 0)),
+                    android_energy=float(inbound.get('totalAudioEnergy', 0)),
+                    android_packets=int(inbound.get('packetsReceived', 0)),
+                    host_decoded_frames=self.host()['media']['decoded_frames'])
+
+    def prove_media(self, case):
+        def enough():
+            try:
+                value = self.media()
+                return value if value['android_energy'] > .001 and value['android_samples'] > 48000 and value['host_decoded_frames'] > 50 else None
+            except (StopIteration, KeyError):
+                return None
+        self.record(case+'_decoded_media', **self.wait(enough, 8, 'decoded_media_deadline'))
+
+    def complete_once(self, identifier, case):
+        deadline = time.monotonic() + 50
+        while time.monotonic() < deadline:
+            value = self.observer(identifier)
+            self.require(value.get('still_current') and not value.get('closed') and value['count'] == 1
+                         and value.get('current_context_matches') is True, 'duplicate_publication_or_context_change')
+            if value.get('ice_gathering_state') == 'complete':
+                for _ in range(4):
+                    time.sleep(.3)
+                    later = self.observer(identifier)
+                    self.require(later['count'] == 1 and later.get('current_context_matches') is True, 'late_ice_republished_or_changed_binding')
+                self.record(case+'_actual_complete_no_republish', count=1, context_matches=True, observed_actual_complete=True)
+                return
+            time.sleep(.25)
+        raise AssertionError('actual_gathering_complete_not_observed')
+
+    def mute_text(self, case):
+        before = self.media()
+        self.tap('Выключить микрофон')
+        settings = self.app('media_settings')
+        self.require(settings['engine_muted'] and not settings['track_enabled'] and settings['still_current'], 'actual_sdk_mute_failed')
+        time.sleep(1)
+        muted = self.media()
+        self.require(muted['android_samples'] > before['android_samples'] and muted['android_energy'] > before['android_energy'], 'reverse_audio_stopped_while_muted')
+        self.tap('Включить микрофон')
+        settings = self.app('media_settings')
+        self.require(not settings['engine_muted'] and settings['track_enabled'] and settings['still_current'], 'actual_sdk_unmute_failed')
+        self.wait(lambda: self.host()['media']['decoded_frames'] > muted['host_decoded_frames'] + 20, 4, 'decoded_audio_did_not_resume')
+        self.tap('К переписке');self.tap('Сообщение')
+        marker = 'relay-ui-' + case + '-' + str(time.monotonic_ns())
+        self.ui.adb('shell', 'input', 'text', marker);self.tap('Отправить сообщение')
+        self.ui.adb('shell', 'input', 'keyevent', '4')
+        self.wait(lambda: marker in json.dumps(self.host()['dialogs']), 10, 'android_to_host_text_failed')
+        reverse = 'relay-host-' + case + '-' + str(time.monotonic_ns())
+        self.host('text', account=self.app()['text']['account'], text=reverse)
+        self.wait(lambda: reverse in json.dumps(self.app()['text']['dialogs']), 10, 'host_to_android_text_failed')
+        self.require(self.app()['call']['state'] == self.host()['call']['state'] == 'connected', 'text_interrupted_call')
+        self.tap('Аудиозвонок')
+        self.record(case+'_mute_unmute_two_way_text', sdk_mute_and_unmute=True,
+                    reverse_audio_during_mute=True, both_text_directions=True,
+                    acoustic_muted_pcm_oracle='NOT AVAILABLE in this app observer; separate raw media harness covers silence')
+
+    def cleanup(self, remote=False):
+        if self.held:
+            self.app('release_media_owner');self.held = False
+        if remote:
+            self.host('hangup')
+        else:
+            self.tap('Завершить')
+        def done():
+            app, host = self.app(), self.host()
+            return (app['call']['state'] == 'ended' and not app['media_present'] and app['media_closing'] == 0
+                    and app['active_recordings'] == 0 and app['audio_mode'] == self.baseline['audio_mode']
+                    and app['speaker'] == self.baseline['speaker'] and host['call']['state'] == 'ended'
+                    and host['media']['connection'] == 'closed')
+        self.wait(done, 12, 'local_and_remote_cleanup_deadline')
+        self.owns_call = False
+        self.record('remote_cleanup' if remote else 'local_cleanup', passed=True, microphone_and_sdk_closed=True)
+        self.dismiss_ended()
+
+    def role(self, android_caller):
+        case = 'android_caller' if android_caller else 'android_recipient'
+        if android_caller:
+            identifier, start = self.start_android()
+            self.publication(identifier, start, case)
+            self.incoming_no_media(False);self.host('answer')
+        else:
+            self.chat();identifier = self.arm();self.owns_call = True
+            self.host('start', account=self.app()['text']['account'])
+            self.incoming_no_media(True)
+            self.require(any('ретранслятора' in label.casefold() for label in self.labels()), 'recipient_disclosure_missing')
+            start = time.monotonic();self.tap('Ответить', fast=True)
+            self.publication(identifier, start, case)
+        self.connected();self.prove_media(case);self.mute_text(case)
+        self.complete_once(identifier, case)
+        self.cleanup(remote=android_caller)
+        self.require(self.observer(identifier)['closed'], 'observer_engine_not_closed')
+
+    def cancel_pending_redial(self):
+        old_observer, _ = self.start_android()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            settings = self.app('media_settings')
+            if settings.get('local_description_published'):
+                raise NotEstablished('publication_won_before_pending_barrier')
+            if settings.get('relay_publication_scheduled') and settings.get('local_candidate_types', {}).get('relay', 0):
+                break
+            time.sleep(.01)
+        else:
+            raise NotEstablished('pending_relay_publication_not_observed')
+        barrier = self.app('hold_media_owner', require_publication_pending=True)
+        self.held = True
+        self.require(not barrier['local_description_published_at_entry'] and barrier['relay_publication_scheduled_at_entry']
+                     and barrier['relay_candidate_count_at_entry'] > 0, 'pending_barrier_precondition_failed')
+        old = self.app()['call']
+        self.tap('Завершить');self.dismiss_ended()
+        new_observer, start = self.start_android()
+        pending = self.wait(lambda: (v if (v := self.app())['call']['state'] in ('starting', 'authorizing', 'outgoing', 'connecting')
+                            and v['call']['call_id'] != old['call_id'] and v['call']['generation'] != old['generation']
+                            and v['media_closing'] > 0 and not v['media_present'] else None), 5, 'new_generation_not_waiting_for_old_media_close')
+        self.require(pending['call']['call_id'] != old['call_id'] and pending['media_closing'] > 0
+                     and not pending['media_present'], 'old_engine_not_blocking_new_creation')
+        self.app('release_media_owner');self.held = False
+        self.publication(new_observer, start, 'cancel_redial')
+        self.incoming_no_media(False);self.host('answer');self.connected();self.prove_media('cancel_redial')
+        for _ in range(5):
+            previous = self.observer(old_observer)
+            self.require(previous['closed'] and previous['count'] == 0 and not previous['still_current'], 'cancelled_timer_published_or_crossed_generation')
+            self.require(self.observer(new_observer)['count'] == 1, 'redial_republished')
+            time.sleep(.3)
+        self.record('cancel_pending_and_redial', barrier_had_relay=True, barrier_had_scheduled_publication=True,
+                    cancelled_engine_publications=0, replacement_publications=1, generation_changed=True)
+        self.cleanup(remote=True)
+
+    def run(self):
+        self.require(self.ui.SERIAL.startswith('emulator-') and self.ui.adb('shell', 'getprop', 'ro.kernel.qemu') == '1', 'owned_emulator_required')
+        self.baseline = self.app()
+        self.require(self.baseline['call']['state'] in ('idle', 'ended') and not self.baseline['media_present']
+                     and self.host()['call']['state'] in ('idle', 'ended'), 'preexisting_call_refused')
+        identity = self.baseline['text']['account'];contact = self.baseline['text']['contact']
+        old_messages = {json.dumps(message, sort_keys=True) for dialog in self.baseline['text']['dialogs'] for message in dialog['messages']}
+        self.ui.adb('shell', 'am', 'start', '-n', 'org.paranoid.devtext/org.paranoid.text.MainActivity')
+        time.sleep(.5)
+        for scenario in self.args.scenarios:
+            if scenario == 'caller':self.role(True)
+            elif scenario == 'recipient':self.role(False)
+            else:self.cancel_pending_redial()
+        final = self.app()['text']
+        new_messages = {json.dumps(message, sort_keys=True) for dialog in final['dialogs'] for message in dialog['messages']}
+        self.require(final['account'] == identity and final['contact'] == contact and old_messages <= new_messages, 'identity_contact_history_changed')
+        self.record('identity_contact_history_preserved', passed=True)
+        self.record('ordinary_timer_coverage', scheduled_observed=self.timer_observed,
+                    published_while_actual_gathering=self.timer_published_before_complete)
+        if not self.timer_observed or not self.timer_published_before_complete:
+            raise NotEstablished('ordinary_calls_did_not_establish_timer_publication_before_complete')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--execute', action='store_true', help='Run only after root reviewed the design and prepared fixtures')
+    parser.add_argument('--evidence-dir', type=Path, required=True, help='New directory under this external evidence root')
+    parser.add_argument('--fixture-app-apk', type=Path, required=True, help='Already installed reviewed fixture artifact; hashed only')
+    parser.add_argument('--scenarios', nargs='+', choices=['caller', 'recipient', 'cancel'], default=['caller', 'recipient', 'cancel'])
+    args = parser.parse_args()
+    if not args.execute:
+        parser.error('Prepared only: --execute is required to touch the owned fixtures')
+    if E not in args.evidence_dir.resolve().parents:
+        parser.error('Use a new external evidence subdirectory')
+    os.umask(0o077)
+    spec = importlib.util.spec_from_file_location('relay_regression_ui', E/'app-ui-driver.py')
+    ui = importlib.util.module_from_spec(spec);spec.loader.exec_module(ui)
+    driver = Driver(args, ui)
+    result = dict(result='RUNNING', scenarios=args.scenarios,
+                  fixture_app_sha256=hashlib.sha256(args.fixture_app_apk.read_bytes()).hexdigest(),
+                  product_engine_source_sha256=hashlib.sha256((ROOT/'clients/android/src/org/paranoid/text/WebRtcAudioEngine.java').read_bytes()).hexdigest(),
+                  driver_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                  boundary='Ordinary owned app calls only; no deployment, expiry, retained allocation, ACL, namespace, relay race or firewall tests')
+    try:
+        driver.run();result['result'] = 'PASS'
+    except BaseException as error:
+        result['result'] = 'NOT_ESTABLISHED' if isinstance(error, NotEstablished) else 'FAIL'
+        result['error_type'] = type(error).__name__
+        if isinstance(error, (AssertionError, NotEstablished)):
+            result['assertion'] = str(error)
+    finally:
+        if driver.owns_call:
+            try:
+                if driver.held:driver.app('release_media_owner');driver.held = False
+                driver.host('hangup')
+                if driver.app()['call']['state'] not in ('idle', 'ended'):
+                    if any(label.casefold() == 'завершить' for label in driver.labels()):driver.tap('Завершить')
+                    elif any(label.casefold() == 'отклонить' for label in driver.labels()):driver.tap('Отклонить')
+                driver.wait(lambda: not driver.app()['media_present'] and driver.app()['media_closing'] == 0, 10, 'emergency_cleanup_deadline')
+            except Exception as error:
+                result['cleanup_error_type'] = type(error).__name__
+        result['checks'] = driver.records
+        result['limits'] = ['Publication interval uses conservative external sampling bounds, not an SDK event timestamp.',
+                           'Observer final-listener reflection must prove attachment before publication; late attachment cannot pass.',
+                           'Only natural later ICE callbacks and actual COMPLETE are exercised; no invented SDK events.',
+                           'Mute asserts actual SDK disabled track and continuing reverse media; this observer does not export decoded muted PCM.',
+                           'Host recipient uses synthetic tone, so no-PC-before-Answer is asserted; Android recipient additionally requires zero microphone recordings.',
+                           'No physical acoustic/Bluetooth/Doze/handover claim; source/artifact correspondence remains an independent gate.']
+        (driver.out/'timeline.json').write_text(json.dumps(driver.timeline, indent=2)+'\n')
+        (driver.out/'result.json').write_text(json.dumps(result, indent=2)+'\n')
+        print(json.dumps({key: result[key] for key in ('result', 'scenarios', 'fixture_app_sha256')}), flush=True)
+    raise SystemExit(0 if result['result'] == 'PASS' else 2)
+
+
+if __name__ == '__main__':
+    main()

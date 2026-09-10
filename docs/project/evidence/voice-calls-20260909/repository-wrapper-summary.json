@@ -1,0 +1,17 @@
+{
+  "pass": true,
+  "native_media_pass": true,
+  "raw_result_sha256": "392c9b0fca0e873775a67bfc1990306f902f5bf6340b82751bd823a6f59cd9c4",
+  "decoded_host_frames": 336,
+  "selected_candidate_type": "relay",
+  "capture_starts_after_redial": 3,
+  "capture_stops_after_redial": 3,
+  "mute_received_frames": 0,
+  "restored_audio_mode": 0,
+  "coturn_listener_closed": true,
+  "generated_secret_files_removed": true,
+  "own_reverse_mapping_removed": true,
+  "own_control_forward_removed": true,
+  "fresh_emulator_5584_stopped": true,
+  "parent_emulator_5582": "untouched"
+}

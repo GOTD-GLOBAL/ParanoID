@@ -18,6 +18,12 @@ change.
 
 ## Active scoped analysis
 
+The [voice trust delta](voice-v1-threats.md) adds proposed authenticated call
+controls, fresh consent/nonces, WebRTC dependency and microphone/media/network
+boundaries for RFC-0017/ADR-0011. It is analysis before runtime implementation;
+actual evidence and independent reviews are separate gates. No live relay or
+public-network expansion is authorized by this design.
+
 The [realtime trust delta](realtime-v1-threats.md) records signed-session,
 independent state/network, Android foreground connection and encrypted same-data
 maintenance boundaries for RFC-0015/proposed ADR-0010. Final Fable product/script

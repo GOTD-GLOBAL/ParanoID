@@ -1,0 +1,23 @@
+{
+  "result": "FAIL",
+  "scenarios": [
+    "caller",
+    "recipient",
+    "cancel"
+  ],
+  "fixture_app_sha256": "c6b4929ae488a8612147f1582667f9302840bc9f0396b0288daffbe2b677b30c",
+  "product_engine_source_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "driver_sha256": "50b9aa74175224983f673ac1342c9b3b9872765bcbc054cbb8fbd53e9e0eb4d6",
+  "boundary": "Ordinary owned app calls only; no deployment, expiry, retained allocation, ACL, namespace, relay race or firewall tests",
+  "error_type": "AssertionError",
+  "assertion": "missing_fast_ui_action",
+  "checks": [],
+  "limits": [
+    "Publication interval uses conservative external sampling bounds, not an SDK event timestamp.",
+    "Observer final-listener reflection must prove attachment before publication; late attachment cannot pass.",
+    "Only natural later ICE callbacks and actual COMPLETE are exercised; no invented SDK events.",
+    "Mute asserts actual SDK disabled track and continuing reverse media; this observer does not export decoded muted PCM.",
+    "Host recipient uses synthetic tone, so no-PC-before-Answer is asserted; Android recipient additionally requires zero microphone recordings.",
+    "No physical acoustic/Bluetooth/Doze/handover claim; source/artifact correspondence remains an independent gate."
+  ]
+}

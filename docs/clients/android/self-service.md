@@ -11,6 +11,10 @@ REQ-SEC-001. This component belongs in the **client/Android PR**, separately fro
 the server PR and its shared wire library. No accepted ADR, live write/deployment,
 commit, push, merge, physical installation or production security claim is made.
 
+The later [Android voice implementation](voice-calls.md) builds on the retained
+v8 messenger. Its current tests, media/permission boundaries and pending signed
+artifact are separate from the historical APK evidence below.
+
 ## Active clean-install candidate (RFC-0014)
 
 The 2026-09-09 owner clarification authorizes an actual local APK candidate and

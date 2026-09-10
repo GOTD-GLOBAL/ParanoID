@@ -43,6 +43,14 @@ This is the entry point and navigation contract for ParanoID documentation.
 
 ## Contracts and operations
 
+- [Voice scope](product/voice-calls.md), [wire contract](protocol/voice-v1.md),
+  [threat/test mapping](security/voice-v1-threats.md) and
+  [local evidence](operations/voice-calls-local.md): implemented controls and
+  Android adapter; design/native/JNI/controller and actual direct/isolated-relay
+  audio checks pass. Full app acceptance passes 14 steps; final inset UI and signed APK checks pass, with final review pending. [Durable reviews/results](project/evidence/voice-calls-20260909/README.md)
+  distinguish each gate; [core](clients/core/voice-calls.md) and
+  [Android](clients/android/voice-calls.md) document their component boundaries.
+
 - [Protocol documentation](protocol/README.md): wire formats, state machines,
   federation, and compatibility.
 - [API documentation](api/README.md): machine-readable and human-readable APIs.

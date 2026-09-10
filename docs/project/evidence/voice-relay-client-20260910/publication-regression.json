@@ -1,0 +1,174 @@
+{
+  "result": "PASS",
+  "scenarios": [
+    "caller",
+    "recipient",
+    "cancel"
+  ],
+  "fixture_app_sha256": "c6b4929ae488a8612147f1582667f9302840bc9f0396b0288daffbe2b677b30c",
+  "product_engine_source_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "driver_sha256": "13fbe373398fd0ac44557bba6a0565d1f8bfd97afb8925f221a2daff0dd67802",
+  "boundary": "Ordinary owned app calls only; no deployment, expiry, retained allocation, ACL, namespace, relay race or firewall tests",
+  "checks": [
+    {
+      "check": "android_caller_publication",
+      "elapsed_seconds": 14.453249221667647,
+      "publication_after_first_relay_upper_bound_seconds": 0.06038489984348416,
+      "first_relay_observed_seconds": 2.4987778780050576,
+      "publication_observed_seconds": 2.4987778780050576,
+      "count": 1,
+      "context_matches": true,
+      "relay_publication_scheduled": false,
+      "gathering_state_at_publication": "complete"
+    },
+    {
+      "check": "host_recipient_no_peerconnection",
+      "elapsed_seconds": 15.261503420770168,
+      "passed": true
+    },
+    {
+      "check": "android_caller_decoded_media",
+      "elapsed_seconds": 17.001819375902414,
+      "local_candidate_type": "relay",
+      "remote_candidate_type": "relay",
+      "dtls": "connected",
+      "codec": "audio/opus",
+      "android_samples": 55680,
+      "android_energy": 0.0184536805487748,
+      "android_packets": 56,
+      "host_decoded_frames": 53
+    },
+    {
+      "check": "android_caller_mute_unmute_two_way_text",
+      "elapsed_seconds": 36.29997879592702,
+      "sdk_mute_and_unmute": true,
+      "reverse_audio_during_mute": true,
+      "both_text_directions": true,
+      "acoustic_muted_pcm_oracle": "NOT AVAILABLE in this app observer; separate raw media harness covers silence"
+    },
+    {
+      "check": "android_caller_actual_complete_no_republish",
+      "elapsed_seconds": 37.556338666938245,
+      "count": 1,
+      "context_matches": true,
+      "observed_actual_complete": true
+    },
+    {
+      "check": "remote_cleanup",
+      "elapsed_seconds": 44.10879233200103,
+      "passed": true,
+      "microphone_and_sdk_closed": true
+    },
+    {
+      "check": "android_recipient_no_capture",
+      "elapsed_seconds": 53.63285938696936,
+      "passed": true
+    },
+    {
+      "check": "android_recipient_publication",
+      "elapsed_seconds": 58.38149013463408,
+      "publication_after_first_relay_upper_bound_seconds": 0.5450801947154105,
+      "first_relay_observed_seconds": 2.296162584796548,
+      "publication_observed_seconds": 2.7778692157007754,
+      "count": 1,
+      "context_matches": true,
+      "relay_publication_scheduled": true,
+      "gathering_state_at_publication": "gathering"
+    },
+    {
+      "check": "android_recipient_decoded_media",
+      "elapsed_seconds": 59.78690358903259,
+      "local_candidate_type": "relay",
+      "remote_candidate_type": "relay",
+      "dtls": "connected",
+      "codec": "audio/opus",
+      "android_samples": 55680,
+      "android_energy": 0.01826171125401469,
+      "android_packets": 57,
+      "host_decoded_frames": 53
+    },
+    {
+      "check": "android_recipient_mute_unmute_two_way_text",
+      "elapsed_seconds": 79.40692406194285,
+      "sdk_mute_and_unmute": true,
+      "reverse_audio_during_mute": true,
+      "both_text_directions": true,
+      "acoustic_muted_pcm_oracle": "NOT AVAILABLE in this app observer; separate raw media harness covers silence"
+    },
+    {
+      "check": "android_recipient_actual_complete_no_republish",
+      "elapsed_seconds": 80.62991400482133,
+      "count": 1,
+      "context_matches": true,
+      "observed_actual_complete": true
+    },
+    {
+      "check": "local_cleanup",
+      "elapsed_seconds": 89.90617644088343,
+      "passed": true,
+      "microphone_and_sdk_closed": true
+    },
+    {
+      "check": "cancel_redial_publication",
+      "elapsed_seconds": 123.51575692789629,
+      "publication_after_first_relay_upper_bound_seconds": 0.07836564816534519,
+      "first_relay_observed_seconds": 2.928583150729537,
+      "publication_observed_seconds": 2.928583150729537,
+      "count": 1,
+      "context_matches": true,
+      "relay_publication_scheduled": false,
+      "gathering_state_at_publication": "complete"
+    },
+    {
+      "check": "host_recipient_no_peerconnection",
+      "elapsed_seconds": 124.32995695574209,
+      "passed": true
+    },
+    {
+      "check": "cancel_redial_decoded_media",
+      "elapsed_seconds": 126.18747012596577,
+      "local_candidate_type": "relay",
+      "remote_candidate_type": "relay",
+      "dtls": "connected",
+      "codec": "audio/opus",
+      "android_samples": 55680,
+      "android_energy": 0.018452253358833395,
+      "android_packets": 57,
+      "host_decoded_frames": 54
+    },
+    {
+      "check": "cancel_pending_and_redial",
+      "elapsed_seconds": 127.7161350180395,
+      "barrier_had_relay": true,
+      "barrier_had_scheduled_publication": true,
+      "cancelled_engine_publications": 0,
+      "replacement_publications": 1,
+      "generation_changed": true
+    },
+    {
+      "check": "remote_cleanup",
+      "elapsed_seconds": 134.233509904705,
+      "passed": true,
+      "microphone_and_sdk_closed": true
+    },
+    {
+      "check": "identity_contact_history_preserved",
+      "elapsed_seconds": 138.66589160403237,
+      "passed": true
+    },
+    {
+      "check": "ordinary_timer_coverage",
+      "elapsed_seconds": 138.6658948236145,
+      "scheduled_observed": true,
+      "published_while_actual_gathering": true
+    }
+  ],
+  "limits": [
+    "Publication interval uses conservative external sampling bounds, not an SDK event timestamp.",
+    "Observer final-listener reflection must prove attachment before publication; late attachment cannot pass.",
+    "Only natural later ICE callbacks and actual COMPLETE are exercised; no invented SDK events.",
+    "Mute asserts actual SDK disabled track and continuing reverse media; this observer does not export decoded muted PCM.",
+    "Host recipient uses synthetic tone, so no-PC-before-Answer is asserted; Android recipient additionally requires zero microphone recordings.",
+    "No physical acoustic/Bluetooth/Doze/handover claim; source/artifact correspondence remains an independent gate."
+  ]
+}

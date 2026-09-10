@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "scope": "Portable strict TURN issuer response parser only; real TLS/issuer/media integration are separate gates",
+  "command": "python3 clients/android/test_voice_relay.py",
+  "runtime": "javac --release 8 and java, no Android/WebRTC/KeyClient dependencies",
+  "initial_red": "turn-client-config-red.log",
+  "expanded_red": "turn-client-config-boundary-red.log",
+  "green": "turn-client-config-green.log",
+  "checks": [
+    "exact six fields; duplicate keys including escaped aliases rejected",
+    "strict UTF-8 and bounded nonrecursive JSON grammar",
+    "two immutable exact TURN URLs bound to canonical IPv4 HTTPS origin",
+    "matching canonical expiry username and padded 20-byte Base64 credential",
+    "inclusive 1000..1205 second receipt window at millisecond precision",
+    "1000 second minimum admission lifetime against wall expiry and nanosecond monotonic elapsed time",
+    "clock reversal and arithmetic overflow fail closed",
+    "no credentials in implicit toString"
+  ],
+  "files": {
+    "clients/android/src/org/paranoid/text/VoiceRelayConfig.java": "c9f4827a44c0406dbed92983482608804bc0c16f3fed919f6bf8e3752af10d2e",
+    "clients/android/test/VoiceRelaySmoke.java": "9c7bb5d946f64b404a6dd8b586d607a772fbbb5800d2d46530e377e60b4c9be2",
+    "clients/android/test_voice_relay.py": "a72f3cc406d7ca15da7439bdefc71f9227cb5287b25078ab772f745315a92da6"
+  },
+  "logs": {
+    "turn-client-config-red.log": "0faed5ea4b7ea9530c0c6e0a0335229aa6d2c93f883249a5a02d2066d2ae8651",
+    "turn-client-config-boundary-red.log": "e8e1592a7a54d5120eb5fdd73653483e3300c11dc9b7ee73af6283fc23320c60",
+    "turn-client-config-green.log": "dec4563079f6dc67ebec409a8ae29faa79dfca73f0694ab2e004bf6bb9b17cf3"
+  }
+}

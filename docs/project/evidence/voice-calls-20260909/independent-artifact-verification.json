@@ -1,0 +1,131 @@
+{
+  "result": "PASS",
+  "reviewer": "/root/code_map",
+  "created_at": "2026-09-09T23:24:14.895097+00:00",
+  "artifact": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/paranoid-0.0.9-voice-arm64.apk",
+  "sha256": "4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f",
+  "bytes": 15712851,
+  "package": "org.paranoid.devtext",
+  "version_code": 9,
+  "version_name": "0.0.9-voice",
+  "minimum_sdk": 26,
+  "target_sdk": 35,
+  "abis": [
+    "arm64-v8a"
+  ],
+  "signature": {
+    "verified": true,
+    "signers": 1,
+    "certificate_sha256": "82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926",
+    "v2": true,
+    "v3": true
+  },
+  "zipalign_16k_check": "PASS",
+  "native_libraries": [
+    {
+      "name": "lib/arm64-v8a/libjingle_peerconnection_so.so",
+      "sha256": "7b299113fcd743de7dc5559686b21fc2681b2c8598347d8dc0743d2e004995ca",
+      "zip_data_offset": 3309568,
+      "zip_uncompressed": true,
+      "zip_16k_aligned": true,
+      "elf_machine": "AArch64",
+      "elf_load_alignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    {
+      "name": "lib/arm64-v8a/libparanoid_client_core.so",
+      "sha256": "9ebcd0191b5fffcd4544856dbd128e4a0a8af6a4f5c2552073dae7f951bdf4d4",
+      "zip_data_offset": 573440,
+      "zip_uncompressed": true,
+      "zip_16k_aligned": true,
+      "elf_machine": "AArch64",
+      "elf_load_alignments": [
+        16384,
+        16384,
+        16384,
+        16384
+      ]
+    }
+  ],
+  "dex": [
+    {
+      "name": "classes.dex",
+      "sha256": "7018c2da335b2d8b91747bc8588c4ea0f1cb23b7f451130f273216905d3357d9",
+      "defined_classes": 1040
+    }
+  ],
+  "test_entry_class_check": {
+    "forbidden_defined_classes": [],
+    "actual_production_call_classes_present": true,
+    "instrumentation_manifest_entries": 0
+  },
+  "compiled_KeyClient_static_fields": {
+    "DEFAULT_REALM": "https://157.180.49.125:38443",
+    "DEFAULT_PIN": "8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba"
+  },
+  "defaults_match_exact_base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "fixture5_pin_absent_from_all_dex_strings": true,
+  "source_correspondence": {
+    "product_inputs_checked": 42,
+    "source_sha256": {
+      "clients/android/AndroidManifest.xml": "6a98bde96226c365324bf45286ed1f9232f32067b1b76dd33ecd0f7e218a4d60",
+      "clients/android/src/org/paranoid/text/AndroidUpdateVerifier.java": "a3a4ccc92bf9bab0b3fe836c5f43a5dcba66eef4ce584bf05bde5d982e611080",
+      "clients/android/src/org/paranoid/text/BackgroundConnectionService.java": "5f643b38c8dfe13ef5dedfe8e71f5ee83404b65c4b443692829355a37b075158",
+      "clients/android/src/org/paranoid/text/CallController.java": "369ddcb953ffc90e686c3e057e4c2a19dbaa46b4da9bb8f90a0a4c0c3f5ad4e4",
+      "clients/android/src/org/paranoid/text/CoreBridge.java": "a666aacc05c7351f385191c5ca4c1e5bc0372116b9433c11a3cb0fb366362d15",
+      "clients/android/src/org/paranoid/text/DialogPolicy.java": "88395c05ff1640dc18fe9e680c1db19f29106fc2e853866c8e2ae4e598951a0b",
+      "clients/android/src/org/paranoid/text/KeyClient.java": "933948c3c1062c969df8a727d3f207cb26b52d97fd9c7c3981e07780cbd2cd77",
+      "clients/android/src/org/paranoid/text/KeyTransport.java": "7db986a83ae332d9194679dca4fcbebc4008a22807c0f03b4a85415be80fcf39",
+      "clients/android/src/org/paranoid/text/MainActivity.java": "6283103ef4995cf334d31cdc9b91024239e7ec9d6950c0b5029c687bbf8e954c",
+      "clients/android/src/org/paranoid/text/MessagePresentation.java": "1ddd62fa93e0cca4f83b3a4efa851fe81fb5e01436828393c9a2af5c52cd601f",
+      "clients/android/src/org/paranoid/text/PinnedTls.java": "3e60eeeb8f0ac9037dd34b8ebc6f4471c587ebaedede3dc6e834448ebae9bf0b",
+      "clients/android/src/org/paranoid/text/QrCodec.java": "29fbf872ad2e5dddea2871e20a6abf3818703f49d17caf96d4118a065f8e82d1",
+      "clients/android/src/org/paranoid/text/QrScanActivity.java": "554206b7013007440e733f8b26645b3320f0045ac68641a90e862c280cffe417",
+      "clients/android/src/org/paranoid/text/RealtimeLoop.java": "cfd6ab2d54594723dfda9a34d498ab00e02987f56b31f5dbf1efd7fe27ab31d1",
+      "clients/android/src/org/paranoid/text/RealtimeTransport.java": "8b6de5be4dfaba30d6fa52a2612f164929231b87c19831f54ed93b42433c1e97",
+      "clients/android/src/org/paranoid/text/SelfServiceClient.java": "18eb746f7c3f65a624c180dcf4677ec414be52111278ab62922a8e741726d936",
+      "clients/android/src/org/paranoid/text/SnapshotCodec.java": "7965c9af9748320315191088852f202825014654e9d1861f68c1799c5943e049",
+      "clients/android/src/org/paranoid/text/StorageGuard.java": "a878b32a94e01a0db5cb5482653c15a4f83218c8bf3fd13e57f75b1ca46f7b74",
+      "clients/android/src/org/paranoid/text/SyncCycle.java": "c9baf2de6ccf1978ac4a98f96240ec5ce69aec8c41e3e2230a15955bf45466e6",
+      "clients/android/src/org/paranoid/text/TextEngine.java": "f53691426095b9c879151ebb7d5b1b883586cede25d08fa4369a52fcff83b0a8",
+      "clients/android/src/org/paranoid/text/UpdateClient.java": "ab43336a99ed040385aeba51e51fea7bb9579dbdf73e5fb56c404435dc03152c",
+      "clients/android/src/org/paranoid/text/UpdateController.java": "984752deb3012b446a7ab83130bd5a51009cbad14c2249c57f3268aec2f6fb6a",
+      "clients/android/src/org/paranoid/text/UpdateManifest.java": "59e6ec8b0ca3abed1ac1c58016f409d6f319a548e979412ecdb3912e61a8d8b0",
+      "clients/android/src/org/paranoid/text/UpdatePolicy.java": "ad2157b49a16477590dc5683df5fbcab7cc28dfc02eb6290fce8b54e45bc7570",
+      "clients/android/src/org/paranoid/text/UpdateProvider.java": "a92f4d5e0781b25cf89176e8597439ae0d0da754914e8645cfe06fd1a29cd88d",
+      "clients/android/src/org/paranoid/text/VoiceCallService.java": "39a0100af1a48e9408c4b9156f89f5a5246ad1740b631c137e89b2e2c1e006e7",
+      "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2",
+      "clients/core/Cargo.lock": "b2fc97bfccb4fa17300f9156dea951f4dfaf8ad1b0a02e22a9460791f4ccf169",
+      "clients/core/Cargo.toml": "22bf51ca0b60ac18b8a5edaed3ab4726799f8bc476aa1179bb1257f712704b50",
+      "clients/core/src/clean_service.rs": "2262477f808dedf9cdfc6e08eb9ab9a5ba74e4a8ebaa7a9b1c9302e8fa0f1ce6",
+      "clients/core/src/contact.rs": "ab077efbf0e7735caba3cae44dd905ab351b067e349e782e57ecae65a76a042c",
+      "clients/core/src/contact_v2.rs": "11fddd035e1d067f3076ae621969da95b60fc27b9d7fa945e1afdc1cff4872ea",
+      "clients/core/src/intro_v2.rs": "c4efcbf0dc3cbbcfc1e70a43ba1deb2a52cd710dbaa25bb005b0b26ca338a447",
+      "clients/core/src/lib.rs": "0171c07845a056b93d32b73dfd12c7593f8dce47b8ecb3efd9e5ca74265c68ae",
+      "clients/core/src/self_service.rs": "a1c82db8d2891d1b39b2ef944c53117f0c8145dd1db26f3b4db1acaac510f9de",
+      "clients/core/src/sender_intro.rs": "91d19aa176a6e41f90df21e43a4ea25e59019a3136811085d13d00ed97065cd6",
+      "clients/core/src/voice_v1.rs": "3ad0a6bc90302ca225d7b13fae77d99ddfe6d03f03dd4ba2e5cec0034a31b4ce",
+      "key-protocol/Cargo.toml": "74daaf6f6e05fe7f10299bd0c3552a2669c57aa54f9dfc69f3f4d372f86b335b",
+      "key-protocol/src/lib.rs": "0b2a4b77e982c5ea59f99f92829e05f4dd0cedcb94b1a8dc4308429d09981ea1",
+      "key-protocol/src/proof.rs": "9097ea0a3c8bca56077beae4beb6fb320982d2641567b894ca1a790c24f3b6eb",
+      "key-protocol/src/proof_v2.rs": "ec8a72f46106af5d516d106d2512ee1136350af7ed4588e50ca1a6da1b25ad2a",
+      "key-protocol/src/session_v2.rs": "e460ca3d443decfdf43cb32e0c1af599bcdd8feb79145ee7bf085f9295b1bd8e"
+    },
+    "current_matches_candidate3_freeze": true,
+    "current_matches_fixture5_product_manifest": true,
+    "candidate3_copied_sources_match_freeze": true,
+    "fixture5_only_product_delta": [
+      "clients/android/src/org/paranoid/text/KeyClient.java"
+    ],
+    "fixture5_only_delta_exactly_two_public_constants": true,
+    "product_source_unchanged_during_verification": true,
+    "test_doc_files_excluded_from_product_hash_equality": true
+  },
+  "artifact_metadata_sha256": "de2b1e108fe63286a5bbc70c828bbd8d7116a4f992e2dc7694d14a0d30408a27",
+  "candidate_source_manifest_sha256": "ee21f04393d7186dec132dd033069fd2d5b8859a659124b07a689b0028509b62",
+  "fixture5_source_manifest_sha256": "b1c15a8ae8f74af2b3500b2298c5d19512d0fc0c00d7d1e4fbdfbeb5a6fe958c",
+  "boundary": "Independent read-only artifact verification. No keystore/password inspection, signing, install, deployment, or repository edits. Does not replace fresh independent final Fable review or physical phone gates."
+}

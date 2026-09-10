@@ -1,0 +1,37 @@
+{
+  "date": "2026-09-10",
+  "observer_python_tests": {
+    "count": 14,
+    "exit": 0,
+    "log": "safe-extension-final-green.log"
+  },
+  "javac": {
+    "product_java_files": 28,
+    "instrumentation": true,
+    "exit": 0,
+    "android_sdk": 35,
+    "log": "safe-stats-javac.log"
+  },
+  "baseline_fixture_build_exit": 0,
+  "fixed_fixture_build_exit": 0,
+  "ordinary_driver_exit": 0,
+  "markdown": {
+    "command": "node cached markdownlint-cli2-bin.mjs --no-globs <four changed Markdown files>",
+    "version": "0.23.2",
+    "files_checked": 4,
+    "issues": 0,
+    "exit": 0
+  },
+  "local_links": {
+    "checked": 739,
+    "external_not_checked": 40,
+    "errors": 0,
+    "exit": 0
+  },
+  "git_diff_check_exit": 0,
+  "external_link_validation": "NOT_RUN except explicitly authorized GitHub issue/PR API operations",
+  "full_ci_on_new_test_commit": "NOT_RUN",
+  "denied_turn_suites": "NOT_RUN",
+  "production_apk_rebuild": "NOT_RUN",
+  "final_fable": "APPROVE test-only publication; CALL-CONNECT01 OPEN"
+}

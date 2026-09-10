@@ -1,0 +1,19 @@
+test_bounded_sanitized_healthy_samples (test_call_connect_sampler.SamplerTests.test_bounded_sanitized_healthy_samples) ... ok
+test_censored_never_infers_terminal (test_call_connect_sampler.SamplerTests.test_censored_never_infers_terminal) ... ok
+test_connecting_error_categories_and_followup (test_call_connect_sampler.SamplerTests.test_connecting_error_categories_and_followup) ... ok
+test_controller_budgets_preserved_without_payload (test_call_connect_sampler.SamplerTests.test_controller_budgets_preserved_without_payload) ... ok
+test_controller_retains_cleanup_and_authority_without_payload (test_call_connect_sampler.SamplerTests.test_controller_retains_cleanup_and_authority_without_payload) ... ok
+test_ended_survives_observer_failure (test_call_connect_sampler.SamplerTests.test_ended_survives_observer_failure) ... ok
+test_followup_view_error_preserves_prior (test_call_connect_sampler.SamplerTests.test_followup_view_error_preserves_prior) ... ok
+test_immediate_followup_terminal (test_call_connect_sampler.SamplerTests.test_immediate_followup_terminal) ... ok
+test_no_queries_after_censor (test_call_connect_sampler.SamplerTests.test_no_queries_after_censor) ... ok
+test_safe_media_summary_allowlist_and_numeric_validation (test_call_connect_sampler.SamplerTests.test_safe_media_summary_allowlist_and_numeric_validation) ... ok
+test_safe_media_summary_keeps_observer_error_and_truncation (test_call_connect_sampler.SamplerTests.test_safe_media_summary_keeps_observer_error_and_truncation) ... ok
+test_unknown_values_and_error_field_not_filtered (test_call_connect_sampler.SamplerTests.test_unknown_values_and_error_field_not_filtered) ... ok
+test_no_product_mutation_in_terminal_probe (test_call_connect_instrumentation.InstrumentationContract.test_no_product_mutation_in_terminal_probe) ... ok
+test_safe_commands_and_owner_errors (test_call_connect_instrumentation.InstrumentationContract.test_safe_commands_and_owner_errors) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 0.003s
+
+OK

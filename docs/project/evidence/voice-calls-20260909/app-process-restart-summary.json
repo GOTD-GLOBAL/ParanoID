@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "boundary": "Actual owned Android emulator process restart; no application data clearing or physical phone operation",
+  "checks": {
+    "identity_unchanged": true,
+    "request_credential_unchanged": true,
+    "contact_unchanged": true,
+    "dialogs_history_unchanged": true,
+    "call_idle": true,
+    "no_media": true,
+    "no_active_recording": true,
+    "no_pending_media_close": true
+  },
+  "raw_sha256": {
+    "before-process-restart.json": "95912b9b81b2b534741f3c8a92fec02a599dc30c6b4183d33c2608fba0948bbc",
+    "actual-process-restart-pass.json": "2862c366f5346e1dfe0a0f51067532e87d24c737000685d4daa1368e900dfeaf"
+  }
+}

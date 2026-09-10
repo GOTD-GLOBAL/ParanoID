@@ -1,0 +1,212 @@
+{
+  "result": "SUPPLEMENTAL_INTEGRATION_FINDINGS_CLOSED",
+  "created_at": "2026-09-09T23:18:04.290180+00:00",
+  "reviewer": "/root/code_map",
+  "scope": "Read-only closure of four integration findings against actual retained evidence and exact source. Reviewer contributed native code and two RealtimeLoop fixes; this supplemental review does not replace fresh independent Fable final review.",
+  "base_commit": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "source_sha256": {
+    "clients/android/src/org/paranoid/text/MainActivity.java": "6283103ef4995cf334d31cdc9b91024239e7ec9d6950c0b5029c687bbf8e954c",
+    "clients/android/src/org/paranoid/text/TextEngine.java": "f53691426095b9c879151ebb7d5b1b883586cede25d08fa4369a52fcff83b0a8",
+    "clients/android/src/org/paranoid/text/CallController.java": "369ddcb953ffc90e686c3e057e4c2a19dbaa46b4da9bb8f90a0a4c0c3f5ad4e4",
+    "clients/android/src/org/paranoid/text/VoiceCallService.java": "39a0100af1a48e9408c4b9156f89f5a5246ad1740b631c137e89b2e2c1e006e7",
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2",
+    "clients/android/src/org/paranoid/text/SelfServiceClient.java": "18eb746f7c3f65a624c180dcf4677ec414be52111278ab62922a8e741726d936",
+    "clients/android/src/org/paranoid/text/RealtimeLoop.java": "cfd6ab2d54594723dfda9a34d498ab00e02987f56b31f5dbf1efd7fe27ab31d1",
+    "clients/android/AndroidManifest.xml": "6a98bde96226c365324bf45286ed1f9232f32067b1b76dd33ecd0f7e218a4d60",
+    "clients/core/src/clean_service.rs": "2262477f808dedf9cdfc6e08eb9ab9a5ba74e4a8ebaa7a9b1c9302e8fa0f1ce6",
+    "clients/core/src/voice_v1.rs": "3ad0a6bc90302ca225d7b13fae77d99ddfe6d03f03dd4ba2e5cec0034a31b4ce",
+    "clients/core/src/lib.rs": "0171c07845a056b93d32b73dfd12c7593f8dce47b8ecb3efd9e5ca74265c68ae"
+  },
+  "source_correspondence": {
+    "reviewed_product_files": 11,
+    "exact_current_files_matching_tested_fixture4": 10,
+    "MainActivity_functional_bytes_match_except_explicit_layout_block": true,
+    "current_MainActivity_sha256": "6283103ef4995cf334d31cdc9b91024239e7ec9d6950c0b5029c687bbf8e954c",
+    "tested_MainActivity_sha256": "d19487590fcce1093d27fe89b29435c0c4dd81ce84dee46341eed023f8f1033f",
+    "layout_delta_sha256": "0ed4204b2a5423300f6f2398138f21ab684333617676e6b61265b9b5d9435523",
+    "layout_delta": "--- fixture4/MainActivity.java\n+++ current/MainActivity.java\n@@ -311,6 +311,15 @@\n         body.addView(secondary(\"\u041a \u043f\u0435\u0440\u0435\u043f\u0438\u0441\u043a\u0435\",()->callDialog.dismiss()),full());space(body,24);\n         TextView note=text(\"\u041f\u0440\u044f\u043c\u043e\u0435 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u0435 \u00b7 IP-\u0430\u0434\u0440\u0435\u0441 \u0432\u0438\u0434\u0435\u043d \u0441\u043e\u0431\u0435\u0441\u0435\u0434\u043d\u0438\u043a\u0443. \u0414\u043e \u043e\u0442\u0432\u0435\u0442\u0430 \u043c\u0438\u043a\u0440\u043e\u0444\u043e\u043d \u0432\u0445\u043e\u0434\u044f\u0449\u0435\u0433\u043e \u0437\u0432\u043e\u043d\u043a\u0430 \u0432\u044b\u043a\u043b\u044e\u0447\u0435\u043d.\",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());\n         callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->callDialog=null);callDialog.show();\n+        if(Build.VERSION.SDK_INT>=30){\n+            callDialog.getWindow().setDecorFitsSystemWindows(false);\n+            scroll.setOnApplyWindowInsetsListener((view,insets)->{\n+                android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars());\n+                view.setPadding(bars.left,bars.top,bars.right,bars.bottom);return insets;\n+            });\n+            scroll.requestApplyInsets();\n+        }\n+        callDialog.getWindow().getDecorView().setSystemUiVisibility(colors.dark?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR|View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);\n         callDialog.getWindow().setLayout(-1,-1);callDialog.getWindow().setStatusBarColor(colors.canvas);callDialog.getWindow().setNavigationBarColor(colors.canvas);\n         renderCall(engine.calls().snapshot());\n     }\n",
+    "layout_review": "Only showCall dialog system-bar insets and light status/navigation icon appearance added. No permission, deadline, token, call, media, storage, or transport behavior changed. Source reviewed; actual updated fixture5 screenshot/artifact remains root-owned pending at this record time.",
+    "fixture4_only_environment_delta": "Copied KeyClient DEFAULT_REALM/DEFAULT_PIN for synthetic localhost pinned TLS.",
+    "combined_realtime_and_full_text_source_match_current": true
+  },
+  "findings": [
+    {
+      "id": "INT-01",
+      "status": "CLOSED",
+      "issue": "Deferred media creation lost current mute and speaker intent.",
+      "fix": "Current matching-generation snapshot setMuted/setSpeaker before actual SDK createOffer/createAnswer.",
+      "actual_red": {
+        "controller_muted": true,
+        "engine_muted": false,
+        "track_enabled": true
+      },
+      "actual_green": {
+        "controller_muted": true,
+        "engine_muted": true,
+        "track_enabled": false,
+        "observed_on_media_owner": true,
+        "still_current": true
+      },
+      "oracle": "Real current WebRTC AudioTrack.enabled and engine setting. Preliminary decoded-frame-only probe rejected because muted silence may still produce decoded frames."
+    },
+    {
+      "id": "INT-02",
+      "status": "CLOSED",
+      "issue": "Pending intent could bypass10s deadline when already connected.",
+      "fix": "Unconditional monotonic expiry before connectivity branch and repeated expiry in FGS callback; resumed/token and exact incoming call_id checks remain.",
+      "evidence_scope": "Exact source control-flow closure and actual first grant connected media. No exhaustive physical lifecycle claim.",
+      "actual_first_grant_connected": true,
+      "host_decoded_frames": 144
+    },
+    {
+      "id": "INT-03",
+      "status": "CLOSED",
+      "issue": "Recoverable consumed-nonce401 prematurely reported authority loss.",
+      "fix": "Existing one fresh-native-nonce immutable retry precedes confirmed401 loss; outer terminal hooks remain.",
+      "actual_recoverable": {
+        "actual_backend_statuses": [
+          401,
+          200
+        ],
+        "fresh_native_signed_nonce": true,
+        "immutable_ciphertext": true,
+        "authenticated_receipt": true,
+        "authorization_lost_callbacks": 0
+      },
+      "actual_persistent_revocation": {
+        "actual_backend_statuses": [
+          401,
+          401
+        ],
+        "authorization_lost_callbacks": 1,
+        "plaintext_delivered": false,
+        "pending_preserved": true,
+        "revocation": "only isolated synthetic fixture account changed"
+      }
+    },
+    {
+      "id": "INT-04",
+      "status": "CLOSED",
+      "issue": "Idle resumed generation waited through full longpoll before readiness.",
+      "fix": "Existing signed messages operation first per run; observedRun changes only after guarded page processing/publication. Subsequent events and generation guards remain.",
+      "actual_green": {
+        "deadline_ms": 3000,
+        "elapsed_ms": 70.14233386144042,
+        "new_authenticated_online_callback": true,
+        "successful_nonblocking_signed_polls": 1,
+        "empty_inbox": true,
+        "prior_backend_wait_fully_drained": true,
+        "optimistic_callback": false
+      },
+      "actual_red": "No callback within3029ms after old backend waiter fully drained; initial waiter_busy fallback probe preserved honestly."
+    }
+  ],
+  "app_acceptance": {
+    "pass": true,
+    "steps": [
+      "incoming-no-capture",
+      "rejected",
+      "actual-bidirectional-rtp",
+      "connected",
+      "muted",
+      "speaker",
+      "stale-notification-preserves-current-call",
+      "text-during-call",
+      "background-active-call",
+      "remote-hangup-cleanup",
+      "outgoing",
+      "caller-cancel",
+      "local-hangup",
+      "identity-history-retained"
+    ],
+    "incoming_media_present": false,
+    "incoming_active_recordings": 0,
+    "remote_end_media_present": false,
+    "remote_end_active_recordings": 0,
+    "remote_end_audio_mode": 0
+  },
+  "full_text_regression": {
+    "result": "PASS",
+    "checks": [
+      "three automatic registrations, zero initial receiver contacts",
+      "durable listener matches actual encrypted snapshot",
+      "blocked receipt network independent of state owner/publication",
+      "immediate unverified reply and genuine receipts",
+      "24 actual warm latency samples",
+      "crossing burst",
+      "exact lost-response retry",
+      "offline send and server/JVM snapshot4/core3 reopen",
+      "incoming save-failure freeze without receipt"
+    ],
+    "latency": {
+      "samples": 24,
+      "p50_ms": 105.919932,
+      "p95_ms": 122.985183,
+      "target_p50_ms": 500,
+      "target_p95_ms": 1500,
+      "environment": "same-host generated pinned TLS proxy + exact Rust server + PostgreSQL + Java/JNI; 250ms pacing after actual receipt, no imposed latency",
+      "boundary": "send call before local commit to receiver durable publicView listener; not Android screen pixels"
+    }
+  },
+  "remaining_limitations": [
+    {
+      "id": "PHYSICAL-ROUTE-01",
+      "status": "UNTESTED_PHYSICAL_ROUTE_LIMITATION",
+      "detail": "API31+ cleanup calls setCommunicationDevice(previousDevice) but ignores false. If the previously selected physical device was unplugged during a call, no explicit clearCommunicationDevice fallback exists for this case. Emulator evidence does not establish physical headset/Bluetooth unplugged-device restoration. Preserved limitation; no broader fix in this review."
+    },
+    {
+      "id": "PHYSICAL-QUALITY",
+      "status": "NOT_TESTED_HERE",
+      "detail": "Physical phone acoustics/AEC, headset/Bluetooth changes, cellular handover, and reliable Doze/background incoming remain separate physical-device gates."
+    }
+  ],
+  "pending_artifact_work": "Resolved by artifact_addendum: candidate3 independently verified and current-layout fixture5 acceptance2 passed. Fresh Fable final and physical-device gates remain distinct.",
+  "actions": "Read source and existing evidence; wrote external review JSON only. No repository, emulator, service, server, DNS, firewall, or TURN changes.",
+  "evidence_sha256": {
+    "app-fixture-build-4/artifact.json": "077755508aebfd0a0a37cd1e734f44645deb1cb23122723b48fdb0bf0f93ca3b",
+    "app-fixture-build-4/product-source-sha256.json": "5b83c0fbb3c218634f3508e49f552471b3c56554f1b34495918bbd70db0102f7",
+    "deferred-sdk-red/result.json": "e95e9f3fcd7eb8f1746325e5c6e1bf78c19ee2e3a9cdc5cfaa60a11268b6fc9a",
+    "deferred-sdk-red/actual-sdk-after-deferred-creation.json": "f66857c0a540f942b8278505515a9650b5193af8413a34e2f513aee53ccf931f",
+    "deferred-sdk-green/result.json": "350ac53a71648e2959553788aded0297b8c40644c5a8ed3531a6d51fc214bf7a",
+    "deferred-sdk-green/actual-sdk-after-deferred-creation.json": "a8227a09adba2561de98e3bd7816ed254618571304e7b0f11b31c7ddc5007765",
+    "app-permission-green/result.json": "db95e67b2a435475986347f13eeb87de5cbb207b1d2527738946e22f6b261513",
+    "app-permission-green/first-grant-connected.json": "f1ba4e37e12ea26a2fd0c95aa56196b2128392e315373e7b0fcdfdfa3412d262",
+    "app-acceptance-1/result.json": "f6a8e8331f269973cf9c477cf7f667c8ce891f0f4496e144a13068a5178ea5d5",
+    "app-acceptance-1/incoming-no-capture.json": "c8330e9e3da8a544a64786ce6b9649dc23f2b62156caf6b7438e4a5a3e70ce44",
+    "app-acceptance-1/remote-hangup-cleanup.json": "1fbcb0d63f913a7808a8f216f5eab86fd0cff717f33fc9c4f24a8c3b12dc1651",
+    "realtime-readiness-tdd.json": "4e76378c7ad552950b816cd9ccd06746b4d3ca27246ebb284aa72ff16719dd04",
+    "realtime-readiness-authority-green/realtime-fixture-result.json": "08cace295655f48885378723413c473fa59609cdc0696b774898abedea795413",
+    "realtime-final-regression/realtime-fixture-result.json": "a7656d62757e9de77fe19ba43fcbfc0ea8ecb3b04a624a30cc3732f1acb770f6"
+  },
+  "artifact_addendum": {
+    "created_at": "2026-09-09T23:25:00.194602+00:00",
+    "status": "PREVIOUS_ARTIFACT_LAYOUT_PENDING_RESOLVED",
+    "artifact_verification": "independent-artifact-verification.json",
+    "artifact_verification_sha256": "122c0a2ad33a90161e4eb8ddacdd8871cfa1d23ababfd353e49aff706ed13d07",
+    "apk_sha256": "4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f",
+    "current_product_matches_candidate3_and_fixture5": true,
+    "fixture5_acceptance2": {
+      "scenario": "acceptance",
+      "boundary": "actual app UI + signed/E2EE control + native Android/aiortc media; synthetic identities",
+      "pass": true,
+      "steps": [
+        "incoming-no-capture",
+        "rejected",
+        "actual-bidirectional-rtp",
+        "connected",
+        "muted",
+        "speaker",
+        "stale-notification-preserves-current-call",
+        "text-during-call",
+        "background-active-call",
+        "remote-hangup-cleanup",
+        "outgoing",
+        "caller-cancel",
+        "local-hangup",
+        "identity-history-retained"
+      ]
+    },
+    "fixture5_acceptance2_result_sha256": "f6a8e8331f269973cf9c477cf7f667c8ce891f0f4496e144a13068a5178ea5d5",
+    "remaining_boundary": "Fresh independent final Fable review and physical-device limitations remain distinct; this addendum makes no deployment claim."
+  }
+}

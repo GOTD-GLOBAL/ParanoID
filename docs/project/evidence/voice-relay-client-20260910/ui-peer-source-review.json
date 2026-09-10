@@ -1,0 +1,46 @@
+{
+  "scope": "Supplemental read-only source review, not fresh final Fable; no runtime execution in this subtask",
+  "source_sha256": {
+    "clients/android/src/org/paranoid/text/MainActivity.java": "68064b87ff2b8c2b68736a031cbfbd5f2f27fb93cb933da17fa635e38bfb1b83",
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2",
+    "clients/android/src/org/paranoid/text/VoiceCallService.java": "39a0100af1a48e9408c4b9156f89f5a5246ad1740b631c137e89b2e2c1e006e7",
+    "clients/android/test/VoicePeerBridge.java": "4dc7226f7842fef443c92d36185da39b7306d87e667d95955508f820284b7984",
+    "clients/android/test_voice_app_peer.py": "9ce0d7b83488684eb13dc9005d83f7b2430c380bbc88df33d6fd07d500ccdd06"
+  },
+  "ui": {
+    "verdict": "No new blocker found by source inspection",
+    "checks": [
+      "Outgoing Call confirmation presents relay operator address/timing/volume visibility and direct peer-IP compatibility before microphone intent",
+      "Incoming dialog puts same disclosure before Answer; notification opens Activity and never answers directly",
+      "Authorizing state says protected connection is being prepared; no premature connected label",
+      "Mute/speaker choices enabled during authorization remain controller intent until media authorization and SDK creation",
+      "Pending microphone/FGS callback retains call intent and deadline guards"
+    ]
+  },
+  "fixture": {
+    "verdict": "No new relay dispatch blocker found by source inspection",
+    "checks": [
+      "VoicePeerBridge uses actual production credential request and controller generation/lifetime authorization before queuing media command",
+      "TURN credential IPC is private fixture-only; Python removes media_commands from returned public view and removes relay payload before media dispatch",
+      "Peer uses authenticated actual remote SDP and actual generated local SDP through native fingerprint/ICE checks",
+      "Relay-only fixture uses pinned aioice transport policy, keeps relay SDP literal; direct-only host loopback mapping remains isolated",
+      "No product runtime substitution or public endpoint modification in these changes"
+    ],
+    "limits": [
+      "Python peer ignores fixture mute/speaker commands; existing app tests assert Android mute/route behavior, not host mute functionality",
+      "aiortc/aioice internal relay policy is fixture-specific and must be corroborated by actual selected relay candidate/media evidence",
+      "Private raw SDP and media stats remain outside durable public evidence; sanitized aggregates only",
+      "Bridge validates lifetime before dispatch; actual local relay credential issuance/media tests remain separate root-owned gates"
+    ]
+  },
+  "cleanup": {
+    "id": "F01",
+    "severity": "low",
+    "status": "Open retained limitation; narrow fix recommended before final candidate if a meaningful failure-path test is available",
+    "location": "WebRtcAudioEngine.cleanup API31 branch",
+    "finding": "Ignored false restoring unavailable previous communication device leaves the current request uncleared. A restoration exception skips previous-mode restoration because both actions share a try block.",
+    "minimal_fix": "On null/false/exception restoring previous device, independently attempt clearCommunicationDevice; restore previous mode in a separate try regardless of route outcome; retain independent audio-focus abandonment and completion dispatch.",
+    "test_oracle": "Test-only audio service returns false and then throws during restoration while executing real cleanup; assert fallback clear, mode restoration, focus abandonment and completion callback in both cases. Keep physical unplug/Bluetooth claim NOT RUN.",
+    "primary_source": "https://developer.android.com/reference/android/media/AudioManager#setCommunicationDevice(android.media.AudioDeviceInfo)"
+  }
+}

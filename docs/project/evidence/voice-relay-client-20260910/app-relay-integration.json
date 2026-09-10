@@ -1,0 +1,42 @@
+{
+  "result": "PASS scoped normal call with unresolved earlier failures",
+  "app_version": 10,
+  "app_fixture_sha256": "9e78dfbef7a706e6494ac17b6e716f9a9b0bf30c8912194144620e308479271d",
+  "signed_arm64_sha256": "f1bcb6b905ee570699a619ecdffd6fd0bd8947fe4bab87f02aa5605175578c86",
+  "relay_binary_sha256": "b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551",
+  "both_selected_candidates": "relay",
+  "host_decoded_frames": 6161,
+  "host_decoded_samples": 5914560,
+  "android_decoded_samples": 5917920,
+  "android_audio_energy": 2.096204324700071,
+  "codec": "Opus/48000 via DTLS-SRTP",
+  "known_tone_direction": "synthetic aiortc880Hz to real Android decode; Android actual emulator microphone frames in reverse, no physical acoustic claim",
+  "checks": [
+    "muted-sdk",
+    "unmuted-sdk",
+    "stale-stop",
+    "text-during-relay-call",
+    "home-active-call",
+    "remote-hangup-cleanup"
+  ],
+  "same_code_without_proposed_sdp_change": true,
+  "changes_since_failure": "owned relay restarted; private verbose diagnostics enabled; opaque guest UDP mapping present",
+  "unresolved": "Earlier both-relay calls failed roughly15s after SDKstart without answer SDP; no root cause established. Later pass does not prove the failures fixed.",
+  "not_run": [
+    "physical OPPO acoustics/AEC",
+    "Bluetooth",
+    "Doze",
+    "mobile handover",
+    "retained-allocation expiry/race/drain",
+    "ACL packet tests",
+    "public network/deployment"
+  ],
+  "proofs": {
+    "muted-sdk": "6bfa47b5d5912b1083e0c4fe2dcdc7b9ba757b7c3b683dfa72b55359cc6ef7d7",
+    "unmuted-sdk": "8a4202526df104d1037b07a532a507ac10c1397753599b4b3afd4866f8225b71",
+    "stale-stop": "1b8d5ed17a9a6d5148028d24f080e843212bc905cddb83bdd602584f84ef657d",
+    "text-during-relay-call": "0231229d0a0d2620fb544fd7461e8a93db9828a37ae72f8b3a8f92eb2ae1bda9",
+    "home-active-call": "2879370833398545fdd713e2e43d6d8864f92d1971a1297ad083caa68b74b35d",
+    "remote-hangup-cleanup": "f7cbf4b9b3d8b5c1fc49b187c0b628f15f4a4664bc0dd4fd3128403845a365bf"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "scenario": "deferred",
+  "boundary": "actual app UI + signed/E2EE control + native Android/aiortc media; synthetic identities",
+  "pass": true,
+  "steps": [
+    "deferred-muted-intent",
+    "actual-sdk-after-deferred-creation",
+    "deferred-muted-green"
+  ]
+}

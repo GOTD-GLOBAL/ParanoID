@@ -1,0 +1,31 @@
+{
+  "product_source_hashes_unchanged": true,
+  "retained_arm64_unchanged": true,
+  "fixture_cleanup": {
+    "bridge": {
+      "stopped": true,
+      "exit": 0
+    },
+    "server": {
+      "stopped": true,
+      "exit": -15
+    },
+    "relay": {
+      "stopped": true,
+      "exit": 0
+    },
+    "postgres": {
+      "stopped": true,
+      "exit": 0
+    }
+  },
+  "owned_children_still_present": {
+    "postgres": false,
+    "relay": false,
+    "server": false,
+    "bridge": false
+  },
+  "old_avd_and_pg_untouched": true,
+  "new_avd_and_both_pg_directories_preserved": true,
+  "forbidden_operations": "NOT_RUN"
+}
