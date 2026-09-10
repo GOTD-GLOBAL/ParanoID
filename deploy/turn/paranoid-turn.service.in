@@ -1,6 +1,7 @@
 [Unit]
 Description=ParanoID private-alpha TURN relay
-After=network-online.target
+After=network-online.target paranoid-voice-policy.service
+Requires=paranoid-voice-policy.service
 Wants=network-online.target
 StartLimitIntervalSec=60
 StartLimitBurst=3

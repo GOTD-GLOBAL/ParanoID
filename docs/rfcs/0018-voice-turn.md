@@ -35,3 +35,25 @@ The [threat delta](../security/voice-turn-threats.md) includes the discovered
 upstream cached-credential and lifetime-cap bypasses. The selected package must
 include the two narrow reviewed patches and actual before/after relay tests;
 unmodified coturn cannot substantiate the bounded residual authority claim.
+
+## Unified one-host installer amendment — 2026-09-10
+
+[REQ-DEPLOY-003 and exact owner provenance](../operations/voice-single-host.md)
+require a single coordinated kit on the existing host. Propose explicit
+plan/preflight/apply/status/update/rollback operations, with fresh versus
+recognized-v8 paths, same-data recovery, exact package verification, exclusive
+private secret creation and narrow own-host relay egress. Existing TLS/DB/identity
+and neighbors remain unchanged. Separate users/units remain internal isolation.
+A manual set of component SSH commands does not meet the requirement. Fresh
+Fable review of the exact coordinator/network design precedes implementation.
+Existing expiry patches and quotas remain mandatory; stock coturn configuration
+is not a substitute for the unproved cached-allocation expiry contract. No
+architecture acceptance follows from the conditional deployment authorization.
+
+Fresh Fable design review now conditionally permits local implementation after
+A1–A5 corrections recorded in the [one-host runbook](../operations/voice-single-host.md#reviewed-implementation-boundaries).
+The production and message-only fixture gate lists are fixed and different; the
+fixture has no relay/network activation path and cannot produce full production
+rehearsal acceptance. The separate inert systemd credential test proves only that
+primitive. Missing runtime expiry/ACL and actual coordinated relay tests remain
+mandatory.

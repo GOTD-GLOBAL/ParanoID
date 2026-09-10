@@ -1,0 +1,46 @@
+{
+  "status": "PASS",
+  "scope": "local documentation/links/CI wiring only",
+  "checks": [
+    {
+      "name": "markdown",
+      "argv": [
+        "node",
+        "/home/codex/.npm/_npx/8d2a7e72b070c959/node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs"
+      ],
+      "exit_code": 0,
+      "output": "markdownlint-cli2 v0.20.0 (markdownlint v0.40.0)\nFinding: **/*.md !tmp/**\nLinting: 119 file(s)\nSummary: 0 error(s)\n"
+    },
+    {
+      "name": "local-links",
+      "argv": [
+        "python3",
+        "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-server-local-links.py"
+      ],
+      "exit_code": 0,
+      "output": "{\n  \"local_links_checked\": 579,\n  \"external_links_not_checked\": 39,\n  \"errors\": []\n}\n"
+    },
+    {
+      "name": "ci-wiring",
+      "argv": [
+        "python3",
+        "scripts/test-ci-wiring.py"
+      ],
+      "exit_code": 0,
+      "output": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.001s\n\nOK\n"
+    },
+    {
+      "name": "staged-whitespace",
+      "argv": [
+        "python3",
+        "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/git-gorynya.py",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "correction": "Four Markdown table delimiters spaced; previous failed check retained externally. Local-link targets and CI source unchanged."
+}

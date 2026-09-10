@@ -28,3 +28,12 @@ this private synthetic-data alpha under the accepted
 human review remains required before sensitive data/public production claims.
 Tests must establish real issuer/coturn/app interoperability and preserve text,
 state, TLS and signing identity. Deploying requires separate reviewed authorization.
+
+## Bounded owner scope amendment — 2026-09-10
+
+The [one-host operational record](../operations/voice-single-host.md) preserves
+the exact owner reply and distinguishes bot-recorded Telegram provenance from
+permanent human ADR acceptance. It supersedes the earlier absence of bounded
+public-listener authority after mandatory tests and fresh review; this ADR
+remains proposed. REQ-DEPLOY-003 adds one coordinated installer, with current
+TLS/data/identity and neighboring services preserved.

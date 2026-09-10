@@ -336,3 +336,10 @@ certificate renewal preserving the key is a separate reviewed operation.
 A fresh `install --root NEW_ROOT --ip IPV4 --release RELEASE` is still a v0 fixture,
 not automatic key enrollment. The existing root must use the migration above.
 Canonical runbook: `docs/operations/key-deployment-rollout.md`; proposed RFC-0011.
+
+## Unified one-host delivery work
+
+[REQ-DEPLOY-003](../docs/operations/voice-single-host.md) requires one coordinated
+messaging/private-PG/relay installer. The owner selected the existing host and
+bounded network scope after tests/review. Current separate component tools are
+building blocks; they do not yet meet the unified installation requirement.

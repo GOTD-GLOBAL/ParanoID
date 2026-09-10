@@ -200,3 +200,11 @@ volatile credentials, metadata, relay resource and peer limits, credential
 residual authority and secret/package boundaries. Offline builds pass; required
 retained-allocation expiry and ACL packet tests remain NOT RUN after a platform
 interruption. Public deployment is not authorized by local task scope.
+
+## One-host coordinator work — 2026-09-10
+
+The [voice installer threat delta](voice-turn-threats.md#unified-installer-trust-boundary--2026-09-10)
+tracks the proposed privileged coordinator, preserved messaging identity/data,
+exclusive credentials, scoped network ownership and interrupted-update recovery.
+The [owner amendment](../operations/voice-single-host.md) supplies conditional
+existing-host authority, not passing runtime acceptance or permanent ADR approval.

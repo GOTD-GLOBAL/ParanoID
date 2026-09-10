@@ -34,3 +34,12 @@ Server/package and Android changes have separate PRs under
 [component boundaries](../project/component-boundaries.md). The Android PR must
 reference the exact server foundation revision. Nothing authorizes changing the
 live server, opening ports, firewall/DNS changes, operating phones or merging PRs.
+
+## One-host owner amendment — 2026-09-10
+
+The [exact owner authority and REQ-DEPLOY-003](../operations/voice-single-host.md)
+now require one existing host and one coordinated reproducible installer for
+messaging/private PostgreSQL/relay. The bounded host/port placement is authorized
+after actual acceptance and fresh review. This supersedes this document's earlier
+local-only/no-deployment-authorization boundary for that exact scope; it neither
+waives missing tests nor accepts ADR-0012 or permits merging PR20/21.

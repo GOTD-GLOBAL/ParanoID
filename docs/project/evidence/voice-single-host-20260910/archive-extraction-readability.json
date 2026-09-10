@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "scope": "root-owned normalized extraction and unprivileged read/import only; no native execution, service, relay, network or data mutation",
+  "artifact_sha256": "5bb0e23450b81f3d70e62c18ecf1b848b7a509f132aa977bfeb95af8a22cc543",
+  "coordinator_sha256": "2e0869b1401f55f814ec3cdd1b21f0db22a347373d4904fb58e66c30c7bfc164",
+  "extraction": {
+    "kit_sha256": "06d09794c98baf4efebe5da9804c1f4846d1818d34c7a6096d169d14d405b2de",
+    "path": "/var/tmp/paranoid-kit-verification-f57543efb20aed9a/normalized",
+    "profile": "paranoid-single-host-v1",
+    "release": "de205cfbb63b9bff3ed0"
+  },
+  "unprivileged_identity": "nobody (readability surrogate, not selected host message UID)",
+  "readback": {
+    "result": "PASS",
+    "release": "de205cfbb63b9bff3ed0",
+    "all_regular_members_readable": true,
+    "cryptography_API": true
+  },
+  "root_owned_members": 46,
+  "retained_owned_scratch": "/var/tmp/paranoid-kit-verification-f57543efb20aed9a"
+}
