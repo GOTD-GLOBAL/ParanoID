@@ -295,6 +295,23 @@ class OperationsTests(unittest.TestCase):
         self.run_op('remove')
         self.assertIsNone(self.fixture.table)
 
+    def test_close_ingress_reconciles_interrupted_apply_without_touching_neighbors(self):
+        # Interrupted production apply: table installed, pending {'op':'apply'},
+        # no owned ingress ever opened. Rollback's close-ingress must succeed as
+        # a no-op reconciliation instead of refusing recovery.
+        self.receipt['pending'] = {'op': 'apply'}
+        self.fixture.table = snapshot()
+        before = list(self.fixture.calls)
+        result = self.run_op('close-ingress')
+        self.assertEqual(result['ingress'], [])
+        self.assertIsNone(result['pending'])
+        added = [c for c in self.fixture.calls[len(before):] if c[:2] == ['/usr/sbin/ufw', '--force']]
+        self.assertEqual(added, [])
+        # Foreign pending ops still refuse.
+        self.receipt['pending'] = {'op': 'remove'}
+        with self.assertRaisesRegex(ValueError, 'pending network recovery'):
+            self.run_op('close-ingress')
+
     def test_shadowed_loopback_allow_is_not_supported(self):
         standard = self.fixture.read(Path('/etc/ufw/before.rules'))
         shadowed = standard.replace(b'*filter\n', b'*filter\n-A ufw-before-input -j DROP\n')

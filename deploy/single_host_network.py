@@ -609,7 +609,12 @@ def run_operation(operation, spec, receipt, save, runner=command, read=_read_reg
             finish(current)
         return finish(state())
     if operation == 'close-ingress':
-        if receipt['pending'] is not None and receipt['pending']['op'] not in ('open-ingress', 'close-ingress'):
+        # An interrupted apply (pending {'op': 'apply'}) legitimately precedes
+        # rollback's close-ingress: the table may exist while ingress never
+        # opened. classify_ownership has already authenticated ownership of the
+        # observed state under that pending record, so closing (a no-op when no
+        # owned ingress exists) and clearing the pending marker is safe.
+        if receipt['pending'] is not None and receipt['pending']['op'] not in ('open-ingress', 'close-ingress', 'apply'):
             raise ValueError('pending network recovery required')
         # Record a completed pending add privately before beginning its reverse.
         finish(current)
