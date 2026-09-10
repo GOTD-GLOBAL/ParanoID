@@ -175,6 +175,39 @@ class StickyCreationTests(unittest.TestCase):
                 root.rmdir()
 
 
+class ApplyStatePhaseTests(unittest.TestCase):
+    def phased(self, phase, updating=False):
+        from unittest.mock import patch
+        sentinel = RuntimeError('reached-preflight')
+        record = {'phase': phase, 'plan_sha256': 'c' * 64, 'transaction': 'a' * 32}
+        with patch.object(installer, 'plan', return_value={'plan_sha256': 'c' * 64}), \
+                patch.object(installer, 'validate_acceptance', return_value=None), \
+                patch.object(installer, 'relay_profile', return_value=False), \
+                patch.object(installer, 'fixture_boundary', return_value=None), \
+                patch.object(installer.os.path, 'lexists', return_value=True), \
+                patch.object(installer, 'state_record', return_value=record), \
+                patch.object(installer, 'status', return_value=dict(record)), \
+                patch.object(installer, 'preflight', side_effect=sentinel):
+            try:
+                installer.apply({'profile': installer.FIXTURE, 'kit_sha256': 'a' * 64,
+                                 'message': {'root': '/tmp/x'}}, '/tmp/kit', {}, 'c' * 64,
+                                updating=updating)
+            except RuntimeError as caught:
+                return 'reached-preflight' if caught is sentinel else 'other'
+            except ValueError as caught:
+                return str(caught)
+        return 'returned'
+
+    def test_rolled_back_state_admits_fresh_apply_but_ambiguous_phases_refuse(self):
+        # Terminal recovered state: a new apply may proceed to preflight.
+        self.assertEqual(self.phased('rolled-back'), 'reached-preflight')
+        # Interrupted phases still refuse without explicit rollback/update.
+        for phase in ('intent', 'recovery-incomplete', 'staged'):
+            self.assertIn('existing transaction', self.phased(phase))
+        # update still requires an active prior installation.
+        self.assertIn('existing transaction', self.phased('rolled-back', updating=True))
+
+
 class FullRehearsalBoundaryTests(unittest.TestCase):
     CASE_NAMES = ('TURN-RT01-1 valid REST credential Allocate',
                   'TURN-RT01-2 expired-timestamp credential rejected',

@@ -1100,9 +1100,15 @@ def apply(intent, kit_root, acceptance, expected_plan, updating=False):
             result = status(state)
             result['phase'] = 'already-applied'
             return result
-        if not updating or previous['phase'] != 'active':
+        if not updating and previous['phase'] == 'rolled-back':
+            # A completed rollback is a terminal recovered state: a fresh apply
+            # (new transaction, prior journal retained) is the legitimate next
+            # step. Interrupted/ambiguous phases still refuse below.
+            pass
+        elif not updating or previous['phase'] != 'active':
             raise ValueError('existing transaction requires explicit update or rollback')
-        status(state)
+        else:
+            status(state)
     else:
         previous = None
         if updating:
