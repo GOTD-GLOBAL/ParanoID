@@ -6,6 +6,22 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Voice deployed to the existing host; first real phone call — 2026-09-10
+
+The unified kit (release `35ce8e7946f4879fd0a7`) was applied to the existing
+host in transaction `440fd9fc` (phase `active`, existing-v8 mode, same data):
+messaging updated to release `4eba2afd` with the `voice_turn` config, the
+coturn relay (credential build `948cec15`, turnserver `e13597df1855`) runs on
+the authorized TCP/UDP 34781 and UDP 40000–40015 scope, and the owner
+completed a real two-phone call with good audio (both apps foregrounded).
+External TURN reachability and a bidirectional relay media echo were verified
+from outside. Eight live-deployment installer defects were found and fixed
+with tests (`7c25d80..4974bdd`). Known remaining defects: the client drops
+durable call signaling (`knock`/`ready`) when its online flag flickers, the
+server forces reconnects (8s idle close, 120s connection kill), and background
+delivery requires the opt-in foreground connection; a client fix and APK v11
+are in progress. See issue #19 for the running record.
+
 ## Voice acceptance simplification and VM-stand freeze — 2026-09-10
 
 The owner (Сергей, Telegram) decided: the isolated VM/KVM full-rehearsal stand
