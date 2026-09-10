@@ -1,0 +1,180 @@
+"""Acquire hash-pinned official tools into an owned directory, never install on the host or execute guest binaries."""
+from pathlib import Path
+import hashlib
+import json
+import os
+import resource
+import stat
+import shutil
+import subprocess
+import tarfile
+import tempfile
+import copy
+import posixpath
+import urllib.request
+
+E=Path(__file__).resolve().parent
+TOOL_ENV={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin','LANG':'C','LC_ALL':'C'}
+FROZEN_NAMES=['acquire_full_guest.py','full-guest-media-plan.json','full-guest-media-chain.json','verify_full_guest_media_chain.py','dpkg-deb-toolchain.json']
+
+def validate_sources(root, plan, chain, freeze):
+    for name in FROZEN_NAMES:
+        if hashlib.sha256((root/name).read_bytes()).hexdigest()!=freeze[name]:
+            raise ValueError('reviewed acquisition freeze differs')
+    if chain['plan_sha256']!=hashlib.sha256((root/'full-guest-media-plan.json').read_bytes()).hexdigest() or chain['verifier_sha256']!=hashlib.sha256((root/'verify_full_guest_media_chain.py').read_bytes()).hexdigest() or chain['result']!='SIGNATURE_AND_PACKAGE_CHAIN_VERIFIED':
+        raise ValueError('verified exact source chain required')
+    if sum(x['size'] for x in plan['packages'])>256*1024**2:
+        raise ValueError('download budget exceeded')
+    for item in plan['packages']:
+        pinned=chain['packages'][item['package']]
+        if pinned['sha256']!=item['sha256'] or pinned['version']!=item['version'] or pinned['stanza_verified'] is not True:
+            raise ValueError('package chain mismatch')
+        validate_uri(item)
+
+def validate_uri(item):
+    filename=item['filename']
+    if not filename.startswith('pool/') or any(x in filename for x in ('..','?','#','%','\\')) or not item['uri'].startswith('https://archive.ubuntu.com/ubuntu/pool/') or item['uri']!='https://archive.ubuntu.com/ubuntu/'+filename:
+        raise ValueError('exact canonical package URI required')
+
+def trusted_ancestors(path, owners):
+    for p in (*reversed(path.parents),path):
+        m=p.lstat()
+        if not stat.S_ISDIR(m.st_mode) or m.st_uid not in owners or stat.S_IMODE(m.st_mode)&0o022:
+            raise ValueError('untrusted directory ancestor')
+
+def revalidate_links(root, entries):
+    for entry in entries:
+        link=root/entry['path']
+        destination=(root/entry['source_target'].lstrip('/')).resolve()
+        if not link.is_symlink() or os.readlink(link)!=entry['guest_equivalent_relative_target'] or not destination.is_relative_to(root) or link.resolve()!=destination:
+            raise ValueError('converted guest symlink changed meaning')
+
+def tree_manifest(root):
+    result={}
+    for p in sorted(root.rglob('*')):
+        m=p.lstat();mode=stat.S_IMODE(m.st_mode)
+        if m.st_uid!=1003:raise ValueError('unowned tooling tree member')
+        if stat.S_ISLNK(m.st_mode):
+            target=os.readlink(p)
+            if Path(target).is_absolute() or not p.resolve().is_relative_to(root):raise ValueError('tooling link escapes tree')
+            item={'kind':'symlink','target':target}
+        elif stat.S_ISDIR(m.st_mode):
+            if mode&0o7022:raise ValueError('unsafe tooling directory mode')
+            item={'kind':'directory','mode':mode}
+        elif stat.S_ISREG(m.st_mode):
+            if mode&0o6022:raise ValueError('unsafe tooling file mode')
+            item={'kind':'file','mode':mode,'size':m.st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+        else:raise ValueError('unexpected tooling node')
+        result[str(p.relative_to(root))]=item
+    return result
+
+def guest_link_target(root, member_name, target):
+    member=Path(member_name)
+    if member.is_absolute() or '..' in member.parts or not target.startswith('/'):
+        raise ValueError('guest link must have a safe member and absolute guest target')
+    parent=(root/member).parent.resolve()
+    destination=(root/target.lstrip('/')).resolve()
+    if not parent.is_relative_to(root) or not destination.is_relative_to(root):
+        raise ValueError('guest link escapes owned root')
+    return os.path.relpath(destination,parent)
+
+plan=json.loads((E/'full-guest-media-plan.json').read_text())
+if os.geteuid()!=1003 or E.resolve()!=E or E.stat().st_uid!=1003: raise ValueError('owned unprivileged tooling scope required')
+chain=json.loads((E/'full-guest-media-chain.json').read_text())
+freeze=json.loads((E/'full-guest-source-freeze.json').read_text())
+validate_sources(E,plan,chain,freeze)
+os.umask(0o022)
+resource.setrlimit(resource.RLIMIT_FSIZE,(1024**3,1024**3))
+def space():
+    if shutil.disk_usage(E).free<64*1024**3: raise ValueError('developer host free-space margin required')
+space()
+out=E/'full-guest-packages'; out.mkdir(mode=0o700)
+archives=out/'archives'; archives.mkdir(mode=0o755); sysroot=out/'sysroot'; sysroot.mkdir(mode=0o755)
+record={'result':'ACQUIRING_GUEST_ONLY','packages':[],'host_install':False,'guest_binaries_executed_on_host':False,'source_sha256':hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),'plan_sha256':hashlib.sha256((E/'full-guest-media-plan.json').read_bytes()).hexdigest(),'chain_sha256':hashlib.sha256((E/'full-guest-media-chain.json').read_bytes()).hexdigest(),'expanded_bytes':0,'converted_guest_symlinks':[],'plan_origins_claim':'advisory only; actual trust is the verified signed stanza chain','host_tools':{}}
+
+def trusted_host_file(path):
+    path=path.resolve()
+    for p in (*reversed(path.parents),path):
+        m=p.stat()
+        if m.st_uid!=0 or stat.S_IMODE(m.st_mode)&0o022:raise ValueError('untrusted host tool/library ancestor')
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+record['host_tools']['/usr/bin/dpkg-deb']=trusted_host_file(Path('/usr/bin/dpkg-deb'))
+toolchain=json.loads((E/'dpkg-deb-toolchain.json').read_text())
+for name,pinned in toolchain['host_tools'].items():
+    actual=trusted_host_file(Path(name))
+    if actual!=pinned['sha256'] or str(Path(name).resolve())!=pinned['resolved']:
+        raise ValueError('reviewed host decompressor toolchain differs')
+    record['host_tools'][name]=actual
+record['extraction_environment']=TOOL_ENV
+record['extraction_commands']=[]
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self,*args,**kwargs):raise ValueError('official tooling redirect refused')
+opener=urllib.request.build_opener(NoRedirect)
+for directory in ['usr/bin','usr/sbin','usr/lib','usr/lib64']:(sysroot/directory).mkdir(parents=True,exist_ok=True)
+for name,target in [('bin','usr/bin'),('sbin','usr/sbin'),('lib','usr/lib'),('lib64','usr/lib64')]:(sysroot/name).symlink_to(target)
+cache_roots=[E/'vm-tooling-v2/archives',Path('/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/coturn')]
+for cache_root in cache_roots:trusted_ancestors(cache_root,{0,1003})
+
+def save(): (out/'result.json').write_text(json.dumps(record,indent=2)+'\n')
+
+save()
+stage='before_download';item={}
+try:
+    for item in plan['packages']:
+        space()
+        if chain['packages'][item['package']]['sha256']!=item['sha256']: raise ValueError('package chain mismatch')
+        if not item['sha256'] or not all(o['trusted'] and o['origin']=='Ubuntu' for o in item['origins']): raise ValueError('authenticated Ubuntu metadata required')
+        path=archives/Path(item['filename']).name
+        validate_uri(item)
+        cached=next((p/path.name for p in cache_roots if (p/path.name).is_file()),None)
+        stage='verified_cache_copy' if cached else 'download'
+        request=urllib.request.Request(item['uri'],headers={'User-Agent':'ParanoID-owned-test-tooling/1'})
+        digest=hashlib.sha256(); count=0
+        try:
+            if cached:
+                trusted_ancestors(cached.parent,{0,1003})
+                m=cached.lstat()
+                if not stat.S_ISREG(m.st_mode) or m.st_uid!=1003 or m.st_nlink!=1 or m.st_mode&0o022:raise ValueError('unsafe cached signed archive')
+                incoming=cached.open('rb')
+            else:
+                incoming=opener.open(request,timeout=30)
+                if incoming.geturl()!=item['uri']:incoming.close();raise ValueError('unexpected guest package origin')
+            with incoming,path.open('xb') as output:
+                while chunk:=incoming.read(1024*1024):
+                    count+=len(chunk)
+                    if count>item['size']:raise ValueError('package exceeds pinned size')
+                    digest.update(chunk);output.write(chunk)
+            if count!=item['size'] or digest.hexdigest()!=item['sha256']: raise ValueError('package hash differs')
+        except BaseException:
+            path.unlink(missing_ok=True)
+            record['result']='ACQUISITION_FAILED';record['failed_package']=item['package'];save()
+            raise
+        stage='extract'
+        with tempfile.TemporaryFile(dir=out) as stream:
+            argv=['/usr/bin/dpkg-deb','--fsys-tarfile',str(path)]
+            record['extraction_commands'].append(argv);save()
+            subprocess.run(argv,stdout=stream,check=True,timeout=60,env=TOOL_ENV)
+            stream.seek(0)
+            with tarfile.open(fileobj=stream,mode='r:') as archive:
+                members=archive.getmembers()
+                total=sum(m.size for m in members if m.isfile())
+                if len(members)>20000 or total+record['expanded_bytes']>2*1024**3: raise ValueError('expanded tooling budget exceeded')
+                if any(not (m.isfile() or m.isdir() or m.issym() or m.islnk()) for m in members): raise ValueError('unexpected archive node')
+                for member in members:
+                    member=copy.copy(member)
+                    if member.issym() and Path(member.linkname).is_absolute():
+                        old=member.linkname
+                        member.linkname=guest_link_target(sysroot,member.name,old)
+                        record['converted_guest_symlinks'].append({'package':item['package'],'path':member.name,'source_target':old,'guest_equivalent_relative_target':member.linkname})
+                    archive.extract(member,sysroot,filter='data')
+                record['expanded_bytes']+=total
+        record['packages'].append(item); save()
+    stage='final_symlink_meaning';revalidate_links(sysroot,record['converted_guest_symlinks'])
+    stage='whole_guest_tree';record['tree']=tree_manifest(sysroot)
+    record['tree_members']=len(record['tree']);space()
+    record['result']='GUEST_PACKAGES_VERIFIED_NO_VM_STARTED';save()
+    print(json.dumps({k:v for k,v in record.items() if k not in ('packages','tree','converted_guest_symlinks')},indent=2))
+
+except BaseException as error:
+    record.update(result='ACQUISITION_FAILED',stage=stage,failed_package=item.get('package'),error_type=type(error).__name__,error_detail=str(error)[:2048]);save()
+    raise

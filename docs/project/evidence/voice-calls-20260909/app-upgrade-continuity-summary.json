@@ -1,0 +1,41 @@
+{
+  "boundary": "Owned Android35 emulator, actual retained-signer v8 to v9 fixture in-place update and existing app/JNI/pinned-TLS text path; not final ARM64 artifact or physical phone acceptance",
+  "upgrade": {
+    "result": "PASS",
+    "identity_unchanged": true,
+    "request_credential_unchanged": true,
+    "own_contact_unchanged": true,
+    "contact_fingerprint_unchanged": true,
+    "dialogs_trust_and_history_unchanged": true,
+    "retained_dialog_count": 1,
+    "retained_message_count": 1,
+    "voice_supported_before": false,
+    "call_state_after": "idle",
+    "media_present_after": false,
+    "active_recordings_after": 0
+  },
+  "post_upgrade_text": {
+    "result": "PASS",
+    "connected": true,
+    "delivered_new_text_at_peer": true
+  },
+  "permission_denial": {
+    "result": "PASS",
+    "call_state": "idle",
+    "media_present": false,
+    "active_recordings": 0
+  },
+  "incoming_before_answer": {
+    "result": "PASS",
+    "call_state": "incoming",
+    "media_present": false,
+    "active_recordings": 0
+  },
+  "full_application_voice_acceptance": "PENDING final integrated lifecycle run",
+  "raw_file_sha256": {
+    "v8-to-v9-upgrade-pass.json": "f2b3ff7d05024c5fed351514b0b4572f13568ddef6c0b044e60c58c805a805da",
+    "post-upgrade-text-pass.json": "f521abffbb0cbb4d315c234ea92fdf8eb74fe1e740135d378850a1f9c9ffc7be",
+    "microphone-denial-pass.json": "620ff6d2c8c983b36ddfe197ff38d9720cf1ff810ba7bab131d5b88d403ed9b0",
+    "incoming-no-capture-pass.json": "acf0733db9795063fc0bcadaef10a9edee2a3ce1c2689887d6c6e7651b1aa118"
+  }
+}

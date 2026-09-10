@@ -46,11 +46,18 @@ commit and full evidence remain preserved, not rewritten.
 
 ## Actual state and next stage
 
+Subsequent independent GitHub verification on 2026-09-09 confirms PR18 MERGED
+at `2026-09-09T22:01:42Z`, merge commit
+`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The local
+[voice implementation task](../product/voice-calls.md) starts on a clean feature
+branch from that commit. This factual update closes the merge prerequisite;
+it does not accept a voice architecture or authorize new public networking.
+
 The owner-reported responsive two-phone text exchange supplements the earlier
 [local and hosted evidence](evidence/overnight-realtime-20260909/README.md).
 Physical OEM background behavior, Doze, force-stop, battery, accessibility and
-camera verification remain unproven by that report. PR merge was authorized but
-is not claimed completed merely by writing this document.
+camera verification remain unproven by that report. The original record below
+describes the voice gate; the verified merge result above now satisfies ordering.
 
 After merge, **1:1 encrypted voice calls** become the next implementation stage,
 prioritized over other media. Use a separate feature branch and RFC/threat analysis

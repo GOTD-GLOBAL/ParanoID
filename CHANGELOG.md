@@ -8,6 +8,87 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Voice acceptance simplification — 2026-09-10
+
+- By owner decision, froze the isolated VM/KVM full-rehearsal programme and
+  replaced the production installer gate `coordinated-full-rehearsal` (and the
+  separate `current-call-acceptance` receipt entry) with
+  `local-loopback-acceptance`: an actually executed loopback TURN acceptance
+  report (TURN-RT01/TURN-ACL02, six required cases, all PASS) bound to the
+  exact kit turnserver digest and referenced by the `turn-rt01`/`turn-acl02`
+  gates. Executed the acceptance for real (6/6 PASS) with the committed
+  harness `deploy/turn/local_acceptance.py`;
+  [evidence](docs/project/evidence/voice-local-acceptance-20260910/summary.md).
+  The owner's physical two-phone call remains the final product acceptance.
+
+### Runtime credential compatibility candidate — 2026-09-10
+
+- Added a dedicated systemd credential-copy reader for the measured root0550/0440
+  named-service-UID ACL pair, with exact fd/path/ACL checks and the private0400
+  fallback. Generic/source/issuer0400/0600 policies remain unchanged. The former
+  temporary-path launcher check recipe is withdrawn. Offline TDD and all six
+  actual inert transient-unit cases pass. Persistent production-unit/static-UID
+  delivery, relay acceptance and deployment remain pending.
+  [Evidence and limits](docs/project/evidence/voice-ready-20260910/README.md).
+
+### Single-host installer candidate — 2026-09-10
+
+- Added candidate VM-profile dispatch and a rehearsal verifier that reads and
+  binds actual reports, execution logs, service identities and both kits to the
+  production plan. The availability gate remains closed pending the full runner,
+  exact artifact review and real acceptance. [Contract and limits](docs/operations/voice-vm-rehearsal.md).
+- Added a coordinated offline messaging/private-PostgreSQL/TURN kit with
+  plan/preflight/apply/status/update/rollback, separate fresh and retained-v8
+  paths, exact artifact/plan acceptance records, scoped network ownership and
+  same-current-data recovery. The owner selected the existing host and retained
+  TLS/data/identity. [The runbook](docs/operations/voice-single-host.md) records
+  implementation, real fixture outcomes, review and remaining gates separately.
+  Relay expiry/access-control/lifecycle and full call acceptance are still
+  unverified; no hosted deployment or relay exposure has occurred.
+
+### Incoming-call diagnostics — 2026-09-10
+
+- Added test-only controller-first sampling and bounded sanitized SDK/host
+  observations. One ordinary baseline failed naturally while its fixed companion
+  decoded relay audio; [evidence and remaining unknowns](docs/project/evidence/call-connect-ordinary-20260910/README.md)
+  keep CALL-CONNECT01 open. Production source and APK are unchanged.
+
+### Voice relay client — 2026-09-10
+
+- Added strict, volatile relay credential retrieval before media creation, with
+  bounded independent I/O and generation-safe cancellation. Call and Answer now
+  disclose relay/direct metadata before consent. Signed v10 builds and preserves
+  owned-emulator v9 identity/contact/history. Parser, HTTPS/JNI and text checks
+  pass; full extension acceptance, final review and missing relay packet gates
+  remain explicit in [the local record](docs/operations/voice-calls-local.md).
+- Added a reviewed500 ms relay-candidate publication window to prevent unrelated
+  gathering delays consuming nearly the entire45-second call setup deadline.
+  Actual both-role relay, cancellation/redial, late-callback, direct tone and
+  rebuilt-artifact checks pass. Direct mode and authenticated immutable SDP
+  retain their existing contracts; missing relay runtime gates remain explicit.
+
+### Voice relay foundation — 2026-09-10
+
+- Added an optional signed-session TURN credential issuer with locked active-device
+  checks and bounded quotas. Disabled deployments retain existing messaging
+  behavior. A versioned offline package adds isolated secret-file forwarding,
+  a patched coturn build and a separate relay unit; [the runbook](deploy/turn/README.md)
+  records actual offline checks and missing expiry/ACL packet gates. No live
+  server, firewall, DNS, phone or public listener changes were performed.
+
+### Voice implementation checkpoint — 2026-09-09
+
+- Added native authenticated 1:1 call controls on the retained Olm channel,
+  Android answer/reject/cancel/mute/routing lifecycle, microphone foreground
+  service and pinned WebRTC/Opus integration. Calls retain core3/sealed4 identity,
+  history and TLS trust. Fresh design closure and native/JNI/controller checks
+  pass, including actual v8 text/receipt continuation and 3700 encrypted controls
+  without exhausting the text replay ledger. Real Android/aiortc direct and local
+  TURN relay audio pass decoded-tone, mute/unmute and teardown checks. [Exact
+  evidence and remaining gates](docs/operations/voice-calls-local.md) record 14 app acceptance steps passing, with final inset UI
+  and signed voice APK checks passing; independent final review remains pending. No new live listener,
+  server change, physical-phone test or production quality claim is included.
+
 ### Realtime rollout — 2026-09-09
 
 - Updated the existing isolated private-alpha service from release

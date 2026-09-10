@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "checkpoint": "After readiness-only pre-ready cancellation correction",
+  "command": "python3 clients/android/test_call_controller.py",
+  "green_log": "controller-pre-ready-cancel-green.log",
+  "red_log": "controller-pre-ready-cancel-red.log",
+  "scope": "Real JVM state-machine tests with mock media Port; actual audio is separately evidenced",
+  "source_sha256": {
+    "clients/android/src/org/paranoid/text/CallController.java": "ca9bc6bdec7d008169cb8bfb8219962adff12d78ce5b131438ef5e0294f6dc71",
+    "clients/android/test/CallControllerSmoke.java": "2e82106f7b6aa29a0546c53c2a34f5f86954168bea5d11fcbe4cf959db277dd3",
+    "clients/android/test_call_controller.py": "d1e44915803d80db6236a102e472a70ee2a47115fb2b2f1ea091f57e2a24445e"
+  }
+}

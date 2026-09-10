@@ -6,11 +6,23 @@ last_reviewed: 2026-09-09
 
 # Threat model
 
+The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)
+adds explicit current-boot isolation and root-controlled execution-evidence binding.
+The full runner, packet/current-call acceptance and deployment remain pending;
+root-authored reports are not remote attestation and do not replace independent
+actual source/artifact/runtime review.
+
 This is an initial discovery scaffold, not evidence that ParanoID is secure.
 Update it whenever assets, actors, data flows, dependencies, or trust boundaries
 change.
 
 ## Active scoped analysis
+
+The [voice trust delta](voice-v1-threats.md) adds proposed authenticated call
+controls, fresh consent/nonces, WebRTC dependency and microphone/media/network
+boundaries for RFC-0017/ADR-0011. It is analysis before runtime implementation;
+actual evidence and independent reviews are separate gates. No live relay or
+public-network expansion is authorized by this design.
 
 The [realtime trust delta](realtime-v1-threats.md) records signed-session,
 independent state/network, Android foreground connection and encrypted same-data
@@ -186,3 +198,19 @@ application security review appropriate to the claims being made.
 revocation, wait races, native outbox signing, state/network separation, opt-in
 Android foreground notifications and encrypted same-data update/rollback.
 Actual final review and deployment evidence remain separate gates.
+
+## Voice relay delta
+
+[Voice TURN threats](voice-turn-threats.md) cover the issuer authorization lock,
+volatile credentials, metadata, relay resource and peer limits, credential
+residual authority and secret/package boundaries. Offline builds pass; required
+retained-allocation expiry and ACL packet tests remain NOT RUN after a platform
+interruption. Public deployment is not authorized by local task scope.
+
+## One-host coordinator work — 2026-09-10
+
+The [voice installer threat delta](voice-turn-threats.md#unified-installer-trust-boundary--2026-09-10)
+tracks the proposed privileged coordinator, preserved messaging identity/data,
+exclusive credentials, scoped network ownership and interrupted-update recovery.
+The [owner amendment](../operations/voice-single-host.md) supplies conditional
+existing-host authority, not passing runtime acceptance or permanent ADR approval.

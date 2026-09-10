@@ -1,0 +1,17 @@
+{
+  "artifacts": [
+    {
+      "kind": "target",
+      "path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-publication-direct-fixture-1/target.apk",
+      "sha256": "b6232b803125750718ca360d9d636cc8c053e07f7865607c1ad131550c970a83"
+    },
+    {
+      "kind": "test",
+      "path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-publication-direct-fixture-1/test.apk",
+      "sha256": "4898f6a61d1cb5732df73b12ba2ba26677b7dfe3bb7ac8f25cdca838fe826d79"
+    }
+  ],
+  "engine_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "fixture_sha256": "ab9d66e62c622bf6c9eacbde1629fd9b705bcf2fbd5978af3822d7cc59902ad9",
+  "boundary": "Test-only separate package, exact product engine source, same retained signer, x86_64"
+}

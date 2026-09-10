@@ -1,0 +1,37 @@
+{
+  "subtype": "success",
+  "is_error": false,
+  "num_turns": 26,
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 1328,
+      "outputTokens": 20,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.001428,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty"
+    },
+    "claude-fable-5": {
+      "inputTokens": 19,
+      "outputTokens": 25856,
+      "cacheReadInputTokens": 456787,
+      "cacheCreationInputTokens": 90943,
+      "webSearchRequests": 0,
+      "costUSD": 3.568637,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "canonicalModel": "claude-fable-5",
+      "provider": "firstParty"
+    }
+  },
+  "permission_denials": [],
+  "prompt_sha256": "053b1117992decdbc188aed714dc057a229f2118b2f414e1671bfa48056e924e",
+  "input_manifest_sha256": "bb0fcec019ba0a10f3bfb914f27affff84b8f1ac88933c1024987f666c5fca6b",
+  "raw_result_sha256": "a49019b1754997beb404559971feb30c82821cab756e664dddaa98ae3cf821a5",
+  "review_sha256": "4262a5dbc0206810001bc2cd332b7e4852415518a2a53b15d13c03c532dca30e",
+  "scope": "Design CONDITIONAL on A1-A5 corrections; inert systemd primitive APPROVED with conditions; finite CALL-CURRENT01 matrix permitted only after coordinated relay gates; no deployment/merge."
+}

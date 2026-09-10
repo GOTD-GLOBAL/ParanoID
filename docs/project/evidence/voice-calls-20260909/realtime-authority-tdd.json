@@ -1,0 +1,53 @@
+{
+  "red": {
+    "result": "FAIL",
+    "recoverable_401": {
+      "actual_backend_statuses": [
+        401,
+        200
+      ],
+      "fresh_native_signed_nonce": true,
+      "immutable_ciphertext": true,
+      "authenticated_receipt": true,
+      "authorization_lost_callbacks": 1
+    },
+    "changed_source_during_run": [],
+    "raw_result_sha256": "3ad62f51c105d126f94db014e4c8d43116cb2e68b7fbf9538bfd33e7a5ef9863"
+  },
+  "green": {
+    "result": "PASS",
+    "recoverable_401": {
+      "actual_backend_statuses": [
+        401,
+        200
+      ],
+      "fresh_native_signed_nonce": true,
+      "immutable_ciphertext": true,
+      "authenticated_receipt": true,
+      "authorization_lost_callbacks": 0
+    },
+    "persistent_401": {
+      "actual_backend_statuses": [
+        401,
+        401
+      ],
+      "authorization_lost_callbacks": 1,
+      "plaintext_delivered": false,
+      "pending_preserved": true,
+      "revocation": "only isolated synthetic fixture account changed"
+    },
+    "changed_source_during_run": [],
+    "raw_result_sha256": "5e828caee90f64ca2e34a925f50bdf44e4e067939a51a1eb6e0c2448a2fd9a71"
+  },
+  "files_changed": [
+    "clients/android/src/org/paranoid/text/RealtimeLoop.java",
+    "clients/android/test/RealtimeBridge.java",
+    "clients/android/test_realtime.py"
+  ],
+  "production_delta": "Removed only premature authorityFailure inside signed-session catch; existing one fresh-nonce retry unchanged, outer terminal401 authority callback retained",
+  "source_sha256": {
+    "clients/android/src/org/paranoid/text/RealtimeLoop.java": "df5bf8b9edc545a0235fc93d0d71345eb2ee0df24d84641c97c1ccf6d6134cf5",
+    "clients/android/test/RealtimeBridge.java": "5a3dab9453fdf452be78a9dc1eaa3d9a8b895697263044d1ec6342c7e5baa3c9",
+    "clients/android/test_realtime.py": "6dc82d3944ea0e7d647deebf99994da0fabded289a21c7e0a8731447f947dc16"
+  }
+}

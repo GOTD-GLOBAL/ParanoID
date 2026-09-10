@@ -1,0 +1,96 @@
+{
+  "result": "PASS_NO_BLOCKING_REDACTION_OR_CAUSAL_CLAIM_FINDING",
+  "reviewed_at": "2026-09-10T02:39:42.122760+00:00",
+  "reviewer": "/root/fixture_plan",
+  "files_reviewed": [
+    "README.md",
+    "build-comparison.json",
+    "build_ordinary_fixture.py.txt",
+    "fable-extended-provenance.json",
+    "fable-extended-review.txt",
+    "fable-observer-provenance.json",
+    "fable-observer-review.txt",
+    "independent-source-observer-verification.json",
+    "observer-extended-manifest.json",
+    "ordinary-comparison-result.json",
+    "ordinary-driver-command.json",
+    "ordinary-driver-exit.json",
+    "ordinary-summary.json",
+    "ordinary_fixture_runtime.py.txt",
+    "parent-work-before.json",
+    "preservation-cleanup.json",
+    "run_ordinary_comparison.py.txt",
+    "safe-extension-closing-red.log",
+    "safe-extension-final-green.log",
+    "safe-stats-javac.log",
+    "setup-correction.json"
+  ],
+  "scope": "Read-only public evidence redaction and causal-language audit; no fixture, device, network, product change or denied operation",
+  "observed_fact_crosscheck": [
+    {
+      "arm": "baseline",
+      "classification": "OBSERVED_FAILED",
+      "answer_remaining_ms": 39854,
+      "terminal_origin": "mediaState",
+      "terminal_reason": "failed",
+      "error_after_answer_ms": 16496.318402,
+      "error_budget_ms": 23357,
+      "sdk_error_to_terminal_ms": 0.18195,
+      "summary_matches": true
+    },
+    {
+      "arm": "fixed",
+      "classification": "NOT_REPRODUCED",
+      "answer_remaining_ms": 42440,
+      "terminal_origin": "received",
+      "terminal_reason": "hangup",
+      "error_after_answer_ms": null,
+      "error_budget_ms": null,
+      "sdk_error_to_terminal_ms": null,
+      "summary_matches": true
+    }
+  ],
+  "redaction": {
+    "secret_private_fields_in_json": "none found",
+    "private_key_pem_authheader_raw_sdp_pcm_uuid_payload_patterns": "none found",
+    "ipv4_literals": "declared loopback fixture constants only in source txt, not observed media endpoints",
+    "source_code_secret_references": "synthetic generation or retained signer acquisition code only; no actual credential material"
+  },
+  "preserved_unknowns": [
+    "CALL-CONNECT01 remains OPEN",
+    "native pre-cleanup first cause and source-time states absent",
+    "process start ticks/maps NOT_MEASURED; same_process_association false is uncertainty",
+    "sequential arms differ in pre-Answer timing and permission state",
+    "near-silent host microphone is decoded audio, not reverse synthetic tone or acoustic quality",
+    "historical failures not retroactively identified",
+    "full auth/lifecycle and exact accepted remote-end metadata unobserved",
+    "first setup failure and single setup-only correction retained"
+  ],
+  "nonblocking_notes": [
+    "Final Fable evidence review is pending in README; update only after its actual verdict.",
+    "Earlier suggested markdownlint library entry was incorrect; root reports actual bin command validation. This agent did not execute Markdown/link checks."
+  ],
+  "evidence_sha256": {
+    "README.md": "3dd0fa5df340390c0076eff8e4328bfa2bd6ade4bdeb4b7509655273234d3550",
+    "build-comparison.json": "e24f9aa7e5560137614a4c7e751f9c339dd23dfdd96e9840b9950d0b21aaa9e6",
+    "build_ordinary_fixture.py.txt": "9163efbe62b31723137ccc0ddcd2c41c3868c801e5d82ec91a90a7d0ebf5b375",
+    "fable-extended-provenance.json": "f6d49930750c56d5b1a843c0ed6b9a93592cb511daef173d9cec785c90427eb2",
+    "fable-extended-review.txt": "9c50915db427bf911c979c15aab8e314ee7f4a8a1b00ed663004b61b23e4fa52",
+    "fable-observer-provenance.json": "b95a6a948ebeb6eb1839602e43fff7323b9df77fbee4fefb76fe49102507bf1c",
+    "fable-observer-review.txt": "d44ae117c173fe8316e47fd25debed7f436e383d3cd3b5fb4987a5687f051ebd",
+    "independent-source-observer-verification.json": "3386172478e116b4eb95a0eaac9bce068103abdbe0e394426d4ed9fcac691a4c",
+    "observer-extended-manifest.json": "85bd232648a1dcf0e9dcced306d8c6f5aae6ba0f88408b612b933bea149b4483",
+    "ordinary-comparison-result.json": "07b639270818c5b97739bffad542fa9b87962fd158a8463515c2cfb98c89526d",
+    "ordinary-driver-command.json": "0e4ca1d83efdca502e6a8c2355de138ced15b676533178fb0ec6203c9a025fdb",
+    "ordinary-driver-exit.json": "5bc232b82de377a5655a39a2af9d7ae0fc868de5b9df957e18905cb914606c88",
+    "ordinary-summary.json": "f5f4439ae11674f8d2929da565a64b9d34906c1838debcdc8689a1639e02439c",
+    "ordinary_fixture_runtime.py.txt": "a8a17bbfd5fdf21fa004f4c98dfe3bf427f96e365931a9eb51f9abfc5ff067fc",
+    "parent-work-before.json": "775657d9b87bb58bd7f8db653d9bce98bdedc2d2e078a13fbfafd45dcad50ffd",
+    "preservation-cleanup.json": "7a2c2e6cafec30ad4e9c94c89560327028717cb664737934fd93c4a3f7297ad4",
+    "run_ordinary_comparison.py.txt": "9ce2a1b23e37966631c9e4cdf38513273bdfc5ecaa697ac4d496fe7819079113",
+    "safe-extension-closing-red.log": "76976deb3cdb3b98ca0123bd3b94c641e60a1014ef18002f6dbafa2d83891890",
+    "safe-extension-final-green.log": "50fc5aed3760bc8bbaab7b820c8fbb53c43956683347f217fc9de0a5ef74ab78",
+    "safe-stats-javac.log": "565773c6c6ed8cdcde85b8368f813f8ab867dbd5e85d821baa1f6ee0ccbbccdf",
+    "setup-correction.json": "23708f375ad89f487fc68f1c7a610491a1771cd638c13c0cfb3d4f1981e7e4aa"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/AGENTS.md": "7f6c1b6d253e1a144d421c82670b34c5f5743746378b50af59409601ebd1a627",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/governance/documentation-policy.md": "d34922ab52385cc51f0bf4d54156beec2b6ee72f4e3ce5299edbfaf4b8956234",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/decisions/0003-closed-alpha-review-policy.md": "500bce008f307e6c9bb845c3dcc37a51c9324f2341da07daf14281578027348d",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/project/current-state.md": "6c160590bb8f949da54841af329c09cc3567fb8b1173eb8fe564aa23c0ed2f86",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/operations/voice-single-host.md": "c6c593799c0b35e4477a44f842d8027cec4e46cc88d077bc4bd342dfcdcdac28",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-acquisition-scope.md": "14f9ef428df00f6840c9ec83966e472d28cb867713cf5399be5652e3e8c0e4a6",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/acquire_full_guest.py": "b01b27c5223e767c268856092685a7b3e2485c2c2f3f43d9765761a22e45e73c",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_full_guest_acquisition.py": "187b168a8f11c5dc13603ffe1dc4b79ac58601db52f7ae06bce17f6da138d1c1",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-acquisition-offline.log": "0a68a0a114a61e4cf5d0e5d5ad10e4f0eb8629eefbb9d23de9204bb1a4716903",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-source-freeze.json": "4600899e6e81e4658eeff4182c2f92dff06f27078c50075cbdce1f905eeea566",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-media-plan.json": "a36521153cd4280913af1075ada3b7458efbb63ddd6a4f85b51568852ba69108",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-media-chain.json": "2fcab5b8e9cd65e4fa18114a05e8f58f260853d7099ea665a633d6d2cc981938",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/verify_full_guest_media_chain.py": "c945cd6b1d89f551da7aa3de01a0508b047e10f425cfde9c6009b357e2385418",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/opus-full-fixture-design-review/review.md": "c7eaf029212025cb9072e20d7e31c6568766eea17a3455bff8e3518e3eb9c63b",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-fixture-design-closure.md": "25f874b4160e509e0a549ebe0ea85683eb4bcd44d567d6faf96db59e440958e9"
+}

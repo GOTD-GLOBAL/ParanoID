@@ -1,0 +1,7 @@
+PASS zero-contact reply and durable publication while real receipt POST blocked
+ACTUAL warm foreground 24 samples P50=105.92ms P95=122.99ms
+PASS crossing burst on one deterministic retained channel
+PASS real post-commit response loss with exact immutable retry
+PASS offline owner progress and exact schema4/core3 encrypted snapshot/server/JVM restart
+PASS incoming save failure freezes without plaintext publication, state replacement or receipt
+PASS actual realtime JVM/JNI functional fixture; latency target met=True

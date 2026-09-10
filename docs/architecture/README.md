@@ -111,6 +111,25 @@ sealed snapshot4 and rejects old client snapshots unchanged. The owner removed
 historical migration/recovery from this local candidate's gate. The source/build
 is not accepted architecture, current live rollout or physical-phone evidence.
 
+## Voice component boundary (RFC-0017)
+
+```text
+Existing native identity/contact/Olm state
+  -> strict call-v1/frame2 -> sealed immutable outbox -> retained opaque relay
+  <- authenticated call control <- sealed ratchet/cursor commit
+  -> volatile Android CallController -> explicit Call/Answer permission
+  -> libwebrtc audio source/PeerConnection <-> peer DTLS-SRTP/Opus endpoint
+Android microphone service/audio focus/routes -> visible lifetime + cleanup
+Relay retains ciphertext/metadata; it does not terminate media keys
+```
+
+The [core](../clients/core/voice-calls.md) and
+[Android](../clients/android/voice-calls.md) components implement this scoped
+proposal without a server API or snapshot-shape change. Design/native/JNI
+and actual direct/isolated-relay media checks pass; remaining release gates are in
+[the local record](../operations/voice-calls-local.md). No live relay topology
+or permanent production architecture is accepted by this diagram.
+
 ## Rules for diagrams
 
 - State scope, audience, and abstraction level.
@@ -124,3 +143,12 @@ is not accepted architecture, current live rollout or physical-phone evidence.
 
 [Retained-stack realtime proposal](../rfcs/0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## One-host coordinated voice installation
+
+[REQ-DEPLOY-003](../operations/voice-single-host.md) records the owner-selected
+single existing host and one installer across messaging/private PostgreSQL/relay.
+The coordinator and its cross-user deployment boundary remain proposed under
+[RFC-0018](../rfcs/0018-voice-turn.md); mandatory runtime tests and independent
+review gate any exposure. Existing message TLS/data/identity and neighbors remain
+protected; this is not permanent stack/architecture acceptance.

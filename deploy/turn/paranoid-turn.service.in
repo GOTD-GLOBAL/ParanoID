@@ -1,0 +1,40 @@
+[Unit]
+Description=ParanoID private-alpha TURN relay
+After=network-online.target paranoid-voice-policy.service
+Requires=paranoid-voice-policy.service
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=paranoid-turn
+Group=paranoid-turn
+LoadCredential=voice-turn-secret:/etc/paranoid-turn/relay.secret
+RuntimeDirectory=paranoid-turn
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/python3 -I -B /opt/paranoid-turn/@RELEASE@/runtime.py run
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictAddressFamilies=AF_INET AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+LimitCORE=0
+LimitNOFILE=256
+TasksMax=32
+MemoryMax=128M
+CPUQuota=50%
+StandardOutput=null
+StandardError=null
+
+[Install]
+WantedBy=multi-user.target

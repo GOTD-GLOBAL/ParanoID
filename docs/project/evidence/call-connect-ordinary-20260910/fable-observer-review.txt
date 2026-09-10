@@ -1,0 +1,38 @@
+## Verdict: APPROVE (test-harness scope only)
+
+The observer patch is safe for one ordinary baseline-arm + fixed-arm host-caller/Android-recipient comparison, with no product source change and `partial_no_sdk_precleanup_hook` correctly retained. I verified the patch against the full current files and the actual product `CallController`, `WebRtcAudioEngine`, and `TextEngine` wiring. Findings below are non-blocking coverage caveats and nits, not safety defects. This is not CALL-CONNECT01 closure, not deploy/merge authorization, and not an all-voice PASS; no test was executed.
+
+### Reviewed file identities
+Per supplied manifest `parent-work-before.json` (I cannot compute SHA-256 with read-only tools; contents of every worktree file I read are byte-consistent with `observer.patch` hunks and context):
+
+- `VoiceAppInstrumentation.java` — 867a8854…81d500
+- `CALL-CONNECT01.md` — 6e193cae…ba114
+- `call_connect_sampler.py` — 0aaccf7a…badd7
+- `test_call_connect_instrumentation.py` — eb9a9d82…224bc
+- `test_call_connect_sampler.py` — fe4cf82a…c157c
+
+### Checked criteria — all pass
+
+**Exact delegation despite observer failure.** The `Port` proxy (`VoiceAppInstrumentation.java:433-448`) observes strictly before `method.invoke(original, args)` with unmodified args, and rethrows `InvocationTargetException.getCause()`, so product exception flow (CallController catches `RuntimeException` at `CallController.java:106,140,149`) is preserved. All observation is inside `terminalEvent`, which swallows its own failures (`:377`, incrementing `terminalTruncated`); the one risky cast in the `send` branch has its own inner catch (`:442-444`). The SDK listener wrapper (`:398-417`) forwards the exact `type`/`exactSdp`/`reason` to the original after recording only enums. Port methods declare no checked exceptions, so `UndeclaredThrowableException` wrapping cannot occur. `Port` interface signatures (`CallController.java:23-32`) match the intercepted names exactly; unintercepted `mediaMute`/`mediaSpeaker` still delegate via the default path.
+
+**Consent and deadline unchanged.** The observer writes only two fields, both replaced by transparent delegating wrappers (`port`, `listener`). It never calls `answer`/`mediaAuthorized`/any mutator; `snapshot()` and reflective reads are read-only. The 45 s value at `:452` is attachment-polling lifetime only, not the product TTL (`CallController.java:33` remains authoritative). Confirmed no timer, clock, or `deadline` writes anywhere in the probe block.
+
+**No secrets.** `onLocalDescription` logs only `safeEnum(type)`; `onError` logs a mapped code — and the seven literal strings at `:407-413` match `WebRtcAudioEngine.fail` reasons exactly (`WebRtcAudioEngine.java:93,123,175-181,229,288→"engine",349,359`), unknown reasons become `"unknown"` without the raw string. `send` extracts only `kind` (validated against the exact product kind set); the body's `sdp`/`ice_pwd`/`fingerprint` are never read. `safeController` drops `account`/`call_id` from `snapshot()`. `terminalOrigin` emits only a whitelisted method name. Sampler side enforces enum/number whitelists and the tests assert `PRIVATE_PAYLOAD` never survives in `vars()`. Failures collapse to `observation_error: internal`, never exception text.
+
+**Bounded lifetime and censoring.** Ring buffer capped at 256 with `truncated_count`; attachment polling ends at first terminal or 45 s; `finish` disarms on the main thread (`:554`). Sampler: capacity-bounded timeline, `censor()` yields `CENSORED_NO_TERMINAL`/`OBSERVATION_INCOMPLETE` (never a fabricated terminal), and `test_no_queries_after_censor` proves no post-censor queries.
+
+**Controller retained before media; no media after ended.** `terminalEvent` appends the entry before secondary controller/budget inspection (`:368`); sampler appends the controller sample before any media query (`call_connect_sampler.py:87`) and skips `media_settings` once `OBSERVED_ENDED` (`:92-94`), both covered by the RED/GREEN test `test_ended_survives_observer_failure`.
+
+**Unknown first cause not upgraded.** `terminalOrigin` returns `unknown` outside its whitelist (all names verified against `CallController`; `finish` from `sendActive` completion lambdas legitimately yields `unknown`, documented as gap 3). Budget constants 10000/30000/900000 and the 45 s TTL match `CallController.java:33-34`; field names `call`/`clock`/`online`/`deadline`/`heartbeatReceived`/`started`/`disconnectedAt`/`generation` all exist (`inheritedField` is correctly needed because `deadline` lives on `Slot`). CALL-CONNECT01.md gaps 1–5 honestly forbid overclaiming.
+
+**Threading.** Listener delivery is main-posted (`WebRtcAudioEngine.java:127,385`), Port callbacks are main-owned (`CallController.java:73`), and all observer entry points run under `runOnMainSync`/`observationMain`, so the unsynchronized deque and flags are single-threaded.
+
+### Non-blocking defects / residual unknowns
+
+1. **`onConnected`/`onDisconnected` interception is not guaranteed even after attachment.** `WebRtcAudioEngine.java:356-358` creates `listener::onConnected` method references on the media worker thread, binding the reflectively-overridden **final** `listener` field with no happens-before; the worker may capture the original listener. Consequence is missed observation events only — delegation to product is intact either way. This is adjacent to but slightly stronger than the documented `attachment_gap_possible`; treat absent `sdk_connected/disconnected_delivery` events as inconclusive, never as "callback did not fire". (`onError` and `onLocalDescription` reads happen on main and are reliably intercepted post-attachment.)
+2. **`terminalEvent` catches `Exception`, not `Throwable`** (`VoiceAppInstrumentation.java:377`): a JVM `Error` inside the observer would propagate into the pre-delegation Port path and, being no `RuntimeException`, would escape `CallController`'s catches and crash the main thread rather than corrupt call state. Probability is negligible (JSON/string ops); acceptable as-is.
+3. **Cosmetic:** after successful listener attachment the 5 ms poll continues as a no-op until terminal/45 s, then emits `observer_attachment_window_ended`/`owner_deadline` even when attachment succeeded — read that event as "polling window closed", not attachment failure. And `armTerminalObserver` collapses "already armed" into `observation_error: internal` (`:456`), a diagnosability nit.
+4. **Known, in-scope missing coverage (report only, no product seam demanded):** no pre-cleanup SDK state at `fail()` time, no native `Observer`/ICE-transition interception, `changed`-event ring truncation on long calls, sampled (not streamed) auth state, and host-side committed-answer / `setRemote`-success not observed by this Android-side observer (doc gap 4 states this explicitly — the host arm's driver must provide its own safe wrapping per the task, outside this patch).
+5. **Unverifiable here:** manifest SHA-256 values (no hashing tool in read-only scope) and any runtime/compiled-artifact identity — a compiled observer is not an installed/running-observer attestation, as CALL-CONNECT01.md itself states.
+
+No TURN expiry/ACL/packet/cache-race/systemd/fault-injection behavior exists or is enabled anywhere in the reviewed patch; the probe is passive interception plus reflective reads only.

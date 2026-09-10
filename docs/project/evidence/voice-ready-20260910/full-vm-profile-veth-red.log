@@ -1,0 +1,21 @@
+FF
+======================================================================
+FAIL: test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation (__main__.GuestObservationTests.test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation) (changed={'linkinfo': {'info_kind': 'bridge'}})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_vm.py", line 325, in test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation
+    with self.subTest(changed=changed), self.assertRaises(ValueError):
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation (__main__.GuestObservationTests.test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation) (changed={'link_index': 7})
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_vm.py", line 325, in test_same_names_on_non_veth_or_unpaired_interfaces_do_not_prove_isolation
+    with self.subTest(changed=changed), self.assertRaises(ValueError):
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=2)

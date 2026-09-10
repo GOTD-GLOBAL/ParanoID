@@ -1,5 +1,6 @@
 //! Draft self-service foundation; offline schema changes only.
-pub use crate::self_service_http::app;
+pub use crate::self_service_http::{app, app_with_turn};
+pub use crate::voice_turn::TurnConfig;
 use sqlx::PgPool;
 
 async fn initialize(pool: &PgPool, realm: &str, pin: &str) -> Result<(), sqlx::Error> {

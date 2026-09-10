@@ -1,0 +1,18 @@
+{
+  "command": [
+    "/usr/bin/python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z",
+    "-p",
+    "test_measure_credentials.py",
+    "-v"
+  ],
+  "exit_code": 0,
+  "source_sha256": "43bba922ac2d1a42682ad92a098fa6845d8be27249bb3dd913f08a4f75cb2681",
+  "test_sha256": "3ab2f64d544a241b14eaba85bdb80a17d5c202c463dce4700f83ccaf48d955ae",
+  "log_sha256": "b7e2a184d61f5ecbfbb6be9ce8cd13e2c1ce650f16f0cf18db5a8a26803deeb5"
+}

@@ -107,16 +107,49 @@ def config(root):
     with regular_file(root / 'config.json', restricted=True) as stream:
         c = json.load(stream, object_pairs_hook=unique_object)
     if (not isinstance(c, dict) or set(c) not in ({'ip', 'alice', 'bob'},
-            {'ip', 'alice', 'bob', 'deployment'})
+            {'ip', 'alice', 'bob', 'deployment'}, {'ip', 'alice', 'bob', 'deployment', 'voice_turn'})
             or ('deployment' in c and c['deployment'] not in ('key-v1', 'self-service-v2'))):
         raise ValueError('exact configuration keys required')
     canonical_ipv4(c['ip'])
+    turn_settings(c)
     for name in ('alice', 'bob'):
         if not isinstance(c[name], str) or not re.fullmatch(r'[0-9a-fA-F]{64}', c[name]):
             raise ValueError('256-bit hex admission tokens required')
     if c['alice'].lower() == c['bob'].lower():
         raise ValueError('distinct admission tokens required')
     return c
+
+
+def turn_settings(c):
+    settings = c.get('voice_turn')
+    if 'voice_turn' not in c:
+        return None
+    if (c.get('deployment') != 'self-service-v2' or not isinstance(settings, dict)
+            or set(settings) != {'v', 'relay_ip'} or type(settings['v']) is not int
+            or settings['v'] != 1 or settings['relay_ip'] != c['ip']):
+        raise ValueError('exact v2 TURN configuration required')
+    reviewed_v2_ip(settings['relay_ip'], settings['relay_ip'])
+    return settings
+
+
+def turn_environment(c):
+    settings = turn_settings(c)
+    if settings is None:
+        return {}
+    directory = os.environ.get('CREDENTIALS_DIRECTORY', '')
+    if (not re.fullmatch(r'/[A-Za-z0-9_./-]+', directory)
+            or '..' in Path(directory).parts or str(Path(directory)) != directory):
+        raise ValueError('explicit systemd credential directory required')
+    path = Path(directory) / 'voice-turn-secret'
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        meta = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1
+                or meta.st_uid not in (0, os.geteuid())
+                or stat.S_IMODE(meta.st_mode) not in (0o400, 0o600)
+                or not re.fullmatch(b'[0-9a-f]{64}', stream.read(65))):
+            raise ValueError('private exact TURN credential required')
+    return {'PARANOID_TURN_SECRET_FILE': str(path), 'PARANOID_TURN_RELAY_IP': settings['relay_ip']}
 
 
 def sql(root, query, database='postgres'):
@@ -159,9 +192,22 @@ def database(root):
 def require_capability(root, manifest, release):
     if config(root).get('deployment') == 'self-service-v2':
         v2_capability(manifest, release)
+        if manifest.get('voice_turn_controller') is not None:
+            voice_turn_capability(release)
+        if (turn_settings(config(root)) is not None
+                and manifest.get('voice_turn_controller') != 'self-service-v2-turn-file-v1'):
+            raise ValueError('TURN-enabled config requires versioned controller package')
     if config(root).get('deployment') == 'key-v1':
         key_capability(manifest)
         runtime_capability(release)
+
+
+def voice_turn_capability(release):
+    server = command([release / 'paranoid-server', 'voice-turn-capabilities'], timeout=10)
+    controller = command(['python3', release / 'alpha.py', 'voice-turn-capabilities'], timeout=10)
+    if (json.loads(server, object_pairs_hook=unique_object) != {'api': 1, 'issuer': 'signed-session-turn-v1'}
+            or json.loads(controller, object_pairs_hook=unique_object) != TURN_CONTROLLER_CAPABILITY):
+        raise ValueError('matching TURN server and controller capabilities required')
 
 
 def environment(root):
@@ -181,6 +227,7 @@ def environment(root):
         env['PARANOID_ANDROID_UPDATE_ROOT'] = str(root / 'updates')
         env.pop('PARANOID_ALICE_TOKEN')
         env.pop('PARANOID_BOB_TOKEN')
+        env.update(turn_environment(c))
     return env
 
 
@@ -285,6 +332,11 @@ def verify(release):
         files += ('key-schema.sql',)
         if manifest['schema_contract'] == 'paranoid-self-service-v2':
             files += ('self-service-schema.sql',)
+            capability = manifest.get('voice_turn_controller')
+            if capability is not None:
+                if capability != 'self-service-v2-turn-file-v1':
+                    raise ValueError('unsupported TURN controller capability')
+                files += ('voice-turn-controller.json',)
     elif manifest.get('deployment_api') is not None:
         raise ValueError('unsupported deployment capability')
     if {p.name for p in release.iterdir()} != {*files, 'manifest.json'}:
@@ -442,6 +494,9 @@ def runtime_capability(release):
 
 
 V2_SCHEMA = 'ff401a462710aa8433db65a72b723460cd2be966805ded61bae6c145dd970d10'
+TURN_CONTROLLER_CAPABILITY = {'deployment_api': 1, 'controller': 'self-service-v2-turn-file-v1',
+                             'config': {'voice_turn': {'v': 1, 'relay_ip': 'same-config-ip'}},
+                             'credential': 'LoadCredential:voice-turn-secret'}
 REVIEWED_V2_IP = '157.180.49.125'
 
 
@@ -722,15 +777,17 @@ def switch_offline(root, release):
 
 
 def unit(root):
-    config(root)
+    c = config(root)
     current_release(root)
+    credential = (f'LoadCredential=voice-turn-secret:{root}/voice-turn/issuer.secret\n'
+                  if turn_settings(c) is not None else '')
     return f'''[Unit]
 Description=ParanoID isolated private test-data alpha
 StartLimitIntervalSec=0
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 {root}/current/alpha.py run --root {root}
+{credential}ExecStart=/usr/bin/python3 {root}/current/alpha.py run --root {root}
 Restart=on-failure
 RestartSec=3
 KillMode=mixed
@@ -1206,6 +1263,9 @@ def main():
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['voice-turn-capabilities']:
+        print(json.dumps(TURN_CONTROLLER_CAPABILITY))
+        raise SystemExit(0)
     try:
         main()
     except KeyboardInterrupt:

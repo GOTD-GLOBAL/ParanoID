@@ -1,0 +1,11 @@
+test_confinement_is_not_weakened (__main__.MatrixTests.test_confinement_is_not_weakened) ... ok
+test_embedded_primitives_are_exact_ASTs (__main__.MatrixTests.test_embedded_primitives_are_exact_ASTs) ... ok
+test_failure_metadata_is_closed_and_bounded (__main__.MatrixTests.test_failure_metadata_is_closed_and_bounded) ... ok
+test_format_refusal_is_distinct_from_unknown_failure (__main__.MatrixTests.test_format_refusal_is_distinct_from_unknown_failure) ... ok
+test_generated_helper_executes_real_private_fallback_and_format_refusal (__main__.MatrixTests.test_generated_helper_executes_real_private_fallback_and_format_refusal) ... ok
+test_output_is_closed_and_never_acceptance_receipt (__main__.MatrixTests.test_output_is_closed_and_never_acceptance_receipt) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.063s
+
+OK

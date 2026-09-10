@@ -5,8 +5,8 @@ The application is being designed as an open-source, self-hostable system with
 optional federation, crypto-native identity, mobile clients, and an extension
 platform for commercial and enterprise capabilities.
 
-> The repository contains project documentation, isolated Android diagnostics
-> and a development-only server transport. No production application architecture
+> The repository contains a private-alpha native Android messenger, Rust
+> transport and project documentation. No production application architecture
 > or technology stack has been accepted yet.
 
 ## Start here
@@ -34,6 +34,17 @@ version8 native messenger UI, measured realtime E2EE, v7 continuity and the scop
 existing-service update. It records build/review/deployment evidence separately.
 This current task supersedes the older no-live-action scope below only after its
 mandatory review and rollback gates pass.
+
+## Voice implementation after PR18
+
+The [voice record](docs/operations/voice-calls-local.md) tracks the implemented
+E2EE call controls, Android call lifecycle and pinned WebRTC/Opus integration.
+Independent design closure, 62 supported native tests, actual v8 Java/JNI
+compatibility, controller tests and real Android/aiortc direct and isolated TURN
+relay audio pass. Full app acceptance passes 14 steps; final inset UI and signed APK
+checks pass, with independent final review pending. [Repository evidence](docs/project/evidence/voice-calls-20260909/README.md)
+keeps those gates separate. No live TURN, firewall/DNS or server change follows
+from this local implementation.
 
 ## Clean-install first-contact candidate
 

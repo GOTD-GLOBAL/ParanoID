@@ -1,0 +1,32 @@
+[
+  {
+    "argv": [
+      "python3",
+      "-B",
+      "deploy/turn/test_systemd_credentials.py"
+    ],
+    "exit_code": 0,
+    "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/review-closure-offline-0.log",
+    "sha256": "b58e966efb30bc2f032ae0966bd74c0533050c1d07c8b8e3de33f73e60035590"
+  },
+  {
+    "argv": [
+      "python3",
+      "-B",
+      "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_credential_matrix.py"
+    ],
+    "exit_code": 0,
+    "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/review-closure-offline-1.log",
+    "sha256": "1b1d7358994941367edabe011de5440a19682643c4979efde341daadf6c99647"
+  },
+  {
+    "argv": [
+      "python3",
+      "-B",
+      "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_ram_vm.py"
+    ],
+    "exit_code": 0,
+    "log": "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/review-closure-offline-2.log",
+    "sha256": "169297699720b85d4ef315f2d28d39a73dd2124af06a3edd1f322412db8dfeca"
+  }
+]

@@ -7,6 +7,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_turn_offline_package_and_versioned_controller_gate(self):
+        workflow = (ROOT / ".github/workflows/server.yml").read_text()
+        package = workflow.split("  native-package:\n", 1)[1].split("  postgres-http:\n", 1)[0]
+        for name in ('deploy/turn/test_package.py', 'deploy/turn/test_runtime.py',
+                     'deploy/test_turn_environment.py'):
+            self.assertIn('python3 ' + name, package)
+            self.assertTrue((ROOT / name).is_file())
+
     def test_server_uses_private_cluster_without_ci_tcp_bypass(self):
         workflow = (ROOT / ".github/workflows/server.yml").read_text()
         server = workflow.split("  postgres-http:\n", 1)[1].split("  client-core-and-tls:\n", 1)[0]

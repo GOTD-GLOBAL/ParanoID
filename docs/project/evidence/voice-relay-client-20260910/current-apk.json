@@ -1,0 +1,16 @@
+{
+  "artifact": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-publication-candidate-build-1/paranoid-0.0.10-voice-arm64.apk",
+  "sha256": "a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d",
+  "bytes": 15712851,
+  "package": "org.paranoid.devtext",
+  "version_code": 10,
+  "version_name": "0.0.10-voice",
+  "signer_sha256": "82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926",
+  "base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "head": "811e0840c88a72c7c4c6e42137796a9d137481ad",
+  "source_manifest_sha256": "3e0be6f1bb5a07ff1daada6db9148ca7c5435fa4ee3b6ede8a56642852274405",
+  "source_dirty": true,
+  "built_at": "2026-09-10T01:09:10.780116+00:00",
+  "deployed": false,
+  "final_review": "pending"
+}

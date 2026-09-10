@@ -1,0 +1,21 @@
+{
+  "candidate_build_1": {
+    "result": "CANCELLED obsolete input before artifact",
+    "reason": "Verified call-dialog system-bar inset defect required correction; owned debug stress child stopped",
+    "new_test_assertion_failure": false,
+    "source": "candidate-build-1-interruption.json"
+  },
+  "candidate_build_2": {
+    "result": "FAILED stale version assertion",
+    "actual_failure": "AssertionError: '9' != '8'",
+    "correction": "Manifest acceptance test updated from delivered v8 to intended v9; production version9 already correct",
+    "not_a_new_production_runtime_regression": true,
+    "raw_log_sha256": "bb36737d1bf8ae29c90b041a99891c69d2fb298c00437766f183308befa1d7f5"
+  },
+  "candidate_build_3": {
+    "result": "PASS",
+    "artifact": "signed-apk-artifact.json",
+    "all_build_gates_exit": 0,
+    "native_stress_profile": "release, matching shipped JNI; unchanged assertions"
+  }
+}

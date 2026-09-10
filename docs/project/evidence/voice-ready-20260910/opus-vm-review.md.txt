@@ -1,0 +1,55 @@
+I read both scripts from disk; they match the collated text (I could not recompute SHA256 — no execution tools in this session).
+
+# Independent review — RAM-only VM capability scope
+
+**Reviewer:** Claude Opus 5 (`claude-opus-5`), fresh context, read-only. Recording actual model usage; not Fable, and I treat model branding as a non-gate.
+
+**Independently verified here:** on-disk `acquire_vm_tools_v2.py` and `boot_ram_vm.py` read and analysed line-by-line against `ram-vm-scope.md`.
+**Supplied and accepted as recorded, not reproduced:** all SHA256 values in `ram-vm-freeze.json`; `apt-chain-v2.json` (gpgv status, keyring hash, index hashes, stanza matches); `review-closure-offline-2.log` (5/5 OK); `vm-host-preflight.json`; the `web.open` refusal record. Nothing was downloaded, executed, or booted.
+
+## Is this a genuinely disjoint, safer scope?
+
+Yes. The refused resources were `cloud-images.ubuntu.com/noble/20260826/SHA256SUMS{,.gpg}` via `web.open`. This scope fetches pool `.deb` files from `archive.ubuntu.com` validated against the root-owned Ubuntu keyring — different resources, different transport, different trust chain. There is no cloud image, cloud-init, seed, ISO, disk, or metadata client, and no alternate tool or provider is used to reach the refused URLs. `cloud-signature-fetch-refusal.json` stays exactly as written: this review does not relabel it, does not reclassify it as approved, and does not authorize any retry. If a concrete refusal recurs during acquisition, that operation stops and is recorded verbatim — no tool/provider substitution, no guard relaxation, no reroute of `media_discovery`.
+
+## Decisions
+
+| Scope | Decision |
+|---|---|
+| Acquisition (`acquire_vm_tools_v2.py`) | **CONDITIONAL** — ACQ‑1…ACQ‑3 before run |
+| One NIC-less isolation boot (`boot_ram_vm.py`) | **CONDITIONAL** — BOOT‑1…BOOT‑4 before run |
+
+Any edit invalidates `ram-vm-freeze.json`; `boot_ram_vm.py:106` will refuse to run until it is regenerated, and the five offline tests must be re-run against the new bytes.
+
+## Closure of review B's conditions
+
+B‑1 host safety: closed — local dev host `65.108.43.251`, 249 GB free, 64 GiB margin re-checked at each package and each 0.2 s poll, partial-file deletion on failure. B‑2 signature chain: closed for `.deb` (the cloud image is gone entirely), except ACQ‑4. B‑3: closed — library closure hashed, `/proc/<pid>/cmdline` exact compare (`boot:160-161`), fd enumeration rejecting `socket:`/`/dev/kvm`. B‑4 monitor contradiction: resolved well — QMP over inherited stdio pipes, no listener. B‑5: closed — explicit `-chardev file` + `-serial chardev:serial0` under `-nodefaults`, `-machine q35,accel=tcg` with no `kvm:tcg` fallback, setuid/setgid scan of the extracted tree (`acquire:83-84`). B‑6 vsock/9p/usb-net: closed structurally — exact argv equality is stronger than a denylist. B‑7: N/A (no disk/seed); 300 s wall clock present. B‑8: the scope now commits to single-guest loopback/dummy, which still needs its own source review.
+
+Also verified correct: newc header field order, absolute 4-byte padding and TRAILER; `has_network_pci` `class>>8==2` matches QMP's 16-bit `class_info.class`; guest-side `int(x,16)>>16==2` matches sysfs `0x020000`; q35's default host-bridge/ISA/AHCI/SMBus classes are non-network so the PCI assertion will not false-positive, and `query-block` is empty with no `-drive`; `out.mkdir(mode=0o700)` in both scripts enforces run-once; only the owned unreaped child is signalled.
+
+## Acquisition — required
+
+**ACQ‑1. No freeze binding.** `acquire:14-18` binds plan↔chain↔verifier, but never checks its own source or the plan/chain hashes against `ram-vm-freeze.json` — unlike `boot:105-106`. A consistent edit of plan+chain passes. Add the self-hash and the three manifest comparisons.
+
+**ACQ‑2. Failure receipts only cover downloads.** Only lines 38‑49 record `ACQUISITION_FAILED`. Extraction (50‑62), version/library inspection (65‑84) and boot-input checks (86‑89) raise with `result.json` still at `ACQUIRING`. It is fail-closed (boot demands `TOOLS_VERIFIED_NO_VM_STARTED`), but a one-shot loses the diagnostic — the same lesson as prior finding A‑3. Wrap them and record `{result, stage, package}`.
+
+**ACQ‑3. The extracted tree is not manifested.** Only three executables, resolved libraries and three boot inputs are hashed. Boot then sets `QEMU_MODULE_DIR` and `-L` into that tree (`boot:121,125`); those files load at runtime and are hash-bound to nothing. Record `path→sha256` for the whole sysroot and re-verify at boot.
+
+**Recommended.** ACQ‑4: `verify_apt_chain_v2.py:24-25` checks VALIDSIG/fingerprint but neither it nor gpgv parses InRelease `Valid-Until` — a signed-but-stale index could pin superseded versions; record `Date`/`Valid-Until` or record the gap as accepted (the 2024 `noble` vs 2026 `noble-updates` signature dates are expected, but deserve the explicit note). ACQ‑5: `genisoimage`/cdrkit has no role in a RAM-only initramfs boot yet is downloaded, executed and enters the recorded TCB — drop it (re-verifying the chain) or record why. ACQ‑6: the `origins` gate (line 34) is plan self-assertion, not evidence — say so; host `dpkg-deb` is used unhashed; the library check validates file uid/mode but not ancestor-directory writability. ACQ‑7: validate `item['uri']` scheme/host *before* `urlopen`, since line 40 fires only after redirects have been followed.
+
+## Boot — required
+
+**BOOT‑1. Tooling receipt not bound to the freeze.** `boot:100-104` trusts `result.json` content and hashes the receipt (128) but never compares `tools['source_sha256'] / ['plan_sha256'] / ['chain_sha256']` to the freeze entries. Add the three equalities — without them "reviewed exact source" holds for the boot script only.
+
+**BOOT‑2. Failure destroys the evidence it exists to collect.** The fd inventory (166‑172), actual argv (160‑161) and Uid/CapEff (162‑164) all raise *before* the assignment at 175, so an `ISOLATION_FAILED` record names an error string but not the offending descriptor, argv or uid. Under one-run/no-repeat-to-green, assign into `report` and `save()` before raising.
+
+**BOOT‑3. Console evidence recorded only on success.** `serial_sha256` is set at 185 after a strict decode; a `UnicodeDecodeError` at 184, or any earlier failure, leaves no console hash. Hash the file in `finally` and record decode errors instead of aborting on them.
+
+**BOOT‑4. The IPv6 claim can be vacuous.** The guest emits `ipv6_route` only if the file exists (init:36); with IPv6 off, the section is empty and the loop at 81‑82 asserts nothing while the report still reads `default_external_routes: False`. Emit an explicit `ipv6_route=absent|present` marker and require one.
+
+**Recommended.** BOOT‑5: put the limit in the JSON, not only the scope prose — add `"isolation_claim":"OBSERVED_POINT_IN_TIME_NOT_ENFORCEMENT"` and `"fd_inventory_scope":"PRE_CONT_ONLY"` beside `relay_acceptance`; the receipt is what gets cited later. BOOT‑6: nothing drains QMP stdout after `cont`, so a full pipe would block QEMU and surface as a misleading `TimeoutError`; drain in the poll loop. BOOT‑7: an odd fd target such as `/memfd:…` would trip line 171 and abort a genuinely isolated run — keep the strict rule, but pair it with BOOT‑2 rather than loosening it. BOOT‑8: `set -eu` plus `$bb ip link set lo up` means a missing busybox `ip` applet aborts before the nonce; verify the applet in acquisition or tolerate its absence explicitly.
+
+## Honest limits
+
+No rendering is treated as enforcement anywhere: `-nic none`, `-sandbox on` and the sandbox options are requests to a binary that still links slirp and iPXE ROMs; what carries weight is exact running-argv equality, the pre-`cont` QMP/fd inventory and the guest's own output. A successful run means `ISOLATION_OBSERVED` at a point in time, nothing more. The five offline tests exercise the parser and cpio rules only — they say nothing about runtime isolation.
+
+This approves acquisition and one boot after the listed corrections. It authorizes no relay, packet, fixture, coordinator or deployment action; future single-guest loopback/dummy work requires its own exact source review. TURN‑RT01, TURN‑ACL02, CLI closure, persistent production unit, full coordinated installer, CALL‑CURRENT01, deployment and final artifact review remain **NOT RUN**; CALL‑CONNECT01 remains **OPEN**. No synthetic PASS receipts.

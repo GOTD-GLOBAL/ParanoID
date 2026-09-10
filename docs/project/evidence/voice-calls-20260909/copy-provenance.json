@@ -1,0 +1,234 @@
+{
+  "created": "2026-09-09T22:34:54.582926+00:00",
+  "scope": "Allowlisted synthetic-test aggregates and independent review text; no private keys/snapshots/SDP/PCM captures",
+  "files": [
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/review.md",
+      "destination": "fable-design-review.md.txt",
+      "sha256": "1ab472e511ba3f3d061cf0879fb5745a8e835e4e451a851e13a76fcf06f8c9f3",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/closure-review.md",
+      "destination": "fable-design-closure.md.txt",
+      "sha256": "2fbcba19c7dc84fc42fa1f4c3e91a2393ab98f48c708592375b9f1cdf63503fa",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/core-implementation-validation.json",
+      "destination": "core-implementation-validation.json",
+      "sha256": "fcfb08ca2bda6d2fb1554650ee83ab7c102fdbefa2eb4e68f6c678bc5a643db2",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/v8-compatibility/result.json",
+      "destination": "v8-compatibility-result.json",
+      "sha256": "bf543cfa3a9d302fef6eb578fd25db7a7a832902b1b94952320bc823424c0b8f",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/controller-result.json",
+      "destination": "controller-result.json",
+      "sha256": "395b9d26ac3c19724960a6039dafa70500f93e3e9c2b1a2ab38a16497fee3e54",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/controller-reconnecting-green.log",
+      "destination": "controller-green.log",
+      "sha256": "0af6fbd78ff5b6522375441e5b9aec172e2f0d5a4b0c65eb89927a59246bc291",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-fable-design-20260909T220532Z/controller-reconnecting-red.log",
+      "destination": "controller-reconnecting-red.log",
+      "sha256": "04af035e778b8bd016e072007afcb35356d85cfb7ac00786f3331ac2b4859ec6",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/adapter-green.log",
+      "destination": "adapter-green.log",
+      "sha256": "e7556aecb20959dda4d9f93f08d7e996b17dad05498cefbfda01e2e0898ad861",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/media-validation-summary.json",
+      "destination": "media-validation-summary.json",
+      "sha256": "872f5b0ade188e3adabfcb2183c2be7ffe2efe4908ebcb900255985cbf5beb27",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/maven-restamp-verification.json",
+      "destination": "maven-restamp-verification.json",
+      "sha256": "a16291541ad0896ed94f24257c2bdc8255f06cb2f70bc200ac8636da13c8e364",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/native-real-sdp-captures/result.json",
+      "destination": "native-real-sdp-captures.json",
+      "sha256": "e6c6808185f5890b0259399577d71f29e1fe63f144eadd5427d86159d2901a64",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/core-historical14-final.json",
+      "destination": "core-historical14-final.json",
+      "sha256": "3ccda4de2ef1c0505ab24866dbe4dedd8cfe43be52cf34054c92dbe024a434d9",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/core-historical14-final.log",
+      "destination": "core-historical14-final.log",
+      "sha256": "0c1aab289067b8e261c82b37f712932a3f8cd4ac6e101d74ee19f06e75627bf8",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/controller-pre-ready-cancel-red.log",
+      "destination": "controller-pre-ready-cancel-red.log",
+      "sha256": "7e0efbc35c0cd0a561f38b45ae213397509e8b3e4bd75279ccd8994dde4d812c",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/controller-pre-ready-cancel-green.log",
+      "destination": "controller-pre-ready-cancel-green.log",
+      "sha256": "979a5bd529716a3de2ff1ee5753f3b47b79e157d909cc71afacd97746e736b4a",
+      "copy": "byte-exact allowlisted report/aggregate; no snapshots or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/realtime-authority-tdd.json",
+      "destination": "realtime-authority-tdd.json",
+      "sha256": "ac8ec299e5caaa5562b8d62ff82b80bd5c024eb9c1766160381a9a60f223fb17",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/realtime-readiness-tdd.json",
+      "destination": "realtime-readiness-tdd.json",
+      "sha256": "4e76378c7ad552950b816cd9ccd06746b4d3ca27246ebb284aa72ff16719dd04",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/engine-restart-2/result.json",
+      "destination": "media-engine-restart.json",
+      "sha256": "64506041629dc585d5020b8e714b562f38bc0363a4aa681caebdd393006e7be7",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-media-discovery-20260909T220410Z/repository-wrapper-summary.json",
+      "destination": "repository-wrapper-summary.json",
+      "sha256": "f8545e5c5bb859a222f115f34a580bf6d7a1bf5435e24939520ec83aa440438d",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/deferred-sdk-green/result.json",
+      "destination": "deferred-mute-app-green.json",
+      "sha256": "350ac53a71648e2959553788aded0297b8c40644c5a8ed3531a6d51fc214bf7a",
+      "copy": "byte-exact allowlisted aggregate/log; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-permission-green/result.json",
+      "destination": "app-permission-green.json",
+      "sha256": "db95e67b2a435475986347f13eeb87de5cbb207b1d2527738946e22f6b261513",
+      "copy": "byte-exact allowlisted aggregate/log; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-1/result.json",
+      "destination": "app-acceptance-result.json",
+      "sha256": "f6a8e8331f269973cf9c477cf7f667c8ce891f0f4496e144a13068a5178ea5d5",
+      "copy": "byte-exact allowlisted aggregate/log; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/realtime-final-regression.log",
+      "destination": "realtime-final-regression.log",
+      "sha256": "65db4b5bd66ec285655aa0b77d3d3584e9f602d77499b887c652f76eea8fea9c",
+      "copy": "byte-exact allowlisted aggregate/log; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/artifact.json",
+      "destination": "signed-apk-artifact.json",
+      "sha256": "de2b1e108fe63286a5bbc70c828bbd8d7116a4f992e2dc7694d14a0d30408a27",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/source-sha256.json",
+      "destination": "signed-apk-source-sha256.json",
+      "sha256": "ee21f04393d7186dec132dd033069fd2d5b8859a659124b07a689b0028509b62",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/signature.log",
+      "destination": "signed-apk-signature.log",
+      "sha256": "d3265fc31df382e4faa24d22bf0adb7eca71f990679251945240dad979e2ee6f",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/badging.log",
+      "destination": "signed-apk-badging.log",
+      "sha256": "e6eea98b0b9117e87a87672a9929a4cefac3b96b07cbfa292ef047371bfeda5c",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/alignment.log",
+      "destination": "signed-apk-alignment.log",
+      "sha256": "397d32663bcb7dd46895390d375266395d04dfccc83c2e89b4da546f29000133",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-3/apk-build.log",
+      "destination": "signed-apk-build.log",
+      "sha256": "7160532ab5696b3298c69d78be1be57a9b2c0aa5f9d778be952b15436fa3a8b2",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/build-environment.json",
+      "destination": "build-environment.json",
+      "sha256": "90cc26466fb882956dff97fa299b640418483ebc78dc2190e8338c63da80d024",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/candidate-build-1-interruption.json",
+      "destination": "candidate-build-1-interruption.json",
+      "sha256": "de1415e30aef3be5a166653dc9b02e54731681eaae6ecabbe6eab5e797ff8d62",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-2/result.json",
+      "destination": "app-acceptance-2-result.json",
+      "sha256": "f6a8e8331f269973cf9c477cf7f667c8ce891f0f4496e144a13068a5178ea5d5",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-2/incoming-no-capture.png",
+      "destination": "app-incoming-no-capture.png",
+      "sha256": "f1f405910a0421e6bcb1c14c7d29fa118c6172490a4fdedbaa891cb26e22c5cb",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-2/connected.png",
+      "destination": "app-connected.png",
+      "sha256": "9532817753c9cbac67af7729182844b176c9ff4347e075d4fa87ce74291fba31",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-2/muted.png",
+      "destination": "app-muted.png",
+      "sha256": "fe2dd99ce4f9762d592cb9fb20ba1591cec9adf276110672b4d8c57d6d69a0ad",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/app-acceptance-2/text-during-call.png",
+      "destination": "app-text-during-call.png",
+      "sha256": "dcdd9571e1b9bbc3b3b5887c19bc4f67a3c591a9bab86b8d915102d50eaeb345",
+      "copy": "byte-exact allowlisted build/test evidence or visually inspected synthetic UI; no private snapshots/credentials/SDP/PCM"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/independent-artifact-verification.json",
+      "destination": "independent-artifact-verification.json",
+      "sha256": "122c0a2ad33a90161e4eb8ddacdd8871cfa1d23ababfd353e49aff706ed13d07",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    },
+    {
+      "source": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/integration-review-agent-final.json",
+      "destination": "integration-review-agent-final.json",
+      "sha256": "3f56a1fbf59603843f3682bd1634d8c62c4df1d55a06c2eea095800806e65901",
+      "copy": "byte-exact allowlisted aggregate; no snapshots, credentials or media payloads"
+    }
+  ]
+}

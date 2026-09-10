@@ -1,0 +1,52 @@
+import java.lang.reflect.Method;
+
+/** External, constructor-free observation of the actual compiled production class. */
+public final class RelayCandidateReadinessReflection {
+    private static Method gate;
+    private static int passed;
+    private static boolean invoke(String line) throws Exception {
+        return (Boolean) gate.invoke(null, "v=0\r\n" + line + "\r\n");
+    }
+    private static void check(String name, String line, boolean expected) throws Exception {
+        if (invoke(line) != expected) throw new AssertionError(name);
+        passed++;
+    }
+    public static void main(String[] args) throws Exception {
+        gate = Class.forName("org.paranoid.text.WebRtcAudioEngine")
+                .getDeclaredMethod("hasUsableRelayCandidate", String.class);
+        gate.setAccessible(true);
+        String valid = "a=candidate:123 1 udp 16777215 127.0.0.1 40001 typ relay";
+        check("ordinary-relay", valid, true);
+        check("related-zeros-are-valid", valid + " raddr 0.0.0.0 rport 0", true);
+        check("uppercase-udp", valid.replace(" udp ", " UDP "), true);
+        check("component-two", valid.replace("123 1 ", "123 2 "), false);
+        check("primary-port-zero", valid.replace("40001", "0"), false);
+        check("primary-port-overflow", valid.replace("40001", "65536"), false);
+        check("primary-port-signed", valid.replace("40001", "+1"), false);
+        check("primary-address-unspecified", valid.replace("127.0.0.1", "0.0.0.0"), false);
+        check("primary-address-ipv6-unspecified", valid.replace("127.0.0.1", "::"), false);
+        check("host-candidate", valid.replace("typ relay", "typ host"), false);
+        check("srflx-candidate", valid.replace("typ relay", "typ srflx"), false);
+        check("prflx-candidate", valid.replace("typ relay", "typ prflx"), false);
+        check("tcp-media-candidate", valid.replace(" udp ", " tcp "), false);
+        check("typ-token-position", valid.replace("typ relay", "other typ relay"), false);
+        check("empty-foundation", valid.replace("candidate:123", "candidate:"), false);
+        check("priority-limit", valid.replace("16777215", "4294967295"), true);
+        check("priority-overflow", valid.replace("16777215", "4294967296"), false);
+        check("priority-signed", valid.replace("16777215", "-1"), false);
+        check("primary-port-nonnumeric", valid.replace("40001", "invalid"), false);
+        check("substring-does-not-count", "a=other:" + valid, false);
+        check("missing-fields", "a=candidate:1 1 udp", false);
+        check("candidate-line-bound", valid + new String(new char[513]).replace('\0', 'x'), false);
+        check("second-valid-candidate", valid.replace("typ relay", "typ host") + "\r\n" + valid, true);
+        System.out.println("PASS actual compiled production gate: " + passed + " mandatory-token/size cases; no Android constructor or network operation");
+        System.out.println("Observed SDK-address-trust boundary: hostname=" + invoke(valid.replace("127.0.0.1", "not-an-ip"))
+                + ", invalid-ipv4=" + invoke(valid.replace("127.0.0.1", "999.1.1.1"))
+                + ", expanded-unspecified-ipv6=" + invoke(valid.replace("127.0.0.1", "0:0:0:0:0:0:0:0")));
+        if (args.length == 1 && args[0].equals("--require-literal")) {
+            check("malformed-primary-address-must-not-arm-publication", valid.replace("127.0.0.1", "not-an-ip"), false);
+            check("invalid-ipv4-must-not-arm-publication", valid.replace("127.0.0.1", "999.1.1.1"), false);
+            check("expanded-unspecified-ipv6-must-not-arm-publication", valid.replace("127.0.0.1", "0:0:0:0:0:0:0:0"), false);
+        }
+    }
+}

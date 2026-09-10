@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "boundary": "Post-build documentation/evidence update only; every retained non-Markdown clients/ build-input file matches candidate-build3 source snapshot",
+  "files_checked": 113,
+  "mismatches": [],
+  "source_manifest_sha256": "ee21f04393d7186dec132dd033069fd2d5b8859a659124b07a689b0028509b62",
+  "artifact_sha256": "4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f",
+  "built_from_git_head": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "built_from_uncommitted_feature_source": true,
+  "final_review_revision": "Coordinator to freeze after this documentation update"
+}

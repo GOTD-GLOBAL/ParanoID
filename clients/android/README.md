@@ -1,6 +1,14 @@
-# Android realtime private-alpha candidate
+# Android voice implementation on the realtime private alpha
 
-Package `org.paranoid.devtext`, versionCode **8**, `0.0.8-realtime`, ARM64, API26+.
+Package `org.paranoid.devtext`, ARM64, API26+. The source manifest now selects
+versionCode **9**, `0.0.9-voice`; the retained-signer ARM64 APK now passes
+signature, package and alignment checks.
+Delivered version8 remains the existing realtime artifact, not a voice build.
+The [voice component](../../docs/clients/android/voice-calls.md) documents the
+implemented controller/UI/service/media adapter and its real-test boundaries.
+Design closure, native/JNI/controller tests, Android compilation and actual
+Android/aiortc direct and isolated TURN relay media pass. App UI acceptance and signed APK checks pass; final independent review remains pending.
+
 The native messenger uses real chat lists/bubbles, a stable keyboard-aware
 composer, genuine delivered indicators, own-ID QR/share and explicit contact
 verification/blocking. Unknown senders remain visibly unverified and replyable.
@@ -17,14 +25,19 @@ failures recorded separately.
 An optional user-visible background connection requires notification permission,
 shows a stop control and uses generic content-free notifications. It has no
 Google dependency or provider keys. Doze, force-stop, battery and physical OPPO
-behavior are not certified by emulator tests. A second realm, invitations by
-role, blockchain and voice are not implemented in this candidate.
+behavior are not certified by emulator tests. Voice has a separate microphone
+service after explicit Call/Answer permission. Incoming ringing never creates
+microphone/media state. A second realm, invitations by role and blockchain
+remain unimplemented.
 
 - [Exact realtime contract](../../docs/protocol/realtime-v1.md)
 - [First-contact E2EE contract](../../docs/protocol/first-contact-v1.md)
 - [Actual tests, build/review/deployment gates and limits](../../docs/operations/overnight-realtime.md)
 - [Core compatibility](../../docs/clients/core/self-service.md)
 - [User-triggered updates](../../docs/clients/android/in-app-updates.md)
+- [Voice wire contract](../../docs/protocol/voice-v1.md),
+  [implementation gates](../../docs/operations/voice-calls-local.md) and
+  [durable review/test evidence](../../docs/project/evidence/voice-calls-20260909/README.md)
 
 The new server accepts retained v7 requests. The new client rediscovers pinned
 health and falls back to retained proof requests on old v2 servers. Neither
@@ -42,7 +55,10 @@ unset PARANOID_ANDROID_KS_PASSWORD
 ```
 
 Requires Rust Android ARM64 target, JDK, SDK platform/build-tools 35.0.0 and NDK
-28.2.13676358. Build refuses to generate a signing key and verifies established
+28.2.13676358. `webrtc_dependency.py` verifies and extracts the exact
+`io.github.webrtc-sdk:android:150.7871.01` AAR for the manual javac/d8/package
+pipeline; [dependency provenance and notices](../../docs/clients/android/voice-calls.md#dependency-and-build)
+are retained separately from media evidence. Build refuses to generate a signing key and verifies established
 certificate SHA256
 `82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926`.
 Output: `clients/android/out/paranoid-text.apk`; build output and secrets are not
@@ -71,4 +87,5 @@ and complete test output; mocks cannot replace that integration evidence.
 One device/account, finite budgets, reusable fallback initial-secrecy limitations,
 transferable signatures, relay metadata, unverified Doze/force-stop delivery and absent account
 recovery remain explicit. JVM/packaging checks are not Android Keystore/camera
-or physical-phone acceptance. No commit, push, merge, upload or deployment occurs.
+or physical-phone acceptance. The current voice task authorizes a dedicated
+client PR; no voice PR merge, phone action or live deployment is authorized.

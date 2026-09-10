@@ -1,0 +1,16 @@
+{
+  "artifact": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-candidate-build-2/paranoid-0.0.10-voice-arm64.apk",
+  "sha256": "f1bcb6b905ee570699a619ecdffd6fd0bd8947fe4bab87f02aa5605175578c86",
+  "bytes": 15712851,
+  "package": "org.paranoid.devtext",
+  "version_code": 10,
+  "version_name": "0.0.10-voice",
+  "signer_sha256": "82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926",
+  "base": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "head": "5e776b2e74f346909183bbb1b00439488618fc20",
+  "source_manifest_sha256": "480d676bc1ce9817d224b7421758a3e60663d099feec4a78b2084eaf5c71a2b7",
+  "source_dirty": true,
+  "built_at": "2026-09-10T00:26:48.468462+00:00",
+  "deployed": false,
+  "final_review": "pending"
+}

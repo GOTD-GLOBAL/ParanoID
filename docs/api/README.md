@@ -44,3 +44,9 @@ When APIs are introduced:
 
 [Signed sessions and long-poll](../protocol/realtime-v1.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Optional voice relay issuer
+
+[Voice TURN v1](../protocol/voice-turn-v1.md) defines GET `/v2/voice/turn`, its
+existing signed-session authorization, limits and exact response. Disabled mode
+returns authenticated404; other message/session contracts remain unchanged.

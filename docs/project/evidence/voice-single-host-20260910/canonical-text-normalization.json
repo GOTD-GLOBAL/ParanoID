@@ -1,0 +1,20 @@
+[
+  {
+    "file": "credential-supplemental-review.md.txt",
+    "before_sha256": "2b281f6f729c1701a4bf6cdfc426d2a9c05ca95226278c8a8e84080761621e8e",
+    "canonical_sha256": "30e49695f225306ff44497f743245f7a64bfbfe0694fd497ad056175ca673880",
+    "change": "terminal blank-line normalization only; external originals unchanged"
+  },
+  {
+    "file": "fable-design-review.md.txt",
+    "before_sha256": "4262a5dbc0206810001bc2cd332b7e4852415518a2a53b15d13c03c532dca30e",
+    "canonical_sha256": "3da7fbe25886639b2685496e171c36051f71652f4aa3b5b93812c7c2d96fed49",
+    "change": "terminal blank-line normalization only; external originals unchanged"
+  },
+  {
+    "file": "installer-evidence-correction.md",
+    "before_sha256": "f5581dcc21c520f8ddb1e14099dcf403a084827c774743228f9fdae0db080a1a",
+    "canonical_sha256": "4b37ea28c187071423ca7128e81275b32d3bcb7e64cd7297971a93760ebe8f9f",
+    "change": "Markdown table delimiter spaces only; external original unchanged"
+  }
+]

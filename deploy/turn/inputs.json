@@ -1,0 +1,83 @@
+{
+  "archives": [
+    {
+      "file": "coturn-4.18.0.tar.gz",
+      "bytes": 828514,
+      "sha256": "28d55294ac596fbd129b293a85e7bb1c5dc4bd15b7fb55c500f355149e5f4e28",
+      "url": "https://github.com/coturn/coturn/archive/refs/tags/4.18.0.tar.gz"
+    },
+    {
+      "file": "libevent-dev_2.1.12-stable-9ubuntu2.1_amd64.deb",
+      "bytes": 274094,
+      "sha256": "6576bd85cdf314da2cc14a9f7a8797c2f6a0ee6864c784eda14a783f96c6716c"
+    },
+    {
+      "file": "pkgconf-bin_1.8.1-2build1_amd64.deb",
+      "bytes": 20730,
+      "sha256": "7a812f05ee1610154b433e2ad54f6e4163fcbb306b9fb31afe959afb2e5e1545"
+    },
+    {
+      "file": "pkgconf_1.8.1-2build1_amd64.deb",
+      "bytes": 16790,
+      "sha256": "834a58031069d97d7cfb8b2f5bfd5effc69cecf7f30cc362071875f1f8dc1828"
+    },
+    {
+      "file": "libssl3t64_3.0.13-0ubuntu3.15_amd64.deb",
+      "bytes": 1944134,
+      "sha256": "3d0955bc049bbcca0f4c3e78a3a8b994593d96db7d84f4320217224433844534"
+    },
+    {
+      "file": "libevent-core-2.1-7t64_2.1.12-stable-9ubuntu2.1_amd64.deb",
+      "bytes": 91766,
+      "sha256": "f8af913312f8de9cab6efcd2259918b3df92f5b7d501aba7ce9a55699fa452b8"
+    },
+    {
+      "file": "libevent-pthreads-2.1-7t64_2.1.12-stable-9ubuntu2.1_amd64.deb",
+      "bytes": 7984,
+      "sha256": "b1f4adef9ecd3b05bddc28706fd0b5dac43d7bc70bba46426ee122a63c003194"
+    },
+    {
+      "file": "libevent-openssl-2.1-7t64_2.1.12-stable-9ubuntu2.1_amd64.deb",
+      "bytes": 15738,
+      "sha256": "2963cfaf57bc82285408210897cb9802b167a71302a7f44800589a447608e4eb"
+    },
+    {
+      "file": "libssl-dev_3.0.13-0ubuntu3.15_amd64.deb",
+      "bytes": 2408494,
+      "sha256": "cefc6371d90d953a4cbb35d72d871f057e4b961a3107186f67fe96a88040cdb8"
+    },
+    {
+      "file": "libevent-extra-2.1-7t64_2.1.12-stable-9ubuntu2.1_amd64.deb",
+      "bytes": 64600,
+      "sha256": "46bc7e589ce5f384fcb4323e69f8c914a0e65d8e7c513ef1ae608c64a015120b"
+    },
+    {
+      "file": "libpkgconf3_1.8.1-2build1_amd64.deb",
+      "bytes": 30652,
+      "sha256": "fc3a57e8f931ec06cb7c51acc56878f1fec247ff02a7adcab26905c2faeb2792"
+    }
+  ],
+  "patch_sha256": "4d9feb939aab73dd4bf5a3eb67dff0ab59148cacdc334dbf922907f3de93f860",
+  "source_before": {
+    "src/server/ns_turn_server.c": "6b8fe0b7a7451ec88bbfe9d99487943f73795d23d2a11ce6fbd96de1784d9888",
+    "src/client/ns_turn_msg.c": "d17d24cba81bca7f661216efaebc0f34f444b184a20ad334954a538a34e8f68b"
+  },
+  "source_after": {
+    "src/server/ns_turn_server.c": "85b978f28028148955cbf07d829de1beeb8e5e4a03691ad843c83786e879619f",
+    "src/client/ns_turn_msg.c": "16e738eaf816d25b15a198348ca6b736cbba4cbd73f92f4d752c2a18e1415a42"
+  },
+  "licenses_sha256": {
+    "coturn-LICENSE.txt": "9add1798fa67dba2172d7b160dae18e190470a0ff7f4938fe5aad4122c19dc1f",
+    "coturn-source-notices.txt": "a1d4579f3bd245cc3a6bd9aef0449765f846deb77d3bdd9a30a1a6ca04564407",
+    "libevent-core-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+    "libevent-dev-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+    "libevent-extra-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+    "libevent-openssl-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+    "libevent-pthreads-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+    "libpkgconf3-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba",
+    "libssl-dev-copyright.txt": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35",
+    "libssl3t64-copyright.txt": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35",
+    "pkgconf-bin-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba",
+    "pkgconf-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba"
+  }
+}

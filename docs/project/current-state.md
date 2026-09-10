@@ -1,10 +1,235 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-10
 ---
 
 # Current project state
+
+## Voice deployed to the existing host; first real phone call — 2026-09-10
+
+The unified kit (release `35ce8e7946f4879fd0a7`) was applied to the existing
+host in transaction `440fd9fc` (phase `active`, existing-v8 mode, same data):
+messaging updated to release `4eba2afd` with the `voice_turn` config, the
+coturn relay (credential build `948cec15`, turnserver `e13597df1855`) runs on
+the authorized TCP/UDP 34781 and UDP 40000–40015 scope, and the owner
+completed a real two-phone call with good audio (both apps foregrounded).
+External TURN reachability and a bidirectional relay media echo were verified
+from outside. Eight live-deployment installer defects were found and fixed
+with tests (`7c25d80..4974bdd`). Known remaining defects: the client drops
+durable call signaling (`knock`/`ready`) when its online flag flickers, the
+server forces reconnects (8s idle close, 120s connection kill), and background
+delivery requires the opt-in foreground connection; a client fix and APK v11
+are in progress. See issue #19 for the running record.
+
+## Voice acceptance simplification and VM-stand freeze — 2026-09-10
+
+The owner (Сергей, Telegram) decided: the isolated VM/KVM full-rehearsal stand
+is frozen and is no longer a production acceptance prerequisite. Acceptance for
+the one-host voice rollout is replaced by three real gates: local loopback
+coturn acceptance (expiry, invalid HMAC, quota, denied-peer ACL, relayed media,
+lifetime), a controlled journaled installation on the existing `157.180.49.125`
+host within the authorized port scope, and the owner's physical two-phone call.
+Details: [voice-single-host.md](../operations/voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей).
+The frozen VM material remains preserved in branch history. The reviewed
+installer change landed: production `GATES` now carry
+`local-loopback-acceptance` instead of the frozen rehearsal gate, and the
+executed loopback acceptance (6/6 PASS, TURN-RT01/TURN-ACL02, evidence in
+`docs/project/evidence/voice-local-acceptance-20260910/`) satisfies it after
+independent review; the verifier additionally binds the report to the exact
+kit turnserver digest and required case set. The owner's physical two-phone
+call remains the final product acceptance; no security property is weakened.
+
+## One-host installer candidate — 2026-09-10
+
+The owner confirmed the existing host and one unified installer. The
+[exact authority and remaining gates](../operations/voice-single-host.md)
+supersede earlier absence-of-host-permission statements for the bounded reviewed
+deployment only. Initial sources/evidence and the signed v10 APK are preserved.
+The coordinated offline kit implements plan/preflight/apply/status/update/rollback;
+real owned messaging/private-PG/TLS fixtures pass fresh and retained-v8 updates,
+idempotence, same-current-data rollback and one injected failure recovery.
+Those fixtures keep the issuer disabled and do not prove relay integration.
+A later targeted fresh-start run completed but has INVALID_RECEIPT acceptance:
+its prior offline report had an import error. The original records are preserved;
+a later passing offline run does not retroactively validate that receipt.
+
+Production activation is explicitly refused: the full-relay fixture runner and
+acceptance are unavailable, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
+unrun. The parent then executed the separately approved one-unit credential
+diagnostic exactly once: root0440 rejection at `credential_descriptor` was observed,
+with owned cleanup and unchanged scoped neighbors. The separately reviewed metadata measurement then observed exact root0550
+directory and root0440 file ACLs: five entries granting only the service UID,
+with owning-group/other permissions zero. Cleanup passed. After Opus5 design confirmation and its corrections, a dedicated
+reader now implements the measured pair and private0400 fallback. Twenty-two
+offline tests pass; generic/source/issuer guards remain unchanged. Fresh independent
+Opus5 code review found no blocking runtime issue. After its required fixture
+corrections, all six actual inert system/user-manager cases completed, including
+planned restarts, missing-source243 failures, malformed-value rejection and verified
+cleanup. User cases are informational; persistent production-unit/static-UID and
+relay acceptance remain pending. No relay or deployment gate has passed. Initial Fable architecture review is
+valid historical evidence. The owner explicitly accepts fresh independent Opus
+review recorded as Opus; model branding is no longer a gate. All substantive
+security findings, actual tests and final source/artifact review remain mandatory.
+[The continuation record](evidence/voice-ready-20260910/README.md) supersedes the
+prior unrun-diagnostic and named-reviewer-availability statements.
+[Durable evidence](evidence/voice-single-host-20260910/README.md) preserves the
+failures, exact model provenance, candidate artifacts and remaining next steps.
+A reviewed disposable RAM-only development VM has now booted and verified live
+no-NIC/no-disk isolation, loopback-only guest routes and clean poweroff. Official
+pinned tools were extracted without a host installation. This establishes an
+isolation capability only; exact full guest fixture/packet scripts still need
+implementation, review and actual execution.
+The [new VM-profile contract](../operations/voice-vm-rehearsal.md) now has candidate
+dispatch, a separate current-boot boundary and real report/kit/log verification;
+19 offline regressions pass after independent Opus5 review corrections. Production
+availability stays empty while the full runner is implemented. Signed205-package
+guest acquisition completed, including OS/JRE/media dependencies. A base RAM image
+was then assembled and all17100 cpio records independently read back and verified;
+The first KVM prerequisite run stopped before guest continuation when its
+descriptor auditor rejected the observed read-only vCPU statistics object. The
+owned process stopped; no guest or relay executed. A narrow metadata-aware
+correction has thirteen passing offline tests and awaits independent review.
+Android's documented nested-emulator restriction
+is recorded as an unresolved compatibility limit, not current-call acceptance.
+One authorized read-only host check confirmed message UID1003/GID1004 and enp5s0;
+relay UID/GID1902 are free. The temporary SSH agent was cleaned up. No host account,
+credential source, service or firewall was changed by that check.
+CALL-CONNECT01 stays OPEN. No hosted deployment, firewall change, relay listener,
+public release or PR merge occurred.
+
+## Owner-confirmed one-host delivery — 2026-09-10
+
+The owner's [existing-host and one-touch installation confirmation](https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5613364943)
+authorizes a coordinated messaging, private PostgreSQL and TURN installer on the
+existing host, with deployment conditional on mandatory acceptance tests, fresh
+independent review and rollback readiness. Retain the existing TLS, data, identity
+and neighboring services. This supersedes older no-deployment-authority statements
+only for that bounded same-host delivery; it does not authorize PR merge or accept
+the proposed ADRs. TURN expiry/ACL and actual relay CLI/lifecycle gates remain
+NOT RUN; full credential/lifecycle acceptance remains unestablished. No new
+deployment or relay exposure is established by this authority record.
+
+CALL-CONNECT01 remains OPEN for the unknown historical first cause. Initial
+genuine Fable design review C conditionally permits the separate three-case
+[CALL-CURRENT01 acceptance plan](../../clients/android/test/CALL-CONNECT01.md#current-build-acceptance-plan--2026-09-10):
+incoming first microphone grant and retained-permission redial each with at least
+30 seconds connected decoded audio, then an outgoing decoded-media call on the
+same candidate, after relay gates pass in the owned disposable installer fixture.
+All three cases remain NOT RUN. The source-time seam is deferred; the reviewed
+v10 APK is retained with no new build or runtime instrumentation. The [client
+handoff and review provenance](evidence/voice-single-host-client-20260910/README.md)
+distinguish that genuine initial review from the later Fable request that returned
+Opus models and Haiku, with no actual Fable usage. The one no-tool probe also
+returned no Fable. These responses do not supply required fresh Fable approval;
+final code/artifact review and technical acceptance remain outstanding.
+
+## Bounded incoming-call diagnostic — 2026-09-10
+
+One fresh ordinary baseline/fixed comparison used the same reviewed test observer
+and unchanged local fixture. The baseline naturally failed through SDK safe error
+`connection` then controller `mediaState`, 16.496 seconds after accepted Answer
+with 23.357 seconds of setup budget remaining. The fixed arm published once,
+installed the answer and decoded relay/relay Opus with complete normal cleanup.
+[The evidence](evidence/call-connect-ordinary-20260910/README.md) preserves the
+setup-only correction, partial native coverage, differing pre-Answer timing and
+unmeasured Android process start/maps. Final Fable evidence review approved the
+test-only publication and kept CALL-CONNECT01 OPEN; this does not
+establish the native cause or identify every historical failure. Only test/docs
+changes occurred; production sources and retained ARM64 APK are unchanged.
+Missing TURN/phone gates and deployment/merge blocks remain unchanged.
+
+## Current voice relay extension — 2026-09-10
+
+The direct-call checkpoint below passed fresh final Fable review. The original
+scope also requires REQ-CALL-006: issuer, Android integration and isolated relay
+package. Server foundation draft PR21 is implemented/tested independently;
+client draft PR20 now adds strict volatile credential retrieval, authorizing
+state and dual metadata disclosure. V10 retained-signer ARM64 is built;
+49 parser negatives, ten HTTPS/JNI scenarios and the stale401 race fix pass.
+The full server85-test matrix and24-sample text regression pass (P50 102.04 ms,
+P95 144.30 ms). Owned v9→v10 update retains identity/contact/history. Strict
+full-app relay audio passes in both roles, but a measured43.05-second outgoing
+setup exposed delayed SDP publication despite early usable relay candidates.
+Fresh Fable final review found this functional blocker and conditionally approved
+a500 ms relay-only publication window. The fix passes actual both-role relay
+media, mute/two-way text, cancellation/redial and late-COMPLETE tests: publication
+while still gathering has a0.545-second conservative upper bound after relay
+arrival, one callback and unchanged fingerprint/ICE. Direct-mode bidirectional
+tone/mute/cleanup also passes. Signed ARM64 v10 SHA256
+`a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d`
+passes independent44-input artifact correspondence. Fresh Fable exact-source
+closure succeeded and closed VOICE-PUB-01; it requires the reviewed bytes committed
+and refreshed CI correspondence. [Current evidence](evidence/voice-relay-client-20260910/README.md)
+retains failures and separate scopes. Earlier15-second incoming failures
+remain unexplained. All supported CI gates pass on the preceding exact commits;
+the separate legacy job retains exactly14 historical failures.
+Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
+platform worker rejection; those operations were not retried. No live deployment
+is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint
+below retains its original artifact and test scope.
+
+## Voice relay foundation — 2026-09-10
+
+PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit
+`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. This separate server branch starts
+from that commit under the [component policy](component-boundaries.md).
+[REQ-CALL-006](../product/voice-relay.md) now has a default-disabled authenticated
+issuer, strict local secret loader, locked binding recheck, quotas and a versioned
+offline coturn/controller package. Fourteen focused issuer tests, two quota unit
+tests, controller/package tests and native offline build checks pass. The full
+server matrix passes85 tests with one pre-existing APK-environment skip; the
+text/JNI/pinned-TLS regression passes24 warm samples, P50 102.04/P95 144.30 ms.
+[Durable evidence](evidence/voice-turn-20260910/README.md) separates these results
+from the pending final independent review.
+
+The actual direct-ICE client checkpoint is in [draft PR20](https://github.com/GOTD-GLOBAL/ParanoID/pull/20);
+its relay integration will depend on this exact foundation commit. A successful
+direct-ICE final review does not cover this extension. Required retained-allocation
+expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection.
+[The runbook](../../deploy/turn/README.md) retains the exact proposed network
+scope and rollback; no public TURN/firewall/DNS or existing-server changes were
+authorized or performed. RFC-0018/ADR-0012 remain proposed.
+
+## Voice implementation after verified PR18 merge
+
+GitHub independently reports PR18 MERGED at `2026-09-09T22:01:42Z`, merge
+commit `366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The clean feature worktree
+`feat/voice-calls-20260909` starts from that exact commit. The owner's
+[voice scope](../product/voice-calls.md) now authorizes local actual 1:1 voice
+implementation, real tests, retained-signer APK and a GitHub PR for issue19.
+[RFC-0017](../rfcs/0017-voice-calls.md) and [ADR-0011](../decisions/0011-voice-calls.md)
+remain proposed. Fresh independent design review and exact-doc closure succeeded
+before runtime implementation. Strict encrypted controls, post-commit dispatch,
+the volatile consent/lifecycle controller, Android call UI/microphone service
+and pinned WebRTC/Opus adapter are implemented. The [durable evidence](evidence/voice-calls-20260909/README.md)
+records 62 supported native tests including 14 voice tests, actual old/current
+Java/JNI compatibility and controller/adapter checks passing. Twenty simulated
+maximum calls exchange 3700 real Olm controls without consuming the text Event
+ledger; this is signaling evidence, not decoded audio.
+
+Real Android M150/aiortc direct and isolated local TURN relay media pass with
+decoded synthetic tones in both directions, mute/unmute and complete capture/route
+cleanup. Exact captured SDP also passes real native/Olm validation and binding
+substitution rejection. These are separate media and encrypted-control fixtures;
+the owned Android v8→v9 in-place update also retains identity/contact/history and
+passes new delivered text, microphone denial and incoming-without-capture checks.
+Actual TLS retry/revocation and authenticated resume RED/GREEN pass. Full app
+acceptance passes 14 steps, first microphone grant and deferred SDK mute corrections
+pass, and actual process restart preserves identity/contact/history without media
+resurrection. Final text regression passes 24 warm samples at P50 105.92 ms and
+P95 122.99 ms. The final fixture5 app run repeats all 14 steps and visually
+verifies corrected call-dialog system-bar insets. The retained-signer ARM64
+`org.paranoid.devtext` version9, `0.0.9-voice`, is now built and verified:
+SHA256 `4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f`,
+15,712,851 bytes. The [artifact/source record](evidence/voice-calls-20260909/signed-apk-artifact.json)
+retains the frozen uncommitted feature-source manifest; post-build documentation
+updates leave packaged code unchanged. Fresh independent exact-source final
+Fable review remains required before candidate handoff.
+Working v8 text/identity/pins/history remain protected. Live TURN/firewall/DNS
+or existing-server changes need separate concrete reviewed authorization. See
+[the current gates](../operations/voice-calls-local.md). Physical OPPO audio,
+Bluetooth, Doze/force-stop, public relay and production claims remain unverified.
 
 ## Owner phone feedback and PR 18 merge direction
 
@@ -18,7 +243,7 @@ feedback, not the other NOT-RUN limits below.
 The owner explicitly requests testing/fixing/merging PR #18 and then implementing
 voice calls. [The scoped merge record](pr18-merge-scope.md) supersedes the PR's
 initial archival-only restriction for this one reviewed integration. Final CI and
-review still gate merge; writing this status does not claim the merge occurred.
+review gated that integration; its verified merge is recorded above.
 Voice calls are the next stage, not an implemented v8 feature. Existing identity,
 E2EE, TLS trust, history and working text remain protected.
 

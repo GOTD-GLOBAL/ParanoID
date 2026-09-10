@@ -1,0 +1,20 @@
+{
+  "source_archive_sha256": "28d55294ac596fbd129b293a85e7bb1c5dc4bd15b7fb55c500f355149e5f4e28",
+  "source_member": "coturn-4.18.0/src/apps/relay/mainrelay.c",
+  "source_sha256": "d9c7e475afd29cb38b3027cc7322fcf5c8bebad23355fc161798453df237e1ea",
+  "working_source_equals_pristine_member": true,
+  "static_checks": {
+    "cli_option_table": true,
+    "cli_sets_boolean": true,
+    "zero_boolean_false": true,
+    "deprecated_no_cli_no_assignment": true
+  },
+  "source_lines": {
+    "option_table": 1805,
+    "boolean_parser": 2115,
+    "no_cli_deprecated": 2212,
+    "cli_dispatch": 2215
+  },
+  "conclusion": "cli=0 recognized and parses false in exact pinned source; no-cli only warns. No listener test executed. Egress does not close a CLI listener.",
+  "effective_cli_closure": "NOT RUN"
+}

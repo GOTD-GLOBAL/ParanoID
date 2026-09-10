@@ -1,0 +1,50 @@
+## Independent acquisition source review — full guest package acquisition
+
+**Reviewer:** `claude-opus-5`, fresh context, read-only. Scope: `full-guest-acquisition-scope.md`, `acquire_full_guest.py`, `test_full_guest_acquisition.py`, `full-guest-acquisition-offline.log`, `full-guest-source-freeze.json`, `full-guest-media-plan.json`, `full-guest-media-chain.json`, `verify_full_guest_media_chain.py`, plus the frozen governance/state/design records for context. I executed nothing, computed no digest, opened no socket, delegated nothing, and changed no guard.
+
+**Hash provenance:** every SHA256 in the freeze, plan, chain and host-tool record — and the three offline test results — are **supplied recorded values**. I could not recompute any of them and do not attest to them.
+
+# Verdict: **CONDITIONAL** — approve one exact acquisition after conditions C1–C6.
+
+The design is sound: unprivileged UID 1003, output confined to one owned directory, canonical-URI-only with redirect refusal, hash+size pinned per package against a gpgv-verified stanza chain, bounded budgets, data-filter extraction, fail-stop with receipts, no maintainer scripts, no host installation, and a result name that does not overclaim. The merged-usr converter is correct: resolving both parent and destination *within* the tree is exactly what makes `/lib64/loader → /usr/lib/loader` produce `../lib/loader` rather than a bogus `usr/usr` path, and it matches how the kernel resolves a link relative to its physical parent. Tarfile's `data` filter independently re-checks link targets by realpath/commonpath, so conversion errors fail closed twice.
+
+## Substantive defects
+
+**D1 — the trusted-tool record is not binding (highest severity).** `trusted_host_file(Path('/usr/bin/dpkg-deb'))` walks ancestors for root ownership and non-writability and records the hash — but the extraction call is `subprocess.run(['dpkg-deb', ...])`, resolved through the inherited `PATH`. The binary hashed is not provably the binary executed. Worse, `dpkg-deb` itself spawns `zstd`/`xz` decompressor helpers via `PATH`; those are neither hashed nor mentioned. The provenance claim in `record['host_tools']` is therefore weaker than it reads.
+
+**D2 — no explicit umask.** `out.mkdir(mode=0o700)` is umask-masked, and `archives.mkdir()` / `sysroot.mkdir()` use the default 0o777. Under a permissive umask, `sysroot` becomes group/other-writable and `tree_manifest`'s `mode&0o7022` check fires **only at the very end**, after all 242 MB are downloaded and ~1.2 GB extracted — turning a one-line hygiene problem into a total loss of the run.
+
+**D3 — the symlink conversion is extraction-order dependent.** `guest_link_target` resolves `parent` and `destination` against the tree *as it exists at that moment*. If a later package replaces an intermediate path component (e.g. `base-files` re-shipping a usrmerge alias, or a directory later becoming a symlink), a previously recorded relative target silently changes meaning. The four pre-created aliases and alphabetical ordering make this unlikely, not impossible, and nothing re-validates conversions afterwards.
+
+**D4 — cache trust is asymmetric.** Cached archives are checked for regular/uid-1003/nlink-1/non-group-other-writable, but unlike `trusted_host_file` no **ancestor** ownership or mode check is performed — and the second cache root (`voice-calls-media-discovery-.../coturn`) is outside the owned evidence directory. Content is hash-pinned, so this is defence-in-depth only, but the inconsistency is real. The fail-hard-on-mismatch behaviour (no silent replacement, no download-around) does match the stated scope.
+
+**D5 — provenance/currency gaps in the plan and chain.**
+- Only `noble` and `noble-updates` are used; **`noble-security` is absent**. Ubuntu normally copies security updates into `-updates`, so this is usually equivalent — but it is an assumption, not a proof, for systemd/OpenSSL/PG16/JRE in the closure.
+- Both indexes record `valid_until: null`. Recording rather than inferring is correct and matches the verifier. The consequence must be stated plainly: **no expiry binding exists on either index**, and the 65-package `noble` set rests on a signed index dated `2024-04-25`, over two years stale. Freshness rests entirely on the `noble-updates` index (Date 2026-09-10) and on those files being root-owned in `/var/lib/apt/lists`.
+- The acquisition script cross-checks only `sha256` against the chain, not version/filename/size, and trusts the chain's `result` string. Freeze pinning of the chain file makes this acceptable, but the freeze is self-referential: nothing in code can bootstrap trust in `full-guest-source-freeze.json` itself. Its integrity is an **operator out-of-band precondition**, and the frozen review bundle's `4600899e…` is the only anchor.
+
+**D6 — budget realism and non-resumability.** 205 packages at 242,329,242 B leaves ~26 MB under the 256 MiB cap. Expanded size is capped at 2 GiB; `linux-modules`, `openjdk-21-jre-headless`, `libllvm17t64`, `libllvm20`, `mesa-libgallium`, `libicu74`, `locales` and perl plausibly land in the 1.0–1.4 GiB range — headroom exists but is not large, and the cap is measured in tar member bytes, not on-disk blocks. Separately, `timeout=20` on `dpkg-deb` for the 39 MB kernel-modules and 46 MB JRE archives is tight on a loaded host, and because `out.mkdir()` has no `exist_ok`, **any** failure leaves a directory that blocks re-invocation. Under the stated no-retry policy that is defensible, but it means one transient timeout consumes the entire authorized download and requires a fresh reviewed action.
+
+**D7 — test coverage is narrow.** The offline suite AST-extracts and exercises only `guest_link_target`. The recorded 3/3 PASS is genuine evidence for the converter and its refusals (traversal, absolute member, relative target, pre-existing escaping parent, `/../..` target) and for nothing else. `tree_manifest`, the freeze/chain gating, budget arithmetic, the cache-vs-download branch, redirect refusal and the failure-receipt paths have **zero** coverage. Acquisition remains UNRUN and syntax-only, as stated.
+
+**D8 — correctly-scoped but consequential extraction losses.** The `data` filter strips setuid/setgid and xattrs, so `su`, `newgrp`, `mount`, `unix_chkpwd`, `dbus-daemon-launch-helper` and any file-capability binaries arrive non-privileged. The scope's root-plus-`runuser`/`setpriv` design accommodates this; the guest fixture must not depend on any of them (notably PAM's `unix_chkpwd` and dbus's launch helper), and PostgreSQL must be started via `runuser`, never as root. Likewise, the tree is **not bootable as-is**: no maintainer scripts run, so sysusers/tmpfiles, `messagebus`/`postgres` accounts, locales and `/etc/ufw/before.rules` remain hand-generated work outside this artifact. `GUEST_PACKAGES_VERIFIED_NO_VM_STARTED` correctly avoids implying otherwise.
+
+## Conditions
+
+**C1.** Invoke `/usr/bin/dpkg-deb` by absolute path with a fixed `env` (pinned `PATH`), and hash-record the decompressor helpers actually used (`zstd`, `xz`) with the same ancestor-trust walk. Record the full invoked argv in `result.json`.
+
+**C2.** Set `os.umask(0o022)` before any `mkdir`, and create `archives`/`sysroot` with explicit modes.
+
+**C3.** After the package loop, re-validate every entry in `converted_guest_symlinks` against the final tree; any conversion whose resolved meaning changed is a hard failure with a receipt, not a warning.
+
+**C4.** Apply the `trusted_host_file` ancestor walk to both cache roots before reading any cached archive.
+
+**C5.** Record explicitly in the scope document: `noble-security` is not consulted; neither index publishes `Valid-Until`, so 65 packages derive from a 2024-04-25 signed index with no expiry binding; the freeze file's integrity is an operator out-of-band precondition.
+
+**C6.** Add offline tests (no network, no dpkg) for `tree_manifest` rejections (unowned member, unsafe file/dir mode, escaping or absolute symlink, unexpected node type) and for freeze-mismatch / chain-mismatch / non-canonical-URI / redirect refusal. Raise the `dpkg-deb` timeout with justification, or state the single-shot no-resume consequence in the scope.
+
+I do not require correcting D6's cap or D8; they are acceptable as stated once documented.
+
+## Preserved status
+
+This approves **one** exact acquisition after C1–C6 and nothing else. No relay acceptance is created or implied by any artifact this produces. Guest bootstrap, KVM launcher, rootfs assembly, coordinator profile, media-input copying/execution, packet drivers and call matrices each still require their own exact source and artifact review before execution. The `media_discovery` worker rejection, the signature-fetch, `run-as` and maps refusals remain intact and unretried; nothing here reroutes them. TURN-RT01, TURN-ACL02, relay lifecycle, full coordinator rehearsal, CALL-CURRENT01 and hosted installation remain **NOT RUN**; CALL-CONNECT01 remains **OPEN**; the INVALID_RECEIPT record stands. Production `apply` remains fail-closed until the full-relay fixture is implemented and independently reviewed. RFC-0018/ADR-0012 remain proposed; no human decision evidence is created here.

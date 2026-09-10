@@ -1,0 +1,20 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=ParanoID Text Disposable Test
+Signer #1 certificate SHA-256 digest: 82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926
+Signer #1 certificate SHA-1 digest: d481c1edce5a7551ee50e5273d0e9865c6189897
+Signer #1 certificate MD5 digest: 9da187640506c5da84d4076b34331720
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: a937ec46089fb6c83a961924ae019e29d9ad14d8f51622111e328fa9c191d763
+Signer #1 public key SHA-1 digest: cd14caa0e3986177b2c7631872fe50e09bd07c0d
+Signer #1 public key MD5 digest: c6fb9a82453404a459e9bcb2dbabb4cf
+
+
+ACTUAL_EXIT=0

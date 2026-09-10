@@ -1,0 +1,23 @@
+test_bounded_read_mode_and_nofollow_use_the_actual_open_descriptor (__main__.DescriptorTests.test_bounded_read_mode_and_nofollow_use_the_actual_open_descriptor) ... ok
+test_guest_boundary_never_runs_as_unprivileged_or_production_profile (__main__.GuestObservationTests.test_guest_boundary_never_runs_as_unprivileged_or_production_profile) ... ok
+test_isolation_digest_is_derived_from_observed_topology (__main__.GuestObservationTests.test_isolation_digest_is_derived_from_observed_topology) ... ok
+test_real_host_nic_default_route_and_local_client_classification_refused (__main__.GuestObservationTests.test_real_host_nic_default_route_and_local_client_classification_refused) ... ok
+test_failed_check_output_corruption_missing_log_and_escape_refused (__main__.RehearsalFilesTests.test_failed_check_output_corruption_missing_log_and_escape_refused) ... ok
+test_hash_only_and_unbound_logs_cannot_authorize (__main__.RehearsalFilesTests.test_hash_only_and_unbound_logs_cannot_authorize) ... ok
+test_legacy_profile_wrong_kit_and_changed_shared_bytes_rejected (__main__.RehearsalFilesTests.test_legacy_profile_wrong_kit_and_changed_shared_bytes_rejected) ... ok
+test_matching_production_gates_must_reference_verified_case_hashes (__main__.RehearsalFilesTests.test_matching_production_gates_must_reference_verified_case_hashes) ... ok
+test_production_apply_cannot_accept_a_hash_only_receipt (__main__.RehearsalFilesTests.test_production_apply_cannot_accept_a_hash_only_receipt) ... ok
+test_production_kit_never_contains_a_fixture_runner (__main__.RehearsalFilesTests.test_production_kit_never_contains_a_fixture_runner) ... ok
+test_real_referenced_files_are_required_even_with_well_formed_hashes (__main__.RehearsalFilesTests.test_real_referenced_files_are_required_even_with_well_formed_hashes) ... ok
+test_report_and_case_reads_request_root_ownership (__main__.RehearsalFilesTests.test_report_and_case_reads_request_root_ownership) ... ok
+test_report_hash_plan_and_kit_binding_are_enforced (__main__.RehearsalFilesTests.test_report_hash_plan_and_kit_binding_are_enforced) ... ok
+test_service_configuration_and_mode_coverage_bind_to_production (__main__.RehearsalFilesTests.test_service_configuration_and_mode_coverage_bind_to_production) ... ok
+test_production_interface_requires_initial_alphanumeric (__main__.VmIntentTests.test_production_interface_requires_initial_alphanumeric) ... ok
+test_profile_has_separate_prerequisites_and_exact_production_layout (__main__.VmIntentTests.test_profile_has_separate_prerequisites_and_exact_production_layout) ... ok
+test_root_check_precedes_loading_any_full_profile_kit (__main__.VmIntentTests.test_root_check_precedes_loading_any_full_profile_kit) ... ok
+test_vm_requires_a_distinct_boundary_before_preflight_mutation (__main__.VmIntentTests.test_vm_requires_a_distinct_boundary_before_preflight_mutation) ... ok
+
+----------------------------------------------------------------------
+Ran 18 tests in 4.192s
+
+OK

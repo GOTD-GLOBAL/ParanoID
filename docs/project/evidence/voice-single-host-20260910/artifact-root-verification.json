@@ -1,0 +1,30 @@
+{
+  "v": 1,
+  "artifact": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/unified-kit-5/paranoid-single-host-de205cfbb63b9bff3ed0.tar",
+  "bytes": 19374080,
+  "sha256": "5bb0e23450b81f3d70e62c18ecf1b848b7a509f132aa977bfeb95af8a22cc543",
+  "second_artifact": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/unified-kit-6/paranoid-single-host-de205cfbb63b9bff3ed0.tar",
+  "deterministic_packaging_equal": true,
+  "regular_files": 41,
+  "tar_members": 47,
+  "exact_manifest_members_and_hashes": true,
+  "normalized_tar_metadata": true,
+  "current_coordinator_worker_network_readme_bytes_match": true,
+  "current_relay_launcher_unit_template_bytes_match": true,
+  "retained_message_controller_bytes_match": true,
+  "native_elf": "Linux x86_64 ELF64 little-endian",
+  "kit_release": "de205cfbb63b9bff3ed0",
+  "kit_manifest_sha256": "06d09794c98baf4efebe5da9804c1f4846d1818d34c7a6096d169d14d405b2de",
+  "components": {
+    "message": {
+      "manifest_sha256": "9e01feb89664fa28372e68fb42a5075cdde93bf4ef482ee2d119529c88e7381f",
+      "release": "4eba2afd548e0666dc24"
+    },
+    "relay": {
+      "manifest_sha256": "bf2384d4ae211a8240317e8e1a1f1f721eb155b058ea39eb03f1215148ef5817",
+      "release": "9eff656b71da22a57e24"
+    }
+  },
+  "scope": "independent offline artifact correspondence; no process/service/network acceptance",
+  "production_activation": "REFUSED: no implemented full-relay rehearsal profile; required Fable final unavailable"
+}

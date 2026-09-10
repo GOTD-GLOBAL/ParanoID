@@ -1,0 +1,9 @@
+{
+  "scenario": "permission",
+  "boundary": "actual app UI + signed/E2EE control + native Android/aiortc media; synthetic identities",
+  "pass": true,
+  "steps": [
+    "permission-request",
+    "first-grant-connected"
+  ]
+}

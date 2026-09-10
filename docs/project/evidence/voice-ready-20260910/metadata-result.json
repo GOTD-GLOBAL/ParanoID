@@ -1,0 +1,342 @@
+{
+  "v": 1,
+  "result": "METADATA_OBSERVED",
+  "unit": "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service",
+  "source_sha256": "43bba922ac2d1a42682ad92a098fa6845d8be27249bb3dd913f08a4f75cb2681",
+  "helper_sha256": "56429b19e06093eb0705e515856161a207b88eac1e38b5c57e3491b7ac4ec6a3",
+  "scope": "one synthetic unit; metadata only; credential content never read by helper",
+  "commands": [
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "nginx.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "paranoid-turn.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "sudo",
+        "-n",
+        "-u",
+        "codex",
+        "env",
+        "XDG_RUNTIME_DIR=/run/user/1003",
+        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1003/bus",
+        "systemctl",
+        "--user",
+        "show",
+        "paranoid-alpha.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemd-run",
+        "--quiet",
+        "--collect",
+        "--wait",
+        "--pipe",
+        "--unit=voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service",
+        "--uid=codex",
+        "--gid=codex",
+        "--property=Type=exec",
+        "--property=RuntimeDirectoryMode=0700",
+        "--property=UMask=0077",
+        "--property=NoNewPrivileges=yes",
+        "--property=LimitCORE=0",
+        "--property=TasksMax=4",
+        "--property=MemoryMax=64M",
+        "--property=RuntimeMaxSec=30",
+        "--property=TimeoutStopSec=3",
+        "--property=TimeoutStartSec=5",
+        "--property=Restart=no",
+        "--property=RestrictAddressFamilies=AF_UNIX",
+        "--property=SystemCallFilter=~@network-io",
+        "--property=RuntimeDirectory=voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e",
+        "--property=LoadCredential=voice-turn-secret:/var/tmp/voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e/synthetic.secret",
+        "/usr/bin/python3",
+        "-I",
+        "-B",
+        "/var/tmp/voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e/helper.py",
+        "1003",
+        "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemctl",
+        "stop",
+        "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service"
+      ],
+      "exit_code": 5
+    },
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "nginx.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "systemctl",
+        "show",
+        "paranoid-turn.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "sudo",
+        "-n",
+        "-u",
+        "codex",
+        "env",
+        "XDG_RUNTIME_DIR=/run/user/1003",
+        "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1003/bus",
+        "systemctl",
+        "--user",
+        "show",
+        "paranoid-alpha.service",
+        "--property=InvocationID,LoadState,ActiveState,SubState,MainPID,ActiveEnterTimestampMonotonic,ExecMainStartTimestampMonotonic"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "relay_acceptance": "NOT_RUN",
+  "confinement_effectiveness": "NOT_PROVEN_REQUESTED_ONLY",
+  "path_provenance": "only exclusive synthetic fixture paths in argv, no production credential paths",
+  "cleanup_errors": [],
+  "neighbors_before": {
+    "nginx": {
+      "MainPID": "1243453",
+      "ExecMainStartTimestampMonotonic": "1541397062889",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestampMonotonic": "1541397062925",
+      "InvocationID": "c40540ae2379492e96f5fbf169f448ec"
+    },
+    "turn": {
+      "MainPID": "0",
+      "ExecMainStartTimestampMonotonic": "0",
+      "LoadState": "not-found",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "ActiveEnterTimestampMonotonic": "0",
+      "InvocationID": ""
+    },
+    "message": {
+      "MainPID": "0",
+      "ExecMainStartTimestampMonotonic": "0",
+      "LoadState": "not-found",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "ActiveEnterTimestampMonotonic": "0",
+      "InvocationID": ""
+    }
+  },
+  "helper_source_descriptor": {
+    "uid": 0,
+    "gid": 0,
+    "mode": 292,
+    "type": 32768,
+    "nlink": 1,
+    "size": 2957
+  },
+  "source_descriptor": {
+    "uid": 0,
+    "gid": 0,
+    "mode": 256,
+    "type": 32768,
+    "nlink": 1,
+    "size": 64
+  },
+  "planned_command": [
+    "systemd-run",
+    "--quiet",
+    "--collect",
+    "--wait",
+    "--pipe",
+    "--unit=voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service",
+    "--uid=codex",
+    "--gid=codex",
+    "--property=Type=exec",
+    "--property=RuntimeDirectoryMode=0700",
+    "--property=UMask=0077",
+    "--property=NoNewPrivileges=yes",
+    "--property=LimitCORE=0",
+    "--property=TasksMax=4",
+    "--property=MemoryMax=64M",
+    "--property=RuntimeMaxSec=30",
+    "--property=TimeoutStopSec=3",
+    "--property=TimeoutStartSec=5",
+    "--property=Restart=no",
+    "--property=RestrictAddressFamilies=AF_UNIX",
+    "--property=SystemCallFilter=~@network-io",
+    "--property=RuntimeDirectory=voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e",
+    "--property=LoadCredential=voice-turn-secret:/var/tmp/voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e/synthetic.secret",
+    "/usr/bin/python3",
+    "-I",
+    "-B",
+    "/var/tmp/voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e/helper.py",
+    "1003",
+    "voice-ready-meta-02364f38d58cce64061e2e5d552e3c2e.service"
+  ],
+  "observation": {
+    "directory": {
+      "acl": {
+        "entries": [
+          [
+            1,
+            5,
+            4294967295
+          ],
+          [
+            2,
+            5,
+            1003
+          ],
+          [
+            4,
+            0,
+            4294967295
+          ],
+          [
+            16,
+            5,
+            4294967295
+          ],
+          [
+            32,
+            0,
+            4294967295
+          ]
+        ],
+        "entry_count": 5,
+        "version": 2
+      },
+      "acl_errno": 0,
+      "acl_size": 44,
+      "gid": 0,
+      "metadata_stable": true,
+      "mode": 360,
+      "nlink": 2,
+      "size": 60,
+      "type": 16384,
+      "uid": 0
+    },
+    "euid": 1003,
+    "file": {
+      "acl": {
+        "entries": [
+          [
+            1,
+            4,
+            4294967295
+          ],
+          [
+            2,
+            4,
+            1003
+          ],
+          [
+            4,
+            0,
+            4294967295
+          ],
+          [
+            16,
+            4,
+            4294967295
+          ],
+          [
+            32,
+            0,
+            4294967295
+          ]
+        ],
+        "entry_count": 5,
+        "version": 2
+      },
+      "acl_errno": 0,
+      "acl_size": 44,
+      "gid": 0,
+      "metadata_stable": true,
+      "mode": 288,
+      "nlink": 1,
+      "size": 64,
+      "type": 32768,
+      "uid": 0
+    },
+    "scope": "SYNTHETIC_METADATA_ONLY",
+    "v": 1
+  },
+  "unit_cleanup": true,
+  "runtime_removed": true,
+  "fixture_sources_removed": true,
+  "neighbors_after": {
+    "nginx": {
+      "MainPID": "1243453",
+      "ExecMainStartTimestampMonotonic": "1541397062889",
+      "LoadState": "loaded",
+      "ActiveState": "active",
+      "SubState": "running",
+      "ActiveEnterTimestampMonotonic": "1541397062925",
+      "InvocationID": "c40540ae2379492e96f5fbf169f448ec"
+    },
+    "turn": {
+      "MainPID": "0",
+      "ExecMainStartTimestampMonotonic": "0",
+      "LoadState": "not-found",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "ActiveEnterTimestampMonotonic": "0",
+      "InvocationID": ""
+    },
+    "message": {
+      "MainPID": "0",
+      "ExecMainStartTimestampMonotonic": "0",
+      "LoadState": "not-found",
+      "ActiveState": "inactive",
+      "SubState": "dead",
+      "ActiveEnterTimestampMonotonic": "0",
+      "InvocationID": ""
+    }
+  },
+  "neighbors_unchanged": true
+}

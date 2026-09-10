@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "finding": "TURN-CLIENT-01",
+  "scope": "Actual production loop/transport and JNI signatures over generated pinned HTTPS; synthetic enrollment/session/HTTP outcomes, no PostgreSQL issuer or media",
+  "red": {
+    "path": "turn-client-lane-red-2/runtime.log",
+    "actual_exit": 1,
+    "assertion": "stale confirmed voice 401 escaped cancellation and fired global authorizationLost",
+    "loop_sha256": "8f15a0c9d23541fba6729110c88519a0336445fd1448f04b1be6a43be037b183"
+  },
+  "green": {
+    "path": "turn-client-lane-green/runtime.log",
+    "actual_exit": 0,
+    "loop_sha256": "40f158db5aa96f0f397f93aee60c0565662744a22b739d4de4073344dcb4806a",
+    "scenarios_passed": 10
+  },
+  "fix": "Root removed only the voice exception catch dispatch to global authorityFailure; failure remains in request-scoped delivery and TextEngine call-generation handling.",
+  "method": [
+    "Actual production RealtimeLoop/VoiceRelayTransport and actual native identity/session request signing",
+    "Generated loopback certificate verified by production PinnedTls",
+    "HTTPS fixture independently verifies Ed25519 signatures against complete session/method/path/body transcript and unique nonce",
+    "Synthetic native enrollment/session explicitly injected using test-only reflection; not actual Rust issuer/PostgreSQL authorization",
+    "Owner held before second HTTPS 401 response; old task completed with callbacks queued; cancelled/replaced in same realtime generation, then owner released",
+    "20 cancelled/replaced requests remain bounded to one worker and one queue slot",
+    "Held voice response permits state-owner action and continuing actual signed empty text polling"
+  ],
+  "response_assertions": [
+    "Valid metadata -> relay",
+    "Pinned404 -> direct and retained text session",
+    "401 then200 -> relay, exactly two fresh verified nonces",
+    "401 twice -> current callback false, no global authority callback",
+    "429/500/302/malformed200 -> false, no direct fallback",
+    "Cancelled/superseded callback never delivered"
+  ],
+  "harness_setup_failure": {
+    "path": "turn-client-lane-red/runtime.log",
+    "description": "Initial harness assumed native public key/signature hex instead of canonical Base64; corrected before actual red-2 bug reproduction. This was not product RED."
+  },
+  "jni_sha256": "94a49abd960e3f35a08450e948c5de30e5ae3e8f550d192ca74bc0b4dd9941ce",
+  "tests": {
+    "clients/android/test/VoiceRelayLaneSmoke.java": "80806c210c4969181fb75ce53654dcbc6c52aaa7de66c49150f6969111b02e9e",
+    "clients/android/test_voice_relay_lane.py": "97cdb187660f9f7e75fb33a828f4202f090f617246fe0ca4fbd9f0e6ecd74679"
+  },
+  "limitations": [
+    "No actual media or PostgreSQL issuer auth claims",
+    "State owner progress and authenticated empty polling are tested, not a new text-message latency benchmark",
+    "Supplemental audit and TDD, not fresh final Fable review"
+  ]
+}

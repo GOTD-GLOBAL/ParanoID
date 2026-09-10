@@ -1,0 +1,40 @@
+{
+  "type": "result",
+  "subtype": "success",
+  "is_error": false,
+  "session_id": "0be34d45-d7bb-445f-a501-964dda0cd757",
+  "duration_ms": 474475,
+  "duration_api_ms": 475796,
+  "num_turns": 46,
+  "modelUsage": {
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 3800,
+      "outputTokens": 18,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.00389,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty"
+    },
+    "claude-fable-5": {
+      "inputTokens": 47,
+      "outputTokens": 31151,
+      "cacheReadInputTokens": 2200554,
+      "cacheCreationInputTokens": 172690,
+      "webSearchRequests": 0,
+      "costUSD": 7.212374000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "canonicalModel": "claude-fable-5",
+      "provider": "firstParty"
+    }
+  },
+  "total_cost_usd": 7.216264000000001,
+  "successful_review_invocation": true,
+  "raw_result_sha256": "13209c8c2fd82acb6ef800d6f4929f8e9967aa3befa1ac284d8567a7b2f37b24",
+  "source_commit": "5e776b2e74f346909183bbb1b00439488618fc20",
+  "report_sha256": "ba00d8b84a78115e04fd06de6ea062f2bb0157a2a98649ffb562247ec79c09f5"
+}

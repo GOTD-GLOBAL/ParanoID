@@ -1,0 +1,255 @@
+{
+  "result": "ISOLATION_OBSERVED",
+  "source_sha256": "0f89d07b567a2c8db3802a1109e6edbe72c7e65918ec5c08023b7159730efc06",
+  "argv": [
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/bin/qemu-system-x86_64",
+    "-nodefaults",
+    "-no-user-config",
+    "-machine",
+    "q35,accel=tcg,dump-guest-core=off,mem-merge=off",
+    "-cpu",
+    "max",
+    "-smp",
+    "2",
+    "-m",
+    "512",
+    "-display",
+    "none",
+    "-nic",
+    "none",
+    "-monitor",
+    "none",
+    "-qmp",
+    "stdio",
+    "-chardev",
+    "file,id=serial0,path=/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/console.log",
+    "-serial",
+    "chardev:serial0",
+    "-bios",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/seabios/bios-256k.bin",
+    "-L",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/qemu",
+    "-kernel",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/boot/vmlinuz-6.8.0-139-generic",
+    "-initrd",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/initramfs.cpio.gz",
+    "-append",
+    "console=ttyS0 quiet panic=-1 oops=panic rdinit=/init",
+    "-no-reboot",
+    "-S",
+    "-sandbox",
+    "on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
+  ],
+  "uid": 1003,
+  "run_id": "52eeb5b18ce44a928ad992d9deb9b648",
+  "initramfs_sha256": "417f61ba1542a8bf6c09bdc95846dcc82f90dc013c44bb7997088568809983f8",
+  "init_script_sha256": "44d67cd9533d19532f3c673af1d2ad01c7571fda91c688e1d24bbbc2b981f434",
+  "tooling_receipt_sha256": "076588d4c03a283b2ebe1a85807d707f98c2e58ce92b187db0c759c8e2d803c5",
+  "relay_acceptance": "NOT_RUN",
+  "isolation_claim": "OBSERVED_POINT_IN_TIME_NOT_ENFORCEMENT",
+  "fd_inventory_scope": "PRE_CONT_ONLY",
+  "pid": 2215623,
+  "actual_argv": [
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/bin/qemu-system-x86_64",
+    "-nodefaults",
+    "-no-user-config",
+    "-machine",
+    "q35,accel=tcg,dump-guest-core=off,mem-merge=off",
+    "-cpu",
+    "max",
+    "-smp",
+    "2",
+    "-m",
+    "512",
+    "-display",
+    "none",
+    "-nic",
+    "none",
+    "-monitor",
+    "none",
+    "-qmp",
+    "stdio",
+    "-chardev",
+    "file,id=serial0,path=/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/console.log",
+    "-serial",
+    "chardev:serial0",
+    "-bios",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/seabios/bios-256k.bin",
+    "-L",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/qemu",
+    "-kernel",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/boot/vmlinuz-6.8.0-139-generic",
+    "-initrd",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/initramfs.cpio.gz",
+    "-append",
+    "console=ttyS0 quiet panic=-1 oops=panic rdinit=/init",
+    "-no-reboot",
+    "-S",
+    "-sandbox",
+    "on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
+  ],
+  "actual_uid": [
+    "1003",
+    "1003",
+    "1003",
+    "1003"
+  ],
+  "actual_cap_eff": "0000000000000000",
+  "fd_inventory": [
+    "pipe:[209197636]",
+    "pipe:[209197637]",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/stderr.log",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/ram-vm-runtime/console.log",
+    "anon_inode:[eventfd]",
+    "anon_inode:[signalfd]",
+    "anon_inode:[eventfd]",
+    "anon_inode:[eventfd]",
+    "anon_inode:[eventfd]",
+    "anon_inode:[eventfd]"
+  ],
+  "qmp_pci": [
+    {
+      "bus": 0,
+      "devices": [
+        {
+          "irq_pin": 0,
+          "bus": 0,
+          "qdev_id": "",
+          "slot": 0,
+          "class_info": {
+            "class": 1536,
+            "desc": "Host bridge"
+          },
+          "id": {
+            "device": 10688,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 0,
+          "regions": []
+        },
+        {
+          "irq_pin": 0,
+          "bus": 0,
+          "qdev_id": "",
+          "slot": 31,
+          "class_info": {
+            "class": 1537,
+            "desc": "ISA bridge"
+          },
+          "id": {
+            "device": 10520,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 0,
+          "regions": []
+        },
+        {
+          "irq_pin": 1,
+          "bus": 0,
+          "qdev_id": "",
+          "irq": 0,
+          "slot": 31,
+          "class_info": {
+            "class": 262,
+            "desc": "SATA controller"
+          },
+          "id": {
+            "device": 10530,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 2,
+          "regions": [
+            {
+              "bar": 4,
+              "size": 32,
+              "address": -1,
+              "type": "io"
+            },
+            {
+              "prefetch": false,
+              "mem_type_64": false,
+              "bar": 5,
+              "size": 4096,
+              "address": -1,
+              "type": "memory"
+            }
+          ]
+        },
+        {
+          "irq_pin": 1,
+          "bus": 0,
+          "qdev_id": "",
+          "irq": 0,
+          "slot": 31,
+          "class_info": {
+            "class": 3077,
+            "desc": "SMBus"
+          },
+          "id": {
+            "device": 10544,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 3,
+          "regions": [
+            {
+              "bar": 4,
+              "size": 64,
+              "address": -1,
+              "type": "io"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "qmp_blocks": [],
+  "running_argv_verified": true,
+  "exit_code": 0,
+  "guest": {
+    "interfaces": [
+      "lo"
+    ],
+    "default_external_routes": false,
+    "pci_classes": [
+      "0x060000",
+      "0x060100",
+      "0x010601",
+      "0x0c0500"
+    ],
+    "production_markers": "absent",
+    "ipv6_route": "present",
+    "kernel": "6.8.0-139-generic"
+  },
+  "serial_sha256": "f240fa2ae7bc0e72922e43ad6139430832ecd84777feeeb15767ecb92cd68cf1",
+  "owned_process_stopped": true,
+  "serial_bytes": 926,
+  "serial_decode": "utf8",
+  "qmp_events": [
+    {
+      "timestamp": {
+        "seconds": 1789028267,
+        "microseconds": 150977
+      },
+      "event": "RESUME"
+    },
+    {
+      "timestamp": {
+        "seconds": 1789028270,
+        "microseconds": 726137
+      },
+      "event": "SHUTDOWN",
+      "data": {
+        "guest": true,
+        "reason": "guest-shutdown"
+      }
+    }
+  ]
+}

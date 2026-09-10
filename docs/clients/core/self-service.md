@@ -10,6 +10,10 @@ Companion to [RFC-0012](../../rfcs/0012-self-service-messenger.md). Written befo
 client implementation. This is a local candidate proposal, not an accepted ADR,
 production crypto adoption, rollout authorization or physical-phone evidence.
 
+The later [voice extension](voice-calls.md) retains the current core3 text state
+and documents its actual old/current JNI compatibility checks separately. It
+does not implement the historical migration proposal below.
+
 ## Active clean-install candidate (RFC-0014)
 
 The owner's 2026-09-09 scope amendment selects mandatory signed account-ID channels

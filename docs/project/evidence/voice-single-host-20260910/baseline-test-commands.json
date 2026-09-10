@@ -1,0 +1,39 @@
+[
+  {
+    "name": "baseline-invocation-error",
+    "command": [
+      "python3",
+      "-m",
+      "unittest",
+      "deploy.test_turn_environment",
+      "deploy.turn.test_package",
+      "deploy.turn.test_runtime"
+    ],
+    "exit": 1,
+    "reason": "Initial module-style invocation could not resolve test_native/package/runtime; no tests executed. Correct invocation executes each script with its own import directory."
+  },
+  {
+    "name": "baseline-controller",
+    "command": [
+      "python3",
+      "deploy/test_turn_environment.py"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "baseline-turn-package",
+    "command": [
+      "python3",
+      "deploy/turn/test_package.py"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "baseline-turn-launcher",
+    "command": [
+      "python3",
+      "deploy/turn/test_runtime.py"
+    ],
+    "exit": 0
+  }
+]

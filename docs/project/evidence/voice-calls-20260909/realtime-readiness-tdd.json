@@ -1,0 +1,62 @@
+{
+  "red": {
+    "result": "FAIL",
+    "resume_readiness": {
+      "deadline_ms": 3000,
+      "elapsed_ms": 3029.2878239415586,
+      "new_authenticated_online_callback": false,
+      "successful_nonblocking_signed_polls": 0,
+      "empty_inbox": true,
+      "prior_backend_wait_fully_drained": true,
+      "optimistic_callback": false
+    },
+    "changed_source_during_run": [],
+    "raw_result_sha256": "5fe8a9faf33cef6b0beb7e0b98127bbb1990643770651903845f8c0202414b95"
+  },
+  "green": {
+    "result": "PASS",
+    "resume_readiness": {
+      "deadline_ms": 3000,
+      "elapsed_ms": 70.14233386144042,
+      "new_authenticated_online_callback": true,
+      "successful_nonblocking_signed_polls": 1,
+      "empty_inbox": true,
+      "prior_backend_wait_fully_drained": true,
+      "optimistic_callback": false
+    },
+    "recoverable_401": {
+      "actual_backend_statuses": [
+        401,
+        200
+      ],
+      "fresh_native_signed_nonce": true,
+      "immutable_ciphertext": true,
+      "authenticated_receipt": true,
+      "authorization_lost_callbacks": 0
+    },
+    "persistent_401": {
+      "actual_backend_statuses": [
+        401,
+        401
+      ],
+      "authorization_lost_callbacks": 1,
+      "plaintext_delivered": false,
+      "pending_preserved": true,
+      "revocation": "only isolated synthetic fixture account changed"
+    },
+    "changed_source_during_run": [],
+    "raw_result_sha256": "08cace295655f48885378723413c473fa59609cdc0696b774898abedea795413"
+  },
+  "files_changed": [
+    "clients/android/src/org/paranoid/text/RealtimeLoop.java",
+    "clients/android/test/RealtimeBridge.java",
+    "clients/android/test_realtime.py"
+  ],
+  "production_delta": "First request each resumed receive generation uses existing signed messages; observedRun advances only after guarded page processing and publication; subsequent requests events. Existing auth retry and stop guards retained.",
+  "source_sha256": {
+    "clients/android/src/org/paranoid/text/RealtimeLoop.java": "cfd6ab2d54594723dfda9a34d498ab00e02987f56b31f5dbf1efd7fe27ab31d1",
+    "clients/android/test/RealtimeBridge.java": "617b4b515c53c0678c5fd9ddb52687bfad6fd18a04ad0d2856e1bd4ea2677179",
+    "clients/android/test_realtime.py": "83d5689b4c987e18d517ed08c2ef2c3fe77c93be4092231d6f9f6a89655b6e05"
+  },
+  "initial_probe": "realtime-readiness-red actually passed because canceled proxy backend waiter triggered existing waiter_busy fallback; preserved and tightened fixture to drain prior waiter before resume."
+}

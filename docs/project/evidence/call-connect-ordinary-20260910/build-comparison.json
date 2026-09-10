@@ -1,0 +1,16 @@
+{
+  "both_builds_exit": 0,
+  "only_product_engine_delta": true,
+  "observer_source_equal": true,
+  "test_dex_equal": true,
+  "shared_test_apk": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/call-connect-ordinary-20260910T021708664835Z/fixed-build/paranoid-voice-app-instrumentation.apk",
+  "shared_test_apk_sha256": "13ecd54f83f7bb49db472218f0b45a4dd060256633ba5e8108ac399165a4709d",
+  "all_copied_tree_deltas": [
+    "clients/android/__pycache__/webrtc_dependency.cpython-312.pyc",
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java"
+  ],
+  "product_source_deltas": [
+    "clients/android/src/org/paranoid/text/WebRtcAudioEngine.java"
+  ],
+  "nonpackaged_difference": "Python dependency-module pyc includes copied source absolute path; not an APK input"
+}

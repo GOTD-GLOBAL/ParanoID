@@ -1,0 +1,248 @@
+{
+  "result": "PASS",
+  "at": "2026-09-10T00:28:37.609298+00:00",
+  "component": "signed-session TURN issuer server foundation, REQ-CALL-006",
+  "base_commit": "366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f",
+  "worktree": "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909",
+  "source_state": "authorized uncommitted server foundation; root will freeze and commit separately from Android",
+  "design_review": "/home/codex/paranoid-self-service-evidence/voice-turn-fable-design-20260909T234300Z/review.md",
+  "runtime_source_sha256": {
+    "server/Cargo.lock": "d08c85292457f24153b14b717dbae91edfe46936addd87fec332d1c99ff4e282",
+    "server/Cargo.toml": "acb8b438bcc6f5f00ac8454d2b60c6d6c6149ec4ff507f322d7830bb084c371a",
+    "server/src/android_updates.rs": "b5fa31404f28d80f393a6e36f96cff3bed0d9ea7be5b5804a14b5049ab454938",
+    "server/src/key_http.rs": "d06311ff2aa465879a6848c79c4c00c9cc390617d36ec53c876d8683ffb8e0b3",
+    "server/src/key_transport.rs": "be0eb6d2d1daab080f508a93832baae99e9c2c35bc6ecda87ad251abf9d8c28f",
+    "server/src/lib.rs": "0ae9e13771f09d5a065909e3658b0707866c385031e9dc82834c781c0f865bb7",
+    "server/src/limited_accept.rs": "4b62272f2e783550ae18a20a28ba6511f60fee3ed5915e7a6559632b5bd046ee",
+    "server/src/main.rs": "6077732f63af78356ebd443de28e85c9f57f50f6bf16a49d49c5b0430ccb5b38",
+    "server/src/registration.rs": "d474279e42646d6de99ff2c2c484df58d9a98e34a2f6a08aed8d3c7a8e5ea9f0",
+    "server/src/self_service.rs": "f13cf55d6c9910e71eaf6391e27fe87cfd418a20f35943523a69c87fbb8acfc1",
+    "server/src/self_service_http.rs": "46af8cc5f1d7795e5f206e0f4623c6e3d7835641563e744a38ac6c3e9609f7dc",
+    "server/src/self_service_messages.rs": "f87a9037749c5570192feeef096439d6773b772da9cca19fb007d626fa2617a2",
+    "server/src/self_service_migration.rs": "8dfbb746542ad3292eceb463020ce0097a8265b66dbbe64025fe3bb768de55b5",
+    "server/src/voice_turn.rs": "babc1eace0cb9268357849b3c083a2242860d25ed4ee9ce2f1d435f80ecdeb63"
+  },
+  "runtime_source_manifest_sha256": "92c310a0bedf54d36f89d88baab62e2be2da362fb1f5fda5df664908303e92f5",
+  "test_input_sha256": {
+    "scripts/check-server.py": "5f339167a97ab73f746ff9b478ebbce2c96b057e21ea31c6f0af8bc3b50bd0ba",
+    "server/check-voice-turn.py": "4ffbc7501ae63ae9c03f6fcb21323c47b45b0dbf6097edf4bc779ab3299eb6e9",
+    "server/tests/android_updates.rs": "7677e4d98ec98a45e3e94db26219cfa7dbfde3b822a4754d1ef7b424cd2509f5",
+    "server/tests/android_updates_v2.rs": "c9146d7b70dc784c596672d2e1df8173446186dabfb2e475a261df4ed67b8ee3",
+    "server/tests/deployment.rs": "9cf3d205c9d46fc8d42ce2b365e236498bd5aab2aa0e4a09fa7047436fdd6d42",
+    "server/tests/realtime.rs": "40f8e7565d60d4e82d2099caf5e4d88a27ca46c95d0047705069c821481a8d53",
+    "server/tests/registration.rs": "f88c810790b7dda1502cc39b8e820af693fe44f023ea32d53d2b043b38da2279",
+    "server/tests/self_service.rs": "d73c86bd73bd7c947cd69888e2ffcdc4cf06f0a187611ba419e2053a92ff254f",
+    "server/tests/transport.rs": "c93300dfed230afad5575f054de265552e632ff43608e4643dc9fae34eef4257",
+    "server/tests/voice_turn.rs": "ae9bc8d02d1802e0c9f6e36833993ca4b378478b4fc6e2ad43bece37d20d9c4a",
+    "server/voice-turn-tls-probe.py": "1bfe2e661b42429d0d15340347b14249547a2b974b54a6c6a21339cee3b960d6"
+  },
+  "release_binary": {
+    "path": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-server-target/release/paranoid-server",
+    "sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+    "size": 10503408,
+    "capability": {
+      "api": 1,
+      "issuer": "signed-session-turn-v1"
+    }
+  },
+  "full_server_matrix": {
+    "command": "CARGO_TARGET_DIR=<owned evidence>/turn-server-target python3 scripts/check-server.py",
+    "log": "turn-server-full-matrix-1.log",
+    "log_sha256": "c4a015c44c905f249bcce7b8b355d51fb3a4803029731ea3f084f463e4d00551",
+    "exit": 0,
+    "passed": 85,
+    "failed": 0,
+    "ignored": 1,
+    "filtered": 0,
+    "suites": [
+      {
+        "target": "unittests src/lib.rs",
+        "passed": 4,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "unittests src/main.rs",
+        "passed": 2,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/android_updates.rs",
+        "passed": 8,
+        "failed": 0,
+        "ignored": 1,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/android_updates_v2.rs",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/deployment.rs",
+        "passed": 1,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/realtime.rs",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/registration.rs",
+        "passed": 9,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/self_service.rs",
+        "passed": 19,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/transport.rs",
+        "passed": 13,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "tests/voice_turn.rs",
+        "passed": 14,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      },
+      {
+        "target": "Doc-tests paranoid_server",
+        "passed": 0,
+        "failed": 0,
+        "ignored": 0,
+        "measured": 0,
+        "filtered": 0
+      }
+    ],
+    "ignored_reason": "pre-existing actual_build_apk_snapshot_roundtrips_exact_bytes_and_digest is explicit build-host APK snapshot only; requires PARANOID_TEST_APK",
+    "private_postgres_cleanup_confirmed": true,
+    "post_start_delta": "Only added offline CLI voice-turn-capabilities branch after matrix start; separately RED/GREEN tested. HTTP/session/issuer unchanged.",
+    "final_voice_target_ran_current_14_tests": true
+  },
+  "focused_current_voice_target": {
+    "passed": 14,
+    "failed": 0,
+    "log": "turn-server-focused-final.log"
+  },
+  "red_evidence": [
+    "turn-server-observable-red.log",
+    "turn-server-api-red.log",
+    "turn-server-capability-red.log"
+  ],
+  "first_native_startup_test_oracle_correction": {
+    "log": "turn-server-native-tls-green.log",
+    "reason": "test initially expected detailed stderr, but existing server correctly sanitizes every error; corrected assertion preserves generic refusal before TLS handling; production unchanged"
+  },
+  "release_binary_real_tls": {
+    "result": "PASS",
+    "at": "2026-09-10T00:17:05.625231+00:00",
+    "binary": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-server-target/release/paranoid-server",
+    "sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+    "capability": {
+      "api": 1,
+      "issuer": "signed-session-turn-v1"
+    },
+    "actual_private_postgres": true,
+    "actual_retained_release_binary": true,
+    "actual_generated_ca_and_spki_verified_tls": true,
+    "real_device_registration_and_signed_session": true,
+    "strict_turn_hmac_independently_checked": true,
+    "signed_text_after_issuance": true,
+    "owned_server_and_secret_cleanup": true,
+    "relay_allocation_or_media_claim": false,
+    "source_probe_sha256": "1bfe2e661b42429d0d15340347b14249547a2b974b54a6c6a21339cee3b960d6"
+  },
+  "checks": {
+    "fmt": "PASS",
+    "clippy_all_targets_warnings_denied": "PASS",
+    "clippy_log": "turn-server-clippy-final.log",
+    "diff_whitespace": "PASS",
+    "markdown": {
+      "files": 103,
+      "issues": 0,
+      "log": "turn-server-docs-markdownlint-final.log"
+    },
+    "local_links": {
+      "local_links_checked": 513,
+      "external_links_not_checked": 35,
+      "errors": []
+    },
+    "offline_turn_package_runtime_tests": 4,
+    "versioned_controller_tests": 3,
+    "ci_wiring_tests": 3,
+    "new_ci_prerequisites": [
+      "curl",
+      "python3-cryptography"
+    ]
+  },
+  "new_ci_file_sha256": {
+    ".github/workflows/server.yml": "0f83ed4874b2d30df3d52ce8efdb784cd8d40ee0e671e6ee2d708db14baa8516",
+    "scripts/test-ci-wiring.py": "0e761dec4d8f0e3559842daf798f520538c72af6105226ac893d1d854a695a7f"
+  },
+  "actual_text_regression": {
+    "result": "PASS",
+    "relative_result": "turn-text-final-regression/realtime-fixture-result.json",
+    "server_sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+    "jni_sha256": "94a49abd960e3f35a08450e948c5de30e5ae3e8f550d192ca74bc0b4dd9941ce",
+    "source_changed_during_run": false,
+    "latency": {
+      "samples": 24,
+      "p50_ms": 102.043689,
+      "p95_ms": 144.29826,
+      "target_p50_ms": 500,
+      "target_p95_ms": 1500,
+      "environment": "same-host generated pinned TLS proxy + exact Rust server + PostgreSQL + Java/JNI; 250ms pacing after actual receipt, no imposed latency",
+      "boundary": "send call before local commit to receiver durable publicView listener; not Android screen pixels"
+    },
+    "checks": [
+      "three automatic registrations, zero initial receiver contacts",
+      "durable listener matches actual encrypted snapshot",
+      "blocked receipt network independent of state owner/publication",
+      "immediate unverified reply and genuine receipts",
+      "24 actual warm latency samples",
+      "crossing burst",
+      "exact lost-response retry",
+      "offline send and server/JVM snapshot4/core3 reopen",
+      "incoming save-failure freeze without receipt"
+    ]
+  },
+  "public_evidence_sanitization": "Aggregate contains hashes, counts, test names and public protocol/config names only. Do not publish synthetic snapshots, generated TLS/registration keys, raw credentials, or raw post bodies.",
+  "not_claimed": [
+    "Relay retained-allocation expiry, ACL, race, drain and service lifecycle runtime tests: NOT RUN; prior separate worker attempt interrupted by platform filter, not retried by this agent.",
+    "No TURN traffic listener or actual TURN allocation by issuer tests.",
+    "No public network, firewall, DNS, existing server, or phone changes.",
+    "No older binary rollback inferred from same-data default-disabled app wrapper reopen.",
+    "No physical-phone latency inferred from same-host Java/JNI fixture."
+  ],
+  "unresolved_component_failures": []
+}

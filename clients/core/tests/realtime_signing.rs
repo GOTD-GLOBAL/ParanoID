@@ -195,3 +195,72 @@ fn session_send_only_signs_retained_immutable_outbox_and_rejects_accepted_ids() 
     let accepted = call(&a["state"], json!({"op":"accepted_v2","id":id})).unwrap();
     assert!(sign(&accepted, &s, "send", Some(id)).is_err());
 }
+
+#[test]
+fn voice_turn_selector_signs_only_exact_empty_get_and_retained_device_context() {
+    let a = ready();
+    let context = session(&a);
+    let before = a["state"].clone();
+    let request =
+        sign(&a, &context, "turn", None).expect("fixed TURN credential selector required");
+    assert_eq!(request["method"], "GET");
+    assert_eq!(request["path"], "/v2/voice/turn");
+    assert_eq!(request["body"], "");
+    let authorization = request["authorization"].as_str().unwrap();
+    let fields: Vec<_> = authorization
+        .strip_prefix("ParanoidSessionV2 ")
+        .unwrap()
+        .split('.')
+        .collect();
+    let expires = context["expires"].to_string();
+    let digest = paranoid_key_protocol::digest(b"");
+    let bytes = lp(&[
+        "paranoid-session-request-v1",
+        fields[0],
+        context["epoch"].as_str().unwrap(),
+        &expires,
+        context["realm"].as_str().unwrap(),
+        context["pin"].as_str().unwrap(),
+        context["account"].as_str().unwrap(),
+        context["device"].as_str().unwrap(),
+        context["credential"].as_str().unwrap(),
+        fields[1],
+        "GET",
+        "/v2/voice/turn",
+        &digest,
+    ]);
+    paranoid_key_protocol::verify(
+        a["request"]["credential"]["auth"].as_str().unwrap(),
+        &bytes,
+        fields[2],
+    )
+    .unwrap();
+    let another = sign(&a, &context, "turn", None).unwrap();
+    assert_ne!(request["authorization"], another["authorization"]);
+    for key in [
+        "realm",
+        "pin",
+        "account",
+        "device",
+        "credential",
+        "epoch",
+        "id",
+    ] {
+        let mut wrong = context.clone();
+        wrong[key] = json!("wrong");
+        assert!(sign(&a, &wrong, "turn", None).is_err(), "{key}");
+    }
+    assert!(sign(&a, &context, "turn", Some("injected")).is_err());
+    for selector in ["turn?x=1", "/v2/voice/turn", "turn/post", "TURN"] {
+        assert!(sign(&a, &context, selector, None).is_err());
+    }
+    for (key, value) in [("path", "/v2/admin"), ("body", "{}"), ("nonce", "fixed")] {
+        let mut attempted = json!({"op":"sign_session_v2", "session":context, "operation":"turn"});
+        attempted[key] = json!(value);
+        assert!(call(&a["state"], attempted).is_err());
+    }
+    assert_eq!(
+        call(&a["state"], json!({"op":"view"})).unwrap()["state"],
+        before
+    );
+}

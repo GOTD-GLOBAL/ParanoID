@@ -1,0 +1,15 @@
+test_absolute_escaping_symlink_and_fifo_are_rejected (__main__.AcquisitionGuardTests.test_absolute_escaping_symlink_and_fifo_are_rejected) ... ok
+test_freeze_and_chain_mismatch_rejected (__main__.AcquisitionGuardTests.test_freeze_and_chain_mismatch_rejected) ... ok
+test_noncanonical_uris_and_redirect_refused (__main__.AcquisitionGuardTests.test_noncanonical_uris_and_redirect_refused) ... ok
+test_tree_accepts_safe_files_and_rejects_unsafe_file_directory_modes (__main__.AcquisitionGuardTests.test_tree_accepts_safe_files_and_rejects_unsafe_file_directory_modes) ... ok
+test_unowned_tree_member_is_rejected (__main__.AcquisitionGuardTests.test_unowned_tree_member_is_rejected) ... ok
+test_untrusted_cache_ancestor_rejected_with_owner_aware_policy (__main__.AcquisitionGuardTests.test_untrusted_cache_ancestor_rejected_with_owner_aware_policy) ... ok
+test_final_tree_change_is_rejected (__main__.GuestLinkTests.test_final_tree_change_is_rejected) ... ok
+test_merged_usr_link_preserves_absolute_guest_semantics (__main__.GuestLinkTests.test_merged_usr_link_preserves_absolute_guest_semantics) ... ok
+test_regular_guest_absolute_link_becomes_relative (__main__.GuestLinkTests.test_regular_guest_absolute_link_becomes_relative) ... ok
+test_traversal_and_existing_escaping_parent_are_refused (__main__.GuestLinkTests.test_traversal_and_existing_escaping_parent_are_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.006s
+
+OK

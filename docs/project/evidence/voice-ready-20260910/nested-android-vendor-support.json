@@ -1,0 +1,8 @@
+{
+  "date": "2026-09-10",
+  "android_source": "https://developer.android.com/studio/run/emulator-acceleration",
+  "android_restriction": "Vendor documentation says a VM-accelerated emulator cannot run inside another VM and directs host execution. This contradicts treating nested Android support as assured. -accel-check is documented, but is not proof an actual AVD can run reliably.",
+  "kernel_source": "https://docs.kernel.org/virt/kvm/x86/running-nested-guests.html",
+  "status": "NEW_COMPATIBILITY_UNCERTAINTY; no hardware/current-call PASS, no host-network substitute, exact scope review must assess before a new capability probe",
+  "observed_kvm_device_open": "NOT_ATTEMPTED"
+}

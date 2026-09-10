@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "boundary": "Actual current SDK AudioTrack properties on media owner after deferred TextEngine creation; same oracle as retained RED",
+  "controller_muted": true,
+  "sdk": {
+    "media_present": true,
+    "engine_muted": true,
+    "engine_speaker": false,
+    "track_present": true,
+    "track_enabled": false,
+    "engine_closed": false,
+    "observed_on_media_owner": true,
+    "still_current": true
+  },
+  "raw_result_sha256": "a8227a09adba2561de98e3bd7816ed254618571304e7b0f11b31c7ddc5007765"
+}

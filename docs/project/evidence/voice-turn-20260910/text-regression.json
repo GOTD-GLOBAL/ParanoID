@@ -1,0 +1,43 @@
+{
+  "result": "PASS",
+  "server_sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+  "jni_sha256": "94a49abd960e3f35a08450e948c5de30e5ae3e8f550d192ca74bc0b4dd9941ce",
+  "physical_phone_benchmark": "NOT RUN",
+  "ui_render": "JVM durable publicView listener, not phone pixels",
+  "latency": {
+    "samples": 24,
+    "p50_ms": 102.043689,
+    "p95_ms": 144.29826,
+    "target_p50_ms": 500,
+    "target_p95_ms": 1500,
+    "environment": "same-host generated pinned TLS proxy + exact Rust server + PostgreSQL + Java/JNI; 250ms pacing after actual receipt, no imposed latency",
+    "boundary": "send call before local commit to receiver durable publicView listener; not Android screen pixels"
+  },
+  "elapsed_seconds": 23.41642509587109,
+  "checks": [
+    "three automatic registrations, zero initial receiver contacts",
+    "durable listener matches actual encrypted snapshot",
+    "blocked receipt network independent of state owner/publication",
+    "immediate unverified reply and genuine receipts",
+    "24 actual warm latency samples",
+    "crossing burst",
+    "exact lost-response retry",
+    "offline send and server/JVM snapshot4/core3 reopen",
+    "incoming save-failure freeze without receipt"
+  ],
+  "frontend_tls_connections": 23,
+  "real_requests_by_path": {
+    "/health": 11,
+    "/v2/registration/challenge": 3,
+    "/v2/registration/commit": 3,
+    "/v2/auth/challenge": 6,
+    "/v2/session": 6,
+    "/v2/messages": 91,
+    "/v2/events": 80
+  },
+  "target_met": true,
+  "changed_source_during_run": [],
+  "jni_end_sha256": "94a49abd960e3f35a08450e948c5de30e5ae3e8f550d192ca74bc0b4dd9941ce",
+  "evidence_kind": "sanitized aggregate; source/keys/credentials/snapshots excluded",
+  "server_default_turn_configuration": "disabled"
+}

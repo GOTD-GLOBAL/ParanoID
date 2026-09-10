@@ -1,0 +1,54 @@
+{
+  "result": "HOST_IDENTITY_OBSERVED",
+  "source_sha256": "634a43c7b50244c5e467a7767532083ccc5876d5a880df66307069fbb0363cc5",
+  "remote_source_sha256": "a6b5c6bd17fc0d0cd0c5eae1f9bda97d8af531f53199f543fd4fbf09ce57fbf9",
+  "scope": "pwd/grp and root-directory metadata, selected IPv4 interface only; no service/data/firewall mutation",
+  "ssh_exit": 0,
+  "stderr": "",
+  "observed": {
+    "message": {
+      "user": "paranoid",
+      "uid": 1003,
+      "gid": 1004,
+      "home": "/home/paranoid"
+    },
+    "relay": null,
+    "candidate_relay_uid1902": "AVAILABLE",
+    "candidate_relay_gid1902": "AVAILABLE",
+    "message_root": {
+      "uid": 1003,
+      "gid": 1004,
+      "mode": 448,
+      "directory": true
+    },
+    "interface": [
+      {
+        "ifindex": 2,
+        "ifname": "enp5s0",
+        "flags": [
+          "BROADCAST",
+          "MULTICAST",
+          "UP",
+          "LOWER_UP"
+        ],
+        "mtu": 1500,
+        "qdisc": "fq_codel",
+        "operstate": "UP",
+        "group": "default",
+        "txqlen": 1000,
+        "addr_info": [
+          {
+            "family": "inet",
+            "local": "157.180.49.125",
+            "prefixlen": 32,
+            "scope": "global",
+            "label": "enp5s0",
+            "valid_life_time": 4294967295,
+            "preferred_life_time": 4294967295
+          }
+        ]
+      }
+    ]
+  },
+  "owned_processes_stopped": true
+}

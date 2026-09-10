@@ -187,6 +187,11 @@ authority, in-place v7 continuity, latency/UI and safe-deployment gates.
 
 ## Acceptance criteria backlog
 
+The [post-PR18 voice scope](voice-calls.md) adds REQ-CALL-002/003/004/005 with
+real audio, immutable E2EE signaling, explicit consent/lifecycle and bounded
+network/resource acceptance. It is a local implementation task, not a claim of
+implemented calls, approved public TURN or permanent architecture acceptance.
+
 Each requirement must gain measurable acceptance criteria before implementation.
 The first pass must define at least:
 
@@ -198,3 +203,12 @@ The first pass must define at least:
 - plugin capability boundaries and user/admin consent;
 - measurable self-hosting time, upgrade safety, backup, and restore objectives;
 - mobile performance, accessibility, battery, and bandwidth targets.
+
+## Unified one-host installation — 2026-09-10
+
+[REQ-DEPLOY-003 and exact owner authority](../operations/voice-single-host.md)
+extend the near-one-click direction in REQ-DEPLOY-001 to one coordinated
+messaging/private-PostgreSQL/voice-relay kit on the existing host. The preserved
+same-data safeguards of REQ-DEPLOY-002 remain mandatory. Explicit supported host
+prerequisites and configuration are required; missing runtime acceptance remains
+visible and blocks relay exposure.

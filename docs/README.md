@@ -43,6 +43,14 @@ This is the entry point and navigation contract for ParanoID documentation.
 
 ## Contracts and operations
 
+- [Voice scope](product/voice-calls.md), [wire contract](protocol/voice-v1.md),
+  [threat/test mapping](security/voice-v1-threats.md) and
+  [local evidence](operations/voice-calls-local.md): implemented controls and
+  Android adapter; design/native/JNI/controller and actual direct/isolated-relay
+  audio checks pass. Full app acceptance passes 14 steps; final inset UI and signed APK checks pass, with final review pending. [Durable reviews/results](project/evidence/voice-calls-20260909/README.md)
+  distinguish each gate; [core](clients/core/voice-calls.md) and
+  [Android](clients/android/voice-calls.md) document their component boundaries.
+
 - [Protocol documentation](protocol/README.md): wire formats, state machines,
   federation, and compatibility.
 - [API documentation](api/README.md): machine-readable and human-readable APIs.
@@ -110,3 +118,17 @@ records signed artifacts, completed independent review/closure, preserved
 existing-service update and hosted product Java/JNI acceptance. The
 [runbook](operations/overnight-realtime.md) retains recovery, test and risk boundaries.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Local voice relay foundation
+
+[REQ-CALL-006](product/voice-relay.md), [canonical issuer contract](protocol/voice-turn-v1.md),
+[threat delta](security/voice-turn-threats.md) and [server checks](server/voice-turn-local.md)
+cover the default-disabled issuer and offline relay package for issue 19.
+Android integration is a dependent client PR. Retained-allocation expiry and ACL
+packet tests are NOT RUN; no deployment or permanent decision approval is implied.
+
+## One-host voice delivery
+
+[Exact owner authority and REQ-DEPLOY-003](operations/voice-single-host.md) track
+one unified installer on the existing host, preserved state and mandatory missing
+runtime/review gates. No relay deployment has occurred.

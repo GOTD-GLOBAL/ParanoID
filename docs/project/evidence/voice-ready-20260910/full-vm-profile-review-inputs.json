@@ -1,0 +1,16 @@
+{
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/AGENTS.md": "7f6c1b6d253e1a144d421c82670b34c5f5743746378b50af59409601ebd1a627",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/governance/documentation-policy.md": "d34922ab52385cc51f0bf4d54156beec2b6ee72f4e3ce5299edbfaf4b8956234",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/decisions/0003-closed-alpha-review-policy.md": "500bce008f307e6c9bb845c3dcc37a51c9324f2341da07daf14281578027348d",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/docs/operations/voice-vm-rehearsal.md": "3f50966f04053c98c43ae7468158efcd8c14ea1a578ff34f5b6ca173b65554a7",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host.py": "88c4d4b0c4154212ce33ea6bf768c7e611886f6fe4afba8e0e7f10afd04779fb",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_vm.py": "031538b7b96c26057dd5fa291fc815bc21e0f8fc85f6606dd5b02dda88d58e11",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_message.py": "d23d244e6f253c5886f9a50db5b95e2ab5c6ae51b4ffbde1398fa170392efd6c",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/single_host_build.py": "e54884d3eb2efed740c3e6e3653ae913c081ed5eaae1c059ea296efe4f15a423",
+  "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/test_single_host_vm.py": "fd2dea6ec56eb1f9abe54b7229c9c0208b736e44d32693c91b752f82e2641ad0",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/opus-full-fixture-design-review/review.md": "c7eaf029212025cb9072e20d7e31c6568766eea17a3455bff8e3518e3eb9c63b",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-fixture-design-closure.md": "25f874b4160e509e0a549ebe0ea85683eb4bcd44d567d6faf96db59e440958e9",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-vm-profile-red.log": "ebfbb144317993c47dcf3772f5a91943a49ae00a6c62e89f99719e131d12830e",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-vm-profile-green-attempt1.log": "23e19e389c441e22d93f041b68b523effe50a0556c026e22fbeee769dac4785a",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-profile-associated-tests.json": "8710419ba0cb2622ff59a5167867d7129f1c7dd56ec40cfab0a96689f2094a57"
+}

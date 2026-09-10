@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "test_count": 59,
+  "exact_current_source_files": 10,
+  "report_sha256": "756ead82450cb4daf6b35bc7294e55bb639151d098ebbec5bc8284f228f57fc0",
+  "log_sha256": "739daade21b80f556868b6a7a3f8b0f5731b5c81ef03381fc3690284bded49cf",
+  "scope": "independent verification of retained actual run and current source correspondence; no test rerun"
+}

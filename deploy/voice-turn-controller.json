@@ -1,0 +1,10 @@
+{
+  "v": 1,
+  "controller": "self-service-v2-turn-file-v1",
+  "optional_config": "voice_turn",
+  "credential_name": "voice-turn-secret",
+  "issuer_source": "ROOT/voice-turn/issuer.secret",
+  "secret_environment": "PARANOID_TURN_SECRET_FILE",
+  "relay_environment": "PARANOID_TURN_RELAY_IP",
+  "default": "disabled"
+}

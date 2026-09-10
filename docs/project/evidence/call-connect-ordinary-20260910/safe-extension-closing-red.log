@@ -1,0 +1,14 @@
+test_controller_retains_cleanup_and_authority_without_payload (test_call_connect_sampler.SamplerTests.test_controller_retains_cleanup_and_authority_without_payload) ... FAIL
+
+======================================================================
+FAIL: test_controller_retains_cleanup_and_authority_without_payload (test_call_connect_sampler.SamplerTests.test_controller_retains_cleanup_and_authority_without_payload)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/android/test/test_call_connect_sampler.py", line 167, in test_controller_retains_cleanup_and_authority_without_payload
+    self.assertEqual(sample.get('media_closing'), 1)
+AssertionError: None != 1
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (failures=1)

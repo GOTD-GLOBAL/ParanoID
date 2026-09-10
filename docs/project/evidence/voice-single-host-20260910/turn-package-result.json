@@ -1,0 +1,12 @@
+{
+  "artifact": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/turn-policy-build/paranoid-turn-9eff656b71da22a57e24-linux-x86_64.tar",
+  "sha256": "0a0ecff366bd343e2ffe97a9072e49cf8930311bd3d620a7220fadbfa7c3b757",
+  "release": "9eff656b71da22a57e24",
+  "native_sha256": "8fee750c78ef8920fd890ac70ae9b3dac85bd94a1968a2415733ee2c12ecbdb2",
+  "native_matches_previous_build": false,
+  "source_patch_unchanged": true,
+  "runtime_libraries_match_previous_build": true,
+  "bytewise_reproducibility_claimed": false,
+  "runtime_acceptance": "NOT RUN",
+  "product_inputs_sha256": "b2e6678615618af4ae23a640df63fbf1c680844888eb3ee2f068d22e2c001716"
+}

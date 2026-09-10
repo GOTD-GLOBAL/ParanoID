@@ -1,0 +1,15 @@
+test_allowlisted_numeric_output (test_measure_credentials.ObserverTests.test_allowlisted_numeric_output) ... ok
+test_helper_has_no_content_read_or_secret_mutation (test_measure_credentials.ObserverTests.test_helper_has_no_content_read_or_secret_mutation) ... ok
+test_no_network_properties_preserved (test_measure_credentials.ObserverTests.test_no_network_properties_preserved) ... ok
+test_rejects_extra_fields_and_duplicate_keys (test_measure_credentials.ObserverTests.test_rejects_extra_fields_and_duplicate_keys) ... ok
+test_rejects_unbounded_and_multiline_output (test_measure_credentials.ObserverTests.test_rejects_unbounded_and_multiline_output) ... ok
+test_rejects_wrong_identity_and_extra_acl_entry (test_measure_credentials.ObserverTests.test_rejects_wrong_identity_and_extra_acl_entry) ... ok
+test_acl_read_errors_are_numeric_observations (test_measure_credentials.ReviewCorrectionTests.test_acl_read_errors_are_numeric_observations) ... ok
+test_acl_unknown_shapes_remain_observable (test_measure_credentials.ReviewCorrectionTests.test_acl_unknown_shapes_remain_observable) ... ok
+test_failure_stage_is_retained_and_closed (test_measure_credentials.ReviewCorrectionTests.test_failure_stage_is_retained_and_closed) ... ok
+test_unaligned_acl_retains_numeric_length (test_measure_credentials.ReviewCorrectionTests.test_unaligned_acl_retains_numeric_length) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.006s
+
+OK

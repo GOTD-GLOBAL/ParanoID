@@ -1,0 +1,13 @@
+F
+======================================================================
+FAIL: test_systemd_refuses_relay_without_required_egress_policy (__main__.RuntimeTests.test_systemd_refuses_relay_without_required_egress_policy)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909/deploy/turn/test_runtime.py", line 25, in test_systemd_refuses_relay_without_required_egress_policy
+    self.assertNotEqual(absent.returncode, 0, 'relay must require its egress unit')
+AssertionError: 0 == 0 : relay must require its egress unit
+
+----------------------------------------------------------------------
+Ran 1 test in 0.025s
+
+FAILED (failures=1)

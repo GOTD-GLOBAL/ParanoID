@@ -19,13 +19,29 @@ jobs:
       - name: Native test prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-16 openssl
+          sudo apt-get install -y postgresql-16 openssl python3-cryptography
           rustup toolchain install 1.98.1 --profile minimal
       - name: Package negative regressions and real initialization
         run: |
           python3 deploy/test_build.py
           python3 deploy/test_containment.py
           python3 deploy/test_package.py
+      - name: Offline TURN package and versioned controller regressions
+        # These tests open no relay sockets and do not imply allocation/media acceptance.
+        run: |
+          python3 deploy/turn/test_package.py
+          python3 deploy/turn/test_runtime.py
+          python3 deploy/turn/test_systemd_credentials.py
+          python3 deploy/test_turn_environment.py
+      - name: Unified installer offline safety and ownership regressions
+        # No service, firewall, packet, namespace or privileged credential test runs here.
+        run: |
+          python3 deploy/test_single_host.py
+          python3 deploy/test_single_host_message.py
+          python3 deploy/test_single_host_network.py
+          python3 deploy/test_single_host_credentials.py
+          python3 deploy/test_single_host_rehearsal.py
+          python3 deploy/test_single_host_vm.py
       - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
         # test_integration.py needs an explicitly provisioned user manager; never discover it here.
         run: python3 deploy/test_native.py
@@ -46,7 +62,7 @@ jobs:
       - name: Private PostgreSQL prerequisites and CI wiring regression
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-16 openssl
+          sudo apt-get install -y postgresql-16 openssl curl python3-cryptography
           python3 scripts/test-ci-wiring.py
       - name: Real PostgreSQL and HTTP tests (all targets, private socket)
         run: python3 scripts/check-server.py
@@ -68,12 +84,12 @@ jobs:
             name="$(basename "$source" .rs)"
             if [[ "$name" != self_service ]]; then tests+=(--test "$name"); fi
           done
-          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --lib --bins "${tests[@]}"
+          cargo +1.98.1 test --locked --release --manifest-path clients/core/Cargo.toml --lib --bins "${tests[@]}"
           # Supported tests in the mixed historical target still gate. The exact
           # 14 archived failures run WITHOUT these exclusions in the legacy job.
           legacy=()
           while IFS= read -r name; do legacy+=(--skip "$name"); done < scripts/ci-legacy-client-tests.txt
-          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --test self_service -- --exact "${legacy[@]}"
+          cargo +1.98.1 test --locked --release --manifest-path clients/core/Cargo.toml --test self_service -- --exact "${legacy[@]}"
           cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --doc
           cargo +1.98.1 build --locked --manifest-path clients/core/Cargo.toml
       - name: JVM JNI and snapshot codec
@@ -86,6 +102,14 @@ jobs:
           java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
       - name: Real local pinned-TLS handshakes
         run: python3 scripts/check-pinned-tls.py
+      - name: Voice consent lifecycle, relay metadata and durable JNI callback boundary
+        run: |
+          python3 clients/android/dependencies.py
+          python3 clients/android/test_call_controller.py
+          python3 clients/android/test_voice_relay.py
+          javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
+          java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
+          python3 clients/android/test_voice_relay_lane.py --jni-library-dir clients/core/target/debug --evidence-dir "$RUNNER_TEMP/paranoid-voice-lane"
   legacy-client-history:
     name: Legacy client history (informational, failures retained)
     runs-on: ubuntu-24.04
