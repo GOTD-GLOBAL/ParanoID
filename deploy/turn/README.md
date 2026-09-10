@@ -135,3 +135,28 @@ user-manager credential delivery, relay lifecycle, public reachability or new
 Android UDP gathering; those remain NOT RUN in this package subtask. Earlier
 TCP relay media results belong to separate voice evidence and do not fill these
 gaps. Building does not authorize live changes.
+
+## Current one-host authority — 2026-09-10
+
+[REQ-DEPLOY-003 and exact owner confirmation](../../docs/operations/voice-single-host.md)
+now authorize the selected existing host and bounded ports after mandatory tests
+and fresh review. The unified coordinator must own the above component steps.
+This supersedes absence-of-host-permission wording for that conditional scope;
+all missing runtime gates remain mandatory. The retained package manifest's
+historical `NOT AUTHORIZED` field describes its original build, not this later
+owner amendment. No relay exposure follows from packaging or owner location alone.
+
+The coordinator candidate adds `Requires=` and `After=` for
+`paranoid-voice-policy.service` to the relay unit. The dedicated policy unit must
+use `Type=oneshot`, `RemainAfterExit=yes`, exact load-or-verify semantics and no
+`ExecStop` flush. Stopping the required policy unit also stops the relay; removing
+rules remains a separate scoped operation after stopped-state verification. The
+changed unit requires a new package manifest and artifact; retained earlier
+archives remain unchanged. Actual dependency resolution now refuses a missing
+policy unit and accepts the inert syntax fixture. This is not packet or relay
+lifecycle evidence.
+
+The exact pinned coturn source confirms `cli` is a recognized optional boolean:
+`cli=0` parses false, while `no-cli` only emits a deprecation warning. Output
+filtering cannot remove a CLI listener or its authentication surface. Effective
+5766 closure remains an unrun runtime gate.

@@ -232,3 +232,20 @@ higher versionCode and the retained signer. The prepared deployment request must
 include exact package/config/unit/server-diff hashes, host/ports, secret isolation,
 readiness/denial tests and exact rollback actions. Running it needs separate reviewed
 owner authorization; no current live unit, firewall, DNS, DB or phone is changed.
+
+## Later bounded deployment authority — 2026-09-10
+
+The [one-host owner record and REQ-DEPLOY-003](../operations/voice-single-host.md)
+supply the separately required location/port authorization after actual tests and
+fresh review, with one coordinated installer and preserved TLS/data/identity.
+No API, credential lifetime, allocation cap, E2EE, consent or peer policy is
+relaxed by that amendment. Missing retained-allocation/ACL/runtime tests remain
+NOT RUN; ADR-0012 stays proposed.
+
+The single-host candidate's production unit contract excludes merged systemd
+drop-ins and stale loaded configuration. Updates stop the previous owned relay
+before selecting new code, and rollback verifies the prior active executable
+before restoring owned ingress. Process identity alone is not transport readiness
+or relay acceptance. No full-relay rehearsal profile is currently implemented,
+so the mandatory production gate remains structurally unsatisfiable in this
+candidate; message-only fixture results cannot authorize exposure.

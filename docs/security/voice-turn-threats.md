@@ -40,3 +40,27 @@ auth-to-relay scheduling delay in the expiry residual, use `cli=0` and assert576
 closed, explicit query/body rejection and locked metadata comparison, dual-mode
 pre-consent disclosure, and a versioned runtime credential launcher/controller
 capability bump. The gate permits implementation, not release or deployment.
+
+## Unified installer trust boundary — 2026-09-10
+
+[REQ-DEPLOY-003](../operations/voice-single-host.md) introduces one privileged
+coordinator across the existing messaging user manager and isolated relay system
+unit. The review must verify package provenance before execution, trusted path
+ancestors and no-follow single-link locks/secrets, exact unit ownership, exclusive
+credential generation, a durable transaction journal and preserved current data.
+Preflight must reject unknown/partial installs, port conflicts and network policy
+drift. Own-host relay UDP is the only own-host egress exception; the dedicated UID
+must not reach neighboring services. Installing rules must not flush or replace
+existing firewall state. Syntax tests cannot establish packet enforcement.
+Power loss and partial failure must leave recoverable recorded state and no
+unreviewed relay exposure. No new sensitive-data or permanent architecture scope.
+
+The candidate checks the loaded systemd fragment, empty `DropInPaths`,
+`NeedDaemonReload=no`, exact command and dedicated system-unit identity alongside
+base-file hashes. A global or per-unit override is an unsupported configuration;
+the installer refuses it rather than deleting/adopting it. Production updates
+journal and stop the verified previous relay before code/unit cutover. New and
+restored ingress require the expected active packaged executable hash; this is
+process identity evidence, not CLI/expiry/packet/media acceptance. These production
+paths have offline regressions only and remain behind the unavailable full-relay
+profile gate. Required final Fable review has not been obtained.

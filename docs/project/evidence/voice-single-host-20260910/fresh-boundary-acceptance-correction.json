@@ -1,0 +1,13 @@
+{
+  "v": 1,
+  "actual_execution": "PASS",
+  "acceptance": "INVALID_RECEIPT",
+  "fixture": "message-fresh-boundary-1",
+  "reason": "The old harness marked fresh-boundary-green.txt PASS using only a raw file hash; that report actually includes a network module import error and FAILED(errors=1).",
+  "failed_report_sha256": "c3e5813d54843ca34311b6eb756e290ab2aa431ea1efd0ece90795029ce0e982",
+  "raw_runtime_result_sha256": "1c97fda9c39c50cd3bfeb11c735344ada4f45c945bf6c102b05a394484b0d6b8",
+  "later_actual_complete_report": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/final-structured-offline-1/report.json",
+  "later_report_repairs_prior_receipt": false,
+  "runtime_replayed": false,
+  "fix": "Rehearsal refuses raw reports, nonzero exits, failed/import-error output, wrong exact command, code/package identity mismatch; actual structured producer preserves failed output."
+}

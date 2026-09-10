@@ -6,6 +6,31 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## One-host installer candidate — 2026-09-10
+
+The owner confirmed the existing host and one unified installer. The
+[exact authority and remaining gates](../operations/voice-single-host.md)
+supersede earlier absence-of-host-permission statements for the bounded reviewed
+deployment only. Initial sources/evidence and the signed v10 APK are preserved.
+The coordinated offline kit implements plan/preflight/apply/status/update/rollback;
+real owned messaging/private-PG/TLS fixtures pass fresh and retained-v8 updates,
+idempotence, same-current-data rollback and one injected failure recovery.
+Those fixtures keep the issuer disabled and do not prove relay integration.
+A later targeted fresh-start run completed but has INVALID_RECEIPT acceptance:
+its prior offline report had an import error. The original records are preserved;
+a later passing offline run does not retroactively validate that receipt.
+
+Production activation is explicitly refused: no full-relay rehearsal profile is
+implemented, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
+unrun. Two inert credential positive cases stopped; their delivered descriptor is
+still unmeasured, and no loader guard changed. Initial Fable design review was
+verified; a later requested Fable review and one capability probe returned actual
+Opus models, so the required diagnostic/final approval cannot be counted.
+[Durable evidence](evidence/voice-single-host-20260910/README.md) preserves the
+failures, exact model provenance, candidate artifacts and remaining next steps.
+CALL-CONNECT01 stays OPEN. No hosted deployment, firewall change, relay listener,
+public release or PR merge occurred.
+
 ## Voice relay foundation — 2026-09-10
 
 PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit

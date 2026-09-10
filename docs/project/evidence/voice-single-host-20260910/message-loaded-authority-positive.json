@@ -1,0 +1,88 @@
+{
+  "scope": "one owned stopped messaging fixture link/load/readback/unlink only; no start/enable/restart or relay/network operation",
+  "unit": "paranoid-alpha-fixture-d3fa7417742027bd.service",
+  "source": "/var/tmp/paranoid-fixture-d3fa7417742027bd/paranoid-alpha-fixture-d3fa7417742027bd.service",
+  "worker_sha256": "e607f2666e5d4e976e3cc1e5165bc481aceb9276e7c6a1fb83a6e3a69c669c7a",
+  "coordinator_sha256": "66d85829448a6f98819d9973abc5114c13a2803e27d5f05974c6694169c49a9f",
+  "before": {
+    "MainPID": "0",
+    "ControlPID": "0",
+    "LoadState": "not-found",
+    "ActiveState": "inactive"
+  },
+  "neighbors_before": {
+    "dbus.service": {
+      "MainPID": "11592",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/usr/lib/systemd/user/dbus.service",
+      "DropInPaths": ""
+    },
+    "whatsapp-autopilot.service": {
+      "MainPID": "2284869",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/home/codex/.config/systemd/user/whatsapp-autopilot.service",
+      "DropInPaths": ""
+    },
+    "at-spi-dbus-bus.service": {
+      "MainPID": "304555",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/usr/lib/systemd/user/at-spi-dbus-bus.service",
+      "DropInPaths": ""
+    }
+  },
+  "created_link": {
+    "path": "/home/codex/.config/systemd/user/paranoid-alpha-fixture-d3fa7417742027bd.service",
+    "inode": 7106231,
+    "target": "/var/tmp/paranoid-fixture-d3fa7417742027bd/paranoid-alpha-fixture-d3fa7417742027bd.service"
+  },
+  "predicate": "PASS",
+  "loaded": {
+    "ExecStart": "{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /var/tmp/paranoid-fixture-d3fa7417742027bd/current/alpha.py run --root /var/tmp/paranoid-fixture-d3fa7417742027bd ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }",
+    "User": "",
+    "Group": "",
+    "FragmentPath": "/home/codex/.config/systemd/user/paranoid-alpha-fixture-d3fa7417742027bd.service",
+    "DropInPaths": "",
+    "NeedDaemonReload": "no"
+  },
+  "inactive": {
+    "MainPID": "0",
+    "ControlPID": "0",
+    "LoadState": "loaded",
+    "ActiveState": "inactive"
+  },
+  "after": {
+    "MainPID": "0",
+    "ControlPID": "0",
+    "LoadState": "not-found",
+    "ActiveState": "inactive"
+  },
+  "neighbors_after": {
+    "dbus.service": {
+      "MainPID": "11592",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/usr/lib/systemd/user/dbus.service",
+      "DropInPaths": ""
+    },
+    "whatsapp-autopilot.service": {
+      "MainPID": "2284869",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/home/codex/.config/systemd/user/whatsapp-autopilot.service",
+      "DropInPaths": ""
+    },
+    "at-spi-dbus-bus.service": {
+      "MainPID": "304555",
+      "ControlPID": "0",
+      "ActiveState": "active",
+      "FragmentPath": "/usr/lib/systemd/user/at-spi-dbus-bus.service",
+      "DropInPaths": ""
+    }
+  },
+  "source_unchanged": true,
+  "neighbor_state_unchanged": true,
+  "link_removed": true
+}

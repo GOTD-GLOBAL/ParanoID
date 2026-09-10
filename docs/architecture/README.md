@@ -124,3 +124,12 @@ is not accepted architecture, current live rollout or physical-phone evidence.
 
 [Retained-stack realtime proposal](../rfcs/0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## One-host coordinated voice installation
+
+[REQ-DEPLOY-003](../operations/voice-single-host.md) records the owner-selected
+single existing host and one installer across messaging/private PostgreSQL/relay.
+The coordinator and its cross-user deployment boundary remain proposed under
+[RFC-0018](../rfcs/0018-voice-turn.md); mandatory runtime tests and independent
+review gate any exposure. Existing message TLS/data/identity and neighbors remain
+protected; this is not permanent stack/architecture acceptance.

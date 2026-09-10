@@ -118,3 +118,9 @@ No permanent architecture acceptance or physical-phone result is implied.
 cover the default-disabled issuer and offline relay package for issue 19.
 Android integration is a dependent client PR. Retained-allocation expiry and ACL
 packet tests are NOT RUN; no deployment or permanent decision approval is implied.
+
+## One-host voice delivery
+
+[Exact owner authority and REQ-DEPLOY-003](operations/voice-single-host.md) track
+one unified installer on the existing host, preserved state and mandatory missing
+runtime/review gates. No relay deployment has occurred.

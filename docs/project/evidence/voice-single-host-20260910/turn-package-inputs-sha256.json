@@ -1,0 +1,22 @@
+{
+  "deploy/turn/README.md": "be168f2d6f00b526086518c54ebfa7c898bf330de01f045fe5037c13ce966835",
+  "deploy/turn/build.py": "e5739d2ff92ee4aad92a3ce963941e2e6ff6c27e60e54656a36ac3cd71f9c25e",
+  "deploy/turn/coturn-rest-expiry.patch": "4d9feb939aab73dd4bf5a3eb67dff0ab59148cacdc334dbf922907f3de93f860",
+  "deploy/turn/inputs.json": "9ec16b10b6a5a4c0f2502c7f1850d3d30a9b0c7bdabfb8087f648b5d8e81e0da",
+  "deploy/turn/licenses/coturn-LICENSE.txt": "9add1798fa67dba2172d7b160dae18e190470a0ff7f4938fe5aad4122c19dc1f",
+  "deploy/turn/licenses/coturn-source-notices.txt": "a1d4579f3bd245cc3a6bd9aef0449765f846deb77d3bdd9a30a1a6ca04564407",
+  "deploy/turn/licenses/libevent-core-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+  "deploy/turn/licenses/libevent-dev-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+  "deploy/turn/licenses/libevent-extra-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+  "deploy/turn/licenses/libevent-openssl-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+  "deploy/turn/licenses/libevent-pthreads-2.1-7t64-copyright.txt": "d32d223a2f96bb222faa1f6d2b4573b512465b2b234f56e040a4d7daab060d69",
+  "deploy/turn/licenses/libpkgconf3-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba",
+  "deploy/turn/licenses/libssl-dev-copyright.txt": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35",
+  "deploy/turn/licenses/libssl3t64-copyright.txt": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35",
+  "deploy/turn/licenses/pkgconf-bin-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba",
+  "deploy/turn/licenses/pkgconf-copyright.txt": "676c75e54ff7e3b9892940fbf1b31763cb6f2a6527a5607a3640ac59a2441fba",
+  "deploy/turn/package.py": "dc9518e90f47167f72e7d38b3bcc6a2cc321eeb6356d9291220178ad1a833957",
+  "deploy/turn/paranoid-turn.service.in": "6745bd00a2f934d61e982e36cb5f978951578fb1fdacdc09dcb297804a361ccb",
+  "deploy/turn/runtime.py": "e302d7ccb38836f4665700b4a49e6607d0349f3ea0ca45ed11ef10c05c36b6c5",
+  "deploy/turn/turnserver.conf.in": "a328a79f39e76569ee0ad7499b0f189880ab5c09ea03428b736d83600e46712e"
+}

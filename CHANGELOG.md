@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Single-host installer candidate — 2026-09-10
+
+- Added a coordinated offline messaging/private-PostgreSQL/TURN kit with
+  plan/preflight/apply/status/update/rollback, separate fresh and retained-v8
+  paths, exact artifact/plan acceptance records, scoped network ownership and
+  same-current-data recovery. The owner selected the existing host and retained
+  TLS/data/identity. [The runbook](docs/operations/voice-single-host.md) records
+  implementation, real fixture outcomes, review and remaining gates separately.
+  Relay expiry/access-control/lifecycle and full call acceptance are still
+  unverified; no hosted deployment or relay exposure has occurred.
+
 ### Voice relay foundation — 2026-09-10
 
 - Added an optional signed-session TURN credential issuer with locked active-device

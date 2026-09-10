@@ -2,6 +2,7 @@
 import contextlib
 import io
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -10,6 +11,25 @@ import runtime
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_systemd_refuses_relay_without_required_egress_policy(self):
+        # Actual dependency resolution, no service manager or listener mutation.
+        with tempfile.TemporaryDirectory() as tmp:
+            directory = Path(tmp)
+            unit = directory / 'paranoid-turn.service'
+            unit.write_text((Path(__file__).parent / 'paranoid-turn.service.in')
+                            .read_text().replace('@RELEASE@', 'a' * 20))
+            env = {'PATH': '/usr/bin:/bin', 'LANG': 'C',
+                   'SYSTEMD_UNIT_PATH': str(directory) + ':/usr/lib/systemd/system'}
+            args = ['systemd-analyze', 'verify', '--man=no', '--generators=no', str(unit)]
+            absent = subprocess.run(args, env=env, capture_output=True, timeout=20)
+            self.assertNotEqual(absent.returncode, 0, 'relay must require its egress unit')
+            self.assertIn(b'paranoid-voice-policy.service', absent.stderr)
+            (directory / 'paranoid-voice-policy.service').write_text(
+                '[Unit]\nDescription=Inert dependency-resolution fixture\n'
+                '[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/usr/bin/true\n')
+            present = subprocess.run(args, env=env, capture_output=True, timeout=20)
+            self.assertEqual(present.returncode, 0, present.stderr.decode())
+
     def test_private_exact_secret_and_descriptor_guards(self):
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / 'secret'

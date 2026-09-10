@@ -1,0 +1,87 @@
+{
+  "v": 1,
+  "scope": "retained exact owned fixture cleanup observations; no deletion or new lifecycle operation",
+  "prior_readback": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/fixture-cleanup-readback.json",
+  "fixtures": [
+    {
+      "root": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/message-rehearsal-2/paranoid-fixture-8ebcd2ebd0718b3e",
+      "unit": "paranoid-alpha-fixture-8ebcd2ebd0718b3e.service",
+      "readback": {
+        "MainPID": "0",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "UnitFileState": ""
+      },
+      "postmaster_present": false,
+      "retained": true
+    },
+    {
+      "root": "/var/tmp/paranoid-fixture-8ae093a59cafc2da",
+      "unit": "paranoid-alpha-fixture-8ae093a59cafc2da.service",
+      "readback": {
+        "MainPID": "0",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "UnitFileState": ""
+      },
+      "postmaster_present": false,
+      "retained": true
+    },
+    {
+      "root": "/var/tmp/paranoid-fixture-cd4b3d37df6c7b8f",
+      "unit": "paranoid-alpha-fixture-cd4b3d37df6c7b8f.service",
+      "readback": {
+        "MainPID": "0",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "UnitFileState": ""
+      },
+      "postmaster_present": false,
+      "retained": true
+    },
+    {
+      "root": "/var/tmp/paranoid-fixture-befe806007d718bd",
+      "unit": "paranoid-alpha-fixture-befe806007d718bd.service",
+      "readback": {
+        "MainPID": "0",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "UnitFileState": ""
+      },
+      "postmaster_present": false,
+      "retained": true
+    },
+    {
+      "root": "/var/tmp/paranoid-fixture-d3fa7417742027bd",
+      "unit": "paranoid-alpha-fixture-d3fa7417742027bd.service",
+      "readback": {
+        "MainPID": "0",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "ActiveState": "inactive",
+        "UnitFileState": ""
+      },
+      "postmaster_present": false,
+      "retained": true
+    },
+    {
+      "root": "/var/tmp/paranoid-fixture-b25a73ac5bfc854a",
+      "unit": "paranoid-alpha-fixture-b25a73ac5bfc854a.service",
+      "readback": {
+        "ActiveState": "inactive",
+        "ControlPID": "0",
+        "LoadState": "not-found",
+        "MainPID": "0"
+      },
+      "postmaster_present": false,
+      "retained": true,
+      "evidence": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z/installer/message-fresh-boundary-1/result.json"
+    }
+  ],
+  "source_inputs_retained": true,
+  "first_build_failure_created_no_fixture": true
+}
