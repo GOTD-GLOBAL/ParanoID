@@ -154,6 +154,8 @@ class RenderTests(unittest.TestCase):
         self.assertEqual(network.canonical_expr(rendered), network.canonical_expr(readback))
         fib = [{'match': {'op': '==', 'left': {'fib': {'result': 'type', 'flags': ['daddr']}}, 'right': 2}}, {'drop': None}]
         self.assertEqual(network.canonical_expr(fib)[0]['match']['right'], 'local')
+        ct = [{'match': {'op': 'in', 'left': {'ct': {'key': 'state'}}, 'right': 2}}, {'accept': None}]
+        self.assertEqual(network.canonical_expr(ct)[0]['match']['right'], 'established')
         # A genuinely different port/address is NOT reduced away.
         other = [dict(readback[0]), {'match': {'op': '==', 'left': {'payload': {'protocol': 'udp', 'field': 'sport'}}, 'right': 5766}}, {'accept': None}]
         self.assertNotEqual(network.canonical_expr(readback), network.canonical_expr(other))

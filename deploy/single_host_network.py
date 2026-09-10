@@ -167,6 +167,8 @@ def normalize_nft_json(raw):
 _NFT_ENUMS = {'nfproto': {2: 'ipv4', 10: 'ipv6'},
               'l4proto': {6: 'tcp', 17: 'udp'}}
 _FIB_TYPES = {2: 'local'}
+# conntrack state bitmask values as returned by kernel readback
+_CT_STATES = {2: 'established', 4: 'related', 8: 'new', 1: 'invalid'}
 
 
 def _is_meta_match(item, key):
@@ -206,6 +208,9 @@ def canonical_expr(expr):
             if (isinstance(left, dict) and isinstance(left.get('fib'), dict)
                     and left['fib'].get('result') == 'type' and right in _FIB_TYPES):
                 item['match']['right'] = _FIB_TYPES[right]
+            if (isinstance(left, dict) and left.get('ct') == {'key': 'state'}
+                    and right in _CT_STATES):
+                item['match']['right'] = _CT_STATES[right]
         result.append(item)
     return result
 
