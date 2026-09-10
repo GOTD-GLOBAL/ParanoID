@@ -244,7 +244,33 @@ The artifact is bound by member hashes (`source_dirty: true`); no previous runti
 acceptance is transferred to it. The frozen external primitive matrix expires if
 its exact runtime source hash changes.
 
-## Isolated full-profile preparation — 2026-09-10
+## Owner acceptance simplification — 2026-09-10 (Telegram, Сергей)
+
+The owner reviewed the state above and decided in the project Telegram chat:
+the isolated VM/KVM full-rehearsal programme is **frozen**. It is preserved in
+`feat/voice-turn-server-20260909` (commit `aa70a5f`) as reference material and
+is no longer a production acceptance prerequisite. The replacement acceptance
+path for the existing one-host rollout is:
+
+1. actual local coturn acceptance on loopback on the build machine: credential
+   expiry, invalid-HMAC rejection, allocation quota, denied-peer ACL, real
+   relayed media exchange and allocation lifetime (closing TURN-RT01/TURN-ACL02
+   at loopback scope);
+2. a controlled, journaled installation of the unified kit on the existing
+   `157.180.49.125` host within the already authorized port scope, with real
+   readback/health checks and prepared rollback;
+3. the owner's real test call between two physical phones as final product
+   acceptance (CALL-CURRENT01 on hardware instead of the VM matrix).
+
+E2EE, authenticated call binding, issuer expiry/quotas, credential privacy,
+service isolation and update/rollback safety are not weakened. The immutable
+`coordinated-full-rehearsal` production gate in the current installer must be
+superseded by a reviewed source change binding gates to the evidence of steps
+1–2; until that change lands, `apply` still refuses. This owner decision
+supersedes the VM-rehearsal prerequisite wording in this document and in
+`voice-vm-rehearsal.md`; RFC-0018/ADR-0012 must record it before ADR acceptance.
+
+## Isolated full-profile preparation — 2026-09-10 (frozen)
 
 The [VM rehearsal contract](voice-vm-rehearsal.md) now has a candidate profile and
 an implemented verifier for actual root-owned case files, exact kits, driver,

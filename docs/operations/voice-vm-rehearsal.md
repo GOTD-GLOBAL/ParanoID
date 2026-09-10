@@ -6,12 +6,21 @@ review_mode: closed-alpha-ai
 last_reviewed: 2026-09-10
 ---
 
-# Isolated full voice rehearsal contract
+# Isolated full voice rehearsal contract (frozen 2026-09-10)
 
-REQ-DEPLOY-003, REQ-CALL-006 and the proposed RFC-0018/ADR-0012 require actual
-relay and coordinator acceptance before the already authorized one-host rollout.
-This document specifies the implementation in progress. No full rehearsal,
-current-call acceptance or deployment has run under this contract.
+**Frozen by owner decision (Telegram, Сергей, 2026-09-10).** This VM/KVM
+rehearsal programme is no longer a production acceptance prerequisite and is
+not being completed. The replacement acceptance path is defined in
+[voice-single-host.md](voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей):
+local loopback coturn acceptance, a controlled journaled installation on the
+existing host, and the owner's physical two-phone call. The material below is
+preserved as reference for a possible future disposable-VM regression rig; do
+not treat it as a pending obligation.
+
+REQ-DEPLOY-003, REQ-CALL-006 and the proposed RFC-0018/ADR-0012 previously
+required actual relay and coordinator acceptance through this contract before
+the one-host rollout. No full rehearsal, current-call acceptance or deployment
+ever ran under this contract.
 
 The independent design reviewer was actual `claude-opus-5`. Its nine substantive
 conditions are retained in the voice-ready evidence. Original Fable architecture

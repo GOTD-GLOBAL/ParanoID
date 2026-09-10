@@ -6,6 +6,19 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Voice acceptance simplification and VM-stand freeze — 2026-09-10
+
+The owner (Сергей, Telegram) decided: the isolated VM/KVM full-rehearsal stand
+is frozen and is no longer a production acceptance prerequisite. Acceptance for
+the one-host voice rollout is replaced by three real gates: local loopback
+coturn acceptance (expiry, invalid HMAC, quota, denied-peer ACL, relayed media,
+lifetime), a controlled journaled installation on the existing `157.180.49.125`
+host within the authorized port scope, and the owner's physical two-phone call.
+Details: [voice-single-host.md](../operations/voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей).
+The frozen VM material remains preserved in branch history. The installer's
+`coordinated-full-rehearsal` gate still refuses production until a reviewed
+source change binds it to the new evidence; no security property is weakened.
+
 ## One-host installer candidate — 2026-09-10
 
 The owner confirmed the existing host and one unified installer. The
