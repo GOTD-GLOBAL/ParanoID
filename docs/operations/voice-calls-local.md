@@ -15,7 +15,21 @@ Its checkpoint/status separate implemented, compiled, media-tested, reviewed,
 built and deployed states. The [repository evidence](../project/evidence/voice-calls-20260909/README.md)
 contains the completed design reviews and sanitized implementation results.
 
-## Completed implementation checkpoint
+## Current extension — 2026-09-10
+
+The initial direct-ICE checkpoint below passed fresh exact-source Fable review,
+with retained low-severity physical routing limits. That review does not cover
+REQ-CALL-006. The current v10 source implements strict issuer retrieval, volatile
+credentials and consent-before-media. Server foundation PR21 owns the canonical
+contract and offline package; client PR20 depends on it. Signed ARM64 v10 is
+built (hash recorded separately); HTTPS/JNI lane10 scenarios, parser49 negatives,
+controller gates and unchanged text regression pass. V9→v10 identity/contact/
+history continuity passes on the owned emulator. Strict app relay integration and
+fresh final extension review remain in progress. Required relay expiry/race/drain
+and ACL packet tests remain NOT RUN after the platform worker rejection.
+No public deployment readiness, authorization or physical-phone result is claimed.
+
+## Historical direct-ICE implementation checkpoint
 
 Fresh `claude-fable-5` design review and separate exact-doc closure succeeded
 before protected runtime implementation. The original conditional report and
@@ -134,9 +148,8 @@ Freeze source and dependency manifests and verify actual signed APK corresponden
 
 No live v8 server, TLS/pins, DB, firewall/DNS, public TURN or neighboring service
 change is authorized. The [bounded relay proposal](voice-turn-request.md) records exact proposed
-host/listeners/port range, credential isolation and rollback. Its production
-credential endpoint/client are not implemented; separate review and authorization
-are required before that public scope can proceed. No service action follows a successful
+host/listeners/port range, credential isolation and rollback. Its issuer/client/package are now implemented locally; missing relay packet gates,
+separate final review and authorization are required before public scope can proceed. No service action follows a successful
 APK build. Same-package updates preserve data; rollback is a reviewed newer
 same-signer build, never app deletion or a stale snapshot restore.
 

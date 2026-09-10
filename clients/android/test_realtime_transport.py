@@ -18,9 +18,9 @@ def main():
         subprocess.run(['python3', str(ROOT/'scripts/create-test-tls.py'), '--ip', '127.0.0.1', '--output', str(tmp/'tls')], check=True, stdout=subprocess.DEVNULL)
         subprocess.run(['openssl', 'pkcs12', '-export', '-in', str(tmp/'tls/server.crt'), '-inkey', str(tmp/'tls/server.key'), '-name', 'tls', '-out', str(tmp/'server.p12'), '-passout', 'pass:test-only'], check=True)
         cp = str(ANDROID/'out/deps/json-20240303.jar')
-        names = ['CoreBridge', 'PinnedTls', 'KeyClient', 'KeyTransport', 'SyncCycle']
-        if (ANDROID/'src/org/paranoid/text/RealtimeTransport.java').exists():
-            names.append('RealtimeTransport')
+        names = ['CoreBridge', 'PinnedTls', 'KeyClient', 'KeyTransport', 'SyncCycle',
+                 'SelfServiceClient', 'RealtimeLoop', 'RealtimeTransport',
+                 'VoiceRelayConfig', 'VoiceRelayTransport']
         subprocess.run(['javac', '--release', '8', '-cp', cp, '-d', str(tmp)] + [str(ANDROID/f'src/org/paranoid/text/{name}.java') for name in names] + [str(ANDROID/'test/RealtimeTransportSmoke.java')], check=True)
         subprocess.run(['java', '-cp', str(tmp)+':'+cp, 'RealtimeTransportSmoke', str(tmp/'server.p12')], check=True)
 

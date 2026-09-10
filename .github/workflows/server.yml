@@ -92,12 +92,14 @@ jobs:
           java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
       - name: Real local pinned-TLS handshakes
         run: python3 scripts/check-pinned-tls.py
-      - name: Voice consent lifecycle and durable JNI callback boundary
+      - name: Voice consent lifecycle, relay metadata and durable JNI callback boundary
         run: |
           python3 clients/android/dependencies.py
           python3 clients/android/test_call_controller.py
-          javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy}.java clients/android/test/VoiceCommitSmoke.java
+          python3 clients/android/test_voice_relay.py
+          javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
+          python3 clients/android/test_voice_relay_lane.py --jni-library-dir clients/core/target/debug --evidence-dir "$RUNNER_TEMP/paranoid-voice-lane"
   legacy-client-history:
     name: Legacy client history (informational, failures retained)
     runs-on: ubuntu-24.04

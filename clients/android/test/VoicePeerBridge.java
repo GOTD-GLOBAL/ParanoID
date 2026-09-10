@@ -49,12 +49,24 @@ public final class VoicePeerBridge implements AutoCloseable {
                 if(media.size()>=32){controllerFailure();return;}
                 media.add(new JSONObject().put("operation",operation).put("generation",generation).put("sdp",sdp));
             }
-            public void mediaOffer(long generation){event("offer",generation,"");}
-            public void mediaAnswer(long generation,String sdp){event("answer_offer",generation,sdp);}
+            private void authorize(String operation,long generation,String sdp){
+                loop.requestVoiceRelay((config,success)->calls.execute(()->{
+                    boolean usable=success&&(config==null||config.usable(System.currentTimeMillis(),System.nanoTime()));
+                    if(!controller.mediaAuthorized(generation,usable))return;
+                    if(media.size()>=32){controllerFailure();return;}
+                    JSONObject command=new JSONObject().put("operation",operation).put("generation",generation).put("sdp",sdp);
+                    // Private fixture IPC only; the driver removes this before public views/logs.
+                    if(config!=null)command.put("relay",new JSONObject().put("urls",new JSONArray(config.urls()))
+                        .put("username",config.username()).put("credential",config.password()));
+                    media.add(command);
+                }));
+            }
+            public void mediaOffer(long generation){authorize("offer",generation,"");}
+            public void mediaAnswer(long generation,String sdp){authorize("answer_offer",generation,sdp);}
             public void mediaRemoteAnswer(long generation,String sdp){event("set_answer",generation,sdp);}
             public void mediaMute(boolean value){media.add(new JSONObject().put("operation","mute").put("value",value));}
             public void mediaSpeaker(boolean value){media.add(new JSONObject().put("operation","speaker").put("value",value));}
-            public void mediaClose(){media.add(new JSONObject().put("operation","close"));}
+            public void mediaClose(){loop.cancelVoiceRelay();media.add(new JSONObject().put("operation","close"));}
             public void changed(JSONObject view){}
         })).get(5,TimeUnit.SECONDS);
         client.setCallListener(event->{JSONObject immutable=copy(event);calls.execute(()->controller.received(immutable));});

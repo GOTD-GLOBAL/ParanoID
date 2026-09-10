@@ -6,6 +6,22 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Current voice relay extension — 2026-09-10
+
+The direct-call checkpoint below passed fresh final Fable review. The original
+scope also requires REQ-CALL-006: issuer, Android integration and isolated relay
+package. Server foundation draft PR21 is implemented/tested independently;
+client draft PR20 now adds strict volatile credential retrieval, authorizing
+state and dual metadata disclosure. V10 retained-signer ARM64 is built;
+49 parser negatives, ten HTTPS/JNI scenarios and the stale401 race fix pass.
+The full server85-test matrix and24-sample text regression pass (P50 102.04 ms,
+P95 144.30 ms). Owned v9→v10 update retains identity/contact/history. Strict
+full-app relay acceptance and fresh exact-source final review remain in progress.
+Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
+platform worker rejection; those operations were not retried. No live deployment
+is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint
+below retains its original artifact and test scope.
+
 ## Voice relay foundation — 2026-09-10
 
 PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit

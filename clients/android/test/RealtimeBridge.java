@@ -22,7 +22,8 @@ public final class RealtimeBridge {
         volatile Throwable failure;
         volatile boolean connected;
         boolean failCommit;
-        int notifications, authorizationFailures, onlineNotifications;
+        int notifications, authorizationFailures, onlineNotifications, voiceCompletions;
+        String voiceMode="none";
         String lastSaved;
         SecretKeySpec key;
         Peer(String name)throws Exception {
@@ -82,6 +83,8 @@ public final class RealtimeBridge {
                     case "pair":client.previewContact(value);client.pair(value,true);break;
                     case "send":JSONObject send=new JSONObject(value);client.send(send.getString("account"),send.getString("text"));break;
                     case "pending":break;
+                    case "voice_relay":voiceMode="pending";loop.requestVoiceRelay((config,success)->{requireOwner();voiceCompletions++;voiceMode=success?(config==null?"direct":"relay"):"failed";});break;
+                    case "cancel_voice_relay":loop.cancelVoiceRelay();voiceMode="cancelled";break;
                     case "fail_next_commit":failCommit=true;break;
                     case "view":break;
                     default:throw new IOException("unknown fixture operation");
@@ -94,7 +97,7 @@ public final class RealtimeBridge {
         private JSONObject checkedView()throws Exception {
             requireOwner();if(failure!=null)throw new AssertionError("listener invariant failed",failure);
             if(client.broken())return new JSONObject().put("broken",true).put("notifications",notifications).put("seen",new JSONObject(seen.toString()));
-            return client.publicView().put("seen",new JSONObject(seen.toString())).put("connected",connected).put("notifications",notifications).put("authorization_failures",authorizationFailures).put("online_notifications",onlineNotifications);
+            return client.publicView().put("seen",new JSONObject(seen.toString())).put("connected",connected).put("notifications",notifications).put("authorization_failures",authorizationFailures).put("online_notifications",onlineNotifications).put("voice_mode",voiceMode).put("voice_completions",voiceCompletions);
         }
         JSONObject view()throws Exception{return owner.submit(()->checkedView()).get(3,TimeUnit.SECONDS);}
         void shutdown(){try{loop.close();}catch(Exception ignored){}owner.shutdown();try{if(!owner.awaitTermination(5,TimeUnit.SECONDS))owner.shutdownNow();}catch(InterruptedException e){Thread.currentThread().interrupt();}}

@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Voice relay client — 2026-09-10
+
+- Added strict, volatile relay credential retrieval before media creation, with
+  bounded independent I/O and generation-safe cancellation. Call and Answer now
+  disclose relay/direct metadata before consent. Signed v10 builds and preserves
+  owned-emulator v9 identity/contact/history. Parser, HTTPS/JNI and text checks
+  pass; full extension acceptance, final review and missing relay packet gates
+  remain explicit in [the local record](docs/operations/voice-calls-local.md).
+
 ### Voice relay foundation — 2026-09-10
 
 - Added an optional signed-session TURN credential issuer with locked active-device

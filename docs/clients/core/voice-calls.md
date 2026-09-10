@@ -7,7 +7,7 @@ last_reviewed: 2026-09-09
 # Core voice controls
 
 The core implementation for [REQ-CALL-003](../../product/voice-calls.md) extends
-the existing clean core3 channel without a new snapshot field or server route.
+the existing clean core3 channel without a new snapshot field or call-signaling server route.
 [Voice-v1](../../protocol/voice-v1.md) owns the exact wire contract;
 [RFC-0017](../../rfcs/0017-voice-calls.md) and proposed
 [ADR-0011](../../decisions/0011-voice-calls.md) record its reviewed design.
@@ -60,3 +60,12 @@ synthetic state in separate JVMs, without a physical installation or network.
 APK, independent exact-source review and historical-test boundaries. This core
 fixture does not prove audio, reliable background calls or permanent architecture
 acceptance. [Existing text compatibility](self-service.md) remains applicable.
+
+## Optional relay signing
+
+[REQ-CALL-006](../../product/voice-relay.md) adds only fixed `turn` without an
+envelope ID to the existing native session selector. It signs GET `/v2/voice/turn`
+with an empty body and fresh nonce after full saved-context validation. Five
+realtime signing tests now pass, including independent transcript/signature
+verification and selector/context negatives. It exposes no arbitrary signer and
+changes no persistent client schema. [Canonical contract](../../protocol/voice-turn-v1.md).

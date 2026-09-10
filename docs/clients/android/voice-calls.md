@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: android
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-10
 ---
 
 # Android voice implementation
@@ -10,9 +10,29 @@ This component implements [REQ-CALL-002–005](../../product/voice-calls.md) on 
 retained native messenger. [Voice-v1](../../protocol/voice-v1.md) is the canonical
 control contract; [core voice](../core/voice-calls.md) owns cryptographic parsing
 and persisted state. The current source is configured as `org.paranoid.devtext`,
-versionCode9, `0.0.9-voice`, API26+. The ARM64 retained-signer artifact now passes
+versionCode10, `0.0.10-voice`, API26+. The ARM64 retained-signer artifact now passes
 build/signature/package/alignment gates in
 [the operations record](../../operations/voice-calls-local.md).
+
+## Relay authorization extension
+
+[REQ-CALL-006](../../product/voice-relay.md) and [Voice TURN v1](../../protocol/voice-turn-v1.md)
+add a fixed native signed operation and one bounded independent voice network
+lane. Explicit caller readiness or recipient Answer enters `authorizing` without
+media authority. Strict valid response permits relay-only SDK construction;
+authenticated route404 permits disclosed legacy direct mode without invalidating
+text sessions. TLS, malformed responses, quotas and other failures never downgrade.
+A first401 retries once with a fresh nonce. A second401 ends only the matching
+call through its generation-checked callback, so cancelled requests cannot stop
+replacement calls. Ten actual HTTPS/JNI scenarios pass, including the reproduced
+stale401 RED→GREEN and text progress while voice I/O is held.
+
+The six-field response, origin, credentials and lifetime are strictly parsed;
+49 negative vectors and receipt/construction expiry checks pass. Credentials stay
+volatile. Call and Answer both disclose relay operator metadata and possible
+direct peer-IP exposure before microphone intent. The45-second setup deadline
+includes authorization. A v9→v10 owned-emulator update preserves identity,
+contacts and history; stricter full-app relay acceptance remains in progress.
 
 ## State and platform ownership
 
@@ -38,7 +58,7 @@ The drained empty-inbox fixture improved from no authenticated callback within
 3029 ms to a committed callback in 70.14 ms, not a universal latency guarantee.
 
 The native call UI provides explicit Call/Answer permission, reject/cancel/end,
-mute and speaker controls, identity trust and direct-IP disclosure. Incoming
+mute and speaker controls, identity trust and relay/direct metadata disclosure. Incoming
 ringing creates no microphone or PeerConnection. Connected state follows the
 actual SDK callback; an ICE disconnect exposes a reconnecting state until the
 bounded recovery deadline. An explicit Call/Answer intent after microphone

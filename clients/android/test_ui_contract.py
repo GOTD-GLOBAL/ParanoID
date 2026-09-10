@@ -5,15 +5,15 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="org.paranoid.devtext"',manifest)
-        self.assertIn('android:versionCode="9"',manifest)
-        self.assertIn('android:versionName="0.0.9-voice"',manifest)
+        self.assertIn('android:versionCode="10"',manifest)
+        self.assertIn('android:versionName="0.0.10-voice"',manifest)
 
     def test_self_service_ui_is_contacts_dialogs_and_chat_not_operator_json(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
         for caption in ['Контакты','Чаты','Мой ID','Добавить контакт','Создать ID','Отправить']:
             self.assertIn(caption,ui)
-        for obsolete in ['оператор','одобрени','importGrant','peerCode','descriptor.toString()','alice','bob']:
+        for obsolete in ['Запросить доступ у оператора','одобрени','importGrant','peerCode','descriptor.toString()','alice','bob']:
             self.assertNotIn(obsolete,ui)
         self.assertIn('SelfServiceClient',engine)
         # RFC-0015 replaces the blocking v7 sync with separate network lanes.
@@ -26,6 +26,15 @@ class OnboardingContract(unittest.TestCase):
         self.assertIn('DialogPolicy.trustLabel(dialog)',ui)
         self.assertIn('DialogPolicy.canReply(',ui)
         self.assertIn('engine.block(',ui)
+
+    def test_voice_privacy_is_visible_before_both_consent_actions(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        self.assertIn('оператор ретранслятора видит ваш IP-адрес, время и объём трафика',ui)
+        self.assertIn('собеседник может видеть ваш IP-адрес',ui)
+        outgoing=ui[ui.index('private void requestCall()'):ui.index('private void requestMicrophone')]
+        self.assertLess(outgoing.index('.setMessage(VOICE_PRIVACY)'),outgoing.index('.setPositiveButton("Позвонить"'))
+        incoming=ui[ui.index('private void showCall()'):ui.index('private static String callLabel')]
+        self.assertLess(incoming.index('callPrivacy=text(VOICE_PRIVACY'),incoming.index('callAnswer=action("Ответить"'))
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

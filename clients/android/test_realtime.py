@@ -201,7 +201,7 @@ def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None,
     jni_library_dir = jni_library_dir.resolve()
     server_digest = hashlib.sha256(server_binary.read_bytes()).hexdigest()
     jni_digest = hashlib.sha256((jni_library_dir / 'libparanoid_client_core.so').read_bytes()).hexdigest()
-    source_paths = [ANDROID / f'src/org/paranoid/text/{name}.java' for name in ['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','RealtimeLoop','RealtimeTransport']]
+    source_paths = [ANDROID / f'src/org/paranoid/text/{name}.java' for name in ['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','RealtimeLoop','RealtimeTransport','VoiceRelayConfig','VoiceRelayTransport']]
     source_paths += [ANDROID / 'test/RealtimeBridge.java', Path(__file__).resolve()]
     source_hashes = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in source_paths}
     (evidence_dir / 'source-start-sha256.json').write_text(json.dumps(source_hashes, indent=2) + '\n')
@@ -211,7 +211,7 @@ def run(server_binary, evidence_dir, jni_library_dir, legacy_server_binary=None,
     assert all(path.is_file() for path in dependencies), 'Run the existing dependency preparation first'
     cp = ':'.join(str(path) for path in [classes, *dependencies])
     subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-encoding', 'UTF-8', '-cp', cp,
-                    '-sourcepath', str(ANDROID / 'src'), '-d', str(classes), str(ANDROID / 'test/RealtimeBridge.java')], check=True)
+                    '-d', str(classes), *[str(path) for path in source_paths if path.suffix == '.java']], check=True)
     env = {k: v for k, v in os.environ.items() if not k.startswith(('PG', 'PARANOID_'))}
     result = {'result': 'RUNNING', 'server_binary': str(server_binary), 'server_sha256': server_digest,
               'jni_sha256': jni_digest, 'physical_phone_benchmark': 'NOT RUN', 'ui_render': 'JVM durable publicView listener, not phone pixels'}

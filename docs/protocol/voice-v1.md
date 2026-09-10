@@ -148,6 +148,16 @@ background incoming visibility uses an honest notification and requires opening
 the app to answer. Opt-in messaging foreground service is not reliable Doze or
 force-stop incoming-call delivery.
 
+## Relay authorization before media
+
+The optional [Voice TURN v1](voice-turn-v1.md) extension adds no call-body fields.
+After live caller readiness or explicit recipient Answer, the volatile controller
+enters `authorizing` with media disabled. Only a current validated issuer result
+(or disclosed legacy capability) grants media authority. The existing45-second
+setup deadline includes this wait. Failure and cancellation are scoped to that
+request/call generation; stale credential callbacks cannot revive or stop another
+call. No credentials enter signaling, snapshots or call history.
+
 ## Network and media boundary
 
 Media uses endpoint DTLS-SRTP with the authenticated fingerprint. A TURN relay

@@ -46,7 +46,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private ImageButton leading,trailing;
     private ImageButton callAction;
     private android.app.Dialog callDialog;
-    private TextView callName,callStatus,callTrust;
+    private TextView callName,callStatus,callTrust,callPrivacy;
+    private static final String VOICE_PRIVACY="Звук защищён сквозным шифрованием. При соединении через ретранслятор оператор ретранслятора видит ваш IP-адрес, время и объём трафика. Если сервер не поддерживает ретрансляцию, используется прямое соединение: собеседник может видеть ваш IP-адрес. В некоторых сетях прямое соединение недоступно.";
     private Button callAnswer,callEnd,callMute,callSpeaker;
     private String displayedCall="",permissionAccount="",permissionCall="";
     private boolean resumed,permissionAnswer,pendingCallIntent;
@@ -247,7 +248,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(!DialogPolicy.canReply(selected,active,broken,false))return;
         final String account=selectedAccount;
         new AlertDialog.Builder(this).setTitle("Позвонить собеседнику?")
-            .setMessage("Аудиозвонки этой альфы используют прямое соединение. Собеседник может видеть ваш IP-адрес. В разных мобильных сетях соединение может не установиться.")
+            .setMessage(VOICE_PRIVACY)
             .setPositiveButton("Позвонить",(dialog,which)->requestMicrophone(account,false)).setNegativeButton("Отмена",null).show();
     }
     private void requestMicrophone(String account,boolean answer){
@@ -299,7 +300,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         ImageView orbit=new ImageView(this);orbit.setImageDrawable(new Symbol("identity",colors.action));orbit.setBackground(shape(colors.actionSoft,80));orbit.setPadding(dp(32),dp(32),dp(32),dp(32));orbit.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);body.addView(orbit,box(144,144));space(body,24);
         callName=text("",26,colors.text,true);callName.setGravity(Gravity.CENTER);body.addView(callName,full());space(body,12);
         callStatus=text("",18,colors.muted,false);callStatus.setGravity(Gravity.CENTER);callStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(callStatus,full());space(body,12);
-        callTrust=text("",13,colors.muted,false);callTrust.setGravity(Gravity.CENTER);body.addView(callTrust,full());space(body,36);
+        callTrust=text("",13,colors.muted,false);callTrust.setGravity(Gravity.CENTER);body.addView(callTrust,full());space(body,24);
+        callPrivacy=text(VOICE_PRIVACY,14,colors.muted,false);body.addView(callPrivacy,full());space(body,12);
         callAnswer=action("Ответить",()->requestMicrophone(engine.calls().snapshot().optString("account"),true));body.addView(callAnswer,full());space(body,12);
         LinearLayout controls=row();body.addView(controls,full());
         callMute=secondary("Выключить микрофон",()->engine.calls().mute(!engine.calls().snapshot().optBoolean("muted")));
@@ -309,7 +311,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         callEnd=secondary("Завершить",()->{if(engine.calls().snapshot().optString("state").equals("incoming"))engine.calls().reject();else if(engine.calls().active())engine.calls().hangup();else callDialog.dismiss();});
         callEnd.setTextColor(colors.dark?colors.canvas:0xffffffff);callEnd.setBackground(ripple(colors.danger,24));body.addView(callEnd,full());space(body,12);
         body.addView(secondary("К переписке",()->callDialog.dismiss()),full());space(body,24);
-        TextView note=text("Прямое соединение · IP-адрес виден собеседнику. До ответа микрофон входящего звонка выключен.",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());
+        TextView note=text("До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием.",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());
         callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->callDialog=null);callDialog.show();
         if(Build.VERSION.SDK_INT>=30){
             callDialog.getWindow().setDecorFitsSystemWindows(false);
@@ -327,6 +329,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(value.optBoolean("reconnecting"))return "Восстанавливаем соединение…";
         String state=value.optString("state");
         if(state.equals("starting"))return "Проверяем доступность…";
+        if(state.equals("authorizing"))return "Подготавливаем защищённое соединение…";
         if(state.equals("outgoing"))return "Вызываем…";
         if(state.equals("incoming"))return "Входящий звонок";
         if(state.equals("connecting"))return "Устанавливаем соединение…";
@@ -352,7 +355,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         JSONObject peer=null;JSONArray entries=latest.optJSONArray("dialogs");if(entries!=null)for(int n=0;n<entries.length();n++){JSONObject item=entries.optJSONObject(n);if(item!=null&&item.optString("account").equals(value.optString("account")))peer=item;}
         callTrust.setText(peer==null?"Личность не проверена":DialogPolicy.trustLabel(peer));
         callAnswer.setVisibility(state.equals("incoming")?View.VISIBLE:View.GONE);
-        boolean live=value.optBoolean("media_active");callMute.setEnabled(live);callSpeaker.setEnabled(live);
+        callPrivacy.setVisibility(state.equals("incoming")?View.VISIBLE:View.GONE);
+        boolean live=value.optBoolean("media_active")||state.equals("authorizing");callMute.setEnabled(live);callSpeaker.setEnabled(live);
         callMute.setText(value.optBoolean("muted")?"Включить микрофон":"Выключить микрофон");callMute.setSelected(value.optBoolean("muted"));
         callSpeaker.setText(value.optBoolean("speaker")?"Телефонный динамик":"Громкая связь");callSpeaker.setSelected(value.optBoolean("speaker"));
         callEnd.setText(state.equals("incoming")?"Отклонить":engine.calls().active()?"Завершить":"Закрыть");

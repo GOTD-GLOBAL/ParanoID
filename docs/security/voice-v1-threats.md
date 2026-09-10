@@ -79,3 +79,12 @@ timing remains separately bounded by the stated heartbeat contract.
 Maven/upstream Java restamp and native-byte correspondence, retained-signer ARM64
 APK, package/notices and 16KiB alignment are verified. Independent final-source
 review remains the candidate handoff gate.
+
+## Credential integration extension
+
+[The relay threat delta](voice-turn-threats.md) owns issuer, metadata, volatile
+credential and package boundaries. Before capture, the controller requires a
+current consent/permission/deadline/generation plus strict issuer validation.
+A reproduced delayed401 callback once stopped a replacement call; request-scoped
+delivery now passes the actual HTTPS/JNI race test. Full extension acceptance
+remains subject to app integration, missing relay packet gates and final review.

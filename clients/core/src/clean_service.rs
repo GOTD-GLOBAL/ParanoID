@@ -716,6 +716,7 @@ fn sign_session(
             format!("/v2/{operation}?after={}&limit=20", s.cursor),
             String::new(),
         ),
+        ("turn", None) => ("GET", "/v2/voice/turn".to_owned(), String::new()),
         _ => return Err("invalid_session_operation"),
     };
     let nonce = uuid::Uuid::new_v4().to_string();

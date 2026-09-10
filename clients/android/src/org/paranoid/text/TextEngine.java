@@ -71,6 +71,7 @@ public final class TextEngine {
             public void mediaMute(boolean value){if(media!=null)media.setMuted(value);}
             public void mediaSpeaker(boolean value){if(media!=null)media.setSpeaker(value);}
             public void mediaClose(){
+                if(realtime!=null)realtime.cancelVoiceRelay();
                 pendingMedia=null;WebRtcAudioEngine owned=media;media=null;
                 if(owned!=null){mediaClosing++;owned.close(()->{mediaClosing--;Runnable next=pendingMedia;pendingMedia=null;if(next!=null)next.run();});}
                 VoiceCallService.stop(context);
@@ -117,8 +118,18 @@ public final class TextEngine {
         if(!calls.active()||calls.snapshot().optLong("generation")!=generation)return;
         if(mediaClosing>0){pendingMedia=()->openMedia(generation,offer);return;}
         if(context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){calls.authorizationLost();return;}
-        if(media!=null){calls.mediaState(generation,"failed");return;}
+        if(media!=null||realtime==null){calls.mediaAuthorized(generation,false);return;}
+        realtime.requestVoiceRelay((config,success)->ui.post(()->{
+            if(!calls.active()||calls.snapshot().optLong("generation")!=generation)return;
+            boolean allowed=success&&(config==null||config.usable(System.currentTimeMillis(),System.nanoTime()));
+            if(context.checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED)allowed=false;
+            if(calls.mediaAuthorized(generation,allowed))createMedia(generation,offer,config);
+        }));
+    }
+    private void createMedia(long generation,String offer,VoiceRelayConfig config){
         try{
+            java.util.List<org.webrtc.PeerConnection.IceServer> servers=config==null?java.util.Collections.emptyList():java.util.Collections.singletonList(
+                org.webrtc.PeerConnection.IceServer.builder(config.urls()).setUsername(config.username()).setPassword(config.password()).createIceServer());
             media=new WebRtcAudioEngine(context,new WebRtcAudioEngine.Listener(){
                 public void onLocalDescription(String type,String sdp){
                     String fingerprint="",ufrag="",password="";
@@ -132,7 +143,7 @@ public final class TextEngine {
                 public void onConnected(){calls.mediaState(generation,"connected");}
                 public void onDisconnected(){calls.mediaState(generation,"disconnected");}
                 public void onError(String reason){calls.mediaState(generation,"failed");}
-            });
+            },null,servers,config!=null);
             // Creation may have waited for an older engine's asynchronous close.
             // Apply this generation's current intent before capture can start.
             JSONObject desired=calls.snapshot();

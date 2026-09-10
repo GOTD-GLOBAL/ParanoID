@@ -23,7 +23,8 @@ public final class CallControllerSmoke {
     }
     static final class Port implements CallController.Port {
         final List<Sent> sent=new ArrayList<>();
-        int offers,answers,remoteAnswers,closes;boolean failSave,muted,speaker,holdHeartbeat,deferSignals;
+        int offers,answers,remoteAnswers,closes;boolean failSave,muted,speaker,holdHeartbeat,deferSignals,deferMedia;
+        CallController controller;
         final List<CallController.Completion> deferred=new ArrayList<>();
         JSONObject view;
         public void send(String account,JSONObject body,CallController.Completion completion){
@@ -31,8 +32,8 @@ public final class CallControllerSmoke {
             if(deferSignals)deferred.add(completion);
             else if(!holdHeartbeat||!body.getString("kind").equals("heartbeat"))completion.done(!failSave);
         }
-        public void mediaOffer(long generation){offers++;}
-        public void mediaAnswer(long generation,String sdp){answers++;}
+        public void mediaOffer(long generation){offers++;if(!deferMedia)controller.mediaAuthorized(generation,true);}
+        public void mediaAnswer(long generation,String sdp){answers++;if(!deferMedia)controller.mediaAuthorized(generation,true);}
         public void mediaRemoteAnswer(long generation,String sdp){remoteAnswers++;}
         public void mediaMute(boolean value){muted=value;}
         public void mediaSpeaker(boolean value){speaker=value;}
@@ -43,7 +44,7 @@ public final class CallControllerSmoke {
     static final class Pair {
         final Time time=new Time();final Port pa=new Port(),pb=new Port();
         final CallController a=new CallController(time,pa),b=new CallController(time,pb);
-        Pair(){a.connection(true);b.connection(true);}
+        Pair(){pa.controller=a;pb.controller=b;a.connection(true);b.connection(true);}
         void deliver(CallController recipient,String sender,Sent message){recipient.received(new JSONObject().put("account",sender).put("body",message.body));}
         void ready(){a.start(B,true);deliver(b,A,pa.take());deliver(a,B,pb.take());}
         void ring(){ready();a.localDescription(a.snapshot().getLong("generation"),SDP,FP,U,P);deliver(b,A,pa.take());}
@@ -138,5 +139,20 @@ public final class CallControllerSmoke {
         check(active.b.active()&&"incoming".equals(active.b.snapshot().getString("state")),"empty pre-ready end cannot terminate active ringing context");
         active.deliver(active.b,A,correct);check(!active.b.active(),"exact ringing end still terminates");
     }
-    public static void main(String[] args){permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
+    static void relayAuthorityBeforeCapture(){
+        Pair p=new Pair();p.pa.deferMedia=true;p.ready();long generation=p.a.snapshot().getLong("generation");
+        check("authorizing".equals(p.a.snapshot().getString("state"))&&!p.a.snapshot().getBoolean("media_active"),"issuer request waits without capture authority");
+        p.a.mute(true);p.a.speaker(true);check(!p.pa.muted&&!p.pa.speaker,"pending authorization cannot open media routes");
+        check(p.a.mediaAuthorized(generation,true)&&p.pa.muted&&p.pa.speaker,"validated current response applies retained intent");
+        check(!p.a.mediaAuthorized(generation,true),"duplicate authorization cannot restart media");
+        Pair cancelled=new Pair();cancelled.pa.deferMedia=true;cancelled.ready();long stale=cancelled.a.snapshot().getLong("generation");
+        cancelled.a.hangup();cancelled.a.start(B,true);check(!cancelled.a.mediaAuthorized(stale,true)&&cancelled.a.active(),"late authorization cannot capture or terminate new intent");
+        Pair denied=new Pair();denied.pa.deferMedia=true;denied.ready();check(!denied.a.mediaAuthorized(denied.a.snapshot().getLong("generation"),false)&&!denied.a.active(),"issuer failure terminates before capture");
+        Pair expired=new Pair();expired.pa.deferMedia=true;expired.ready();long late=expired.a.snapshot().getLong("generation");expired.time.advance(45_001);
+        check(!expired.a.mediaAuthorized(late,true)&&!expired.a.active(),"authorization cannot extend negotiation deadline");
+        Pair receiver=new Pair();receiver.ring();receiver.pb.deferMedia=true;receiver.b.answer(true);
+        check("authorizing".equals(receiver.b.snapshot().getString("state"))&&!receiver.b.snapshot().getBoolean("media_active"),"explicit Answer still waits for relay authority");
+        receiver.b.authorizationLost();check(!receiver.b.mediaAuthorized(receiver.b.snapshot().getLong("generation"),true),"revoked consent never resumes");
+    }
+    public static void main(String[] args){relayAuthorityBeforeCapture();permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
 }

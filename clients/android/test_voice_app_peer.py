@@ -12,7 +12,7 @@ import socket
 import time
 
 import aioice.ice
-from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription, RTCRtpSender
+from aiortc import RTCConfiguration, RTCIceServer, RTCPeerConnection, RTCSessionDescription, RTCRtpSender
 
 from test_voice_media import Tone
 
@@ -69,16 +69,28 @@ class Peer:
             task.cancel()
         self.receiver_tasks = []
 
-    async def make_pc(self, generation):
+    async def make_pc(self, generation, relay=None):
         await self.close()
         self.generation = generation
         self.frames = self.samples = 0
-        pc = RTCPeerConnection(RTCConfiguration(iceServers=[]))
+        servers = [] if relay is None else [RTCIceServer(urls=relay['urls'], username=relay['username'], credential=relay['credential'])]
+        pc = RTCPeerConnection(RTCConfiguration(iceServers=servers))
+        self.relay_only = relay is not None
         self.pc = pc
         pc.addTrack(Tone())
         opus = [c for c in RTCRtpSender.getCapabilities('audio').codecs if c.mimeType.lower() == 'audio/opus']
         for transceiver in pc.getTransceivers():
             transceiver.setCodecPreferences(opus)
+            if self.relay_only:
+                # Pinned aiortc/aioice fixture policy; the product uses libwebrtc RELAY.
+                connection = transceiver.sender.transport.transport.iceGatherer._connection
+                connection._transport_policy = aioice.ice.TransportPolicy.RELAY
+                gather = connection.get_component_candidates
+                async def relay_candidates(component, addresses, timeout=5, gather=gather):
+                    # aioice RELAY hides host candidates but retains host sockets
+                    # for incoming checks. Omit those sockets in this strict fixture.
+                    return await gather(component=component, addresses=[], timeout=timeout)
+                connection.get_component_candidates = relay_candidates
 
         @pc.on('track')
         def on_track(track):
@@ -100,7 +112,8 @@ class Peer:
     async def local(self, pc, kind):
         description = await (pc.createOffer() if kind == 'offer' else pc.createAnswer())
         await pc.setLocalDescription(description)
-        sdp = '\r\n'.join(line for line in pc.localDescription.sdp.replace('127.0.0.1', '10.0.2.2').splitlines()
+        local_sdp = pc.localDescription.sdp if self.relay_only else pc.localDescription.sdp.replace('127.0.0.1', '10.0.2.2')
+        sdp = '\r\n'.join(line for line in local_sdp.splitlines()
                           if not line.startswith('a=fingerprint:') or line.startswith('a=fingerprint:sha-256 ')) + '\r\n'
         # These are the actual self-owned media parameters. The same strict
         # native parser as Android validates them before Olm encryption/signing.
@@ -121,7 +134,7 @@ class Peer:
                 event = self.events.pop(0)
                 operation = event['operation']
                 if operation in ('offer', 'answer_offer'):
-                    pc = await self.make_pc(event['generation'])
+                    pc = await self.make_pc(event['generation'], event.pop('relay', None))
                     if operation == 'answer_offer':
                         (self.evidence / f'android-{self.generation}-offer.sdp').write_text(event['sdp'])
                         await pc.setRemoteDescription(RTCSessionDescription(event['sdp'], 'offer'))

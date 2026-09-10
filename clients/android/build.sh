@@ -9,6 +9,7 @@ python3 dependencies.py
 python3 webrtc_dependency.py
 python3 test_webrtc_dependency.py
 python3 test_call_controller.py
+python3 test_voice_relay.py
 TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 PLATFORM="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
 NDK="$ANDROID_SDK_ROOT/ndk/28.2.13676358/toolchains/llvm/prebuilt/linux-x86_64/bin"
@@ -28,7 +29,7 @@ javac --release 8 -d out/host src/org/paranoid/text/CoreBridge.java src/org/para
 java -Djava.library.path=../core/target/debug -cp out/host CoreSmoke
 java -cp out/host StorageSmoke
 java -cp out/host SyncSmoke
-javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy}.java test/{RegistrationSmoke,CleanSelfServiceSmoke,CleanSnapshotBoundarySmoke,QrSmoke,QrDiverseSmoke,DialogPolicySmoke,VoiceCommitSmoke}.java
+javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java test/{RegistrationSmoke,CleanSelfServiceSmoke,CleanSnapshotBoundarySmoke,QrSmoke,QrDiverseSmoke,DialogPolicySmoke,VoiceCommitSmoke}.java
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar RegistrationSmoke
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSelfServiceSmoke
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSnapshotBoundarySmoke

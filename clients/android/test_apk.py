@@ -11,8 +11,8 @@ class PackageTest(unittest.TestCase):
         tools=Path(os.environ["ANDROID_SDK_ROOT"])/"build-tools/35.0.0"
         result=subprocess.run([str(tools/"aapt"),"dump","badging",str(apk)],capture_output=True,text=True,check=True).stdout
         self.assertIn("package: name='org.paranoid.devtext'",result)
-        self.assertIn("versionCode='9'",result)
-        self.assertIn("versionName='0.0.9-voice'",result)
+        self.assertIn("versionCode='10'",result)
+        self.assertIn("versionName='0.0.10-voice'",result)
         self.assertIn("sdkVersion:'26'",result)
         self.assertIn("native-code: 'arm64-v8a'",result)
         self.assertIn("android.permission.CAMERA",result)

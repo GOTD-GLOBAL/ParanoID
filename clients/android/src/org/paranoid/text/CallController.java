@@ -101,7 +101,7 @@ public final class CallController {
         Call c=call;if(c==null||!state.equals("incoming"))return;
         if(!microphonePermission||!online){finish(microphonePermission?"unavailable":"reject",true);return;}
         if(expired(c)){finish("timeout",true);return;}
-        state="connecting";c.media=true;c.heartbeatReceived=clock.monotonicMillis();c.heartbeatSent=c.heartbeatReceived;
+        state="authorizing";
         publish();
         try{port.mediaAnswer(c.generation,c.remoteSdp);applyRoutes(c);}catch(RuntimeException failure){finish("failed",true);}
     }
@@ -136,7 +136,7 @@ public final class CallController {
             int seq=b.getInt("seq");
             if(kind.equals("ready")){
                 if(!c.outgoing||!state.equals("starting")||seq!=0||!c.callee.isEmpty()||!online||expired(c))return;
-                c.callee=b.getString("callee_nonce");c.remoteSequence=0;c.media=true;state="outgoing";publish();
+                c.callee=b.getString("callee_nonce");c.remoteSequence=0;state="authorizing";publish();
                 try{port.mediaOffer(c.generation);applyRoutes(c);}catch(RuntimeException failure){finish("failed",true);}return;
             }
             if(!c.callee.equals(b.getString("callee_nonce"))||seq<=c.remoteSequence)return;
@@ -187,6 +187,16 @@ public final class CallController {
     }
     private static boolean baseContext(Slot s,String account,JSONObject b)throws Exception{
         return s.account.equals(account)&&s.id.equals(b.getString("call_id"))&&s.caller.equals(b.getString("caller_nonce"));
+    }
+
+    /** A current validated issuer response or disclosed legacy capability permits media. */
+    public boolean mediaAuthorized(long callbackGeneration,boolean authorized){
+        own();if(!checkClock())return false;
+        Call c=call;if(c==null||c.generation!=callbackGeneration||!state.equals("authorizing"))return false;
+        if(!authorized||!online||expired(c)){finish(expired(c)?"timeout":"failed",true);return false;}
+        c.media=true;state=c.outgoing?"outgoing":"connecting";
+        c.heartbeatReceived=clock.monotonicMillis();c.heartbeatSent=c.heartbeatReceived;
+        try{applyRoutes(c);publish();return true;}catch(RuntimeException failure){finish("failed",true);return false;}
     }
 
     /** Called only with the exact gathered local SDP and its parsed parameters. */
