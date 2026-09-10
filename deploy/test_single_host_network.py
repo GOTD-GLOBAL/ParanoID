@@ -295,6 +295,12 @@ class OperationsTests(unittest.TestCase):
             return original(argv, input)
         with self.assertRaisesRegex(ValueError, 'UFW'):
             network.observe(SPEC, runner=runner, read=self.fixture.read)
+        def deny_routed(argv, input=None):
+            if argv == ['/usr/sbin/ufw', 'status', 'verbose']:
+                return b'Status: active\nDefault: deny (incoming), allow (outgoing), deny (routed)\n'
+            return original(argv, input)
+        # deny (routed) is a supported stricter routed default (authorized host).
+        network.observe(SPEC, runner=deny_routed, read=self.fixture.read)
         with self.assertRaisesRegex(ValueError, 'loopback'):
             network.observe(SPEC, runner=self.fixture, read=lambda _: b'*filter\nCOMMIT\n')
 

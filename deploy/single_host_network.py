@@ -327,8 +327,13 @@ def read_private_json(path, owner=0, trusted_base=None):
 def observe(spec, runner=command, read=_read_regular):
     validate_spec(spec)
     status = runner(['/usr/sbin/ufw', 'status', 'verbose']).decode('utf-8')
+    # 'disabled (routed)' and the stricter 'deny (routed)' are both supported:
+    # the relay never forwards traffic, and deny-routed (observed on the
+    # authorized host, where Docker manages its own FORWARD chains) only
+    # tightens the boundary. Any other incoming/outgoing default is refused.
     if ('Status: active\n' not in status
-            or 'Default: deny (incoming), allow (outgoing), disabled (routed)' not in status):
+            or not any('Default: deny (incoming), allow (outgoing), ' + routed in status
+                       for routed in ('disabled (routed)', 'deny (routed)'))):
         raise ValueError('unsupported UFW active/default policy')
     if b'(nf_tables)' not in runner(['/usr/sbin/iptables', '--version']):
         raise ValueError('unsupported UFW backend')
