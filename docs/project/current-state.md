@@ -6,6 +6,32 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Owner-confirmed one-host delivery — 2026-09-10
+
+The owner's [existing-host and one-touch installation confirmation](https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5613364943)
+authorizes a coordinated messaging, private PostgreSQL and TURN installer on the
+existing host, with deployment conditional on mandatory acceptance tests, fresh
+independent review and rollback readiness. Retain the existing TLS, data, identity
+and neighboring services. This supersedes older no-deployment-authority statements
+only for that bounded same-host delivery; it does not authorize PR merge or accept
+the proposed ADRs. TURN expiry/ACL and actual relay CLI/lifecycle gates remain
+NOT RUN; full credential/lifecycle acceptance remains unestablished. No new
+deployment or relay exposure is established by this authority record.
+
+CALL-CONNECT01 remains OPEN for the unknown historical first cause. Initial
+genuine Fable design review C conditionally permits the separate three-case
+[CALL-CURRENT01 acceptance plan](../../clients/android/test/CALL-CONNECT01.md#current-build-acceptance-plan--2026-09-10):
+incoming first microphone grant and retained-permission redial each with at least
+30 seconds connected decoded audio, then an outgoing decoded-media call on the
+same candidate, after relay gates pass in the owned disposable installer fixture.
+All three cases remain NOT RUN. The source-time seam is deferred; the reviewed
+v10 APK is retained with no new build or runtime instrumentation. The [client
+handoff and review provenance](evidence/voice-single-host-client-20260910/README.md)
+distinguish that genuine initial review from the later Fable request that returned
+Opus models and Haiku, with no actual Fable usage. The one no-tool probe also
+returned no Fable. These responses do not supply required fresh Fable approval;
+final code/artifact review and technical acceptance remain outstanding.
+
 ## Bounded incoming-call diagnostic — 2026-09-10
 
 One fresh ordinary baseline/fixed comparison used the same reviewed test observer

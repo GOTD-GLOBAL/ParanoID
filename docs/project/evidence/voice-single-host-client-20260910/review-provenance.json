@@ -1,0 +1,150 @@
+{
+  "v": 1,
+  "date": "2026-09-10",
+  "evidence_source_directory": "/home/codex/paranoid-self-service-evidence/voice-single-host-20260910T045552Z",
+  "scope": "Client documentation handoff; records are observations of actual model usage, not a fresh review.",
+  "initial_call_disposition_excerpt_sha256": "277c27bdfeeb58938babebe8b23d95444960c306f3a90f3ea3afc996402d32a6",
+  "records": [
+    {
+      "record": "fable-design",
+      "requested_model": "claude-fable-5",
+      "actual_model_usage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 1328,
+          "outputTokens": 20,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.001428,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-fable-5": {
+          "inputTokens": 19,
+          "outputTokens": 25856,
+          "cacheReadInputTokens": 456787,
+          "cacheCreationInputTokens": 90943,
+          "webSearchRequests": 0,
+          "costUSD": 3.568637,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-fable-5",
+          "provider": "firstParty"
+        }
+      },
+      "fable_usage_present": true,
+      "process_returncode": 0,
+      "result_subtype": "success",
+      "result_is_error": false,
+      "stop_reason": "end_turn",
+      "num_turns": 26,
+      "raw_result_sha256": "a49019b1754997beb404559971feb30c82821cab756e664dddaa98ae3cf821a5",
+      "raw_command_sha256": "42ee502e66244630f72434e1abd79b183ff04331b5c7c819f349c8ebaf63ba4c",
+      "raw_process_sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d",
+      "prompt_sha256": "053b1117992decdbc188aed714dc057a229f2118b2f414e1671bfa48056e924e",
+      "tool_scope": "Read,Glob,Grep,WebSearch,WebFetch",
+      "required_fable_review_credit": true,
+      "review_text_sha256": "4262a5dbc0206810001bc2cd332b7e4852415518a2a53b15d13c03c532dca30e"
+    },
+    {
+      "record": "fable-credential-design",
+      "requested_model": "claude-fable-5",
+      "actual_model_usage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 1061,
+          "outputTokens": 16,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.001141,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-opus-5": {
+          "inputTokens": 2,
+          "outputTokens": 245,
+          "cacheReadInputTokens": 3412,
+          "cacheCreationInputTokens": 4228,
+          "webSearchRequests": 0,
+          "costUSD": 0.034266000000000005,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-opus-5",
+          "provider": "firstParty"
+        },
+        "claude-opus-4-8": {
+          "inputTokens": 10,
+          "outputTokens": 25933,
+          "cacheReadInputTokens": 216463,
+          "cacheCreationInputTokens": 111281,
+          "webSearchRequests": 0,
+          "costUSD": 1.8694164999999998,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-opus-4-8",
+          "provider": "firstParty"
+        }
+      },
+      "fable_usage_present": false,
+      "process_returncode": 0,
+      "result_subtype": "success",
+      "result_is_error": false,
+      "stop_reason": "end_turn",
+      "num_turns": 22,
+      "raw_result_sha256": "2e139edafc0993a66ba8e89d74b3f4cbdc1d5296c1c350486cb8152f1b23ef17",
+      "raw_command_sha256": "6ee5c4353f9aeb0cee5111a596b0070390081f539a3bb77def12d060f26d7abf",
+      "raw_process_sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d",
+      "prompt_sha256": "bb5f76c78706ebba458bf5f4298bb0cf6689a57242cffd9d215a4b13c229109a",
+      "tool_scope": "Read,Glob,Grep,WebSearch,WebFetch",
+      "required_fable_review_credit": false,
+      "review_text_sha256": "2b281f6f729c1701a4bf6cdfc426d2a9c05ca95226278c8a8e84080761621e8e"
+    },
+    {
+      "record": "fable-model-capability",
+      "requested_model": "claude-fable-5",
+      "actual_model_usage": {
+        "claude-haiku-4-5-20251001": {
+          "inputTokens": 557,
+          "outputTokens": 12,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0,
+          "webSearchRequests": 0,
+          "costUSD": 0.000617,
+          "contextWindow": 200000,
+          "maxOutputTokens": 32000,
+          "canonicalModel": "claude-haiku-4-5",
+          "provider": "firstParty"
+        },
+        "claude-opus-5": {
+          "inputTokens": 2,
+          "outputTokens": 4,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 3741,
+          "webSearchRequests": 0,
+          "costUSD": 0.023491249999999998,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 64000,
+          "canonicalModel": "claude-opus-5",
+          "provider": "firstParty"
+        }
+      },
+      "fable_usage_present": false,
+      "process_returncode": 0,
+      "result_subtype": "success",
+      "result_is_error": false,
+      "stop_reason": "end_turn",
+      "num_turns": 1,
+      "raw_result_sha256": "452074efb3ce2eae103dccf67f81ad6a0828bbfd748696d97eab7576e4b103c0",
+      "raw_command_sha256": "8029c69915842f67572a48273ac19492c0eb2f2613e3c83fc0732a1610631c91",
+      "raw_process_sha256": "df4d721d233a2334088d2d2e0110346ae9e509ff46bf0b379fbcfa85c715af4d",
+      "prompt_sha256": null,
+      "tool_scope": "",
+      "required_fable_review_credit": false
+    }
+  ],
+  "excerpt_formatting": "Canonical excerpt trims final blank line; original full raw review and hash are retained."
+}

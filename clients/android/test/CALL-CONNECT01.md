@@ -1,5 +1,40 @@
 # CALL-CONNECT01 — diagnostic observer (test only)
 
+## Current-build acceptance plan — 2026-09-10
+
+CALL-CONNECT01 remains **OPEN**: the retained evidence does not establish the
+historical native first cause. The owner's [existing-host and one-touch authority](https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5613364943)
+is conditional on acceptance and fresh review. Initial genuine Fable design
+review C permits a separate **CALL-CURRENT01**, currently **NOT RUN**, against
+the coordinated installer in an owned disposable environment after the relay
+gates pass. The [review and provenance record](../../../docs/project/evidence/voice-single-host-client-20260910/README.md)
+preserves the distinction and the exact conditions.
+
+Freeze these three cases before execution on the same candidate:
+
+| Case | Required observation | Status |
+| --- | --- | --- |
+| Fresh synthetic install, first microphone grant, incoming call | At least 30 seconds connected with sustained decoded audio | NOT RUN |
+| Retained microphone permission, incoming redial | At least 30 seconds connected with sustained decoded audio | NOT RUN |
+| Outgoing call | Connected and decoded media, with clean teardown | NOT RUN |
+
+Use the product deadlines without synthetic 15/20-second cutoffs or consent-clock
+resets. Preserve every outcome and stop the matrix on any real unexplained
+failure. Retain connected callbacks, host committed-answer/setRemote success,
+decoded-sample/energy growth and clean teardown, with full source, artifact,
+driver and observer provenance and explicit installed-identity limits. File
+hashes do not attest loaded code. A successful matrix would establish only its
+current-build scope; it cannot turn CALL-CONNECT01 into PASS.
+
+The source-time seam is deferred unless such a failure makes it necessary. No
+new runtime instrumentation or APK build is justified or performed here; retain
+the reviewed v10 candidate. A later credential-design review requested Fable but
+reported Opus 5/4.8 and Haiku, with no Fable in actual model usage; the one no-tool
+capability probe likewise reported no Fable. Those responses cannot satisfy the
+required fresh Fable review. The initial conditional design disposition remains
+distinct from final code/artifact approval. Another identical short A/B is
+declined; denied TURN tests have not been repeated.
+
 ## Bounded ordinary comparison — 2026-09-10
 
 The later direct task authorized one ordinary baseline and one fixed incoming arm
