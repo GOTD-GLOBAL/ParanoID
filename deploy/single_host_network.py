@@ -151,7 +151,62 @@ def normalize_nft_json(raw):
         if 'handle' in body and (type(body['handle']) is not int or body['handle'] < 0):
             raise ValueError('invalid nft handle')
         body.pop('handle', None)
+        if kind == 'rule':
+            body['expr'] = canonical_expr(body['expr'])
         result.append({kind: body})
+    return result
+
+
+# Kernel readback (observed on nftables v1.0.9) rewrites semantically identical
+# rules: symbolic enum values become numeric (nfproto ipv6 -> 10, fib type
+# local -> 2, l4proto tcp/udp -> 6/17) and redundant meta matches are dropped
+# when a payload match already fixes the protocol. Canonicalize both the
+# rendered and the read-back expression lists to the same reduced form so the
+# drift check compares meaning, not dialect. Any unexpected shape is kept
+# verbatim and will still fail the comparison.
+_NFT_ENUMS = {'nfproto': {2: 'ipv4', 10: 'ipv6'},
+              'l4proto': {6: 'tcp', 17: 'udp'}}
+_FIB_TYPES = {2: 'local'}
+
+
+def _is_meta_match(item, key):
+    return (isinstance(item, dict) and set(item) == {'match'}
+            and isinstance(item['match'], dict)
+            and isinstance(item['match'].get('left'), dict)
+            and item['match']['left'] == {'meta': {'key': key}})
+
+
+def canonical_expr(expr):
+    if not isinstance(expr, list):
+        raise ValueError('unreviewed nft rule expression')
+    payload_protocols = set()
+    for item in expr:
+        if (isinstance(item, dict) and set(item) == {'match'}
+                and isinstance(item['match'], dict)
+                and isinstance(item['match'].get('left'), dict)
+                and isinstance(item['match']['left'].get('payload'), dict)):
+            payload_protocols.add(item['match']['left']['payload'].get('protocol'))
+    result = []
+    for item in copy.deepcopy(expr):
+        # Drop meta matches made redundant by an explicit payload protocol.
+        if _is_meta_match(item, 'nfproto') and item['match'].get('right') in ('ipv4', 2) \
+                and 'ip' in payload_protocols:
+            continue
+        if _is_meta_match(item, 'l4proto'):
+            right = item['match'].get('right')
+            named = _NFT_ENUMS['l4proto'].get(right, right)
+            if named in payload_protocols:
+                continue
+        # Map remaining numeric enum values onto their symbolic names.
+        if isinstance(item, dict) and set(item) == {'match'} and isinstance(item['match'], dict):
+            left, right = item['match'].get('left'), item['match'].get('right')
+            for key, mapping in _NFT_ENUMS.items():
+                if _is_meta_match(item, key) and right in mapping:
+                    item['match']['right'] = mapping[right]
+            if (isinstance(left, dict) and isinstance(left.get('fib'), dict)
+                    and left['fib'].get('result') == 'type' and right in _FIB_TYPES):
+                item['match']['right'] = _FIB_TYPES[right]
+        result.append(item)
     return result
 
 
@@ -449,7 +504,12 @@ def classify_ownership(spec, observation, receipt=None):
     if table is not None:
         if not may_own:
             raise ValueError('unowned nft table exists')
-        if table != _objects(spec):
+        # Compare canonical semantics: the kernel readback of an identical
+        # policy differs syntactically (enum numerics, dropped redundant meta
+        # matches), so both sides go through canonical_expr.
+        expected = [{kind: dict(body, expr=canonical_expr(body['expr'])) if kind == 'rule' else body}
+                    for obj in _objects(spec) for kind, body in obj.items()]
+        if table != expected:
             raise ValueError('nft policy drift')
     elif receipt and receipt['egress'] == 'present' and pending != {'op': 'remove'}:
         # A reboot legitimately starts with an empty table. Only apply may restore

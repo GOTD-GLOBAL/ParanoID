@@ -121,16 +121,42 @@ class RenderTests(unittest.TestCase):
 
     def test_closed_nft_observation_ignores_only_handles_not_order_or_extra_rules(self):
         original = snapshot()
+        # Kernel readback canonicalization: rules compare by canonical_expr.
+        expected = [{kind: (dict(body, expr=network.canonical_expr(body['expr']))
+                            if kind == 'rule' else body)}
+                    for item in original for kind, body in item.items()]
         observed = copy.deepcopy(original)
         for i, entry in enumerate(observed):
             next(iter(entry.values()))['handle'] = i + 10
         observed.insert(0, {'metainfo': {'version': '1.0.9', 'json_schema_version': 1}})
-        self.assertEqual(network.normalize_nft_json({'nftables': observed}), original)
+        self.assertEqual(network.normalize_nft_json({'nftables': observed}), expected)
         observed.append({'rule': {'family': 'inet', 'table': 'paranoid_voice',
                                  'chain': 'output', 'expr': [{'accept': None}]}})
-        self.assertNotEqual(network.normalize_nft_json({'nftables': observed}), original)
+        self.assertNotEqual(network.normalize_nft_json({'nftables': observed}), expected)
         with self.assertRaises(ValueError):
             network.normalize_nft_json({'nftables': original + [{'set': {'name': 'unreviewed'}}]})
+
+    def test_canonical_expr_reduces_kernel_dialect_but_keeps_semantics_distinct(self):
+        # Numeric enums map to names; redundant meta matches drop against payload.
+        kernel = [{'match': {'op': '==', 'left': {'meta': {'key': 'nfproto'}}, 'right': 10}},
+                  {'drop': None}]
+        self.assertEqual(network.canonical_expr(kernel),
+                         [{'match': {'op': '==', 'left': {'meta': {'key': 'nfproto'}}, 'right': 'ipv6'}},
+                          {'drop': None}])
+        rendered = [{'match': {'op': '==', 'left': {'meta': {'key': 'nfproto'}}, 'right': 'ipv4'}},
+                    {'match': {'op': '==', 'left': {'meta': {'key': 'l4proto'}}, 'right': 'udp'}},
+                    {'match': {'op': '==', 'left': {'payload': {'protocol': 'ip', 'field': 'saddr'}}, 'right': '157.180.49.125'}},
+                    {'match': {'op': '==', 'left': {'payload': {'protocol': 'udp', 'field': 'sport'}}, 'right': 34781}},
+                    {'accept': None}]
+        readback = [{'match': {'op': '==', 'left': {'payload': {'protocol': 'ip', 'field': 'saddr'}}, 'right': '157.180.49.125'}},
+                    {'match': {'op': '==', 'left': {'payload': {'protocol': 'udp', 'field': 'sport'}}, 'right': 34781}},
+                    {'accept': None}]
+        self.assertEqual(network.canonical_expr(rendered), network.canonical_expr(readback))
+        fib = [{'match': {'op': '==', 'left': {'fib': {'result': 'type', 'flags': ['daddr']}}, 'right': 2}}, {'drop': None}]
+        self.assertEqual(network.canonical_expr(fib)[0]['match']['right'], 'local')
+        # A genuinely different port/address is NOT reduced away.
+        other = [dict(readback[0]), {'match': {'op': '==', 'left': {'payload': {'protocol': 'udp', 'field': 'sport'}}, 'right': 5766}}, {'accept': None}]
+        self.assertNotEqual(network.canonical_expr(readback), network.canonical_expr(other))
 
     def test_ingress_is_three_exact_commented_tuples_and_delete_keeps_comment(self):
         rules = network.desired_ufw_rules(SPEC)
