@@ -116,7 +116,9 @@ class RehearsalFilesTests(unittest.TestCase):
         self.plan_sha = kit.plan(self.intent, self.production)['plan_sha256']
         expected = {key: 'a' * 64 for key in kit.IDENTITY}
         expected.update(release='a' * 20, pg_system_id='123')
-        fixture_intents = {mode: {**copy.deepcopy(self.intent), 'profile': kit.VM_FIXTURE,
+        self.boots = {'fresh': '11111111-1111-4111-8111-111111111111',
+                      'existing-v8': '22222222-2222-4222-8222-222222222222'}
+        fixture_intents = {self.boots[mode]: {**copy.deepcopy(self.intent), 'profile': kit.VM_FIXTURE,
                           'interface': 'vr-relay', 'kit_sha256': self.fixture_sha,
                           'mode': mode, 'expected': None if mode == 'fresh' else expected}
                            for mode in ('fresh', 'existing-v8')}
@@ -125,16 +127,18 @@ class RehearsalFilesTests(unittest.TestCase):
                        'run_id': '1' * 32, 'production_kit_sha256': self.production_sha,
                        'production_plan_sha256': self.plan_sha,
                        'fixture_kit_sha256': self.fixture_sha, 'driver_sha256': self.driver_sha,
-                       'boot_ids': ['11111111-1111-4111-8111-111111111111'], 'cases': {},
+                       'boot_ids': list(self.boots.values()), 'cases': {},
                        'fixture_intents': fixture_intents,
                        'fixture_plan_sha256': {mode: kit.plan(value, self.fixture)['plan_sha256']
                                                for mode, value in fixture_intents.items()}}
         for name, checks in vm.REQUIRED_CASES.items():
+            mode = 'fresh' if name == 'fresh' else 'existing-v8'
+            boot = self.boots[mode]
             log = {k: self.report[k] for k in ('run_id', 'production_kit_sha256',
                    'production_plan_sha256', 'fixture_kit_sha256', 'driver_sha256')}
-            log.update(v=1, case=name, boot_id=self.report['boot_ids'][0], result='OBSERVED',
-                       fixture_mode='fresh' if name == 'fresh' else 'existing-v8',
-                       fixture_plan_sha256=self.report['fixture_plan_sha256']['fresh' if name == 'fresh' else 'existing-v8'],
+            log.update(v=1, case=name, boot_id=boot, result='OBSERVED',
+                       fixture_mode=mode,
+                       fixture_plan_sha256=self.report['fixture_plan_sha256'][boot],
                        started_monotonic_ns=1, finished_monotonic_ns=2,
                        checks={key: True for key in checks},
                        measurements={'synthetic_unit_test': True},
@@ -144,6 +148,9 @@ class RehearsalFilesTests(unittest.TestCase):
             path = self.root / (name + '.json')
             path.write_bytes(kit.canonical(log))
             self.report['cases'][name] = {'path': path.name, 'sha256': kit.sha(path.read_bytes())}
+        self.report['isolation_cases'] = {}
+        for boot in self.report['boot_ids']:
+            self.add_isolation(boot)
         self.gate = {'result': 'PASS', 'fixture_profile': kit.VM_FIXTURE,
                      'fixture_kit_sha256': self.fixture_sha, 'fixture_kit_path': str(self.fixture),
                      'evidence_path': str(self.root / 'report.json'), 'evidence_sha256': ''}
@@ -154,6 +161,15 @@ class RehearsalFilesTests(unittest.TestCase):
         data = kit.canonical(self.report)
         (self.root / 'report.json').write_bytes(data)
         self.gate['evidence_sha256'] = kit.sha(data)
+
+    def add_isolation(self, boot):
+        original = self.root / self.report['cases']['fixture-isolation']['path']
+        log = kit.decode_json(original.read_bytes())
+        log.update(boot_id=boot, fixture_mode=self.report['fixture_intents'][boot]['mode'],
+                   fixture_plan_sha256=self.report['fixture_plan_sha256'][boot])
+        path = self.root / ('isolation-' + boot + '.json')
+        path.write_bytes(kit.canonical(log))
+        self.report['isolation_cases'][boot] = {'path': path.name, 'sha256': kit.sha(path.read_bytes())}
 
     def validate(self):
         return vm.verify_rehearsal(self.api, self.gate, self.production,
@@ -258,11 +274,40 @@ class RehearsalFilesTests(unittest.TestCase):
 
     def test_service_configuration_and_mode_coverage_bind_to_production(self):
         original = copy.deepcopy(self.report['fixture_intents'])
-        self.report['fixture_intents']['existing-v8']['relay']['uid'] += 1
+        self.report['fixture_intents'][self.boots['existing-v8']]['relay']['uid'] += 1
         self.save_report()
         with self.assertRaisesRegex(ValueError, 'layout|identities'):self.validate()
         self.report['fixture_intents'] = original
-        del self.report['fixture_intents']['fresh']; self.save_report()
+        del self.report['fixture_intents'][self.boots['fresh']]; self.save_report()
+        with self.assertRaises(ValueError):self.validate()
+
+    def test_each_disposable_boot_binds_its_actual_synthetic_prior_identity(self):
+        boot = '33333333-3333-4333-8333-333333333333'
+        intent = copy.deepcopy(self.report['fixture_intents'][self.boots['existing-v8']])
+        intent['expected']['tls_spki'] = 'b' * 64
+        self.report['boot_ids'].append(boot)
+        self.report['fixture_intents'][boot] = intent
+        planned = kit.plan(intent, self.fixture)['plan_sha256']
+        self.report['fixture_plan_sha256'][boot] = planned
+        self.add_isolation(boot)
+        entry = self.report['cases']['failure-recovery']
+        path = self.root / entry['path']
+        log = kit.decode_json(path.read_bytes())
+        log.update(boot_id=boot, fixture_plan_sha256=planned)
+        path.write_bytes(kit.canonical(log)); entry['sha256'] = kit.sha(path.read_bytes())
+        self.save_report(); self.validate()
+        log['fixture_plan_sha256'] = self.report['fixture_plan_sha256'][self.boots['existing-v8']]
+        path.write_bytes(kit.canonical(log)); entry['sha256'] = kit.sha(path.read_bytes())
+        self.save_report()
+        with self.assertRaises(ValueError):self.validate()
+
+    def test_failed_cleanup_on_any_reported_boot_rejects_full_rehearsal(self):
+        entry = self.report['isolation_cases'][self.boots['fresh']]
+        path = self.root / entry['path']
+        log = kit.decode_json(path.read_bytes())
+        log['checks']['final_lo_only_no_routes'] = False
+        path.write_bytes(kit.canonical(log)); entry['sha256'] = kit.sha(path.read_bytes())
+        self.save_report()
         with self.assertRaises(ValueError):self.validate()
 
     def test_matching_production_gates_must_reference_verified_case_hashes(self):

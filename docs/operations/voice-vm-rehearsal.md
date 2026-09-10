@@ -74,11 +74,16 @@ as a full rehearsal profile.
 The report names a finite required case set and references contained execution
 logs. Each log binds the actual run, boot, fixture driver, both kits and production
 plan, retains commands and their output with hashes, and includes the required
-case observations. Fresh and retained-v8 fixture intents and their computed plans
-are embedded; IP, service account names, numeric UIDs/GIDs, root and unit match
+case observations. Every reported boot embeds its actual fixture intent and
+computed plan; fresh and retained-v8 mode coverage are both mandatory. IP,
+service account names, numeric UIDs/GIDs, root and unit match
 the production intent. Fixture profile/interface/kit identity differ explicitly.
 Retained fixture TLS/database identity hashes describe synthetic guest data, never
-copied production keys or history. Both mode cases are mandatory. Five matching
+copied production keys or history. Every boot additionally references its own
+complete initial/final isolation log. The coordinator's terminal rollback state
+is preserved: ordinary rollback and failure recovery use separate disposable
+guests with distinct synthetic prior identities, never a reset/retry or a made-up
+shared fixture plan. Both mode cases are mandatory. Five matching
 production relay/issuer gate hashes must equal the verified case-log hashes.
 Missing files, wrong hashes, changed components, missing or
 failed case observations, a different plan and hash-only legacy receipts fail
@@ -114,8 +119,11 @@ matrix; correction requires retained evidence, TDD and independent review before
 any changed new run. Actual full fixture implementation, exact source review,
 runtime results, final review and conditional attended deployment remain pending.
 
-The current candidate implements the verifier/profile dispatch and19 offline
-regressions; the separate full runner is still being implemented. The availability
+The current candidate implements the verifier/profile dispatch and21 offline
+regressions; the separate full runner is still being implemented. Its evidence,
+initial guest/PAM/veth/UFW and actual JNI client foundation exists with six offline
+tests, but case registration and execution remain unavailable pending completion
+and review. The availability
 set remains empty and production `apply` still refuses before mutation. Actual
 Opus5 implementation review was conditional; its ten corrections and the additional
 veth-pair RED/GREEN are retained. The signed205-package guest closure was actually
@@ -123,8 +131,10 @@ acquired (850958764 expanded bytes). The base image has since been assembled and
 all17100 cpio members verified (3708965338 regular bytes,1591558686 compressed);
 The first reviewed KVM observation stopped before guest continuation because its
 descriptor auditor omitted the actual read-only vCPU statistics descriptor. Owned
-cleanup completed and no guest/relay ran. A correction checks exact CPU indices
-and read-only/CLOEXEC descriptor metadata, with13 passing offline tests; its
-independent review is pending. No failed observation is converted to acceptance.
+cleanup completed. The metadata-aware correction received Opus5 approval after13
+offline tests; one corrected run booted and powered off cleanly. Actual KVM,
+no-NIC/no-disk/loopback-only isolation and20 prerequisite commands were observed.
+Nested KVM API12 and emulator `-accel-check` were usable; Android AVD/call acceptance
+remains unrun. The original failed observation is preserved.
 Read-only production metadata confirms message UID1003/GID1004 and interface
 enp5s0; relay UID/GID1902 are available, not created.

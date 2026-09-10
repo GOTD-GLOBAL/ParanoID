@@ -45,7 +45,8 @@ def validate_execution(api, value, report, name):
             or value['v'] != 1 or value['case'] != name or value['result'] != 'OBSERVED'
             or value['boot_id'] not in report['boot_ids']
             or value['fixture_mode'] not in ('fresh', 'existing-v8')
-            or value['fixture_plan_sha256'] != report['fixture_plan_sha256'][value['fixture_mode']]
+            or value['fixture_mode'] != report['fixture_intents'][value['boot_id']]['mode']
+            or value['fixture_plan_sha256'] != report['fixture_plan_sha256'][value['boot_id']]
             or (name in ('fresh', 'existing-v8') and value['fixture_mode'] != name)
             or any(value[field] != report[field] for field in BINDINGS)
             or type(value['started_monotonic_ns']) is not int
@@ -97,7 +98,8 @@ def verify_rehearsal(api, gate, production_root, production_sha, plan_sha, produ
     if api.sha(data) != gate['evidence_sha256']:
         raise ValueError('actual rehearsal report checksum differs')
     report = api.decode_json(data)
-    fields = {'v', 'profile', 'result', 'boot_ids', 'cases', 'fixture_intents', 'fixture_plan_sha256', *BINDINGS}
+    fields = {'v', 'profile', 'result', 'boot_ids', 'cases', 'isolation_cases',
+              'fixture_intents', 'fixture_plan_sha256', *BINDINGS}
     if (not isinstance(report, dict) or set(report) != fields or type(report['v']) is not int
             or report['v'] != 1 or report['profile'] != PROFILE
             or report['result'] != 'FULL_REHEARSAL_OBSERVED'
@@ -110,20 +112,28 @@ def verify_rehearsal(api, gate, production_root, production_sha, plan_sha, produ
             or any(not isinstance(boot, str) or not BOOT_ID.fullmatch(boot) for boot in report['boot_ids'])
             or len(set(report['boot_ids'])) != len(report['boot_ids'])
             or not isinstance(report['fixture_intents'], dict)
-            or set(report['fixture_intents']) != {'fresh', 'existing-v8'}
+            or set(report['fixture_intents']) != set(report['boot_ids'])
             or not isinstance(report['fixture_plan_sha256'], dict)
-            or set(report['fixture_plan_sha256']) != {'fresh', 'existing-v8'}
+            or set(report['fixture_plan_sha256']) != set(report['boot_ids'])
+            or not isinstance(report['isolation_cases'], dict)
+            or set(report['isolation_cases']) != set(report['boot_ids'])
             or not isinstance(report['cases'], dict) or set(report['cases']) != set(REQUIRED_CASES)):
         raise ValueError('complete exact production-plan-bound rehearsal required')
-    for mode, candidate in report['fixture_intents'].items():
+    modes = set()
+    for boot, candidate in report['fixture_intents'].items():
         configured = api.validate_intent(candidate)
-        if (configured['profile'] != PROFILE or configured['mode'] != mode
+        modes.add(configured['mode'])
+        if (configured['profile'] != PROFILE
                 or configured['kit_sha256'] != report['fixture_kit_sha256']
                 or any(configured[field] != intent[field] for field in ('ip', 'message', 'relay'))
-                or api.plan(configured, fixture_root)['plan_sha256'] != report['fixture_plan_sha256'][mode]):
+                or api.plan(configured, fixture_root)['plan_sha256'] != report['fixture_plan_sha256'][boot]):
             raise ValueError('guest service layout, identities, mode coverage or plan differs')
+    if modes != {'fresh', 'existing-v8'}:
+        raise ValueError('actual fresh and existing-v8 mode coverage required')
     paths = set()
-    for name, entry in report['cases'].items():
+    entries = [(name, None, entry) for name, entry in report['cases'].items()]
+    entries += [('fixture-isolation', boot, entry) for boot, entry in report['isolation_cases'].items()]
+    for name, boot, entry in entries:
         if (not isinstance(entry, dict) or set(entry) != {'path', 'sha256'}
                 or not isinstance(entry['path'], str)
                 or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,80}\.json', entry['path'])
@@ -133,7 +143,10 @@ def verify_rehearsal(api, gate, production_root, production_sha, plan_sha, produ
         raw = api.read_file(path.parent / entry['path'], 8 * 1024 * 1024, owner=0)
         if api.sha(raw) != entry['sha256']:
             raise ValueError('referenced execution log checksum differs')
-        validate_execution(api, api.decode_json(raw), report, name)
+        actual = api.decode_json(raw)
+        validate_execution(api, actual, report, name)
+        if boot is not None and actual['boot_id'] != boot:
+            raise ValueError('every boot needs its own complete isolation observation')
     return report
 
 

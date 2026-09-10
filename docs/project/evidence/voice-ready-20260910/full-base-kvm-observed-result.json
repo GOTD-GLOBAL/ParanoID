@@ -1,0 +1,521 @@
+{
+  "result": "GUEST_PREREQUISITES_OBSERVED",
+  "source_sha256": "024dcdd7027f0c2fea8bef338577e5b7a4a75e9ae968b8f03d7cf2d32b69eb4b",
+  "argv": [
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/bin/qemu-system-x86_64",
+    "-nodefaults",
+    "-no-user-config",
+    "-machine",
+    "q35,accel=kvm,dump-guest-core=off,mem-merge=off",
+    "-cpu",
+    "host",
+    "-smp",
+    "4",
+    "-m",
+    "12288",
+    "-display",
+    "none",
+    "-nic",
+    "none",
+    "-monitor",
+    "none",
+    "-qmp",
+    "stdio",
+    "-chardev",
+    "file,id=serial0,path=/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-stats-fixed-runtime/console.log",
+    "-serial",
+    "chardev:serial0",
+    "-smbios",
+    "type=1,product=ParanoID Voice Fixture v1",
+    "-bios",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/seabios/bios-256k.bin",
+    "-L",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/qemu",
+    "-kernel",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/boot/vmlinuz-6.8.0-139-generic",
+    "-initrd",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base/initramfs.cpio.gz",
+    "-append",
+    "console=ttyS0 quiet panic=-1 oops=panic rdinit=/init",
+    "-no-reboot",
+    "-S",
+    "-sandbox",
+    "on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
+  ],
+  "uid": 1003,
+  "run_id": "e19e18929855483ca61fb9682e488a72",
+  "initramfs_sha256": "f90a9ec93662503943be7c7695201e498fc79cf55e77c150a34b34439bfb723a",
+  "base_receipt_sha256": "594926d7a019149977c1457ec5a74141714e3e8f488cd44cb82a19188afd8948",
+  "guest_memory_mib": 12288,
+  "host_mem_available_kib_before": 56843204,
+  "current_calls": "NOT_RUN",
+  "tooling_receipt_sha256": "076588d4c03a283b2ebe1a85807d707f98c2e58ce92b187db0c759c8e2d803c5",
+  "relay_acceptance": "NOT_RUN",
+  "isolation_claim": "OBSERVED_POINT_IN_TIME_NOT_ENFORCEMENT",
+  "fd_inventory_scope": "PRE_CONT_ONLY",
+  "pid": 2616147,
+  "actual_argv": [
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/bin/qemu-system-x86_64",
+    "-nodefaults",
+    "-no-user-config",
+    "-machine",
+    "q35,accel=kvm,dump-guest-core=off,mem-merge=off",
+    "-cpu",
+    "host",
+    "-smp",
+    "4",
+    "-m",
+    "12288",
+    "-display",
+    "none",
+    "-nic",
+    "none",
+    "-monitor",
+    "none",
+    "-qmp",
+    "stdio",
+    "-chardev",
+    "file,id=serial0,path=/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-stats-fixed-runtime/console.log",
+    "-serial",
+    "chardev:serial0",
+    "-smbios",
+    "type=1,product=ParanoID Voice Fixture v1",
+    "-bios",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/seabios/bios-256k.bin",
+    "-L",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/usr/share/qemu",
+    "-kernel",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/vm-tooling-v2/sysroot/boot/vmlinuz-6.8.0-139-generic",
+    "-initrd",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base/initramfs.cpio.gz",
+    "-append",
+    "console=ttyS0 quiet panic=-1 oops=panic rdinit=/init",
+    "-no-reboot",
+    "-S",
+    "-sandbox",
+    "on,obsolete=deny,elevateprivileges=deny,spawn=deny,resourcecontrol=deny"
+  ],
+  "actual_uid": [
+    "1003",
+    "1003",
+    "1003",
+    "1003"
+  ],
+  "actual_cap_eff": "0000000000000000",
+  "actual_gid": [
+    "994",
+    "994",
+    "994",
+    "994"
+  ],
+  "actual_groups": [
+    "1004"
+  ],
+  "no_new_privs": "1",
+  "seccomp": "2",
+  "fd_inventory": [
+    "pipe:[209972812]",
+    "pipe:[209972813]",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-stats-fixed-runtime/stderr.log",
+    "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-stats-fixed-runtime/console.log",
+    "anon_inode:[eventfd]",
+    "anon_inode:[signalfd]",
+    "anon_inode:[eventfd]",
+    "anon_inode:[eventfd]",
+    "/dev/kvm",
+    "anon_inode:kvm-vm",
+    "anon_inode:kvm-vcpu:0",
+    "anon_inode:[eventfd]",
+    "anon_inode:[eventfd]",
+    "anon_inode:kvm-vcpu-stats:0",
+    "anon_inode:kvm-vcpu:1",
+    "anon_inode:kvm-vcpu-stats:1",
+    "anon_inode:kvm-vcpu:2",
+    "anon_inode:kvm-vcpu-stats:2",
+    "anon_inode:kvm-vcpu:3",
+    "anon_inode:kvm-vcpu-stats:3"
+  ],
+  "kvm_stats_fdinfo": {
+    "anon_inode:kvm-vcpu-stats:0": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:1": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:2": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:3": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n"
+  },
+  "query_kvm": {
+    "enabled": true,
+    "present": true
+  },
+  "qmp_pci": [
+    {
+      "bus": 0,
+      "devices": [
+        {
+          "irq_pin": 0,
+          "bus": 0,
+          "qdev_id": "",
+          "slot": 0,
+          "class_info": {
+            "class": 1536,
+            "desc": "Host bridge"
+          },
+          "id": {
+            "device": 10688,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 0,
+          "regions": []
+        },
+        {
+          "irq_pin": 0,
+          "bus": 0,
+          "qdev_id": "",
+          "slot": 31,
+          "class_info": {
+            "class": 1537,
+            "desc": "ISA bridge"
+          },
+          "id": {
+            "device": 10520,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 0,
+          "regions": []
+        },
+        {
+          "irq_pin": 1,
+          "bus": 0,
+          "qdev_id": "",
+          "irq": 0,
+          "slot": 31,
+          "class_info": {
+            "class": 262,
+            "desc": "SATA controller"
+          },
+          "id": {
+            "device": 10530,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 2,
+          "regions": [
+            {
+              "bar": 4,
+              "size": 32,
+              "address": -1,
+              "type": "io"
+            },
+            {
+              "prefetch": false,
+              "mem_type_64": false,
+              "bar": 5,
+              "size": 4096,
+              "address": -1,
+              "type": "memory"
+            }
+          ]
+        },
+        {
+          "irq_pin": 1,
+          "bus": 0,
+          "qdev_id": "",
+          "irq": 0,
+          "slot": 31,
+          "class_info": {
+            "class": 3077,
+            "desc": "SMBus"
+          },
+          "id": {
+            "device": 10544,
+            "subsystem-vendor": 6900,
+            "vendor": 32902,
+            "subsystem": 4352
+          },
+          "function": 3,
+          "regions": [
+            {
+              "bar": 4,
+              "size": 64,
+              "address": -1,
+              "type": "io"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "qmp_blocks": [],
+  "running_argv_verified": true,
+  "exit_code": 0,
+  "guest": {
+    "commands": [
+      {
+        "argv": [
+          "/usr/sbin/ip",
+          "-j",
+          "-4",
+          "route",
+          "show",
+          "table",
+          "all"
+        ],
+        "exit_code": 0,
+        "output": "[{\"type\":\"local\",\"dst\":\"127.0.0.0/8\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"host\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]},{\"type\":\"local\",\"dst\":\"127.0.0.1\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"host\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]},{\"type\":\"broadcast\",\"dst\":\"127.255.255.255\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"link\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]}]\n",
+        "output_sha256": "e76a0aaf56b481a2a6aa94b41bab3357374d0625d74498d52bed1778c8b56c70"
+      },
+      {
+        "argv": [
+          "/usr/sbin/ip",
+          "-j",
+          "-6",
+          "route",
+          "show",
+          "table",
+          "all"
+        ],
+        "exit_code": 0,
+        "output": "[{\"type\":\"local\",\"dst\":\"::1\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"metric\":0,\"flags\":[],\"pref\":\"medium\"}]\n",
+        "output_sha256": "5ff90fdef8730bc3d8276aed317d5d408935837c3a436f7bdd2b1d92c71cadaa"
+      },
+      {
+        "argv": [
+          "/usr/sbin/ldconfig"
+        ],
+        "exit_code": 0,
+        "output": "",
+        "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "/usr/bin/systemd-sysusers"
+        ],
+        "exit_code": 0,
+        "output": "",
+        "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "/usr/sbin/pam-auth-update",
+          "--package"
+        ],
+        "exit_code": 0,
+        "output": "\npam-auth-update: Local modifications to /etc/pam.d/common-*, not updating.\npam-auth-update: Run pam-auth-update --force to override.\n\n",
+        "output_sha256": "3f95df82fc2f69361514b21324e51895e6085c9c95bb13b1fe26ebf7a7b9cf06"
+      },
+      {
+        "argv": [
+          "/usr/sbin/depmod",
+          "-a"
+        ],
+        "exit_code": 0,
+        "output": "",
+        "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "/usr/bin/systemctl",
+          "show",
+          "--property=Version",
+          "--value"
+        ],
+        "exit_code": 0,
+        "output": "255.4-1ubuntu8.17\n",
+        "output_sha256": "c29c07e2ade5422e4cae72a826b5e8cb7cd710ece87a9e65bab5a149e5a56f9b"
+      },
+      {
+        "argv": [
+          "/usr/sbin/nft",
+          "--version"
+        ],
+        "exit_code": 0,
+        "output": "nftables v1.0.9 (Old Doc Yak #3)\n",
+        "output_sha256": "89995fd0c92187974133511999d65ba41513837cf75e37d0713b14fd3ada7e9d"
+      },
+      {
+        "argv": [
+          "/usr/sbin/ufw",
+          "--version"
+        ],
+        "exit_code": 0,
+        "output": "ufw 0.36.2\nCopyright 2008-2023 Canonical Ltd.\n",
+        "output_sha256": "a52965ed1673d9262c2a520d7c8543be0454b40a62b3ffbb2774c1a0f6afe3e0"
+      },
+      {
+        "argv": [
+          "/usr/sbin/iptables",
+          "--version"
+        ],
+        "exit_code": 0,
+        "output": "iptables v1.8.10 (nf_tables)\n",
+        "output_sha256": "5ccc9c15a559839d66b6651f8f39f375de315b1cf5b733390ae73ea318b0fd84"
+      },
+      {
+        "argv": [
+          "/usr/lib/postgresql/16/bin/postgres",
+          "--version"
+        ],
+        "exit_code": 0,
+        "output": "postgres (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)\n",
+        "output_sha256": "4a00a71ac566f47cc9401a719612265b3a07e13e1b89de1b46a40d03a01165a6"
+      },
+      {
+        "argv": [
+          "/usr/bin/openssl",
+          "version"
+        ],
+        "exit_code": 0,
+        "output": "OpenSSL 3.0.13 30 Jan 2024 (Library: OpenSSL 3.0.13 30 Jan 2024)\n",
+        "output_sha256": "54668ea977da3703d07ac46186e7c727c114a5243657f46b69a83c69ec005f34"
+      },
+      {
+        "argv": [
+          "/usr/bin/java",
+          "-version"
+        ],
+        "exit_code": 0,
+        "output": "openjdk version \"21.0.12\" 2026-07-21\nOpenJDK Runtime Environment (build 21.0.12+8-1-24.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12+8-1-24.04-Ubuntu, mixed mode, sharing)\n",
+        "output_sha256": "4ddd49e5058130107f252eea6f03fa4dd2eb39ccbfe1d9a0176694e9624eb69c"
+      },
+      {
+        "argv": [
+          "/opt/voice-fixture/android-sdk/platform-tools/adb",
+          "version"
+        ],
+        "exit_code": 0,
+        "output": "Android Debug Bridge version 1.0.41\nVersion 37.0.1-15733141\nInstalled as /opt/voice-fixture/android-sdk/platform-tools/adb\nRunning on Linux 6.8.0-139-generic (x86_64)\n",
+        "output_sha256": "740a121c5b20e08397c615364dd4a6bb713b4a10d520be6241aa14dc7773749d"
+      },
+      {
+        "argv": [
+          "/usr/bin/python3",
+          "-I",
+          "-B",
+          "-c",
+          "from cryptography.hazmat.primitives.ciphers.aead import AESGCM; import cryptography; print(cryptography.__version__)"
+        ],
+        "exit_code": 0,
+        "output": "41.0.7\n",
+        "output_sha256": "6e7c2fd1f0e6135a742b8f941258fa7865a95dd1af4e356b36da24769ae76e5c"
+      },
+      {
+        "argv": [
+          "/usr/bin/python3",
+          "-I",
+          "-B",
+          "-c",
+          "import sys; sys.path.insert(0,\"/opt/voice-fixture/python-media\"); import aiortc,av,numpy; print(aiortc.__version__,av.__version__,numpy.__version__)"
+        ],
+        "exit_code": 0,
+        "output": "1.15.0 17.1.0 2.5.3\n",
+        "output_sha256": "c3d8fcf333dfc9011c4c8f0f3786614202960e716259959eb9e00dcd53347cc7"
+      },
+      {
+        "argv": [
+          "/usr/sbin/modprobe",
+          "kvm_amd"
+        ],
+        "exit_code": 0,
+        "output": "",
+        "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "/opt/voice-fixture/android-sdk/emulator/emulator",
+          "-accel-check"
+        ],
+        "exit_code": 0,
+        "output": "accel:\n0\nKVM (version 12) is installed and usable.\naccel\n",
+        "output_sha256": "4484bdd6d5e16c817d4dfc5cda05334055c86428c861c1d22e8cf67ce42fee49"
+      },
+      {
+        "argv": [
+          "/usr/sbin/ip",
+          "-j",
+          "-4",
+          "route",
+          "show",
+          "table",
+          "all"
+        ],
+        "exit_code": 0,
+        "output": "[{\"type\":\"local\",\"dst\":\"127.0.0.0/8\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"host\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]},{\"type\":\"local\",\"dst\":\"127.0.0.1\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"host\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]},{\"type\":\"broadcast\",\"dst\":\"127.255.255.255\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"scope\":\"link\",\"prefsrc\":\"127.0.0.1\",\"flags\":[]}]\n",
+        "output_sha256": "e76a0aaf56b481a2a6aa94b41bab3357374d0625d74498d52bed1778c8b56c70"
+      },
+      {
+        "argv": [
+          "/usr/sbin/ip",
+          "-j",
+          "-6",
+          "route",
+          "show",
+          "table",
+          "all"
+        ],
+        "exit_code": 0,
+        "output": "[{\"type\":\"local\",\"dst\":\"::1\",\"dev\":\"lo\",\"table\":\"local\",\"protocol\":\"kernel\",\"metric\":0,\"flags\":[],\"pref\":\"medium\"}]\n",
+        "output_sha256": "5ff90fdef8730bc3d8276aed317d5d408935837c3a436f7bdd2b1d92c71cadaa"
+      }
+    ],
+    "current_calls": "NOT_RUN",
+    "finished_monotonic_ns": 22724185841,
+    "inputs_sha256": "102164530d2fb11a8a9b01844ec7cc97d774d7d68a3fccb0fb6f42fb3ef2fad4",
+    "isolation": {
+      "boot_id": "4eb38ec9-ff3a-43c6-8160-09243cf9ac61",
+      "links": [
+        "lo"
+      ],
+      "pci_classes": [
+        67073,
+        393472,
+        787712,
+        393216
+      ]
+    },
+    "nested_acceleration_probe": {
+      "exit_code": 0,
+      "result": "AVAILABLE_NOT_ANDROID_ACCEPTANCE"
+    },
+    "nested_android": "NOT_RUN",
+    "nested_kvm": {
+      "api": 12,
+      "max_vcpus": 4096,
+      "nested_state": 4224,
+      "user_memory": 1
+    },
+    "relay": "NOT_RUN",
+    "result": "GUEST_PREREQUISITES_OBSERVED",
+    "source_sha256": "19f0901a106994c1289219cb7bf6820255eecb8d56d231fdeb04c414b451bcb4"
+  },
+  "serial_sha256": "cfdaaadae9500fb77ea2331b4720f02749862b678a7aae3049eb8ecabfaa1179",
+  "nested_acceleration_probe": {
+    "exit_code": 0,
+    "result": "AVAILABLE_NOT_ANDROID_ACCEPTANCE"
+  },
+  "owned_process_stopped": true,
+  "serial_bytes": 6443,
+  "serial_decode": "utf8",
+  "qmp_events": [
+    {
+      "timestamp": {
+        "seconds": 1789036526,
+        "microseconds": 705418
+      },
+      "event": "RESUME"
+    },
+    {
+      "timestamp": {
+        "seconds": 1789036550,
+        "microseconds": 652509
+      },
+      "event": "SHUTDOWN",
+      "data": {
+        "guest": true,
+        "reason": "guest-shutdown"
+      }
+    }
+  ]
+}

@@ -41,7 +41,7 @@ IDENTITY = {'release', 'manifest_sha256', 'pg_system_id', 'config_sha256',
 MAX_FILE = 128 * 1024 * 1024
 BASE_FILES = {'single_host.py', 'single_host_message.py', 'README.md'}
 RELAY_FILES = {'single_host_network.py', 'single_host_vm.py'}
-VM_FILES = {'single_host_vm_runner.py'}
+VM_FILES = {'single_host_vm_runner.py', 'single_host_vm_packets.py'}
 
 
 class FullRehearsalUnavailable(ValueError):

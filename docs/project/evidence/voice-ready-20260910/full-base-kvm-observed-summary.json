@@ -1,0 +1,74 @@
+{
+  "result": "GUEST_PREREQUISITES_OBSERVED",
+  "source_sha256": "024dcdd7027f0c2fea8bef338577e5b7a4a75e9ae968b8f03d7cf2d32b69eb4b",
+  "run_id": "e19e18929855483ca61fb9682e488a72",
+  "initramfs_sha256": "f90a9ec93662503943be7c7695201e498fc79cf55e77c150a34b34439bfb723a",
+  "base_receipt_sha256": "594926d7a019149977c1457ec5a74141714e3e8f488cd44cb82a19188afd8948",
+  "query_kvm": {
+    "enabled": true,
+    "present": true
+  },
+  "actual_uid": [
+    "1003",
+    "1003",
+    "1003",
+    "1003"
+  ],
+  "actual_gid": [
+    "994",
+    "994",
+    "994",
+    "994"
+  ],
+  "actual_groups": [
+    "1004"
+  ],
+  "no_new_privs": "1",
+  "seccomp": "2",
+  "kvm_stats_fdinfo": {
+    "anon_inode:kvm-vcpu-stats:0": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:1": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:2": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n",
+    "anon_inode:kvm-vcpu-stats:3": "pos:\t0\nflags:\t02000000\nmnt_id:\t16\nino:\t69\n"
+  },
+  "owned_process_stopped": true,
+  "serial_bytes": 6443,
+  "serial_sha256": "cfdaaadae9500fb77ea2331b4720f02749862b678a7aae3049eb8ecabfaa1179",
+  "nested_acceleration_probe": {
+    "exit_code": 0,
+    "result": "AVAILABLE_NOT_ANDROID_ACCEPTANCE"
+  },
+  "guest": {
+    "result": "GUEST_PREREQUISITES_OBSERVED",
+    "source_sha256": "19f0901a106994c1289219cb7bf6820255eecb8d56d231fdeb04c414b451bcb4",
+    "inputs_sha256": "102164530d2fb11a8a9b01844ec7cc97d774d7d68a3fccb0fb6f42fb3ef2fad4",
+    "finished_monotonic_ns": 22724185841,
+    "isolation": {
+      "boot_id": "4eb38ec9-ff3a-43c6-8160-09243cf9ac61",
+      "links": [
+        "lo"
+      ],
+      "pci_classes": [
+        67073,
+        393472,
+        787712,
+        393216
+      ]
+    },
+    "nested_kvm": {
+      "api": 12,
+      "max_vcpus": 4096,
+      "nested_state": 4224,
+      "user_memory": 1
+    },
+    "nested_acceleration_probe": {
+      "exit_code": 0,
+      "result": "AVAILABLE_NOT_ANDROID_ACCEPTANCE"
+    },
+    "nested_android": "NOT_RUN",
+    "relay": "NOT_RUN",
+    "current_calls": "NOT_RUN"
+  },
+  "command_count": 20,
+  "all_guest_output_hashes_checked": true
+}

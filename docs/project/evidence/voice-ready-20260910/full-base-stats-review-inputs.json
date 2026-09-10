@@ -1,0 +1,15 @@
+{
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/opus-full-base-c1-recheck/review.md": "e4dcdb8350bdc940fb72eb87b3f1662888c942bcbaaf9503044f03a2555516fb",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-stats-correction.md": "90b27e60f393f06f304ffb29cc992eda7e471a785348f9e258f18b19c26ab6bb",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/kvm-stats-descriptor-reference.json": "e7668ff956b1071a11b7d8c5a049db48a2fb0523e2f89d5b70cfe595d1aa5bf2",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-runtime/result.json": "bf89d869a35b2efc1782bed3764207c73b8eacfdc7990fcd189fd6ea76ca31f1",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-kvm-runtime/stderr.log": "44febae0d3eef2a9e4c53524b69e70e0bd29c3bf56387a8eaaad4be8b66682d1",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-stats-correction.diff": "e2f69a304b1cd1849c40edf447f58231cd87c8ccea88f86b81dc05ec1a5f703b",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/boot_full_guest_base.py": "024dcdd7027f0c2fea8bef338577e5b7a4a75e9ae968b8f03d7cf2d32b69eb4b",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/kvm_base_dropper.py": "6bdfc730c87b7815adb4a480baeabedbf0c078590c80e531e93665bb71430168",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/test_full_guest_base.py": "4fad0a4db1283bd9edfd80431dbf08a09c6364b0e0bb0770901ec7a96206a01e",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-boot-freeze.json": "c5a4d6104976dc8d714f73e8027763eb6ebbc00ef91c31090ecb8671feae5ff2",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-stats-descriptor-red.log": "65c6b076813fe9072b961dc3aaf89e4949991d0058c75ab66da5966409ea8378",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-base-stats-descriptor-green.log": "77918c1e1554ce9e6411c5f6140e9c0a95991b5242e682f3d788089a07e91e1f",
+  "/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/full-guest-base-artifact-summary.json": "433e3f6d9572431a97dcea3783c5ecb0fbf407e32233db4d710fb3d1f1dee14e"
+}
