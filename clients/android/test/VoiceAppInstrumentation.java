@@ -32,6 +32,24 @@ public final class VoiceAppInstrumentation extends Instrumentation {
     private volatile boolean running = true;
     private TextEngine engine;
     private CountDownLatch heldMediaOwner;
+    private final android.os.Handler observationMain = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final java.util.LinkedHashMap<Long, PublicationObservation> publications = new java.util.LinkedHashMap<>();
+    private long nextPublication;
+
+    /** At most four test-only observations; raw SDP never leaves volatile memory. */
+    private static final class PublicationObservation {
+        final long id, minimumGeneration, deadline;
+        volatile WebRtcAudioEngine media;
+        volatile long generation = -1;
+        volatile int count;
+        volatile boolean attachedBeforePublication, attachmentChecked, attachmentFailed;
+        volatile String firstDescription;
+        volatile Boolean lastContextMatches;
+        PublicationObservation(long id, long minimumGeneration) {
+            this.id = id; this.minimumGeneration = minimumGeneration;
+            deadline = android.os.SystemClock.elapsedRealtime() + 45000;
+        }
+    }
     private static final Set<String> STATS = new HashSet<>(Arrays.asList(
         "id", "type", "bytesReceived", "bytesSent", "packetsReceived", "packetsSent",
         "packetsLost", "jitter", "jitterBufferDelay", "jitterBufferEmittedCount",
@@ -49,6 +67,138 @@ public final class VoiceAppInstrumentation extends Instrumentation {
         Field field = object.getClass().getDeclaredField(name);
         field.setAccessible(true);
         return field.get(object);
+    }
+
+    private static Object optionalField(Object object, String name) throws Exception {
+        try { return field(object, name); }
+        catch (NoSuchFieldException absentOnBaseline) { return JSONObject.NULL; }
+    }
+
+    private static int relayCandidates(org.webrtc.PeerConnection peer) {
+        org.webrtc.SessionDescription description = peer == null ? null : peer.getLocalDescription();
+        int count = 0;
+        if (description != null) for (String line : description.description.split("\\r?\\n")) {
+            if (!line.startsWith("a=candidate:")) continue;
+            String[] tokens = line.split("[ \\t]+");
+            if (tokens.length > 7 && tokens[6].equals("typ") && tokens[7].equals("relay")) count++;
+        }
+        return count;
+    }
+
+    private static java.util.List<String> mediaBinding(String description) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        if (description != null) for (String line : description.split("\\r?\\n"))
+            if (line.startsWith("a=fingerprint:") || line.startsWith("a=ice-ufrag:") || line.startsWith("a=ice-pwd:")) lines.add(line);
+        java.util.Collections.sort(lines);
+        return lines;
+    }
+
+    private void attachPublicationObserver(PublicationObservation observed) {
+        if (!running || observed.media != null || observed.attachmentFailed) return;
+        try {
+            WebRtcAudioEngine current = (WebRtcAudioEngine) field(engine, "media");
+            long generation = engine.calls().snapshot().optLong("generation");
+            if (current == null || generation < observed.minimumGeneration) {
+                if (android.os.SystemClock.elapsedRealtime() < observed.deadline)
+                    observationMain.postDelayed(() -> attachPublicationObserver(observed), 5);
+                else observed.attachmentFailed = true;
+                return;
+            }
+            observed.media = current; observed.generation = generation;
+            Field listenerField = current.getClass().getDeclaredField("listener");
+            listenerField.setAccessible(true);
+            final WebRtcAudioEngine.Listener original = (WebRtcAudioEngine.Listener) listenerField.get(current);
+            WebRtcAudioEngine.Listener wrapper = new WebRtcAudioEngine.Listener() {
+                public void onLocalDescription(String type, String exactSdp) {
+                    if (observed.firstDescription == null) observed.firstDescription = exactSdp;
+                    observed.count++;
+                    original.onLocalDescription(type, exactSdp);
+                }
+                public void onConnected() { original.onConnected(); }
+                public void onDisconnected() { original.onDisconnected(); }
+                public void onError(String reason) { original.onError(reason); }
+            };
+            listenerField.set(current, wrapper);
+            android.os.Handler owner = (android.os.Handler) field(current, "worker");
+            if (!owner.post(() -> {
+                try {
+                    observed.attachedBeforePublication = !(Boolean) field(current, "localPublished")
+                            && observed.count == 0 && field(current, "listener") == wrapper;
+                } catch (Exception failure) { observed.attachmentFailed = true; }
+                finally { observed.attachmentChecked = true; }
+            })) observed.attachmentFailed = true;
+        } catch (Exception failure) { observed.attachmentFailed = true; }
+    }
+
+    private JSONObject armPublicationObserver() throws Exception {
+        final PublicationObservation[] selected = {null};
+        final Exception[] failure = {null};
+        runOnMainSync(() -> {
+            try {
+                if (field(engine, "media") != null) throw new IllegalStateException("arm before new media");
+                if (publications.size() >= 4) throw new IllegalStateException("publication observation capacity");
+                PublicationObservation next = new PublicationObservation(++nextPublication,
+                        engine.calls().snapshot().optLong("generation") + (engine.calls().active() ? 0 : 1));
+                publications.put(next.id, next); selected[0] = next;
+                attachPublicationObserver(next);
+            } catch (Exception error) { failure[0] = error; }
+        });
+        if (failure[0] != null) throw failure[0];
+        return new JSONObject().put("armed", true).put("observer_id", selected[0].id)
+                .put("poll_interval_ms", 5).put("deadline_ms", 45000);
+    }
+
+    private JSONObject publicationObserver(long id) throws Exception {
+        final PublicationObservation[] selected = {null};
+        final boolean[] same = {false};
+        final Exception[] failure = {null};
+        runOnMainSync(() -> {
+            try {
+                selected[0] = publications.get(id == 0 ? nextPublication : id);
+                if (selected[0] == null) throw new IllegalStateException("publication observation missing");
+                same[0] = field(engine, "media") == selected[0].media && selected[0].media != null
+                        && engine.calls().snapshot().optLong("generation") == selected[0].generation;
+            } catch (Exception error) { failure[0] = error; }
+        });
+        if (failure[0] != null) throw failure[0];
+        PublicationObservation observed = selected[0];
+        JSONObject result = new JSONObject().put("observer_id", observed.id).put("generation", observed.generation)
+                .put("count", observed.count).put("attached", observed.media != null)
+                .put("attachment_checked", observed.attachmentChecked).put("attachment_failed", observed.attachmentFailed)
+                .put("attached_before_publication", observed.attachedBeforePublication).put("still_current", same[0]);
+        if (observed.media == null) return result.put("closed", false).put("current_context_matches", JSONObject.NULL);
+        boolean closed = ((java.util.concurrent.atomic.AtomicBoolean) field(observed.media, "closed")).get();
+        result.put("closed", closed);
+        if (closed) return result.put("current_context_matches", JSONObject.NULL)
+                .put("last_context_matches", observed.lastContextMatches == null ? JSONObject.NULL : observed.lastContextMatches);
+        final JSONObject[] context = {null};
+        CountDownLatch ready = new CountDownLatch(1);
+        android.os.Handler owner = (android.os.Handler) field(observed.media, "worker");
+        if (!owner.post(() -> {
+            try {
+                org.webrtc.PeerConnection peer = (org.webrtc.PeerConnection) field(observed.media, "peer");
+                org.webrtc.SessionDescription local = peer == null ? null : peer.getLocalDescription();
+                java.util.List<String> published = mediaBinding(observed.firstDescription);
+                Boolean matches = local == null || observed.firstDescription == null ? null
+                        : published.size() >= 3 && published.equals(mediaBinding(local.description));
+                observed.lastContextMatches = matches;
+                context[0] = new JSONObject().put("current_context_matches", matches == null ? JSONObject.NULL : matches)
+                        .put("ice_gathering_state", peer == null ? JSONObject.NULL : peer.iceGatheringState().name().toLowerCase(Locale.ROOT));
+            } catch (Exception error) { failure[0] = error; }
+            finally { ready.countDown(); }
+        })) throw new IllegalStateException("publication owner stopped");
+        if (!ready.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("publication observer deadline");
+        if (failure[0] != null) throw failure[0];
+        runOnMainSync(() -> {
+            try { same[0] = field(engine, "media") == observed.media
+                    && engine.calls().snapshot().optLong("generation") == observed.generation; }
+            catch (Exception error) { failure[0] = error; }
+        });
+        if (failure[0] != null) throw failure[0];
+        return result.put("count", observed.count).put("still_current", same[0])
+                .put("closed", ((java.util.concurrent.atomic.AtomicBoolean) field(observed.media, "closed")).get())
+                .put("current_context_matches", context[0].get("current_context_matches"))
+                .put("ice_gathering_state", context[0].get("ice_gathering_state"));
     }
 
     private JSONObject view() throws Exception {
@@ -112,6 +262,21 @@ public final class VoiceAppInstrumentation extends Instrumentation {
         if (!owner.post(() -> {
             try {
                 org.webrtc.AudioTrack track = (org.webrtc.AudioTrack) field(current[0], "localTrack");
+                org.webrtc.PeerConnection peer = (org.webrtc.PeerConnection) field(current[0], "peer");
+                JSONObject candidateTypes = new JSONObject().put("host", 0).put("srflx", 0)
+                        .put("prflx", 0).put("relay", 0).put("unknown", 0);
+                int candidateCount = 0;
+                org.webrtc.SessionDescription local = peer == null ? null : peer.getLocalDescription();
+                // Inspect self-owned SDP only on the SDK owner; expose no addresses,
+                // ports, foundations, ICE credentials, fingerprints or SDP text.
+                if (local != null) for (String line : local.description.split("\\r?\\n")) {
+                    if (!line.startsWith("a=candidate:")) continue;
+                    String[] tokens = line.split("[ \\t]+");
+                    String type = tokens.length > 7 && tokens[6].equals("typ") ? tokens[7] : "unknown";
+                    if (!candidateTypes.has(type)) type = "unknown";
+                    candidateTypes.put(type, candidateTypes.getInt(type) + 1);
+                    candidateCount++;
+                }
                 observed[0] = new JSONObject().put("media_present", true)
                         .put("generation", generation[0])
                         .put("engine_muted", field(current[0], "muted"))
@@ -120,6 +285,14 @@ public final class VoiceAppInstrumentation extends Instrumentation {
                         .put("track_enabled", track == null ? JSONObject.NULL : track.enabled())
                         .put("engine_closed", ((java.util.concurrent.atomic.AtomicBoolean)
                                 field(current[0], "closed")).get())
+                        .put("local_description_published", field(current[0], "localPublished"))
+                        .put("relay_publication_scheduled", optionalField(current[0], "relayPublicationScheduled"))
+                        .put("ice_gathering_state", peer == null ? JSONObject.NULL
+                                : peer.iceGatheringState().name().toLowerCase(Locale.ROOT))
+                        .put("ice_connection_state", peer == null ? JSONObject.NULL
+                                : peer.iceConnectionState().name().toLowerCase(Locale.ROOT))
+                        .put("local_candidate_count", candidateCount)
+                        .put("local_candidate_types", candidateTypes)
                         .put("observed_on_media_owner", android.os.Looper.myLooper() == owner.getLooper());
             } catch (Exception error) { failure[0] = error; }
             finally { ready.countDown(); }
@@ -141,12 +314,17 @@ public final class VoiceAppInstrumentation extends Instrumentation {
         if (name.equals("view")) return view();
         if (name.equals("media_stats")) return mediaStats();
         if (name.equals("media_settings")) return mediaSettings();
+        if (name.equals("arm_publication_observer")) return armPublicationObserver();
+        if (name.equals("publication_observer")) return publicationObserver(request.optLong("observer_id", 0));
         if (name.equals("hold_media_owner")) {
             if (heldMediaOwner != null && heldMediaOwner.getCount() != 0)
                 throw new IllegalStateException("media owner already held");
             final Object[] current = {null};
+            final long[] generation = {-1};
+            final JSONObject[] entry = {null};
             final Exception[] failure = {null};
-            runOnMainSync(() -> { try { current[0] = field(engine, "media"); }
+            final boolean requirePending = request.optBoolean("require_publication_pending", false);
+            runOnMainSync(() -> { try { current[0] = field(engine, "media"); generation[0] = engine.calls().snapshot().optLong("generation"); }
                                 catch (Exception error) { failure[0] = error; } });
             if (failure[0] != null) throw failure[0];
             if (current[0] == null) throw new IllegalStateException("actual media required");
@@ -154,15 +332,25 @@ public final class VoiceAppInstrumentation extends Instrumentation {
             CountDownLatch release = new CountDownLatch(1), entered = new CountDownLatch(1);
             heldMediaOwner = release;
             if (!owner.post(() -> {
-                entered.countDown();
-                try { release.await(30, TimeUnit.SECONDS); }
+                try {
+                    boolean published = (Boolean) field(current[0], "localPublished");
+                    if (requirePending && published) throw new IllegalStateException("publication already happened");
+                    entry[0] = new JSONObject().put("generation", generation[0])
+                            .put("local_description_published_at_entry", published)
+                            .put("relay_publication_scheduled_at_entry", optionalField(current[0], "relayPublicationScheduled"))
+                            .put("relay_candidate_count_at_entry", relayCandidates((org.webrtc.PeerConnection) field(current[0], "peer")));
+                    entered.countDown();
+                    release.await(30, TimeUnit.SECONDS);
+                }
                 catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
-                finally { release.countDown(); }
+                catch (Exception error) { failure[0] = error; }
+                finally { entered.countDown(); release.countDown(); }
             })) { release.countDown(); throw new IllegalStateException("media owner stopped"); }
             if (!entered.await(3, TimeUnit.SECONDS)) {
                 release.countDown(); throw new IllegalStateException("media owner barrier deadline");
             }
-            return new JSONObject().put("media_owner_held", true).put("watchdog_ms", 30000);
+            if (failure[0] != null) throw failure[0];
+            return entry[0].put("media_owner_held", true).put("watchdog_ms", 30000);
         }
         if (name.equals("release_media_owner")) {
             if (heldMediaOwner != null) heldMediaOwner.countDown();
@@ -188,6 +376,8 @@ public final class VoiceAppInstrumentation extends Instrumentation {
         }
         if (name.equals("finish")) {
             if (heldMediaOwner != null) heldMediaOwner.countDown();
+            runOnMainSync(() -> { observationMain.removeCallbacksAndMessages(null);
+                for (PublicationObservation observed : publications.values()) observed.firstDescription = null; });
             running = false; return new JSONObject().put("finished", true);
         }
         throw new IllegalArgumentException("unsupported test command");

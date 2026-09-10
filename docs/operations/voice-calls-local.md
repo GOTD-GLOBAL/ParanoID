@@ -24,8 +24,23 @@ credentials and consent-before-media. Server foundation PR21 owns the canonical
 contract and offline package; client PR20 depends on it. Signed ARM64 v10 is
 built (hash recorded separately); HTTPS/JNI lane10 scenarios, parser49 negatives,
 controller gates and unchanged text regression pass. V9→v10 identity/contact/
-history continuity passes on the owned emulator. Strict app relay integration and
-fresh final extension review remain in progress. Required relay expiry/race/drain
+history continuity passes on the owned emulator. The current retained-signer APK
+is `paranoid-0.0.10-voice-arm64-20260910-a44278f46751.apk`, SHA256
+`a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d`,
+15,712,851 bytes, versionCode10. Its independent audit matches44 product inputs
+to the exact build and the x86 fixture (only its two public realm/pin constants
+differ). It supersedes the earlier f1bcb6 v10 checkpoint without changing signer.
+
+Actual application relay/relay audio passes in both roles with SDK mute/unmute,
+two-way text, no capture before Answer and complete local/remote teardown. Fresh
+Fable final review identified delayed COMPLETE-gated publication; the reviewed
+500 ms relay-only correction now passes real timer/cancellation/redial and late
+COMPLETE/context-stability tests. Direct-mode bidirectional tone/mute/cleanup
+passes on the same engine. [Current sanitized evidence](../project/evidence/voice-relay-client-20260910/README.md)
+retains the actual RED/GREEN, fixture failures and earlier unexplained15-second
+incoming failures; no universal reliability claim is made. Fresh Fable exact-source
+closure closes VOICE-PUB-01 on this APK; committed-source/CI correspondence is the
+remaining local process check. Required relay expiry/race/drain
 and ACL packet tests remain NOT RUN after the platform worker rejection.
 No public deployment readiness, authorization or physical-phone result is claimed.
 

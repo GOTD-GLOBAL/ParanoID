@@ -1,0 +1,32 @@
+{
+  "result": "FAIL",
+  "criterion": "publish one authenticated relay SDP within5s of first locally gathered relay candidate in this owned fixture",
+  "source_sha256": "7124221552a4cc458e3ac4cb97c033462004e587515868823954ccacb9e545a2",
+  "candidate_seconds": 0.1545921191573143,
+  "observed_wait_seconds": 5.092399436980486,
+  "last_settings": {
+    "media_present": true,
+    "generation": 1,
+    "engine_muted": false,
+    "engine_speaker": false,
+    "track_present": true,
+    "track_enabled": true,
+    "engine_closed": false,
+    "local_description_published": false,
+    "ice_gathering_state": "gathering",
+    "ice_connection_state": "new",
+    "local_candidate_count": 2,
+    "local_candidate_types": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 2,
+      "unknown": 0
+    },
+    "observed_on_media_owner": true,
+    "still_current": true
+  },
+  "error": "AssertionError",
+  "detail": "actual SDK has relay candidate but local SDP remains unpublished after5s",
+  "cleanup": true
+}

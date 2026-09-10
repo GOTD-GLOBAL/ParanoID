@@ -80,6 +80,17 @@ platform behavior remains an acceptance gate rather than a compilation claim.
 `WebRtcAudioEngine` owns the WebRTC audio source/track/PeerConnection, audio
 focus and communication routing. It uses the mature SDK Opus/APM path, with
 supported hardware AEC/noise suppression and the library's remaining defaults.
+Relay-only calls now publish one immutable local SDP after successful installation
+and a usable component-1 relay candidate, coalesced by a single500 ms owner timer
+unless gathering completes sooner. Direct mode waits for COMPLETE. The timer
+never resets the setup deadline, and cleanup/closed checks suppress delayed
+publication. The reviewed tradeoff is fewer slow candidate alternatives; native
+authenticated SDP validation still runs before signaling. Post-change actual
+both-role media, timer cancellation/redial, callback/context stability through
+COMPLETE, direct tone/mute and independent artifact checks pass. Fresh Fable
+closure closes the publication finding; remaining intermittent-call, committed
+source and separate missing relay runtime gates are tracked in
+[current evidence](../../project/evidence/voice-relay-client-20260910/README.md).
 Speaker selection, platform-managed nonspeaker routing and supported earpiece
 proximity behavior restore prior audio state during cleanup. Bluetooth/headset
 and acoustic effectiveness require physical-device evidence; they are not

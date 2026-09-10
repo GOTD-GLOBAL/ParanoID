@@ -16,6 +16,11 @@ public contract is declared.
   owned-emulator v9 identity/contact/history. Parser, HTTPS/JNI and text checks
   pass; full extension acceptance, final review and missing relay packet gates
   remain explicit in [the local record](docs/operations/voice-calls-local.md).
+- Added a reviewed500 ms relay-candidate publication window to prevent unrelated
+  gathering delays consuming nearly the entire45-second call setup deadline.
+  Actual both-role relay, cancellation/redial, late-callback, direct tone and
+  rebuilt-artifact checks pass. Direct mode and authenticated immutable SDP
+  retain their existing contracts; missing relay runtime gates remain explicit.
 
 ### Voice relay foundation — 2026-09-10
 

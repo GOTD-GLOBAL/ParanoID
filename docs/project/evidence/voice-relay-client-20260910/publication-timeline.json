@@ -1,0 +1,459 @@
+[
+  {
+    "case": "android_caller",
+    "seconds": 2.0418993863277137,
+    "settings": {
+      "media_present": false,
+      "generation": 0
+    }
+  },
+  {
+    "case": "android_caller",
+    "seconds": 2.1618067719973624,
+    "settings": {
+      "media_present": false,
+      "generation": 1
+    }
+  },
+  {
+    "case": "android_caller",
+    "seconds": 2.383285064250231,
+    "settings": {
+      "media_present": true,
+      "generation": 1,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "new",
+      "ice_connection_state": "new",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_caller",
+    "seconds": 2.440845290198922,
+    "settings": {
+      "media_present": true,
+      "generation": 1,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "complete",
+      "ice_connection_state": "new",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_caller",
+    "seconds": 2.4987778780050576,
+    "settings": {
+      "media_present": true,
+      "generation": 1,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": true,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "complete",
+      "ice_connection_state": "new",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.022193165961653,
+    "settings": {
+      "media_present": false,
+      "generation": 3
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.1764618810266256,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "new",
+      "ice_connection_state": "new",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.235454933717847,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.296162584796548,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.360536894761026,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.420560142956674,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.479238023981452,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.5411048806272447,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.5984059050679207,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.6585750239901245,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.7158641279675066,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "android_recipient",
+    "seconds": 2.7778692157007754,
+    "settings": {
+      "media_present": true,
+      "generation": 3,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": true,
+      "relay_publication_scheduled": true,
+      "ice_gathering_state": "gathering",
+      "ice_connection_state": "checking",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "cancel_redial",
+    "seconds": 2.2291769408620894,
+    "settings": {
+      "media_present": false,
+      "generation": 7
+    }
+  },
+  {
+    "case": "cancel_redial",
+    "seconds": 2.7857203939929605,
+    "settings": {
+      "media_present": true,
+      "generation": 7,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "new",
+      "ice_connection_state": "new",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "cancel_redial",
+    "seconds": 2.8536458597518504,
+    "settings": {
+      "media_present": true,
+      "generation": 7,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": false,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "complete",
+      "ice_connection_state": "new",
+      "local_candidate_count": 0,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 0,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  },
+  {
+    "case": "cancel_redial",
+    "seconds": 2.928583150729537,
+    "settings": {
+      "media_present": true,
+      "generation": 7,
+      "engine_muted": false,
+      "track_enabled": true,
+      "engine_closed": false,
+      "local_description_published": true,
+      "relay_publication_scheduled": false,
+      "ice_gathering_state": "complete",
+      "ice_connection_state": "new",
+      "local_candidate_count": 1,
+      "local_candidate_types": {
+        "host": 0,
+        "srflx": 0,
+        "prflx": 0,
+        "relay": 1,
+        "unknown": 0
+      },
+      "observed_on_media_owner": true,
+      "still_current": true
+    }
+  }
+]

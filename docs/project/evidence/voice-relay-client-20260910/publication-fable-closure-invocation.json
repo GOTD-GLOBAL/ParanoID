@@ -1,0 +1,91 @@
+{
+  "at": "2026-09-10T01:24:32.468617+00:00",
+  "review_invocation": "SUCCESS; distinct from acceptance verdict",
+  "review_model": "claude-fable-5",
+  "fresh_context": true,
+  "subtype": "success",
+  "is_error": false,
+  "actual_turns": 8,
+  "requested_maximum_turns": 35,
+  "duration_ms": 161687,
+  "process_elapsed_seconds": 162.75931917969137,
+  "enforced_timeout_seconds": 256.27200078964233,
+  "actual_model_usage": {
+    "cacheCreationInputTokens": 82973,
+    "cacheReadInputTokens": 129736,
+    "canonicalModel": "claude-fable-5",
+    "contextWindow": 1000000,
+    "costUSD": 2.362716,
+    "inputTokens": 7,
+    "maxOutputTokens": 64000,
+    "outputTokens": 11469,
+    "provider": "firstParty",
+    "webSearchRequests": 0
+  },
+  "server_head": "923e11b1f0a5ba8709002d21e282778123c2bfe5",
+  "client_head": "811e0840c88a72c7c4c6e42137796a9d137481ad",
+  "client_dirty_at_snapshot": true,
+  "engine_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "apk_sha256": "a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d",
+  "source_manifest_sha256": "3e0be6f1bb5a07ff1daada6db9148ca7c5435fa4ee3b6ede8a56642852274405",
+  "snapshot_manifest_sha256": "008e337d10dd0056d7825e5460f40dfd69451c9eb3318c43403cafa147178abb",
+  "bundle_manifest_sha256": "da6abb50669a756b3a79da5890fff05ace7913c3395efa0c3c1c70f707074958",
+  "report_sha256": "52921a29e0b61cf3f3bf20c5cb27d0909be2f85eb85887fabef250e0821804aa",
+  "raw_result_sha256": "c7e0e661bbc263f235a10d9353d0e0fe533eb31eae21af02c6fee48da9a374d0",
+  "verdicts": {
+    "source_correctness": "VOICE-PUB-01 CLOSED for exact source/APK; CALL-CONNECT-01 remains OPEN",
+    "fully_tested_local_candidate": "BLOCKED: mandatory TURN-RT-01 runtime negatives missing, CALL-CONNECT-01 unexplained earlier incoming failures, PUB-COMMIT-01 dirty-source process finding",
+    "deployment": "BLOCKED and unauthorized: TURN-RT-01, TURN-ACL-02 destination-port enforcement/test gap, no live deployment authorization"
+  },
+  "closed_finding": "VOICE-PUB-01",
+  "closure_evidence": [
+    "Actual prior publication-latency RED and corrected SDK GREEN",
+    "Actual recipient timer-path publication during GATHERING with conservative0.545s bound; later real COMPLETE caused no duplicate publication or authenticated-context drift",
+    "Both roles strict relay/relay with actual issuer/E2EE/DTLS-SRTP Opus decode, consent, mute/unmute, text, cleanup and retained state",
+    "Cancellation while timer armed: cancelled generation published0, replacement1",
+    "Compiled readiness malformed primary address RED to GREEN with same oracle",
+    "Exact-engine direct synthetic440/880Hz media, mute silence, route restore, close and redial",
+    "Independent retained-signer ARM64 APK audit:44 inputs,16KiB, no instrumentation/fixture trust in product"
+  ],
+  "remaining_findings": [
+    {
+      "id": "TURN-RT-01",
+      "severity": "blocker",
+      "status": "NOT RUN: elapsed allocation expiry, async cache race, ChannelData/Send drain/scheduling, ACL packet policy, actual CLI closure, actual systemd credential/lifecycle"
+    },
+    {
+      "id": "CALL-CONNECT-01",
+      "severity": "blocker",
+      "status": "OPEN: prior intermittent15s incoming failure cause or fix not established by this evidence"
+    },
+    {
+      "id": "TURN-ACL-02",
+      "severity": "medium deployment",
+      "status": "OPEN: dedicated-UID own-host destination-port policy and isolated tests absent"
+    },
+    {
+      "id": "PUB-COMMIT-01",
+      "severity": "medium process",
+      "status": "OPEN at review: commit exact delta and refresh CI/head/source/artifact correspondence; no rebuild needed if bytes remain equal"
+    },
+    {
+      "id": "PUB-RED-CAPTURE-01",
+      "severity": "low evidence",
+      "status": "Noted: pre-fix readiness source unavailable, retained actual compiled class/oracle/RED log present"
+    },
+    {
+      "id": "PUB-DRIVER-01",
+      "severity": "low evidence",
+      "status": "Noted: first driver UI assertion failed before checks; revised driver passed identical product source"
+    },
+    {
+      "id": "PUB-RACE-01",
+      "severity": "informational",
+      "status": "Close between worker latch and main callback is source guarded; not separately runtime-raced"
+    }
+  ],
+  "governance": "ADR-0012 remains proposed; review body records status without creating a new permission requirement for already authorized local implementation. No AI acceptance of ADR or deployment authorization.",
+  "boundary": "Fresh read-only review; no runtime source edits, public deployment, phone actions or interrupted negative-test retries. Normal owned fault/direct/app test results were supplied by coordinator; reviewer did not execute tests.",
+  "previous_reviews": "Attempt1 error_max_turns and attempt2 missing resume session remain failed; fresh attempt3 produced prior BLOCKED report. This new source closure does not relabel those failures.",
+  "read_scope": "Six bounded chunks plus one manifest read; full changed engine, test instrumentation/doc diffs and supplied concrete evidence; no broad rescan."
+}

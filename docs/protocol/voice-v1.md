@@ -67,6 +67,18 @@ duplicate/conflicting fingerprint/ICE, invalid media directions and at most
 16 candidates. Each candidate line is bounded to 512 bytes. The SDK receives
 only validated exact authenticated SDP. No trickle or renegotiation in v1.
 
+Relay-only SDP publication uses one immutable snapshot after successful local
+description installation and at least one component-1 relay candidate. A single
+500 ms media-owner timer coalesces candidates; gathering COMPLETE may publish
+sooner. Direct compatibility mode still waits for COMPLETE. Subsequent candidates
+and COMPLETE events never publish again or alter the authenticated fingerprint,
+ICE context or offer digest. Close/failure cancels the timer; absent a usable relay
+candidate the existing45-second deadline ends the call without fallback. This
+bounded subset can omit slower relay alternatives and may require a fresh call.
+Fresh Fable review approved this design direction on2026-09-10 after an actual SDK
+test found usable relay candidates while publication remained blocked beyond5s.
+Implementation and exact-source/media closure are recorded separately.
+
 ## Freshness, state and consent
 
 Caller explicit call action creates call ID/nonce and sends knock. A known peer

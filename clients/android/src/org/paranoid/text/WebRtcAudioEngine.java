@@ -85,6 +85,13 @@ public final class WebRtcAudioEngine {
     private AudioDeviceInfo previousDevice;
     private String pendingDescription;
     private boolean localPublished, connected;
+    private boolean localSetSucceeded, relayPublicationScheduled, relayPublicationWindowElapsed;
+    private final Runnable relayPublication = () -> {
+        if (closed.get()) return;
+        relayPublicationWindowElapsed = true;
+        try { maybePublishDescription(); }
+        catch (Exception failure) { fail("Audio negotiation failed"); }
+    };
 
     public WebRtcAudioEngine(Context context, Listener listener) {
         this(context, listener, null);
@@ -258,10 +265,21 @@ public final class WebRtcAudioEngine {
         if (!earpiece && proximity.isHeld()) proximity.release();
     }
     private void maybePublishDescription() {
-        if (peer == null || localPublished || pendingDescription == null
-                || peer.iceGatheringState() != PeerConnection.IceGatheringState.COMPLETE) return;
+        if (closed.get() || peer == null || localPublished || !localSetSucceeded
+                || pendingDescription == null) return;
         SessionDescription sdp = peer.getLocalDescription();
-        if (sdp == null) return;
+        if (sdp == null || !pendingDescription.equals(sdp.type.canonicalForm())) return;
+        boolean complete = peer.iceGatheringState() == PeerConnection.IceGatheringState.COMPLETE;
+        if (relayOnly) {
+            if (!hasUsableRelayCandidate(sdp.description)) return;
+            if (!complete && !relayPublicationWindowElapsed) {
+                if (!relayPublicationScheduled) {
+                    relayPublicationScheduled = true;
+                    worker.postDelayed(relayPublication, 500);
+                }
+                return;
+            }
+        } else if (!complete) return;
         // Android's network monitor can report an initial empty COMPLETE before
         // discovering interfaces. Such an SDP cannot connect two identical peers.
         // Wait for the subsequent candidate callback; controller timeout remains.
@@ -269,8 +287,34 @@ public final class WebRtcAudioEngine {
         if (sdp.description.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 6144)
             throw new IllegalStateException("SDP exceeds voice limit");
         localPublished = true;
+        worker.removeCallbacks(relayPublication);
         String type = pendingDescription;
         publish(() -> listener.onLocalDescription(type, sdp.description));
+    }
+    // Readiness from our SDK's local snapshot only. Native validation remains
+    // mandatory before signaling; related raddr/rport may legitimately be zero.
+    private static boolean hasUsableRelayCandidate(String sdp) {
+        for (String line : sdp.split("\\r?\\n")) {
+            if (!line.startsWith("a=candidate:") || line.length() > 512) continue;
+            String[] tokens = line.split("[ \\t]+");
+            if (tokens.length < 8 || tokens[0].length() <= 12 || !tokens[1].equals("1")
+                    || !tokens[2].equalsIgnoreCase("udp") || !tokens[6].equals("typ")
+                    || !tokens[7].equals("relay") || !isRelayAddress(tokens[4])) continue;
+            if (!tokens[3].matches("[0-9]{1,10}") || !tokens[5].matches("[0-9]{1,5}")) continue;
+            long priority = Long.parseLong(tokens[3]);
+            int port = Integer.parseInt(tokens[5]);
+            if (priority <= 0xffffffffL && port > 0 && port <= 65535) return true;
+        }
+        return false;
+    }
+    private static boolean isRelayAddress(String address) {
+        // The validated issuer config has one canonical IPv4 relay only.
+        String[] octets = address.split("\\.", -1);
+        if (octets.length != 4 || address.equals("0.0.0.0")) return false;
+        for (String octet : octets) {
+            if (!octet.matches("0|[1-9][0-9]{0,2}") || Integer.parseInt(octet) > 255) return false;
+        }
+        return true;
     }
     private class Observer implements SdpObserver {
         @Override public void onCreateSuccess(SessionDescription sdp) { }
@@ -281,7 +325,9 @@ public final class WebRtcAudioEngine {
     private final SdpObserver localObserver = new Observer() {
         @Override public void onCreateSuccess(SessionDescription description) {
             post(() -> peer.setLocalDescription(new Observer() {
-                @Override public void onSetSuccess() { post(WebRtcAudioEngine.this::maybePublishDescription); }
+                @Override public void onSetSuccess() {
+                    post(() -> { localSetSucceeded = true; maybePublishDescription(); });
+                }
             }, description));
         }
     };

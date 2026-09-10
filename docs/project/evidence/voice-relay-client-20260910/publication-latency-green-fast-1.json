@@ -1,0 +1,36 @@
+{
+  "result": "PASS",
+  "criterion": "publish one authenticated relay SDP within5s of first locally gathered relay candidate in this owned fixture",
+  "source_sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+  "candidate_seconds": 0.07103098183870316,
+  "observed_wait_seconds": 6.040092557668686e-06,
+  "last_settings": {
+    "media_present": true,
+    "generation": 1,
+    "engine_muted": false,
+    "engine_speaker": false,
+    "track_present": true,
+    "track_enabled": true,
+    "engine_closed": false,
+    "local_description_published": true,
+    "relay_publication_scheduled": false,
+    "ice_gathering_state": "complete",
+    "ice_connection_state": "new",
+    "local_candidate_count": 1,
+    "local_candidate_types": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 1,
+      "unknown": 0
+    },
+    "observed_on_media_owner": true,
+    "still_current": true
+  },
+  "publication_after_candidate_seconds": 0.0,
+  "both_selected": "relay",
+  "host_decoded_frames": 107,
+  "android_samples": 108000,
+  "android_audio_energy": 0.03666944344712079,
+  "cleanup": true
+}

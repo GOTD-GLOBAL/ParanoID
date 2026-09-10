@@ -16,7 +16,21 @@ state and dual metadata disclosure. V10 retained-signer ARM64 is built;
 49 parser negatives, ten HTTPS/JNI scenarios and the stale401 race fix pass.
 The full server85-test matrix and24-sample text regression pass (P50 102.04 ms,
 P95 144.30 ms). Owned v9→v10 update retains identity/contact/history. Strict
-full-app relay acceptance and fresh exact-source final review remain in progress.
+full-app relay audio passes in both roles, but a measured43.05-second outgoing
+setup exposed delayed SDP publication despite early usable relay candidates.
+Fresh Fable final review found this functional blocker and conditionally approved
+a500 ms relay-only publication window. The fix passes actual both-role relay
+media, mute/two-way text, cancellation/redial and late-COMPLETE tests: publication
+while still gathering has a0.545-second conservative upper bound after relay
+arrival, one callback and unchanged fingerprint/ICE. Direct-mode bidirectional
+tone/mute/cleanup also passes. Signed ARM64 v10 SHA256
+`a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d`
+passes independent44-input artifact correspondence. Fresh Fable exact-source
+closure succeeded and closed VOICE-PUB-01; it requires the reviewed bytes committed
+and refreshed CI correspondence. [Current evidence](evidence/voice-relay-client-20260910/README.md)
+retains failures and separate scopes. Earlier15-second incoming failures
+remain unexplained. All supported CI gates pass on the preceding exact commits;
+the separate legacy job retains exactly14 historical failures.
 Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
 platform worker rejection; those operations were not retried. No live deployment
 is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint

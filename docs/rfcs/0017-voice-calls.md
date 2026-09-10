@@ -44,6 +44,15 @@ transport. Renegotiation and trickle candidates are rejected in v1. Brief ICE
 disconnection gets bounded recovery time; failure ends the call and allows a
 fresh user call. A later reviewed version may add authenticated ICE restart.
 
+The2026-09-10 reviewed relay-only correction publishes one immutable local SDP
+snapshot after successful installation and a500 ms window following a usable
+relay candidate, or earlier gathering COMPLETE. Direct mode retains COMPLETE.
+This avoids waiting for unrelated gathering paths after relay allocation, at the
+cost of omitting slower candidates. No trickle, renegotiation, deadline extension,
+new signaling fields or failure downgrade is introduced. Actual RED evidence and
+the fresh review precede this change; post-change media/artifact closure remains
+required. The canonical publication rules are in the wire contract above.
+
 Rejected alternatives: a mock call button; audio files over message history;
 server-terminated audio; unauthenticated SDP; public free TURN credentials;
 wholesale XMPP migration for this slice; a new persisted call schema without

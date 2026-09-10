@@ -1,0 +1,27 @@
+{
+  "result": "PASS",
+  "direction": "Android caller",
+  "connected_seconds": 43.05071767931804,
+  "local": {
+    "candidateType": "relay",
+    "transportId": "T01",
+    "type": "local-candidate",
+    "protocol": "udp",
+    "id": "I54k0ljyB",
+    "address": "127.0.0.1",
+    "port": 40015
+  },
+  "remote": {
+    "candidateType": "relay",
+    "transportId": "T01",
+    "type": "remote-candidate",
+    "protocol": "udp",
+    "id": "IRf5vm2Ze",
+    "address": "127.0.0.1",
+    "port": 40006
+  },
+  "host_decoded_frames": 151,
+  "android_decoded_samples": "146880",
+  "android_audio_energy": 0.05075984151681314,
+  "cleanup": true
+}

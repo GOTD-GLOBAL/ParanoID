@@ -1,0 +1,69 @@
+{
+  "result": "PASS",
+  "reviewer": "/root/code_map",
+  "created_at": "2026-09-10T01:14:11.228494+00:00",
+  "scope": "Independent source/lifecycle review and actual compiled static readiness-method reflection only; no Android constructor, listener, ICE or media mocked or run by this regression. Runtime timer/media assertions remain separate.",
+  "source": {
+    "path": "/home/codex/projects/paranoid-worktrees/voice-calls-20260909/clients/android/src/org/paranoid/text/WebRtcAudioEngine.java",
+    "sha256": "41662f877cf9743b10d12510f408e69c3d4eac66d825fc2ea4463b40eeebcbf8",
+    "head": "811e0840c88a72c7c4c6e42137796a9d137481ad",
+    "uncommitted_product_delta": true
+  },
+  "red": {
+    "result": "FAIL",
+    "actual_exit": 1,
+    "evidence": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-readiness-reflection-red.json",
+    "evidence_sha256": "1e52fe5594110426885ab95ad0674367c49e593aebc9d0dcd2cbb0b72627bc0b",
+    "retained_compiled_class": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-readiness-reflection-classes/org/paranoid/text/WebRtcAudioEngine.class",
+    "compiled_class_sha256": "a1d64050711b467fc47c7bd23f0f9f3b55cdf57fbf965cbd0070c9f13357b07d",
+    "finding": "Malformed primary addresses hostname, invalid IPv4 and expanded unspecified IPv6 were accepted by the readiness gate. Retained actual compiled class and failed oracle show RED; pre-fix source was not separately captured before root fixed it."
+  },
+  "green": {
+    "result": "PASS",
+    "actual_exit": 0,
+    "mandatory_cases": 23,
+    "additional_previous_red_assertions": 3,
+    "oracle": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/RelayCandidateReadinessReflection.java",
+    "oracle_sha256": "ecc16339c44fb1af6e34d36097f68f7079ea81c9b905fcc56e3e3c183d81ec6d",
+    "unchanged_red_oracle": true,
+    "compiled_class": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-readiness-reflection-green-classes/org/paranoid/text/WebRtcAudioEngine.class",
+    "compiled_class_sha256": "ad27228667520eed6b60188ed97d16d1bfca9c21edbe99dad15b6c6f92196389",
+    "log": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-readiness-reflection-green.log",
+    "log_sha256": "ccf5e58fecd88d512b170d71711ea3329e068f1a875506890f4fe190247c28d0",
+    "malformed_primary_addresses_rejected": [
+      "hostname",
+      "invalid IPv4",
+      "expanded unspecified IPv6"
+    ],
+    "sanitized_related_zero_address_and_port_accepted": true
+  },
+  "lifecycle_source_review": {
+    "blocking_findings": [],
+    "requirements_confirmed": [
+      "One existing SDK owner thread handles readiness, timer and publication.",
+      "Publication requires successful setLocalDescription, matching actual local description type, current nonempty description and nonclosed engine.",
+      "Relay-only path requires a usable component-1 UDP relay with canonical nonzero IPv4 and positive primary port. Related zero fields are permitted.",
+      "At most one 500 ms timer is armed after the first usable relay; elapsed state prevents rescheduling.",
+      "Timer publication rereads actual current SDK local description and readiness.",
+      "Direct path still requires ICE gathering COMPLETE.",
+      "Publication latch is set before main-thread callback; callback captures immutable exact SDP and remains closed guarded.",
+      "Publication cancels timer and full cleanup removes pending owner callbacks.",
+      "Offer/answer share the gate and late COMPLETE/candidate callbacks return after the latch.",
+      "Native SDP validation remains authoritative after durable commit; no new native schema, synthetic end-of-candidates, second setLocalDescription, trickle or ICE restart.",
+      "Existing setup and maximum-call deadlines are unchanged."
+    ],
+    "runtime_regressions_still_required": [
+      "Actual timer fires while SDK ICE gathering remains in progress, with at least one usable relay.",
+      "Both caller offer and callee answer publish once, authenticate through native durable E2EE, and carry real media.",
+      "Late COMPLETE and candidate callbacks cause no second listener callback or mutated published SDP.",
+      "Close before timer expiry produces no stale description and no resources crossing into a new generation."
+    ],
+    "known_unchanged_physical_limitation": "Restoring a previously selected communication device after physical unplug may return false; fallback route behavior is not physically tested."
+  },
+  "artifact_audit": {
+    "result": "PASS",
+    "evidence": "/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/relay-publication-independent-artifact-1/independent-artifact-verification.json",
+    "evidence_sha256": "46f61f1b96292dccfd0f06ce1b73d6100590d8512ccdf6f36355a8b1295ac3e0"
+  },
+  "boundary": "No repository changes, signing, keystore/password access, Android/emulator controls, network listeners, deployment or rejected relay expiry/ACL actions."
+}

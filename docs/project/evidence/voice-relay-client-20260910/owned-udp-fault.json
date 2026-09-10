@@ -1,0 +1,8 @@
+{
+  "kind": "ordinary owned-app transport fault injection",
+  "pid": 7608,
+  "scope": "Pause own guest opaque UDP forwarding process while its UDP socket remains bound; actual TCP relay and all issuer/auth/media unchanged",
+  "rejected_expiry_acl_tests": "NOT RUN; distinct tests not attempted",
+  "restored": true,
+  "driver_exit": 0
+}
