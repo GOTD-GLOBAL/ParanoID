@@ -33,9 +33,9 @@ from pathlib import Path
 
 os.umask(0o077)
 
-BUILD = Path('/home/codex/paranoid-self-service-evidence/voice-calls-20260909T220516Z/turn-offline-build-6/relocated')
+BUILD = Path('/home/codex/paranoid-self-service-evidence/voice-ready-20260910T065350Z/turn-credential-build/relocated')
 TURNSERVER = BUILD / 'bin' / 'turnserver'
-EXPECTED_BIN_SHA = 'b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551'
+EXPECTED_BIN_SHA = 'e13597df18552665aa445c86c2b2ec111b19ea62a56adc774b2d7a9271ea368c'
 EVID = Path('/home/codex/paranoid-self-service-evidence/voice-local-acceptance-20260910')
 WORKTREE = Path('/home/codex/projects/paranoid-worktrees/voice-turn-server-20260909')
 HOST, PORT = '127.0.0.1', 34781

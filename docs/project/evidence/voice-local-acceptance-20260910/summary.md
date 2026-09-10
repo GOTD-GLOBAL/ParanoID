@@ -1,4 +1,4 @@
-# ParanoID TURN local acceptance — 2026-09-10T13:28:30+00:00
+# ParanoID TURN local acceptance — 2026-09-10T14:50:24+00:00
 
 Gates: TURN-RT01, TURN-ACL02. Loopback-only (127.0.0.1:34781, relay 40000-40015).
 
@@ -13,8 +13,8 @@ Gates: TURN-RT01, TURN-ACL02. Loopback-only (127.0.0.1:34781, relay 40000-40015)
 
 Overall: **PASS**
 
-turnserver sha256: `b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551`
-harness sha256: `9e55d05e8dff207cc8d81c5cbbbd04b822128df1a258672fb30b0672f8374b97`
-git HEAD: `ad966cb920761adcc8a293fc2c7df519a4c6430b`
+turnserver sha256: `e13597df18552665aa445c86c2b2ec111b19ea62a56adc774b2d7a9271ea368c`
+harness sha256: `5540ce7ca81648ce1088c48de97e0b47978f2b9b66ca5ee36e8e7c4585ad7faa`
+git HEAD: `4974bdd78a64ddecb8eeced5c60b0da2a656e2d0`
 
 NOT covered: public-network reachability, physical phones/real clients, systemd secret delivery, TLS, IPv6.
