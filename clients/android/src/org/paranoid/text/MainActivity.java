@@ -58,6 +58,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private final TextEngine.CallListener callListener=this::renderCall;
     private String page="dialogs",selectedAccount="",displayedQr="",lastStatus="Открываем сохранённые данные…",renderedHistory="",renderedDialogs="";
     private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false;
+    private boolean backgroundPromptShowing;
+    private TextView backgroundHint;
+    private static final String UI_PREFS="paranoid-ui",BACKGROUND_PROMPT_KEY="background_prompt_v1";
     private JSONObject latest=new JSONObject();
     private MessagePresentation.Drafts drafts=new MessagePresentation.Drafts();
     private Palette colors;
@@ -121,6 +124,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     private void buildDialogs(){
         dialogs=column();dialogs.setPadding(dp(12),dp(8),dp(12),dp(16));addScrollablePage(dialogs);
+        backgroundHint=text("Входящие в фоне отключены — включить",13,colors.actionText,false);
+        backgroundHint.setPadding(dp(12),dp(10),dp(12),dp(10));backgroundHint.setMinimumHeight(dp(40));backgroundHint.setBackground(ripple(colors.canvas,12));
+        backgroundHint.setOnClickListener(v->enableBackground());backgroundHint.setFocusable(true);backgroundHint.setContentDescription("Входящие в фоне отключены. Включить фоновое подключение");
+        backgroundHint.setVisibility(View.GONE);dialogs.addView(backgroundHint,full());
         LinearLayout title=row();title.setGravity(Gravity.CENTER_VERTICAL);TextView label=text("Личные диалоги",13,colors.muted,true);label.setPadding(dp(12),0,0,dp(8));title.addView(label);dialogs.addView(title);
         dialogList=column();dialogs.addView(dialogList);
     }
@@ -155,8 +162,32 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         identity.addView(text("Поддерживает подключение с постоянным уведомлением и расходует заряд. Google не требуется. После принудительной остановки откройте приложение; доставка в режиме сна пока не проверена на телефонах.",13,colors.muted,false));space(identity,12);
         background=secondary("Включить фоновое подключение",()->{
             if(BackgroundConnectionService.running())BackgroundConnectionService.requestStop(this);
-            else BackgroundConnectionService.requestStart(this);
+            else enableBackground();
         });identity.addView(background,full());
+    }
+
+    /** Single opt-in path: user-visible foreground start plus the OPPO-critical battery exception. */
+    private void enableBackground(){
+        BackgroundConnectionService.requestStart(this);
+        if(Build.VERSION.SDK_INT<33||checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)==android.content.pm.PackageManager.PERMISSION_GRANTED)requestBatteryException();
+    }
+    private void requestBatteryException(){
+        try{
+            android.os.PowerManager power=(android.os.PowerManager)getSystemService(POWER_SERVICE);
+            if(power!=null&&!power.isIgnoringBatteryOptimizations(getPackageName()))
+                startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,android.net.Uri.parse("package:"+getPackageName())));
+        }catch(RuntimeException unavailable){/* На части прошивок этот системный экран отсутствует; фоновое подключение продолжит работать без исключения. */}
+    }
+    /** One-time onboarding offer; a later manual switch-off is respected without re-asking. */
+    private void offerBackground(){
+        if(backgroundPromptShowing||isFinishing()||isDestroyed())return;
+        backgroundPromptShowing=true;
+        getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(BACKGROUND_PROMPT_KEY,true).apply();
+        new AlertDialog.Builder(this).setTitle("Работа в фоне")
+            .setMessage("Разрешить ParanoID поддерживать подключение в фоне? Без этого входящие звонки и сообщения не приходят, пока приложение закрыто. Появится постоянное уведомление.")
+            .setPositiveButton("Разрешить",(dialog,which)->enableBackground())
+            .setNegativeButton("Не сейчас",null)
+            .setOnDismissListener(dialog->backgroundPromptShowing=false).show();
     }
 
     private void buildChat(){
@@ -413,7 +444,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             return;
         }
         if(request==BackgroundConnectionService.NOTIFICATION_PERMISSION) {
-            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED)BackgroundConnectionService.requestStart(this);
+            if(results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED){BackgroundConnectionService.requestStart(this);requestBatteryException();}
             else Toast.makeText(this,"Фоновое подключение выключено: разрешите уведомления, чтобы видеть его статус.",Toast.LENGTH_LONG).show();
         }
     }
@@ -476,6 +507,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         try{
             boolean hadIdentity=hasIdentity;latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;
             background.setText(view.optBoolean("background_enabled")?"Отключить фоновое подключение":"Включить фоновое подключение");background.setEnabled(hasIdentity&&!broken);
+            boolean backgroundEnabled=view.optBoolean("background_enabled");
+            boolean backgroundPrompted=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BACKGROUND_PROMPT_KEY,false);
+            backgroundHint.setVisibility(hasIdentity&&!broken&&!backgroundEnabled&&backgroundPrompted?View.VISIBLE:View.GONE);
+            if(hasIdentity&&!broken&&!backgroundEnabled&&!backgroundPrompted&&resumed)offerBackground();
             lastStatus=view.optBoolean("unsupported_snapshot")?"Сохранённые данные относятся к предыдущей тестовой версии. Эта сборка предназначена для новой установки. Данные не изменены.":broken?"Локальные данные недоступны. Ключи и история не сброшены. Не удаляйте приложение.":message;
             String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?"Регистрируем ID · ключи сохранены":view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
