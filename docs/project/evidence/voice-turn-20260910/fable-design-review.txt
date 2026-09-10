@@ -1,0 +1,106 @@
+I have everything needed. Compiling the structured design-gate report.
+
+---
+
+# ParanoID issue 19 — local TURN completion: independent design review (claude-fable-5)
+
+**Scope reviewed:** immutable snapshot `voice-turn-fable-design-20260909T234300Z/server-input` (base 366ceeda), the five canonical documents listed in `ready-input.json`, the exact proposed coturn patch (sha256 4d9feb93…), pristine coturn 4.18.0 tree, frozen client checkpoint 5e776b2e, and the PR18-base server/deploy sources. Read-only; nothing was executed, applied, or modified. This is design approval within the scoped task only — not ADR acceptance, release readiness, or deployment authorization.
+
+## VERDICT: DESIGN GATE OPEN
+
+Both mandatory-unresolved items are resolved with concrete selections verified against real source:
+
+1. **Cached-allocation expiry — RESOLVED.** The three-hunk patch was checked hunk-by-hunk against the pristine 4.18.0 files and is correct, minimal, and applies at the stated contexts (`ns_turn_server.c:3574` callback, `:3835` password block, `ns_turn_msg.c:1467-1473` clamp). One honest bound correction is mandatory (finding F1 below) — a documentation amendment, not a mechanism change.
+2. **User-unit credential delivery — RESOLVED** by the concrete selection in §5 below; no invented systemd boundary is required, and one real gap in the doc's model (coturn cannot consume a LoadCredential file natively) is closed with an explicit launcher selection (F8).
+
+Gate opening is conditional on incorporating the corrections in F1, F2, F5, F6, F7 and the F8 launcher selection into the implementation PRs exactly as specified; none requires re-design.
+
+---
+
+## 1. Issuer authority and API — selected contract
+
+`GET /v2/voice/turn` integrates cleanly into the existing machinery with no new authority class:
+
+- **Native selector:** add one arm to the fixed match in `clean_service.rs:700-719`: `("turn", None) => ("GET", "/v2/voice/turn".to_owned(), String::new())`. The surrounding `sign_session` already validates the complete saved realm/pin/account/device/credential context against the session (`clean_service.rs:689-698`) and generates the fresh UUIDv4 nonce; no caller-controlled path/body/nonce is exposed. No envelope ID.
+- **Server route:** extend the allowlist in `session_proof` (`self_service_http.rs:426-429`) with `("GET", "/v2/voice/turn")`. `session_proof` already enforces exactly-one Authorization header (`:425`), UUIDv4 nonce shape, signature-before-ledger (invalid signatures consume nothing, `:453-467`), 2048-nonce cap, and replay rejection — the turn operation inherits all of it.
+- **Locked recheck:** reuse the `session_query` pattern (`:479-492`): `BEGIN` → `SET LOCAL synchronous_commit=on` → `SELECT … FROM ss_meta WHERE id=1 FOR UPDATE` → `still_live` → `binding_matches`, extended per F6 to also read and compare `version,realm,pin` under the same lock. Run this before **both** issuance and the authenticated-disabled 404.
+- **Linearization point (pinned):** authorization linearizes at acquisition of the `ss_meta` row lock inside the issuance transaction. The sanctioned revocation pattern takes the same lock first (demonstrated in `tests/realtime.rs:461-472`), so any revocation committed under a prior lock holder is visible to the binding recheck; an issuance whose lock acquisition precedes a queued revocation may complete — exactly the documented semantics. Direct SQL revocation without the lock is ordered by the recheck statement's read snapshot; the design records the lock convention as the supported path.
+- Ten-second handler deadline and 20/s ingress ceiling apply automatically via the existing middleware (`:114-146`); the route is counted only in total ingress (`w.1`), matching "ordinary total ingress". No schema row, no call/contact authority, no message write.
+
+## 2. Resource limits and credentials — verified
+
+- **Quotas:** new in-memory state in the style of `pending`/`devices`: `Mutex<HashMap<(account,device), VecDeque<Instant>>>` (sliding 60 s, cap 4) + global `VecDeque<Instant>` (cap 32), bucket map hard-capped at 1024 with expired-entry-only cleanup and reject-at-capacity (mirrors the no-live-eviction rule already used for sessions at `:354-363`). Keyed by binding, not session ID → survives session replacement; in-memory → resets on restart, which is consistent with the process-restart-invalidates-sessions model and does not touch nonce ledgers. Mutex hold times are O(1) lookups; nothing blocks the DB transaction or the client's UI thread.
+- **Credential format:** verified against real coturn code. `stun_calculate_hmac(usname, …, (const uint8_t*)secret, strlen(secret), …)` at `userdb.c:599` keys HMAC-SHA1 with the secret's **ASCII bytes** — the doc's "64 lowercase hex chars as key, not decoded bytes" is correct. Password = standard padded Base64 of the 20-byte HMAC (`userdb.c:602`). Username `<decimal unix expiry>:<32 lowercase hex>` carries no identity; timestamp parse at `userdb.c:330-366` accepts the `ts:rand` form via `atol` before the colon.
+- **Rust implementation:** pinned `hmac` + `sha1` maintained crates (interoperability only; a comment and the docs already scope SHA-1 correctly). Exact-field JSON response ≤2048 bytes with `Cache-Control: no-store` (must be added explicitly — existing handlers return bare `Json`); integers for `v`/`expires`/`ttl`; no logging/persistence of secret or credentials anywhere (`main.rs` already never prints raw errors).
+- **Lifetime math checks out:** ttl 1200 s; client acceptance window 1000–1205 s remaining, monotonic receipt deadline, recheck before deferred `PeerConnection` creation. Worst case at the 1000 s floor: 45 s setup + 900 s `MAX_CALL` (`CallController.java:33-34`, `CLOCK_SKEW` 5 s) = 945 s < 1000 s, and the call's heartbeat/timeout machinery ends media before credential expiry, so honest endpoints never depend on the residual.
+
+## 3. Critical existing-allocation expiry — patch evaluated against pristine source
+
+Upstream defects confirmed real, not recollected:
+
+- `STUN_MIN_ALLOCATE_LIFETIME == STUN_DEFAULT_ALLOCATE_LIFETIME == 600` (`ns_turn_msg_defs.h:73-74`), so in pristine `stun_adjust_allocate_lifetime` (`ns_turn_msg.c:1464-1480`) **every** request of 0–599 s is raised to 600 s and the `else if` configured-max clamp is skipped: `max-allocate-lifetime=60` is bypassed exactly as documented. The trailing `max_lifetime` clamp is the oauth session bound (0 for REST) and does not save this. Hunk 3 (unconditional clamp after normalization) fixes it; refresh-deletion is unaffected because `to_delete` short-circuits to `lifetime=0` before the adjust call (`ns_turn_server.c:2005-2010, 2098-2102`) and `refresh_relay_connection` maps 0→1 s (`:5017-5019`). The secondary normalization inside allocation setup (`:4986-4990`) only sees already-clamped values.
+- Cached-key bypass confirmed: pristine password block (`:3835`) skips upstream lookup whenever `hmackey_set` — the REST expiry check at `userdb.c:558` (which runs **before** any HMAC work, wall-clock `time(NULL)`, ≤-comparison → 1 s granularity) is then never consulted again, so refresh could extend authority indefinitely. Hunk 2 (`can_resume ||` condition) forces the lookup on every first-pass authenticated control; the resume re-entry runs with `can_resume=0` (`read_client_connection(server, ss, in_buffer, 0, 0)` at `:3589`) so no recursion, and if `userkeycb` ever fails to postpone the code falls through to the 401 challenge — fail-closed. Hunk 1 clears `hmackey_set`/`pwd[0]` at the top of the callback (`:3574`) so a queued success from another request cannot be inherited by a failed/expired lookup's resume — the exact race the docs name.
+- **Async/queue timing — the claimed bound needs one correction (F1).** The expiry check runs in the auth thread at check time, but the 60 s lifetime is granted when the relay thread later processes the resume (`server->ctime + lifetime`, `:4994/:5025`). The gap between check and grant is event-queue latency: practically sub-second at the configured capacity (16 allocations, 512 KB/s), but not architecturally zero. **Honest residual bound: credential expiry + 60 s allocation lifetime + 1 s timestamp granularity + relay scheduling delay between the expiry check and the lifetime grant, assuming no relay wall-clock rollback.** ChannelData *and unauthenticated Send indications* drain under the same allocation-death bound; permissions/channel bindings die with the allocation. A code fix would need a timestamp re-parse in the callback, which the design correctly forbids; the doc amendment plus a load-margin measurement in the expiry test is the right resolution.
+- Mobility (RFC 8016 machinery present in this tree) defaults off; packaged config must not enable it (F9). TCP data-connection binds route through the same forced lookup; TCP *peer* relay is disabled anyway.
+- **Required tests:** unpatched-RED (refresh accepted after expiry; 30 s request granted 600 s), patched-GREEN (established allocation authenticated before expiry: refresh refused after expiry, media stops ≤ 61 s + measured scheduling margin), queued-race test for hunk 1, normal-refresh unchanged, deletion-refresh unchanged. A **real short-TTL credential** (e.g. 30–60 s) proves actual elapsed expiry without waiting 1200 s; injected-clock 1200 s boundary tests are named separately, per the contract. New-allocation rejection alone is explicitly insufficient — the established-allocation case is the gate.
+
+## 4. Client consent, negotiation, fallback — selected integration
+
+- Credential requests start only at the two existing narrow points: caller — validated `ready` received while `state=="starting"` with mic permission already granted (`CallController.java:137-141`); callee — explicit `answer()` (`:99-107`). Knock/ring/notification paths touch no network mint. Insert an `authorizing` sub-state between those points and `mediaOffer`/`mediaAnswer`; `WebRtcAudioEngine` already takes `iceServers` + `relayOnly` (`IceTransportsType.RELAY`, `WebRtcAudioEngine.java:64-65, 186-193`), so engine changes are minimal. `tcpCandidatePolicy=DISABLED` does not affect TURN-over-TCP client transport.
+- **Voice lane:** one dedicated single-thread executor mirroring `RealtimeLoop`'s generation-guarded pattern (`RealtimeLoop.java:18-52`), fully separate from the 2-thread text pool; at most one in-flight operation + one latest replacement; results checked against both transport generation and `Call.generation` (already threaded through every port callback); cancel/terminal/auth-loss closes only the voice connection and drops credentials — `authorizationLost()`/`finish()` (`:110, :248-255`) are the existing hooks. 8 s connect/read bounds; server-side `LimitedAccept` (16 concurrent, 120 s lifetime) comfortably absorbs the one extra negotiation-time connection.
+- Save-before-authority, single fresh-nonce retry on the first ambiguous 401, second-401 termination, and 45 s setup/heartbeat deadlines all carry over unchanged; strict response validation (exact two same-origin IPv4 URLs matching the pinned realm host, expiry/username relation, ttl/v) then relay-only ICE with **no silent direct fallback**; pinned-origin 404/pre-session legacy is the only disclosed direct-compatibility path, is not account authorization (E2EE handshake still required), and never invalidates the text session; TLS/auth/timeout/malformed-200/429/5xx never downgrade.
+- **F7:** the frozen client's pre-consent dialog (`MainActivity.java:250`, in-call note `:312`) discloses *only* direct-connection/IP-visibility. The Android PR must replace it with the exact dual-mode disclosure (relay default — operator sees metadata; direct only in disclosed compatibility mode — peer sees IP), shown before "Позвонить" and before "Ответить". A UI contract test must assert disclosure precedes consent in both modes.
+- Credentials stay volatile: excluded from `SnapshotCodec` state, E2EE control bodies, history, settings, logs, screenshots, evidence.
+
+## 5. Package, secrets, service model — selected concrete design
+
+- **Server startup:** defaults disabled; enabling requires both `PARANOID_TURN_SECRET` (absolute path) and `PARANOID_TURN_RELAY_IP` equal to the saved realm host; any partial/invalid combination fails startup (consistent with `main.rs` fail-closed style). Secret file: open with `O_NOFOLLOW|O_NONBLOCK` via `OpenOptionsExt::custom_flags`, then `fstat` the **opened** fd: regular, `st_nlink==1`, owner root-or-euid (`libc::geteuid`/rustix — a real OS primitive, never env), mode 0400/0600 with no special bits, read ≤65 bytes, require exactly 64 lowercase hex, no trailing newline. This is a faithful Rust port of the proven `regular_file()` pattern in `alpha.py:246-258` — all primitives exist on the target platform.
+- **Delivery to the user unit:** the messaging service is a *user* systemd unit (`systemctl --user` throughout `alpha.py`) whose manager cannot read a root 0600 master. Selected model: root-owned 0600 master (package location, e.g. `/etc/paranoid-turn/master.secret`); installation derives two sources — issuer copy owned by the messaging runtime user, 0400, and a root-owned 0400 relay copy. Each unit uses `LoadCredential` of its own source; the controller's `unit(root)` template gains the `LoadCredential=` line and `environment()` (which already re-adds an explicit allowlist over `clean_env()`'s `PARANOID_*` strip, `alpha.py:29-31, 167-184`) forwards `PARANOID_TURN_SECRET=$CREDENTIALS_DIRECTORY/turn-secret` and `PARANOID_TURN_RELAY_IP` from a new validated config key. `config()`'s exact-key-set check (`:109-112`), the byte-compared unit (`v2_unit`, `:1080-1091`), and the closed release file sets (`build.py:27-33`, `verify():277-297`) mean this is a versioned controller capability bump shipped in-release — recorded as F8, not an ad-hoc edit. Rotation: coturn iterates multiple `static-auth-secret` entries (`userdb.c:306-327`), so rotation is overlap-safe (add new relay secret → restart relay → rotate issuer source → restart user unit → remove old); units restart independently.
+- **F8 (real gap, closed):** coturn cannot read a `LoadCredential` file natively — `static-auth-secret` lives in its config. Selected: the dedicated system `paranoid-turn.service` uses `LoadCredential` + a tiny packaged launcher that validates the 64-hex rule, assembles `${RUNTIME_DIRECTORY}/turnserver.conf` (umask 077, turn-user-owned) from the pinned template plus the secret line, and execs the pinned `turnserver -c` — no secret in argv or environment. This must be in the package with its own hash.
+- Building the package changes no live unit; all lifecycle exercises (start/stop/readiness/denial/rotation/rollback) run against local isolated roots exactly as the existing deploy tests do.
+
+## 6. Exact coturn resource/peer policy — verified option semantics
+
+All option names confirmed present in the pinned 4.18.0 source/reference: `listening-ip=157.180.49.125`, `listening-port=34781` (TCP+UDP), `min-port=40000`/`max-port=40015`, `use-auth-secret` + `static-auth-secret`, `realm`, `user-quota=4`/`total-quota=16` (per-username = per-credential under REST; UDP and TCP client transports each allocate, so 4/username covers dual-URL gathering — and the tests must confirm, not assume, per-endpoint counts), `max-bps=128000`/`bps-capacity=512000`, `max-allocate-lifetime=60`, `no-tcp-relay`, `no-stun`, `no-multicast-peers`, `no-software-attribute`, `fingerprint`; `proc-user` dedicated unprivileged account; mobility left disabled.
+
+Two source-verified corrections a from-memory config would have gotten wrong:
+
+- **F2 (HIGH):** `no-cli` is a **deprecated no-op** in 4.18.0 — it only logs (`mainrelay.c:2212-2214`); the CLI must be disabled with `cli=0` (`:2215-2217`) in both production and fixture configs, with a test asserting nothing listens on 5766.
+- **F3:** loopback peers are denied by default; the local fixture re-enables them with `allow-loopback-peers`, which hard-fails when combined with an enabled CLI and empty `cli-password` (`:3702-3712`) — with `cli=0` the fixture is valid. Production config never carries the loopback allowlist.
+
+Peer policy: `denied-peer-ip` for loopback/RFC1918/link-local/multicast/reserved ranges, **plus the crucial same-host exception**: `allowed-peer-ip=157.180.49.125` so both relay-only clients can reach this host's own relayed addresses, while the dedicated TURN UID's prepared owner-match egress rules permit exactly own-IP UDP 40000-40015 and deny every other own-host destination (38443, PG socket ports, etc.) — a blanket own-IP ban would break every same-relay call. Deliverable is exact prepared nftables rules plus isolated netns packet tests; no live firewall change. Issuer + relay together cannot become an SSRF/scanner: fixed URLs, no DNS, public-range-only peers, exact listener.
+
+## 7. Implementation architecture and mandatory RED/GREEN gates
+
+**Modules:** server — new `server/src/voice_turn.rs` (config/secret/quota/mint) + minimal `self_service_http.rs` wiring; native — one match arm in `clean_service.rs`; Android — `VoiceAuthLane` + strict `TurnCredentials` parser + `CallController` `authorizing` state + disclosure change; package — pinned coturn source, two-file patch, launcher, unit files, prepared firewall rules, manifest/verifier; controller capability bump.
+
+**Mandatory tests (each RED first):**
+1. Real PG/session: route/query/body/duplicate-header rejects (F5: the turn arm must explicitly reject any query and non-empty body — the current allowlist rejects queries only on POST, `self_service_http.rs:430`); replay; changed binding; revocation race through the ss_meta lock; ss_meta version/realm/pin mismatch under lock (F6).
+2. Quotas: 4/binding, 32 global, 1024-bucket capacity reject without eviction; session-replacement continuity; restart reset.
+3. Config/startup: disabled default; each invalid secret-file condition (symlink, FIFO no-hang, mode, owner, hardlinks, length 63/65, newline); partial config fails startup.
+4. Native selector: turn context negatives (wrong realm/pin/account/device/fingerprint), fixed path/empty body, JNI parity.
+5. Client: strict parsing negatives, pinned-404 compat only, no fallback on 5xx/429/timeout/malformed/TLS, delayed-callback cancellation captures no audio, auth-expiry mid-setup, redial.
+6. Real coturn: issued-HMAC accept; wrong secret reject; new-expired reject; **established-allocation expiry stop** (short-TTL real elapsed test + separately named injected-clock 1200 s tests); unpatched-RED baseline; lifetime-clamp and queued-race cases from §3.
+7. Full app: E2EE call with relay-selected candidates, bidirectional decoded media, concurrent text latency retained, teardown/redial, signed-APK/source correspondence (signer 82b29cc0…, versionCode > v8).
+8. Package lifecycle locally: start/stop/readiness/denial/rotation/rollback, no live mutation.
+
+**PR structure:** PR-A (server foundation: docs, issuer, package, controller bump, tests) based on 366ceeda; PR-B (Android only) declaring PR-A's exact commit as its dependency; integration worktree combines both for real tests and APK. No force merge; no deployment follows this gate.
+
+## Findings index
+
+| ID | Sev | Location | Summary |
+|----|-----|----------|---------|
+| F1 | MED | voice-turn-v1.md residual-bound paragraph | Bound must add relay scheduling-delay term; expiry test measures margin |
+| F2 | HIGH | mainrelay.c:2212 | `no-cli` is a no-op; use `cli=0`; test port 5766 closed |
+| F3 | MED | mainrelay.c:3702-3712 | Fixture needs `allow-loopback-peers` + `cli=0`; never in production |
+| F4 | LOW | patch hunk 1 | `pwd[0]`-only clear is safe (presence-byte convention); covered by race test |
+| F5 | MED | self_service_http.rs:425-431 | Turn arm must explicitly reject query/non-empty body |
+| F6 | MED | self_service_http.rs:479-492 | Locked recheck must add version/realm/pin compare; linearization pinned at ss_meta lock |
+| F7 | MED | MainActivity.java:250,312 | Consent disclosure must become exact dual-mode text before consent |
+| F8 | MED | package design | coturn can't read LoadCredential directly; packaged launcher assembles private runtime config; controller capability bump for closed file/config sets |
+| F9 | INFO | package config | Mobility must stay disabled; assert in config test |
+| F10 | INFO | userdb.c:330-366 | `atol`/32-bit wrap harmless here; no change |
+
+**Unresolved questions:** none blocking local implementation. Deployment authorization, live firewall/DNS/unit changes, phone operation, and PR merges remain separately gated with the owner, and qualified human review remains required before any sensitive-data/production claim per ADR-0003/0012.
+
+**What may begin now:** protected-boundary local implementation of PR-A and PR-B exactly as selected above, strict TDD with the listed RED cases first, local isolated coturn build with the pinned patch, package assembly, and the integration APK — followed by the required fresh independent final exact-source/security review before any release-candidate claim.

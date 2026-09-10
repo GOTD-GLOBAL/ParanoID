@@ -186,3 +186,11 @@ application security review appropriate to the claims being made.
 revocation, wait races, native outbox signing, state/network separation, opt-in
 Android foreground notifications and encrypted same-data update/rollback.
 Actual final review and deployment evidence remain separate gates.
+
+## Voice relay delta
+
+[Voice TURN threats](voice-turn-threats.md) cover the issuer authorization lock,
+volatile credentials, metadata, relay resource and peer limits, credential
+residual authority and secret/package boundaries. Offline builds pass; required
+retained-allocation expiry and ACL packet tests remain NOT RUN after a platform
+interruption. Public deployment is not authorized by local task scope.

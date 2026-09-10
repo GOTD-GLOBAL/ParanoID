@@ -106,3 +106,9 @@ Use [the RFC template](rfc-template.md).
 
 [RFC-0015: overnight realtime](0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Voice relay completion
+
+[RFC-0018](0018-voice-turn.md) (proposed) covers REQ-CALL-006, the issuer,
+Android contract and isolated relay package. Independent review and explicit
+deployment authority remain separate gates.

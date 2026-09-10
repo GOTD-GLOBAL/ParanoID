@@ -1,10 +1,32 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-10
 ---
 
 # Current project state
+
+## Voice relay foundation — 2026-09-10
+
+PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit
+`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. This separate server branch starts
+from that commit under the [component policy](component-boundaries.md).
+[REQ-CALL-006](../product/voice-relay.md) now has a default-disabled authenticated
+issuer, strict local secret loader, locked binding recheck, quotas and a versioned
+offline coturn/controller package. Fourteen focused issuer tests, two quota unit
+tests, controller/package tests and native offline build checks pass. The full
+server matrix passes85 tests with one pre-existing APK-environment skip; the
+text/JNI/pinned-TLS regression passes24 warm samples, P50 102.04/P95 144.30 ms.
+[Durable evidence](evidence/voice-turn-20260910/README.md) separates these results
+from the pending final independent review.
+
+The actual direct-ICE client checkpoint is in [draft PR20](https://github.com/GOTD-GLOBAL/ParanoID/pull/20);
+its relay integration will depend on this exact foundation commit. A successful
+direct-ICE final review does not cover this extension. Required retained-allocation
+expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection.
+[The runbook](../../deploy/turn/README.md) retains the exact proposed network
+scope and rollback; no public TURN/firewall/DNS or existing-server changes were
+authorized or performed. RFC-0018/ADR-0012 remain proposed.
 
 ## Owner phone feedback and PR 18 merge direction
 
@@ -18,7 +40,7 @@ feedback, not the other NOT-RUN limits below.
 The owner explicitly requests testing/fixing/merging PR #18 and then implementing
 voice calls. [The scoped merge record](pr18-merge-scope.md) supersedes the PR's
 initial archival-only restriction for this one reviewed integration. Final CI and
-review still gate merge; writing this status does not claim the merge occurred.
+review gated that integration; its verified merge is recorded above.
 Voice calls are the next stage, not an implemented v8 feature. Existing identity,
 E2EE, TLS trust, history and working text remain protected.
 

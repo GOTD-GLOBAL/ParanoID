@@ -74,3 +74,9 @@ independent review/closure, encrypted verified backup, preserved existing servic
 and hosted messaging acceptance, including the unresolved original readiness
 failure and physical-device limits.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Local voice relay candidate
+
+[Server evidence](../server/voice-turn-local.md) and the [offline relay runbook](../../deploy/turn/README.md)
+describe local implementation, checks, exact proposed network scope and rollback.
+No new public listener or existing-server change has been performed.

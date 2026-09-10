@@ -1,5 +1,44 @@
 # ParanoID native private-alpha bundle
 
+## Optional voice TURN issuer controller
+
+REQ-CALL-006/RFC-0018 adds the `self-service-v2-turn-file-v1` controller
+capability and one closed package member, `voice-turn-controller.json`.
+New v2 bundles contain nine regular members. Old v2 bundles remain valid with
+TURN disabled; the existing schema and same-data maintenance probes retain their
+contracts. `voice-turn-capabilities` identifies the optional controller support.
+
+The exact optional config entry is `"voice_turn": {"v": 1, "relay_ip":
+"157.180.49.125"}`. It is allowed only in self-service-v2 and the IP must equal
+the saved config IP. Absence preserves existing unit bytes and disables issuance.
+Enabling it adds `LoadCredential=voice-turn-secret:ROOT/voice-turn/issuer.secret`
+to the versioned messaging USER unit. The source is an isolated 0400 file owned
+by the messaging account, containing exactly 64 lowercase ASCII hex bytes with
+no newline. The systemd runtime copy is opened with no-follow/nonblocking flags,
+validated through its descriptor, then passed as an absolute path through
+`PARANOID_TURN_SECRET_FILE`; `PARANOID_TURN_RELAY_IP` comes from validated config.
+Inherited arbitrary TURN variables are stripped. No secret value enters argv,
+environment, controller output, snapshots or this package.
+
+Installation is not performed by building. A later authorized enable operation
+must preserve the exact current config fields, TLS and PostgreSQL identity;
+prepare the private issuer source; review the new effective user unit and
+capability; update the server using the existing same-data maintenance procedure;
+then atomically install the optional config and matching generated unit before
+reloading/restarting that same user unit. The existing `v2_unit` check compares
+the resulting unit to `unit(root)`; it does not independently audit arbitrary
+systemd drop-ins. Review any effective overrides before activation.
+
+Rollback disables issuance by removing only `voice_turn` and restoring the
+matching generated unit, then restarts the existing service on retained data.
+Only then can a prior controller that lacks this config capability be selected
+through same-data rollback. Never send an enabled TURN config to an old bundle,
+rotate TLS, reset identities, discard the cluster or restore over new messages.
+The separate [TURN package](turn/README.md) contains its launcher, source patch,
+configuration and private runtime dependencies. Required relay expiry/ACL/network
+acceptance remains NOT RUN; public service/firewall changes need separate review
+and authorization. This section records preparation, not deployment.
+
 ## Same-v2 maintenance candidate (RFC-0015, 2026-09-09)
 
 The new `update-v2` and `backup-v2` actions preserve an existing self-service-v2

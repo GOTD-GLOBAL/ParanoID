@@ -39,6 +39,13 @@ async fn main() {
     }
 }
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    if env::args().nth(1).as_deref() == Some("voice-turn-capabilities") {
+        println!(
+            "{}",
+            serde_json::json!({"api":1,"issuer":"signed-session-turn-v1"})
+        );
+        return Ok(());
+    }
     if env::args().nth(1).as_deref() == Some("self-service-init") {
         return paranoid_server::self_service::init_cli().await;
     }
@@ -117,6 +124,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let self_service_local = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
     let self_service_public = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
     let self_service = self_service_local || self_service_public;
+    let turn_secret = env::var_os("PARANOID_TURN_SECRET_FILE").map(std::path::PathBuf::from);
+    let turn_relay = env::var_os("PARANOID_TURN_RELAY_IP");
+    if !self_service && (turn_secret.is_some() || turn_relay.is_some()) {
+        return Err("TURN requires self-service-v2 mode".into());
+    }
+    let turn_relay = turn_relay
+        .as_ref()
+        .map(|value| value.to_str().ok_or("invalid TURN configuration"))
+        .transpose()?;
+    let turn = paranoid_server::self_service::TurnConfig::from_options(
+        turn_secret.as_deref(),
+        turn_relay,
+        self_service_local,
+    )?;
     let key_mode = env::var("PARANOID_MODE").as_deref() == Ok("closed-alpha-key-v1");
     let alpha =
         self_service || key_mode || env::var("PARANOID_MODE").as_deref() == Ok("closed-alpha-v0");
@@ -223,7 +244,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
     let app = if self_service {
-        paranoid_server::self_service::app(pool).await?
+        paranoid_server::self_service::app_with_turn(pool, turn).await?
     } else if key_mode {
         paranoid_server::registration::key_app(pool, tokens, quota).await?
     } else {

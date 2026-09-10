@@ -26,6 +26,12 @@ jobs:
           python3 deploy/test_build.py
           python3 deploy/test_containment.py
           python3 deploy/test_package.py
+      - name: Offline TURN package and versioned controller regressions
+        # These tests open no relay sockets and do not imply allocation/media acceptance.
+        run: |
+          python3 deploy/turn/test_package.py
+          python3 deploy/turn/test_runtime.py
+          python3 deploy/test_turn_environment.py
       - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
         # test_integration.py needs an explicitly provisioned user manager; never discover it here.
         run: python3 deploy/test_native.py
@@ -46,7 +52,7 @@ jobs:
       - name: Private PostgreSQL prerequisites and CI wiring regression
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-16 openssl
+          sudo apt-get install -y postgresql-16 openssl curl python3-cryptography
           python3 scripts/test-ci-wiring.py
       - name: Real PostgreSQL and HTTP tests (all targets, private socket)
         run: python3 scripts/check-server.py

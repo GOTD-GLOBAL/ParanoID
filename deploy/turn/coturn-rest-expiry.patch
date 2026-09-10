@@ -1,0 +1,40 @@
+--- a/src/server/ns_turn_server.c
++++ b/src/server/ns_turn_server.c
+@@ -3573,6 +3573,10 @@
+ 
+       ss->key_lookup_result = success ? TURN_KEY_LOOKUP_OK : key_lookup;
+ 
++      /* ParanoID REST-only package: a resumed lookup must not inherit a key
++       * restored by another queued request while this lookup was pending. */
++      ss->hmackey_set = 0;
++      ss->pwd[0] = 0;
+       if (success) {
+         memcpy(ss->hmackey, hmackey, sizeof(hmackey_t));
+         ss->hmackey_set = 1;
+@@ -3831,8 +3835,11 @@
+     }
+   }
+ 
+-  /* Password */
+-  if (!(ss->hmackey_set) && (ss->pwd[0] == 0)) {
++  /* ParanoID REST-only package: revalidate credentials on every first-pass
++   * authenticated control request. The immediate callback resumes once with
++   * can_resume == 0 and uses only that lookup's verified key. Media ChannelData
++   * stays on the upstream fast path; expired controls cannot extend a lease. */
++  if (can_resume || (!(ss->hmackey_set) && (ss->pwd[0] == 0))) {
+     if (can_resume) {
+       (server->userkeycb)(server->id, server->ct, server->oauth, &(ss->oauth), usname, realm,
+                           resume_processing_after_username_check, in_buffer, ss->id, postpone_reply);
+--- a/src/client/ns_turn_msg.c
++++ b/src/client/ns_turn_msg.c
+@@ -1468,7 +1468,9 @@
+     lifetime = STUN_DEFAULT_ALLOCATE_LIFETIME;
+   } else if (lifetime < STUN_MIN_ALLOCATE_LIFETIME) {
+     lifetime = STUN_MIN_ALLOCATE_LIFETIME;
+-  } else if (lifetime > max_allowed_lifetime) {
++  }
++  /* Enforce the configured cap after default/minimum normalization too. */
++  if (lifetime > max_allowed_lifetime) {
+     lifetime = max_allowed_lifetime;
+   }
+ 

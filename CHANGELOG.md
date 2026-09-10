@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Voice relay foundation — 2026-09-10
+
+- Added an optional signed-session TURN credential issuer with locked active-device
+  checks and bounded quotas. Disabled deployments retain existing messaging
+  behavior. A versioned offline package adds isolated secret-file forwarding,
+  a patched coturn build and a separate relay unit; [the runbook](deploy/turn/README.md)
+  records actual offline checks and missing expiry/ACL packet gates. No live
+  server, firewall, DNS, phone or public listener changes were performed.
+
 ### Realtime rollout — 2026-09-09
 
 - Updated the existing isolated private-alpha service from release

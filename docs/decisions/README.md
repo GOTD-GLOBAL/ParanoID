@@ -97,3 +97,8 @@ Use [the ADR template](adr-template.md) for new decisions.
 
 [Proposed ADR-0010: retained-stack realtime](0010-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Voice relay proposal
+
+[Proposed ADR-0012](0012-voice-turn.md) specifies ephemeral relay issuance and
+isolated packaging. Local task authorization does not constitute ADR acceptance.

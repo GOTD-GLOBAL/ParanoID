@@ -1,0 +1,60 @@
+{
+  "v": 1,
+  "scope": "ordinary offline TURN package and messaging controller; issue19 REQ-CALL-006 RFC0018 ADR0012",
+  "tests": {
+    "controller_feed_containment": {
+      "passed": 20,
+      "failed": 0
+    },
+    "package_launcher": {
+      "passed": 4,
+      "failed": 0
+    }
+  },
+  "turn_package": {
+    "filename": "paranoid-turn-b32d78cc5e663f5d4926-linux-x86_64.tar",
+    "sha256": "2c27f4fcdd7ebbc2ab9f45c8d77a9daba847d07fdb6d711207b86469b47ffb25",
+    "release": "b32d78cc5e663f5d4926",
+    "native_sha256": "b7f34eb1dd25f919b737e93cf672ad617fd27b6f57386bbb0f571cd64120f551",
+    "pristine_source_sha256": "28d55294ac596fbd129b293a85e7bb1c5dc4bd15b7fb55c500f355149e5f4e28",
+    "patch_sha256": "4d9feb939aab73dd4bf5a3eb67dff0ab59148cacdc334dbf922907f3de93f860",
+    "regular_members": 27,
+    "runtime_libraries": 6,
+    "license_files": 12,
+    "additional_verbatim_source_notice_blocks": 17
+  },
+  "messaging_bundle": {
+    "filename": "paranoid-alpha-4eba2afd548e0666dc24-linux-x86_64.tar",
+    "sha256": "b45976060482b9558e1937f4505f4a833903f3dcb716ea6381a638586f1609b2",
+    "server_sha256": "ade6c8353833977cfedd0f5a90463783a7acca55e4058ad615c14c3d2a79a099",
+    "regular_members": 9,
+    "actual_capability_pair": "PASS"
+  },
+  "offline_checks": {
+    "native_compile": "PASS",
+    "patched_source_hashes": "PASS",
+    "relocated_elf_loader_and_version": "PASS",
+    "isolated_launcher_check": "PASS",
+    "package_members_unchanged": "PASS",
+    "system_unit_syntax": "PASS",
+    "user_unit_syntax": "PASS",
+    "disabled_unit_equals_pr18": "PASS",
+    "corrupt_input_refused_before_compilation": "PASS",
+    "tracked_source_private_path_or_secret_scan": "PASS"
+  },
+  "not_run": [
+    "retained-allocation elapsed expiry and draining",
+    "async credential callback race",
+    "effective CLI listener closure",
+    "ACL packets",
+    "namespace/firewall operations",
+    "actual systemd credential delivery",
+    "relay start-stop-readiness-rotation-rollback",
+    "new network tests",
+    "Android UDP TURN gathering in this package task",
+    "public deployment"
+  ],
+  "live_changes": false,
+  "platform_interruption": "Earlier network test work stopped; not retried. No further platform rejection during ordinary offline package work.",
+  "limitations": "Offline package success does not complete mandatory relay runtime acceptance or authorize deployment. Source remains uncommitted pending final review and source-freeze rebuild."
+}

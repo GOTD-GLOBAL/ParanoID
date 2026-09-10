@@ -43,3 +43,8 @@ examples do not replace executable conformance tests.
 
 [Signed-session realtime contract](realtime-v1.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Voice relay credentials
+
+[Voice TURN v1](voice-turn-v1.md) is the canonical proposed fixed signed-session
+operation, strict response and consent/expiry contract for REQ-CALL-006.

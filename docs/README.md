@@ -110,3 +110,11 @@ records signed artifacts, completed independent review/closure, preserved
 existing-service update and hosted product Java/JNI acceptance. The
 [runbook](operations/overnight-realtime.md) retains recovery, test and risk boundaries.
 No permanent architecture acceptance or physical-phone result is implied.
+
+## Local voice relay foundation
+
+[REQ-CALL-006](product/voice-relay.md), [canonical issuer contract](protocol/voice-turn-v1.md),
+[threat delta](security/voice-turn-threats.md) and [server checks](server/voice-turn-local.md)
+cover the default-disabled issuer and offline relay package for issue 19.
+Android integration is a dependent client PR. Retained-allocation expiry and ACL
+packet tests are NOT RUN; no deployment or permanent decision approval is implied.

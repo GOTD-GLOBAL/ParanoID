@@ -28,6 +28,7 @@ struct Service {
     sessions: Mutex<HashMap<String, Session>>,
     waiters: Mutex<HashSet<String>>,
     changed: tokio::sync::Notify,
+    turn: Option<crate::voice_turn::Issuer>,
 }
 struct Session {
     context: SessionV2,
@@ -71,10 +72,18 @@ struct Auth {
 }
 
 pub async fn app(pool: PgPool) -> Result<Router, sqlx::Error> {
+    app_with_turn(pool, None).await
+}
+
+pub async fn app_with_turn(
+    pool: PgPool,
+    turn: Option<crate::voice_turn::TurnConfig>,
+) -> Result<Router, sqlx::Error> {
     let (realm, pin): (String, String) =
         sqlx::query_as("SELECT realm,pin FROM ss_meta WHERE id=1 AND version=2")
             .fetch_one(&pool)
             .await?;
+    let turn = turn.map(|config| config.issuer(&realm)).transpose()?;
     let budget = Arc::new(Mutex::new((Instant::now(), 0u32, 0u32)));
     let s = Arc::new(Service {
         pool,
@@ -86,6 +95,7 @@ pub async fn app(pool: PgPool) -> Result<Router, sqlx::Error> {
         sessions: Mutex::new(HashMap::new()),
         waiters: Mutex::new(HashSet::new()),
         changed: tokio::sync::Notify::new(),
+        turn,
     });
     Ok(Router::new()
         .route(
@@ -100,6 +110,19 @@ pub async fn app(pool: PgPool) -> Result<Router, sqlx::Error> {
         .route("/v2/auth/verify", post(operation))
         .route("/v2/session", post(operation))
         .route("/v2/events", axum::routing::get(session_operation))
+        .route(
+            "/v2/voice/turn",
+            axum::routing::get(session_operation).layer(axum::middleware::from_fn(
+                |request: axum::extract::Request, next: axum::middleware::Next| async move {
+                    let mut response = next.run(request).await;
+                    response.headers_mut().insert(
+                        axum::http::header::CACHE_CONTROL,
+                        axum::http::HeaderValue::from_static("no-store"),
+                    );
+                    response
+                },
+            )),
+        )
         .route(
             "/v2/messages",
             post(operation)
@@ -425,9 +448,10 @@ fn session_proof(
     if headers.get_all("authorization").iter().count() != 1
         || !matches!(
             (method.as_str(), route),
-            ("GET", "/v2/messages" | "/v2/events") | ("POST", "/v2/messages")
+            ("GET", "/v2/messages" | "/v2/events" | "/v2/voice/turn") | ("POST", "/v2/messages")
         )
         || (method == Method::POST && uri.query().is_some())
+        || (route == "/v2/voice/turn" && (uri.query().is_some() || !body.is_empty()))
     {
         return Err(denied());
     }
@@ -480,15 +504,38 @@ async fn session_query(
     sqlx::query("SET LOCAL synchronous_commit=on")
         .execute(&mut *tx)
         .await?;
-    sqlx::query("SELECT id FROM ss_meta WHERE id=1 FOR UPDATE")
-        .execute(&mut *tx)
-        .await?;
+    let turn_request = uri.path() == "/v2/voice/turn";
+    if turn_request {
+        let meta: Option<(i16, String, String)> =
+            sqlx::query_as("SELECT version,realm,pin FROM ss_meta WHERE id=1 FOR UPDATE")
+                .fetch_optional(&mut *tx)
+                .await?;
+        if !meta
+            .is_some_and(|(version, realm, pin)| version == 2 && realm == s.realm && pin == s.pin)
+        {
+            s.sessions.lock().unwrap().remove(&context.id);
+            return Err(denied());
+        }
+    } else {
+        sqlx::query("SELECT id FROM ss_meta WHERE id=1 FOR UPDATE")
+            .execute(&mut *tx)
+            .await?;
+    }
     still_live(s, context)?;
     let old: Option<Binding> = sqlx::query_as("SELECT d.fingerprint,a.mode,d.device,d.auth,d.credential,a.root FROM ss_devices d JOIN ss_accounts a USING(account) WHERE account=$1")
         .bind(&credential.account).fetch_optional(&mut *tx).await?;
     if !binding_matches(old, credential) {
         s.sessions.lock().unwrap().remove(&context.id);
         return Err(denied());
+    }
+    if turn_request {
+        let Some(issuer) = &s.turn else {
+            tx.commit().await?;
+            return Err(Failure(StatusCode::NOT_FOUND, "turn_disabled"));
+        };
+        let result = issuer.issue(&credential.account, &credential.device)?;
+        tx.commit().await?;
+        return Ok(result);
     }
     let result = crate::self_service_messages::messages(
         &mut tx,
