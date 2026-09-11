@@ -15,6 +15,8 @@ class PackageTest(unittest.TestCase):
         self.assertIn("versionName='0.0.14-voice'",result)
         self.assertIn("sdkVersion:'26'",result)
         self.assertIn("native-code: 'arm64-v8a'",result)
+        self.assertIn("application-icon-",result)
+        self.assertIn("mipmap",result)
         self.assertIn("android.permission.CAMERA",result)
         self.assertIn("android.permission.INTERNET",result)
         self.assertNotIn("android.permission.READ_EXTERNAL_STORAGE",result)

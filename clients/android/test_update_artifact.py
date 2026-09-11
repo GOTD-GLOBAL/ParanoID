@@ -40,7 +40,7 @@ def main():
         classes=tmp/'classes';classes.mkdir();dex=tmp/'dex';dex.mkdir()
         run('fresh-java',['javac','--release','8','-Xlint:-options','-encoding','UTF-8','-classpath',str(platform)+':'+str(ROOT/'out/deps/zxing-core-3.5.3.jar'),'-d',classes,*sorted((ROOT/'src/org/paranoid/text').glob('*.java'))])
         run('fresh-dex',[tools/'d8','--lib',platform,'--min-api','26','--output',dex,*sorted((classes/'org/paranoid/text').glob('*.class')),ROOT/'out/deps/zxing-core-3.5.3.jar'])
-        run('fresh-manifest',[tools/'aapt','package','-f','-M',ROOT/'AndroidManifest.xml','-I',platform,'-F',tmp/'manifest.apk'])
+        run('fresh-manifest',[tools/'aapt','package','-f','-M',ROOT/'AndroidManifest.xml','-S',ROOT/'res','-I',platform,'-F',tmp/'manifest.apk'])
         run('native-build',['cargo','build','--locked','--release','--target','aarch64-linux-android','--manifest-path',ROOT.parent/'core/Cargo.toml'])
         with zipfile.ZipFile(apk) as archive,zipfile.ZipFile(tmp/'manifest.apk') as fresh:
             payload={k:hashlib.sha256(archive.read(k)).hexdigest() for k in archive.namelist()}
