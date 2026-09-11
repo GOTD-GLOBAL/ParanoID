@@ -39,7 +39,10 @@ public final class QrScanActivity extends Activity implements SurfaceHolder.Call
         if(!resumed||!surface||camera!=null||checkSelfPermission(Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED)return;
         try {
             camera=Camera.open();Camera.Parameters p=camera.getParameters();Camera.Size best=null;
-            for(Camera.Size s:p.getSupportedPreviewSizes())if(s.width<=1280 && s.height<=1280 && (best==null || Math.abs(s.width*s.height-640*480)<Math.abs(best.width*best.height-640*480)))best=s;
+            // Dense paranoid-contact-v2 QR (~800 bytes, version ~25) needs resolution:
+            // at 640x480 a close-filling code drops below ~2.5 px/module and ZXing fails.
+            // Pick the LARGEST bounded preview so modules stay resolvable (see QrDenseSmoke).
+            for(Camera.Size s:p.getSupportedPreviewSizes())if(s.width<=1280 && s.height<=1280 && (best==null || s.width*s.height>best.width*best.height))best=s;
             if(best==null)throw new java.io.IOException("no bounded preview");
             p.setPreviewSize(best.width,best.height);p.setPreviewFormat(android.graphics.ImageFormat.NV21);
             if(p.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE))p.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);

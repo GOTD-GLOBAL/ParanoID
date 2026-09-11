@@ -29,7 +29,7 @@ javac --release 8 -d out/host src/org/paranoid/text/CoreBridge.java src/org/para
 java -Djava.library.path=../core/target/debug -cp out/host CoreSmoke
 java -cp out/host StorageSmoke
 java -cp out/host SyncSmoke
-javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java test/{RegistrationSmoke,CleanSelfServiceSmoke,CleanSnapshotBoundarySmoke,QrSmoke,QrDiverseSmoke,DialogPolicySmoke,VoiceCommitSmoke}.java
+javac --release 8 -Xlint:-options -cp out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java test/{RegistrationSmoke,CleanSelfServiceSmoke,CleanSnapshotBoundarySmoke,QrSmoke,QrDiverseSmoke,QrDenseSmoke,DialogPolicySmoke,VoiceCommitSmoke}.java
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar RegistrationSmoke
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSelfServiceSmoke
 java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-20240303.jar CleanSnapshotBoundarySmoke
@@ -37,6 +37,7 @@ java -Djava.library.path=../core/target/debug -cp out/host:out/deps/json-2024030
 java -cp out/host:out/deps/json-20240303.jar DialogPolicySmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrSmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDiverseSmoke
+java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDenseSmoke
 javac --release 8 -Xlint:-options -cp out/host:out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host test/PublicQr.java
 python3 test_ui_contract.py
 python3 test_message_presentation.py

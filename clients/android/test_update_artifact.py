@@ -33,7 +33,7 @@ def main():
         tmp=Path(d);current=inspect(apk,'v6',tmp);old=inspect(args.previous,'v5',tmp)
         # v14 renamed the application to global.paranoid.messenger (fresh install);
         # the previous fixture keeps the historical org.paranoid.devtext identity.
-        assert current['package']=='global.paranoid.messenger' and current['version_code']==14
+        assert current['package']=='global.paranoid.messenger' and current['version_code']==15
         assert old['package'] in ('global.paranoid.messenger','org.paranoid.devtext') and old['version_code']<current['version_code']
         metadata={k:current[k] for k in ['package','version_code','version_name','min_sdk','apk_sha256','apk_size']};metadata.update(schema=1,abi='arm64-v8a')
         metadata_file=evidence/'inapp-update-publish-android.json';metadata_file.write_text(json.dumps(metadata,separators=(',',':'))+'\n')

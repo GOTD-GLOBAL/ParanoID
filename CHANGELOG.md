@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Dense contact-QR scan fix — 2026-09-11
+
+- Fixed real-phone "add contact via QR does nothing": the in-app scanner
+  preferred a ~640x480 camera preview, and a close-filling
+  `paranoid-contact-v2` code (~800 bytes) falls below ZXing's module
+  resolution at 480p. The scanner now selects the largest bounded preview
+  (<=1280px). Host regression `QrDenseSmoke` reproduces the failure at the
+  old resolution and gates decoding of dense contact codes at the
+  scanner-class resolutions (v15, `0.0.15-voice`).
+
 ### Application rename and background watchdog — 2026-09-10
 
 - By owner decision renamed the Android application ID from
