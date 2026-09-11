@@ -34,7 +34,7 @@ Exactly eight required keys, no duplicates/unknown keys, floats, nulls or coerci
 | Key | Bound/value |
 | --- | --- |
 | `schema` | integer 1 |
-| `package` | `org.paranoid.devtext` |
+| `package` | `global.paranoid.messenger` |
 | `version_code` | positive signed 64-bit integer (Android long version code) |
 | `version_name` | 1–128 UTF-8 bytes, no C0/C1 control characters |
 | `min_sdk` | positive signed 32-bit integer |
@@ -98,7 +98,7 @@ alpha distribution, not bandwidth fairness, a CDN, TUF or a DoS guarantee.
 2. Require successful signature verification and **exactly one signer**, retained
    certificate SHA-256
    `82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926`.
-   Inspect actual badging: package `org.paranoid.devtext`, the reviewed increasing
+   Inspect actual badging: package `global.paranoid.messenger`, the reviewed increasing
    versionCode/versionName, actual minSdk and only expected `arm64-v8a` native ABI.
    Compare with the reviewed build/client and installed signing identity. Do not
    infer these fields from the filename. Stop on any mismatch or unsupported

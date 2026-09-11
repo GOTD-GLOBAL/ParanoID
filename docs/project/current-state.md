@@ -6,6 +6,20 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## v15 QR candidate and update publication status — 2026-09-11
+
+The built v15 (`0.0.15-voice`, `global.paranoid.messenger`) retains the v14
+signer and supports an in-place v14 update without resetting data. The scanner
+selects the largest supported preview within 1280px; six synthetic dense-QR
+frames pass the host regression. Physical-phone QR acceptance remains unverified.
+Active RFC-0013, draft ADR-0008 and update runbooks now name the current package;
+no permanent architecture acceptance is implied. Historical artifact evidence
+retains its original package names.
+The live update endpoint was checked with the retained TLS certificate and still
+advertises old-package v13. The current Android parser rejects that metadata.
+Source merge is separate from reviewed server rollout and APK/feed publication;
+none of those live changes is performed by this naming correction.
+
 ## Application rename and background watchdog candidate — 2026-09-10
 
 By owner decision the Android application ID changes from

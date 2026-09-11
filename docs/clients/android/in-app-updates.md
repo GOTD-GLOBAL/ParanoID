@@ -6,12 +6,22 @@ last_reviewed: 2026-09-09
 
 # User-triggered Android update candidate (RFC-0013)
 
-Local versionCode 6 / `0.0.6-update`, package `org.paranoid.devtext`, ARM64,
+Current candidate: versionCode 15 / `0.0.15-voice`, package
+`global.paranoid.messenger`, ARM64,
 minSDK 26, targetSDK 35. This is implementation evidence, not feature acceptance,
 publication permission, installed-phone evidence, or production update security.
 The coordinator owns RFC-0013, draft ADR-0008, global threat/current-state/changelog
 integration and publication. Those draft documents are in the separate server
 worktree until integration; no historical ADR is accepted or rewritten here.
+
+## Package transition and publication status — 2026-09-11
+
+v15 updates v14 in place with the retained signer. Old `org.paranoid.devtext`
+is a different application, not an in-place migration target. Preserve its data;
+never uninstall or reset it automatically. Historical v5/v6 verification below
+remains evidence of those old-package builds, not v15 device acceptance.
+The live feed was observed advertising old-package v13; the new client correctly
+rejects it. A source merge does not publish an update or authorize deployment.
 
 ## User flow
 
@@ -33,8 +43,10 @@ Never uninstall, clear data, downgrade, or replace the signing key to make it wo
 
 Failure gives Russian retry text and never creates an identity, resets state or
 claims installed success. Activity recreation discards the UI stage; checking again
-is safe. There is no scheduled check, background service, boot receiver, forced
-upgrade, silent installation, recovery/export or automatic rollback. An explicitly
+is safe. Since v13, a silent startup check is throttled to once per six hours;
+manual checks remain available. A new-version banner opens the same explicit
+download/install flow. No silent installation, forced upgrade, recovery/export
+or automatic rollback is implemented. An explicitly
 requested finite download can finish if the Activity loses focus; it does not
 install automatically. Cache files are disposable, not messaging data.
 
@@ -80,7 +92,7 @@ entries must be ARM64 and contain the app's native core. Android's own installat
 signature/version checks are additional gates, not a substitute for these checks.
 
 `UpdateProvider` is nonexported and has only `/verified.apk` as a grantable path.
-Its only URI is `content://org.paranoid.devtext.updates/verified.apk`. Queries expose
+Its only URI is `content://global.paranoid.messenger.updates/verified.apk`. Queries expose
 only display name and size. Selectors, unknown columns, altered authority/path/query/
 fragment/encoding and all write modes/mutations fail. `openFile` uses O_RDONLY,
 O_NOFOLLOW, O_CLOEXEC and fstat: regular file, app UID, one link, private permissions,

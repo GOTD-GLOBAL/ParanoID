@@ -9,9 +9,10 @@ last_reviewed: 2026-09-10
 This component implements [REQ-CALL-002–005](../../product/voice-calls.md) on the
 retained native messenger. [Voice-v1](../../protocol/voice-v1.md) is the canonical
 control contract; [core voice](../core/voice-calls.md) owns cryptographic parsing
-and persisted state. The current source is configured as `org.paranoid.devtext`,
-versionCode10, `0.0.10-voice`, API26+. The ARM64 retained-signer artifact now passes
-build/signature/package/alignment gates in
+and persisted state. The current source is configured as `global.paranoid.messenger`,
+versionCode15, `0.0.15-voice`, API26+. The v14 rename creates a separate Android
+application from the historical package; v15 retains v14 data and signer.
+The historical v10 ARM64 artifact passed build/signature/package/alignment gates in
 [the operations record](../../operations/voice-calls-local.md).
 
 ## Relay authorization extension
