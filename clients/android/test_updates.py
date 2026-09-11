@@ -24,7 +24,7 @@ def main():
     # Actual retained signed v5 fixture (or an explicitly supplied APK), not invented APK bytes.
     apk=Path(os.environ.get('PARANOID_UPDATE_FIXTURE',str(ROOT/'out/paranoid-text.apk'))).read_bytes()
     digest=hashlib.sha256(apk).hexdigest()
-    metadata=dict(schema=1,package='org.paranoid.devtext',version_code=6,version_name='0.0.6-update',min_sdk=26,abi='arm64-v8a',apk_sha256=digest,apk_size=len(apk))
+    metadata=dict(schema=1,package='global.paranoid.messenger',version_code=6,version_name='0.0.6-update',min_sdk=26,abi='arm64-v8a',apk_sha256=digest,apk_size=len(apk))
     class Handler(http.server.BaseHTTPRequestHandler):
         protocol_version='HTTP/1.1'
         def log_message(self,*args):pass

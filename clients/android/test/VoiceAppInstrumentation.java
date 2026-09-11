@@ -681,7 +681,7 @@ public final class VoiceAppInstrumentation extends Instrumentation {
             if (!id.matches("[0-9a-f-]{36}")) throw new IllegalArgumentException("call id required");
             long generation = request.getLong("generation");
             runOnMainSync(() -> getTargetContext().startService(new Intent(getTargetContext(), VoiceCallService.class)
-                .setAction("org.paranoid.devtext.END_CALL").setData(Uri.parse("paranoid-call-end:" + id))
+                .setAction("global.paranoid.messenger.END_CALL").setData(Uri.parse("paranoid-call-end:" + id))
                 .putExtra("call_id", id).putExtra("generation", generation)));
             return new JSONObject().put("stop_dispatched", true);
         }

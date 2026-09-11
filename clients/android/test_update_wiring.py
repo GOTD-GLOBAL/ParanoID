@@ -7,11 +7,11 @@ A='{http://schemas.android.com/apk/res/android}'
 class UpdateWiring(unittest.TestCase):
     def test_explicit_update_ui_and_narrow_provider(self):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
-        self.assertEqual(m.get(A+'versionCode'),'13')
+        self.assertEqual(m.get(A+'versionCode'),'14')
         self.assertIn('android.permission.REQUEST_INSTALL_PACKAGES',[p.get(A+'name') for p in m.findall('uses-permission')])
         providers=m.findall('application/provider');self.assertEqual(len(providers),1)
         p=providers[0];self.assertEqual(p.get(A+'exported'),'false');self.assertEqual(p.get(A+'grantUriPermissions'),'false')
-        self.assertEqual(p.get(A+'authorities'),'org.paranoid.devtext.updates')
+        self.assertEqual(p.get(A+'authorities'),'global.paranoid.messenger.updates')
         self.assertEqual([g.get(A+'path') for g in p.findall('grant-uri-permission')],['/verified.apk'])
         ui=(R/'src/org/paranoid/text/MainActivity.java').read_text()
         self.assertIn('new UpdateController(this,engine',ui)

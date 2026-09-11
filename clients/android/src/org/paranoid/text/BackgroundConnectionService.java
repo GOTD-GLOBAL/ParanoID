@@ -10,7 +10,7 @@ import android.widget.Toast;
 /** Opt-in foreground connection for this no-push alpha, never boot-started. */
 public final class BackgroundConnectionService extends Service {
     public static final int NOTIFICATION_PERMISSION=94;
-    private static final String CHANNEL="paranoid-connection",MESSAGES="paranoid-incoming",STOP="org.paranoid.devtext.STOP_CONNECTION";
+    private static final String CHANNEL="paranoid-connection",MESSAGES="paranoid-incoming",STOP="global.paranoid.messenger.STOP_CONNECTION";
     private static final int CONNECTION_ID=41,MESSAGE_ID=42;
     private static volatile boolean running;
     public static boolean running(){return running;}

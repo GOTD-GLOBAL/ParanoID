@@ -10,9 +10,9 @@ class PackageTest(unittest.TestCase):
         self.assertTrue(apk.exists(),"text APK has not been built")
         tools=Path(os.environ["ANDROID_SDK_ROOT"])/"build-tools/35.0.0"
         result=subprocess.run([str(tools/"aapt"),"dump","badging",str(apk)],capture_output=True,text=True,check=True).stdout
-        self.assertIn("package: name='org.paranoid.devtext'",result)
-        self.assertIn("versionCode='13'",result)
-        self.assertIn("versionName='0.0.13-voice'",result)
+        self.assertIn("package: name='global.paranoid.messenger'",result)
+        self.assertIn("versionCode='14'",result)
+        self.assertIn("versionName='0.0.14-voice'",result)
         self.assertIn("sdkVersion:'26'",result)
         self.assertIn("native-code: 'arm64-v8a'",result)
         self.assertIn("android.permission.CAMERA",result)

@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="org.paranoid.devtext" android:versionCode="13" android:versionName="0.0.13-voice">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="global.paranoid.messenger" android:versionCode="14" android:versionName="0.0.14-voice">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -22,7 +22,7 @@
     <service android:name="org.paranoid.text.BackgroundConnectionService" android:exported="false" android:foregroundServiceType="specialUse">
       <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled persistent encrypted messenger connection for a private alpha without a push provider; ongoing stop notification, bounded network retries, no boot start." />
     </service>
-    <provider android:name="org.paranoid.text.UpdateProvider" android:authorities="org.paranoid.devtext.updates" android:exported="false" android:grantUriPermissions="false">
+    <provider android:name="org.paranoid.text.UpdateProvider" android:authorities="global.paranoid.messenger.updates" android:exported="false" android:grantUriPermissions="false">
       <grant-uri-permission android:path="/verified.apk" />
     </provider>
     <activity android:name="org.paranoid.text.QrScanActivity" android:exported="false" android:screenOrientation="portrait" />

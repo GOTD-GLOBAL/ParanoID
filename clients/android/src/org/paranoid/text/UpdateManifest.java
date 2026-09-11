@@ -12,7 +12,7 @@ public final class UpdateManifest {
     public final int minSdk;
     public final String versionName, sha256;
     private UpdateManifest(Map<String,Object> m)throws IOException {
-        if(m.size()!=8 || number(m,"schema")!=1 || !"org.paranoid.devtext".equals(m.get("package"))
+        if(m.size()!=8 || number(m,"schema")!=1 || !"global.paranoid.messenger".equals(m.get("package"))
             || !"arm64-v8a".equals(m.get("abi")))throw new IOException("metadata schema");
         versionCode=number(m,"version_code");apkSize=number(m,"apk_size");
         long sdk=number(m,"min_sdk");if(sdk>Integer.MAX_VALUE)throw new IOException("SDK range");minSdk=(int)sdk;

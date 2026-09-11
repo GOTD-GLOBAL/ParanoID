@@ -1,8 +1,10 @@
 # Android voice implementation on the realtime private alpha
 
-Package `org.paranoid.devtext`, ARM64, API26+. The source manifest now selects
-versionCode **9**, `0.0.9-voice`; the retained-signer ARM64 APK now passes
-signature, package and alignment checks.
+Package `global.paranoid.messenger` (renamed from the historical
+`org.paranoid.devtext` by owner decision: a new application identity with a
+fresh install for testers, same retained signing key). ARM64, API26+. The
+source manifest now selects versionCode **14**, `0.0.14-voice`; the
+retained-signer ARM64 APK now passes signature, package and alignment checks.
 Delivered version8 remains the existing realtime artifact, not a voice build.
 The [voice component](../../docs/clients/android/voice-calls.md) documents the
 implemented controller/UI/service/media adapter and its real-test boundaries.

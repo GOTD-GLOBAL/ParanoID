@@ -19,7 +19,7 @@ impl Feed {
         f
     }
     fn manifest(&self) -> serde_json::Value {
-        serde_json::json!({"schema":1,"package":"org.paranoid.devtext","version_code":6,"version_name":"0.0.6","min_sdk":28,"abi":"arm64-v8a","apk_sha256":digest(&self.bytes),"apk_size":self.bytes.len()})
+        serde_json::json!({"schema":1,"package":"global.paranoid.messenger","version_code":6,"version_name":"0.0.6","min_sdk":28,"abi":"arm64-v8a","apk_sha256":digest(&self.bytes),"apk_size":self.bytes.len()})
     }
     fn publish(&self) {
         fs::write(
