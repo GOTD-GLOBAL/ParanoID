@@ -8,6 +8,24 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Application rename and background watchdog — 2026-09-10
+
+- By owner decision renamed the Android application ID from
+  `org.paranoid.devtext` to `global.paranoid.messenger` (versionCode 14,
+  `0.0.14-voice`, same retained signing certificate). This is a new
+  application identity: testers install it fresh; no in-place upgrade from the
+  historical package. Manifest, provider authority, intent actions, the
+  RFC-0013 client `UpdateManifest`/`UpdatePolicy` package pinning and the
+  server `android_updates.rs` metadata pinning now expect the new package.
+  Publication metadata on the live server was intentionally NOT updated here.
+- Hardened the user-enabled background channel against firmware kills
+  (OPPO class): `BackgroundConnectionService` now returns `START_STICKY` and
+  a non-exported `ConnectionWatchdog` `BroadcastReceiver` re-arms an inexact
+  ~15-minute `AlarmManager` alarm to restart the foreground service if it is
+  dead while the persisted user opt-in flag is on. No `BOOT_COMPLETED`, no
+  exact-alarm permissions; the watchdog is cancelled when the user disables
+  the background connection.
+
 ### Voice acceptance simplification — 2026-09-10
 
 - By owner decision, froze the isolated VM/KVM full-rehearsal programme and

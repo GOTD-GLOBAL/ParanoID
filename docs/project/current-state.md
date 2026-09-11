@@ -6,6 +6,21 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## Application rename and background watchdog candidate — 2026-09-10
+
+By owner decision the Android application ID changes from
+`org.paranoid.devtext` to `global.paranoid.messenger` as a new application
+identity: testers install v14 (`0.0.14-voice`) fresh; the retained signing
+certificate is unchanged. Client manifest/provider/intents, RFC-0013 client
+package pinning and the server `android_updates.rs` metadata pinning now use
+the new package; the live server publication metadata still carries the old
+package and was intentionally not republished in this change. The
+user-enabled background channel additionally gets `START_STICKY` plus a
+non-exported inexact ~15-minute `AlarmManager` watchdog receiver that
+restarts the foreground service after firmware kills; no boot start and no
+exact-alarm permissions. Historical `org.paranoid.devtext` references below
+this section describe earlier releases and remain accurate for them.
+
 ## Voice deployed to the existing host; first real phone call — 2026-09-10
 
 The unified kit (release `35ce8e7946f4879fd0a7`) was applied to the existing
