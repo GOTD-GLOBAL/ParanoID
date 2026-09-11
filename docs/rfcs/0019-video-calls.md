@@ -74,9 +74,11 @@ This RFC proposes a versioned extension:
   the sender is willing to negotiate a video section. All other fields and
   limits are unchanged.
 - Complete SDP may contain exactly one audio section (unchanged rules) plus at
-  most one video section with VP8 as the mandatory codec (H.264 optional when
-  both sides advertise it), DTLS-SRTP, RTCP mux, the same single fingerprint and
-  ICE context (BUNDLE). Direction of the video section is `sendrecv` when the
+  most one video section, DTLS-SRTP, RTCP mux, the same single fingerprint and
+  ICE context (BUNDLE). Owner decision (Telegram, 2026-09-11): H.264 is offered
+  first (hardware encoder/decoder where the device provides it, constrained
+  baseline profile), VP8 stays as the mandatory fallback so any two devices
+  can still negotiate video. Direction of the video section is `sendrecv` when the
   local camera is intended, otherwise `recvonly`/`inactive`. Still no trickle
   and no renegotiation: camera on/off flips the track `enabled` flag and sends
   the existing E2EE control channel a new `media` control (`kind: "media"`,
@@ -89,13 +91,18 @@ This RFC proposes a versioned extension:
 
 - Same PeerConnectionFactory; add `DefaultVideoEncoderFactory`/`DecoderFactory`
   from the pinned `io.github.webrtc-sdk:android:150.7871.01` (no new dependency).
-  Hardware H.264 is only used when both sides advertise it; VP8 software path
-  is the guaranteed baseline.
+  Codec preference order in the offer: H.264 (hardware, constrained baseline)
+  then VP8; the SDK picks H.264 when both sides support it and falls back to
+  VP8 otherwise. Devices whose H.264 hardware encoder is missing or broken
+  (known on some OPPO/MediaTek firmware) must still complete a VP8 call; this
+  is a required test, not an assumption.
 - Capture through `Camera2Enumerator`, default front camera, 640×480@24 fps
   initial, capped at 720p; sender uses the SDK's built-in bandwidth estimation
   and simulcast is off (1:1 only).
-- Audio behaviour is unchanged; video start forces speakerphone unless a
-  headset/Bluetooth route is active.
+- Audio behaviour is unchanged. Owner decision (Telegram, 2026-09-11): turning
+  video on routes audio to the speakerphone, except when a wired headset or
+  Bluetooth headset is connected, in which case that route is kept. Turning
+  video off restores the previous route.
 
 ### Consent and lifecycle
 
@@ -169,15 +176,17 @@ This RFC proposes a versioned extension:
    zero decoded frames while video is off, audio unaffected.
 4. Two physical phones on the live host: owner's acceptance call (Wi-Fi and
    mobile), camera switch, toggle, background/return, weak-network degradation.
-5. Measured: APK size delta, battery per 10-min video call, CPU on OPPO.
+5. Measured: APK size delta, battery per 10-min video call, CPU on OPPO,
+   and which codec (H.264 vs VP8) each physical test pair actually negotiated.
 
 ## Open questions
 
-- H.264 hardware path: keep VP8-only for the first APK? Owner: martadvix-web,
-  by decision deadline.
-- Speakerphone default when video starts — confirm with owner UX expectation.
 - Whether `media` video-on/off control should also be shown in chat history
   (currently: no, calls leave no history).
+
+Resolved by the owner on 2026-09-11 (Telegram): offer H.264 first with VP8
+fallback; speakerphone on video start unless a wired/Bluetooth headset is
+connected.
 
 ## Decision and follow-up
 
