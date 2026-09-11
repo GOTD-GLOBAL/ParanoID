@@ -1,10 +1,19 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-10
+last_reviewed: 2026-09-11
 ---
 
 # Current project state
+
+## Video calls requested — 2026-09-11
+
+The owner (Сергей Мальцев, Telegram) asked to add video calls to chats.
+[RFC-0019](../rfcs/0019-video-calls.md) is a draft proposing 1:1 camera video on
+the existing voice-v1 E2EE call channel with a versioned call-v2 body; it is not
+accepted, no code is implemented, and group/SFU video remains a separate future
+RFC. Owner disposition, independent design review and a threat-model delta are
+required before implementation.
 
 ## v15 QR candidate and update publication status — 2026-09-11
 
