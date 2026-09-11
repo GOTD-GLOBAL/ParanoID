@@ -115,13 +115,18 @@ new supply-chain/provider gates tested locally, not accepted as production secur
 RFC-0013 supplies the update-specific contract; accepted ADR-0001/0003 govern docs
 and review only. The first v6 build used the retained signing identity, not a new key.
 
-Run after the normal build (Python `cryptography`, existing SDK/JDK/Rust required):
+Run after the normal build (Python `cryptography`, existing SDK/JDK/Rust required).
+For current v15, supply a retained-signer v14 APK of `global.paranoid.messenger`
+as `--previous`: old `org.paranoid.devtext` is a separate application and must
+be rejected, not treated as an in-place-update fixture. The verifier freshly
+compiles Java/DEX with both ZXing and WebRTC, and runs artifact identity/hash
+policy against those fresh classes rather than cached `out/update-host` classes.
 
 ```sh
 python3 clients/android/test_updates.py
 python3 clients/android/test_update_wiring.py
 ANDROID_SDK_ROOT=/path/to/sdk python3 clients/android/test_update_artifact.py \
-  --previous /path/to/retained-v5.apk --evidence /path/to/private/evidence
+  --previous /path/to/retained-v14.apk --evidence /path/to/private/evidence
 ```
 
 The normal build now runs update wiring and real host TLS fixtures too. Tests use
