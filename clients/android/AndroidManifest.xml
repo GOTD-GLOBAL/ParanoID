@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="global.paranoid.messenger" android:versionCode="15" android:versionName="0.0.15-voice">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="global.paranoid.messenger" android:versionCode="16" android:versionName="0.0.16-video">
   <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
   <uses-permission android:name="android.permission.INTERNET" />
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -13,12 +13,13 @@
   <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
   <uses-permission android:name="android.permission.VIBRATE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
   <uses-permission android:name="android.permission.WAKE_LOCK" />
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
   <uses-feature android:name="android.hardware.microphone" android:required="false" />
   <uses-feature android:name="android.hardware.camera" android:required="false" />
   <application android:label="ParanoID Text Alpha" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false" android:fullBackupContent="false" android:usesCleartextTraffic="false" android:debuggable="false">
-    <service android:name="org.paranoid.text.VoiceCallService" android:exported="false" android:foregroundServiceType="microphone" />
+    <service android:name="org.paranoid.text.VoiceCallService" android:exported="false" android:foregroundServiceType="microphone|camera" />
     <service android:name="org.paranoid.text.BackgroundConnectionService" android:exported="false" android:foregroundServiceType="specialUse">
       <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled persistent encrypted messenger connection for a private alpha without a push provider; ongoing stop notification, bounded network retries, no boot start." />
     </service>

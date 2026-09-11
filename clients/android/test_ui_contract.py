@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="15"',manifest)
-        self.assertIn('android:versionName="0.0.15-voice"',manifest)
+        self.assertIn('android:versionCode="16"',manifest)
+        self.assertIn('android:versionName="0.0.16-video"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -56,10 +56,31 @@ class OnboardingContract(unittest.TestCase):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         self.assertIn('оператор ретранслятора видит ваш IP-адрес, время и объём трафика',ui)
         self.assertIn('собеседник может видеть ваш IP-адрес',ui)
-        outgoing=ui[ui.index('private void requestCall()'):ui.index('private void requestMicrophone')]
-        self.assertLess(outgoing.index('.setMessage(VOICE_PRIVACY)'),outgoing.index('.setPositiveButton("Позвонить"'))
+        outgoing=ui[ui.index('private void requestCall(boolean video)'):ui.index('private void requestMicrophone')]
+        self.assertLess(outgoing.index('video?VIDEO_PRIVACY:VOICE_PRIVACY'),outgoing.index('.setPositiveButton(video?"Видеозвонок":"Позвонить"'))
         incoming=ui[ui.index('private void showCall()'):ui.index('private static String callLabel')]
         self.assertLess(incoming.index('callPrivacy=text(VOICE_PRIVACY'),incoming.index('callAnswer=action("Ответить"'))
+
+    def test_video_calls_require_explicit_camera_toggle_and_pause_in_background(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        media=(ROOT/'src/org/paranoid/text/WebRtcAudioEngine.java').read_text()
+        controller=(ROOT/'src/org/paranoid/text/CallController.java').read_text()
+        # CAMERA is requested only from the explicit toggle or explicit video-call intent, never on ring.
+        self.assertIn('requestPermissions(new String[]{android.Manifest.permission.CAMERA},CAMERA_PERMISSION)',ui)
+        answer=ui[ui.index('callAnswer=action("Ответить"'):ui.index('callAnswer=action("Ответить"')+120]
+        self.assertNotIn('CAMERA',answer)
+        self.assertIn('FLAG_SECURE',ui)
+        self.assertIn('videoPausedByBackground=true;engine.calls().video(false)',ui)
+        self.assertIn('Видео и звук защищены сквозным шифрованием',ui)
+        # Engine: camera capture only through applyVideo after explicit setVideo; H.264 first, VP8 mandatory.
+        self.assertIn('throw new SecurityException("Camera permission required")',media)
+        self.assertIn('if (fallback.isEmpty()) throw new IllegalStateException("VP8 unavailable")',media)
+        self.assertLess(media.index('mime.equals("video/h264")'),media.index('mime.equals("video/vp8")'))
+        self.assertIn('localVideo.setEnabled(false);\n        peer.addTrack(localVideo',media)
+        # Controller: video on -> speaker unless headset; off restores route; port checks CAMERA.
+        self.assertIn('c.speakerBeforeVideo=c.speaker;c.speaker=true;',controller)
+        self.assertIn('throw new SecurityException("camera permission")',engine)
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

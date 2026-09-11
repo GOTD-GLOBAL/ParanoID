@@ -8,6 +8,19 @@ public contract is declared.
 
 ## [Unreleased]
 
+### 1:1 video calls candidate — 2026-09-11
+
+- Call signaling moves to call-v2: a boolean `video` field, an informative
+  encrypted `media` (camera on/off) control and a bundled `m=video` section
+  (H.264 first, VP8 mandatory fallback, 12288-byte SDP). v2 rejects v1 call
+  bodies; both alpha phones must update (text unaffected).
+- Android: "Видеозвонок" button, in-call camera toggle and camera switch,
+  remote/local renderers, `FLAG_SECURE` call window, camera pause when the
+  app is not visible, speaker on video unless a headset is active, camera
+  foreground-service type only while the camera is on (`0.0.16-video`).
+- Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
+  serves `global.paranoid.messenger` update metadata; v15 published.
+
 ### Dense contact-QR scan fix — 2026-09-11
 
 - Fixed real-phone "add contact via QR does nothing": the in-app scanner

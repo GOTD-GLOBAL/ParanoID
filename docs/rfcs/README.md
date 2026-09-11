@@ -112,3 +112,11 @@ No permanent architecture acceptance or physical-phone result is implied.
 [RFC-0018](0018-voice-turn.md) (proposed) covers REQ-CALL-006, the issuer,
 Android contract and isolated relay package. Independent review and explicit
 deployment authority remain separate gates.
+
+## Video calls proposal
+
+[RFC-0019](0019-video-calls.md) (proposed) covers 1:1 camera video on the
+retained E2EE call channel as [call-v2](../protocol/call-v2.md), with
+[ADR-0013](../decisions/0013-video-calls.md) proposed and the
+[threat delta](../security/video-v1-threats.md) drafted. Groups, SFU and
+screen sharing are explicitly excluded.

@@ -37,8 +37,18 @@ import org.webrtc.RtpTransceiver;
 import org.webrtc.SdpObserver;
 import org.webrtc.SessionDescription;
 import org.webrtc.audio.JavaAudioDeviceModule;
+import org.webrtc.Camera2Enumerator;
+import org.webrtc.CameraEnumerator;
+import org.webrtc.CameraVideoCapturer;
+import org.webrtc.DefaultVideoDecoderFactory;
+import org.webrtc.DefaultVideoEncoderFactory;
+import org.webrtc.EglBase;
+import org.webrtc.SurfaceTextureHelper;
+import org.webrtc.VideoSink;
+import org.webrtc.VideoSource;
+import org.webrtc.VideoTrack;
 
-/** One explicitly consented audio call. The controller authenticates all SDP.
+/** One explicitly consented call: audio, plus camera video only after an explicit toggle. The controller authenticates all SDP.
  * Native work has one owner; callbacks return to Android's main thread.
  * Construction alone opens no microphone, audio route or PeerConnection.
  */
@@ -49,6 +59,8 @@ public final class WebRtcAudioEngine {
         void onDisconnected();
         void onError(String safeReason);
     }
+    /** Optional: a Listener may also implement this to learn that the camera could not start (call continues as audio). */
+    public interface VideoListener { void onVideoUnavailable(String safeReason); }
     // Only the separately packaged instrumentation has an implementation. No
     // application component, intent or user setting supplies synthetic samples.
     interface Hooks {
@@ -58,6 +70,7 @@ public final class WebRtcAudioEngine {
         void onCaptureStopped();
     }
     private static boolean initialized;
+    private static final int VIDEO_WIDTH = 640, VIDEO_HEIGHT = 480, VIDEO_FPS = 24;
     private final Context context;
     private final Listener listener;
     private final Hooks hooks;
@@ -77,6 +90,15 @@ public final class WebRtcAudioEngine {
     private AudioTrack localTrack;
     private final List<AudioTrack> remoteTracks = new ArrayList<>();
     private AudioTrackSink remoteSink;
+    // Video: the transceiver is pre-negotiated (sendrecv) so camera on/off needs no renegotiation.
+    private EglBase egl;
+    private VideoSource videoSource;
+    private VideoTrack localVideo, remoteVideo;
+    private CameraVideoCapturer capturer;
+    private SurfaceTextureHelper surfaceHelper;
+    private VideoSink localSink, remoteSink2;
+    private volatile boolean videoEnabled, frontCamera = true;
+    private String videoCodec = "";
     private AudioManager audio;
     private AudioFocusRequest focus;
     private PowerManager.WakeLock proximity;
@@ -158,6 +180,28 @@ public final class WebRtcAudioEngine {
         speaker = value;
         post(this::applyRoute);
     }
+    /** Camera on/off. Requires CAMERA permission at call time; a denied grant fails the toggle, not the call. */
+    public void setVideo(boolean value) {
+        videoEnabled = value;
+        post(() -> { if (peer != null) { applyVideoSafely(); applyRoute(); } });
+    }
+    private void applyVideoSafely() {
+        try { applyVideo(); }
+        catch (Exception failure) {
+            videoEnabled = false;
+            try { if (localVideo != null) localVideo.setEnabled(false); } catch (Exception ignored) { }
+            stopCapture();
+            if (listener instanceof VideoListener) publish(() -> ((VideoListener) listener).onVideoUnavailable("Camera unavailable"));
+        }
+    }
+    public void switchCamera() {
+        post(() -> { if (capturer != null) { frontCamera = !frontCamera; capturer.switchCamera(null); } });
+    }
+    /** Renderers are attached from the UI thread and must outlive the call view; detach with null. */
+    public void setLocalSink(VideoSink sink) { post(() -> { if (localVideo != null && localSink != null) localVideo.removeSink(localSink); localSink = sink; if (localVideo != null && sink != null) localVideo.addSink(sink); }); }
+    public void setRemoteSink(VideoSink sink) { post(() -> { if (remoteVideo != null && remoteSink2 != null) remoteVideo.removeSink(remoteSink2); remoteSink2 = sink; if (remoteVideo != null && sink != null) remoteVideo.addSink(sink); }); }
+    public EglBase.Context eglContext() { return egl == null ? null : egl.getEglBaseContext(); }
+    public String negotiatedVideoCodec() { return videoCodec; }
 
     private void create() {
         if (peer != null) throw new IllegalStateException();
@@ -191,7 +235,12 @@ public final class WebRtcAudioEngine {
             remoteSink = hooks::onDecoded;
         }
         audioDevice = builder.createAudioDeviceModule();
-        factory = PeerConnectionFactory.builder().setAudioDeviceModule(audioDevice).createPeerConnectionFactory();
+        egl = EglBase.create();
+        // Owner decision 2026-09-11: H.264 (hardware) first, VP8 mandatory fallback; no VP9/AV1.
+        factory = PeerConnectionFactory.builder().setAudioDeviceModule(audioDevice)
+                .setVideoEncoderFactory(new DefaultVideoEncoderFactory(egl.getEglBaseContext(), false, true))
+                .setVideoDecoderFactory(new DefaultVideoDecoderFactory(egl.getEglBaseContext()))
+                .createPeerConnectionFactory();
         PeerConnection.RTCConfiguration config = new PeerConnection.RTCConfiguration(iceServers);
         config.sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN;
         config.bundlePolicy = PeerConnection.BundlePolicy.MAXBUNDLE;
@@ -216,6 +265,51 @@ public final class WebRtcAudioEngine {
             if ("audio/opus".equalsIgnoreCase(codec.mimeType)) opus.add(codec);
         if (opus.isEmpty()) throw new IllegalStateException("Opus unavailable");
         for (RtpTransceiver transceiver : peer.getTransceivers()) transceiver.setCodecPreferences(opus);
+        // Pre-negotiated video section: track exists but stays disabled (black/no frames) until an explicit toggle.
+        videoSource = factory.createVideoSource(false);
+        localVideo = factory.createVideoTrack("video", videoSource);
+        localVideo.setEnabled(false);
+        peer.addTrack(localVideo, Collections.singletonList("voice"));
+        List<RtpCapabilities.CodecCapability> videoCodecs = new ArrayList<>(), fallback = new ArrayList<>(), helpers = new ArrayList<>();
+        for (RtpCapabilities.CodecCapability codec : factory.getRtpSenderCapabilities(org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO).codecs) {
+            String mime = codec.mimeType == null ? "" : codec.mimeType.toLowerCase(java.util.Locale.ROOT);
+            if (mime.equals("video/h264")) videoCodecs.add(codec);
+            else if (mime.equals("video/vp8")) fallback.add(codec);
+            else if (mime.equals("video/rtx") || mime.equals("video/red") || mime.equals("video/ulpfec") || mime.equals("video/flexfec-03")) helpers.add(codec);
+        }
+        if (fallback.isEmpty()) throw new IllegalStateException("VP8 unavailable");
+        videoCodecs.addAll(fallback); videoCodecs.addAll(helpers);
+        for (RtpTransceiver transceiver : peer.getTransceivers())
+            if (transceiver.getMediaType() == org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO) transceiver.setCodecPreferences(videoCodecs);
+        if (localSink != null) localVideo.addSink(localSink);
+    }
+    private void applyVideo() {
+        if (videoEnabled) {
+            if (capturer == null) {
+                if (context.checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED)
+                    throw new SecurityException("Camera permission required");
+                CameraEnumerator enumerator = new Camera2Enumerator(context);
+                String chosen = null;
+                for (String name : enumerator.getDeviceNames()) if (frontCamera == enumerator.isFrontFacing(name)) { chosen = name; break; }
+                if (chosen == null) for (String name : enumerator.getDeviceNames()) { chosen = name; break; }
+                if (chosen == null) throw new IllegalStateException("No camera");
+                capturer = enumerator.createCapturer(chosen, null);
+                surfaceHelper = SurfaceTextureHelper.create("ParanoID-camera", egl.getEglBaseContext());
+                capturer.initialize(surfaceHelper, context, videoSource.getCapturerObserver());
+                capturer.startCapture(VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS);
+            }
+            localVideo.setEnabled(true);
+        } else {
+            localVideo.setEnabled(false);
+            stopCapture();
+        }
+    }
+    private void stopCapture() {
+        try { if (capturer != null) capturer.stopCapture(); } catch (Exception ignored) { }
+        try { if (capturer != null) capturer.dispose(); } catch (Exception ignored) { }
+        capturer = null;
+        try { if (surfaceHelper != null) surfaceHelper.dispose(); } catch (Exception ignored) { }
+        surfaceHelper = null;
     }
 
     private void acquireAudio() {
@@ -251,7 +345,11 @@ public final class WebRtcAudioEngine {
     private void applyRoute() {
         if (!routeOwned) return;
         if (Build.VERSION.SDK_INT >= 31) {
-            if (speaker) {
+            // Owner decision 2026-09-11: an attached wired/Bluetooth headset always wins over the speakerphone.
+            AudioDeviceInfo attached = preferredHeadset();
+            if (speaker && attached != null && videoEnabled) {
+                if (!audio.setCommunicationDevice(attached)) audio.clearCommunicationDevice();
+            } else if (speaker) {
                 boolean selected = false;
                 for (AudioDeviceInfo device : audio.getAvailableCommunicationDevices())
                     if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
@@ -264,8 +362,10 @@ public final class WebRtcAudioEngine {
                 if (headset == null || !audio.setCommunicationDevice(headset)) audio.clearCommunicationDevice();
             }
         } else {
-            legacyBluetooth(!speaker && legacyBluetoothAvailable());
-            audio.setSpeakerphoneOn(speaker);
+            boolean headset = legacyBluetoothAvailable() || audio.isWiredHeadsetOn();
+            boolean useSpeaker = speaker && !(videoEnabled && headset);
+            legacyBluetooth(!useSpeaker && legacyBluetoothAvailable());
+            audio.setSpeakerphoneOn(useSpeaker);
         }
         updateProximity();
     }
@@ -325,8 +425,8 @@ public final class WebRtcAudioEngine {
         // discovering interfaces. Such an SDP cannot connect two identical peers.
         // Wait for the subsequent candidate callback; controller timeout remains.
         if (!sdp.description.contains("a=candidate:")) return;
-        if (sdp.description.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 6144)
-            throw new IllegalStateException("SDP exceeds voice limit");
+        if (sdp.description.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 12288)
+            throw new IllegalStateException("SDP exceeds call limit");
         localPublished = true;
         worker.removeCallbacks(relayPublication);
         String type = pendingDescription;
@@ -377,6 +477,21 @@ public final class WebRtcAudioEngine {
             AudioTrack track = (AudioTrack) receiver.track();
             if (remoteTracks.isEmpty()) { track.addSink(remoteSink); remoteTracks.add(track); }
         }
+        if (receiver.track() instanceof VideoTrack && remoteVideo == null) {
+            remoteVideo = (VideoTrack) receiver.track();
+            remoteVideo.setEnabled(true);
+            if (remoteSink2 != null) remoteVideo.addSink(remoteSink2);
+        }
+    }
+    private void recordVideoCodec() {
+        if (peer == null) return;
+        peer.getStats(report -> {
+            for (RTCStats entry : report.getStatsMap().values()) {
+                if (!"codec".equals(entry.getType())) continue;
+                Object mime = entry.getMembers().get("mimeType");
+                if (mime != null && mime.toString().toLowerCase(java.util.Locale.ROOT).startsWith("video/")) { videoCodec = mime.toString(); }
+            }
+        });
     }
     private final PeerConnection.Observer peerObserver = new PeerConnection.Observer() {
         @Override public void onSignalingChange(PeerConnection.SignalingState state) { }
@@ -394,7 +509,7 @@ public final class WebRtcAudioEngine {
         @Override public void onConnectionChange(PeerConnection.PeerConnectionState state) {
             post(() -> {
                 if (state == PeerConnection.PeerConnectionState.CONNECTED && !connected) {
-                    connected = true; updateProximity(); publish(listener::onConnected);
+                    connected = true; updateProximity(); if (videoEnabled) applyVideoSafely(); recordVideoCodec(); publish(listener::onConnected);
                 } else if (state == PeerConnection.PeerConnectionState.DISCONNECTED) {
                     connected = false; updateProximity(); publish(listener::onDisconnected);
                 } else if (state == PeerConnection.PeerConnectionState.FAILED) fail("Audio connection failed");
@@ -439,6 +554,11 @@ public final class WebRtcAudioEngine {
     private void cleanup() {
         // Each resource is released even if a preceding vendor operation fails.
         try { if (localTrack != null) localTrack.setEnabled(false); } catch (Exception ignored) { }
+        try { if (localVideo != null) localVideo.setEnabled(false); } catch (Exception ignored) { }
+        stopCapture();
+        try { if (localVideo != null && localSink != null) localVideo.removeSink(localSink); } catch (Exception ignored) { }
+        try { if (remoteVideo != null && remoteSink2 != null) remoteVideo.removeSink(remoteSink2); } catch (Exception ignored) { }
+        remoteVideo = null;
         for (AudioTrack track : remoteTracks) try { track.removeSink(remoteSink); } catch (Exception ignored) { }
         remoteTracks.clear();
         try { if (peer != null) { peer.close(); peer.dispose(); } } catch (Exception ignored) { }
@@ -447,10 +567,16 @@ public final class WebRtcAudioEngine {
         localTrack = null;
         try { if (source != null) source.dispose(); } catch (Exception ignored) { }
         source = null;
+        try { if (localVideo != null) localVideo.dispose(); } catch (Exception ignored) { }
+        localVideo = null;
+        try { if (videoSource != null) videoSource.dispose(); } catch (Exception ignored) { }
+        videoSource = null;
         try { if (factory != null) factory.dispose(); } catch (Exception ignored) { }
         factory = null;
         try { if (audioDevice != null) audioDevice.release(); } catch (Exception ignored) { }
         audioDevice = null;
+        try { if (egl != null) egl.release(); } catch (Exception ignored) { }
+        egl = null;
         try { if (proximity != null && proximity.isHeld()) proximity.release(); } catch (Exception ignored) { }
         try { if (deviceCallback != null && audio != null) audio.unregisterAudioDeviceCallback(deviceCallback); } catch (Exception ignored) { }
         deviceCallback = null;

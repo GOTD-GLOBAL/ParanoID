@@ -73,6 +73,11 @@ public final class TextEngine {
             public void mediaRemoteAnswer(long generation,String sdp){if(media!=null&&calls.snapshot().optLong("generation")==generation)media.setAnswer(sdp);}
             public void mediaMute(boolean value){if(media!=null)media.setMuted(value);}
             public void mediaSpeaker(boolean value){if(media!=null)media.setSpeaker(value);}
+            public void mediaVideo(boolean value){
+                if(media==null){if(value)throw new IllegalStateException("no media engine");return;}
+                if(value&&context.checkSelfPermission(android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED)throw new SecurityException("camera permission");
+                media.setVideo(value);VoiceCallService.video(context,value);
+            }
             public void mediaClose(){
                 if(realtime!=null)realtime.cancelVoiceRelay();
                 pendingMedia=null;WebRtcAudioEngine owned=media;media=null;
@@ -133,27 +138,34 @@ public final class TextEngine {
         try{
             java.util.List<org.webrtc.PeerConnection.IceServer> servers=config==null?java.util.Collections.emptyList():java.util.Collections.singletonList(
                 org.webrtc.PeerConnection.IceServer.builder(config.urls()).setUsername(config.username()).setPassword(config.password()).createIceServer());
-            media=new WebRtcAudioEngine(context,new WebRtcAudioEngine.Listener(){
-                public void onLocalDescription(String type,String sdp){
-                    String fingerprint="",ufrag="",password="";
-                    for(String line:sdp.split("\\r?\\n")){
-                        if(line.startsWith("a=fingerprint:sha-256 "))fingerprint=line.substring(22).replace(":","").toLowerCase(java.util.Locale.ROOT);
-                        if(line.startsWith("a=ice-ufrag:"))ufrag=line.substring(12);
-                        if(line.startsWith("a=ice-pwd:"))password=line.substring(10);
-                    }
-                    calls.localDescription(generation,sdp,fingerprint,ufrag,password);
-                }
-                public void onConnected(){calls.mediaState(generation,"connected");}
-                public void onDisconnected(){calls.mediaState(generation,"disconnected");}
-                public void onError(String reason){calls.mediaState(generation,"failed");}
-            },null,servers,config!=null);
+            media=new WebRtcAudioEngine(context,new MediaListener(generation),null,servers,config!=null);
             // Creation may have waited for an older engine's asynchronous close.
             // Apply this generation's current intent before capture can start.
             JSONObject desired=calls.snapshot();
             media.setMuted(desired.optBoolean("muted"));media.setSpeaker(desired.optBoolean("speaker"));
             if(offer==null)media.createOffer();else media.createAnswer(offer);
+            calls.mediaReady(generation);
         }catch(RuntimeException failure){calls.mediaState(generation,"failed");}
     }
+    /** Engine callbacks for one media generation. Camera failure downgrades to audio; it never ends the call. */
+    private final class MediaListener implements WebRtcAudioEngine.Listener,WebRtcAudioEngine.VideoListener{
+        private final long generation;
+        MediaListener(long generation){this.generation=generation;}
+        public void onLocalDescription(String type,String sdp){
+            String fingerprint="",ufrag="",password="";
+            for(String line:sdp.split("\\r?\\n")){
+                if(line.startsWith("a=fingerprint:sha-256 "))fingerprint=line.substring(22).replace(":","").toLowerCase(java.util.Locale.ROOT);
+                if(line.startsWith("a=ice-ufrag:"))ufrag=line.substring(12);
+                if(line.startsWith("a=ice-pwd:"))password=line.substring(10);
+            }
+            calls.localDescription(generation,sdp,fingerprint,ufrag,password);
+        }
+        public void onConnected(){calls.mediaState(generation,"connected");}
+        public void onDisconnected(){calls.mediaState(generation,"disconnected");}
+        public void onError(String reason){calls.mediaState(generation,"failed");}
+        public void onVideoUnavailable(String reason){calls.videoUnavailable(generation);VoiceCallService.video(context,false);}
+    }
+    public WebRtcAudioEngine media(){return media;}
     public void listen(Listener next) {listener=next;worker.execute(()->{publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();});}
     public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
     private void stopConnection(){if(realtime!=null)realtime.stop();connected=false;ui.post(()->calls.connection(false));}

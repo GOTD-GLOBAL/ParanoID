@@ -45,9 +45,15 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private Button create,send,share,copy,navChats,navContacts,navIdentity,background;
     private ImageButton leading,trailing;
     private ImageButton menuAction;
-    private ImageButton callAction;
+    private ImageButton callAction,videoAction;
+    private Button callVideo,callSwitchCamera;
+    private FrameLayout videoStage;
+    private org.webrtc.SurfaceViewRenderer remoteRenderer,localRenderer;
+    private boolean renderersInitialized,videoPausedByBackground,videoCallIntent,waitingForCamera;
+    private static final int CAMERA_PERMISSION=97;
     private android.app.Dialog callDialog;
     private TextView callName,callStatus,callTrust,callPrivacy;
+    private static final String VIDEO_PRIVACY="Видео и звук защищены сквозным шифрованием: сервер и ретранслятор не могут их расшифровать. Камера включается только по вашему нажатию и выключается, когда приложение свёрнуто. Оператор ретранслятора видит IP-адрес, время и объём трафика; при прямом соединении IP-адрес видит собеседник.";
     private static final String VOICE_PRIVACY="Звук защищён сквозным шифрованием. При соединении через ретранслятор оператор ретранслятора видит ваш IP-адрес, время и объём трафика. Если сервер не поддерживает ретрансляцию, используется прямое соединение: собеседник может видеть ваш IP-адрес. В некоторых сетях прямое соединение недоступно.";
     private Button callAnswer,callEnd,callMute,callSpeaker;
     private String displayedCall="",permissionAccount="",permissionCall="";
@@ -121,7 +127,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         screenTitle=text("Чаты",28,colors.text,true);screenTitle.setMaxLines(1);screenTitle.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(0,-2,1);titleParams.setMargins(dp(8),0,dp(8),0);row.addView(screenTitle,titleParams);
         trailing=iconButton("compose","Добавить контакт",()->{if(page.equals("chat"))contactDetails();else addContact();});
-        callAction=iconButton("phone","Аудиозвонок",this::requestCall);row.addView(callAction,box(48,48));callAction.setVisibility(View.GONE);
+        videoAction=iconButton("video","Видеозвонок",()->requestCall(true));row.addView(videoAction,box(48,48));videoAction.setVisibility(View.GONE);
+        callAction=iconButton("phone","Аудиозвонок",()->requestCall(false));row.addView(callAction,box(48,48));callAction.setVisibility(View.GONE);
         row.addView(trailing,box(48,48));
         menuAction=iconButton("more","Меню",this::showMenu);row.addView(menuAction,box(48,48));menuAction.setVisibility(View.GONE);
         LinearLayout rail=row();rail.setGravity(Gravity.CENTER_VERTICAL);rail.setPadding(dp(12),dp(2),dp(8),0);header.addView(rail);
@@ -253,7 +260,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         chat.setVisibility(hasIdentity&&next.equals("chat")?View.VISIBLE:View.GONE);
         nav.setVisibility(hasIdentity&&!next.equals("chat")?View.VISIBLE:View.GONE);
         boolean inChat=hasIdentity&&next.equals("chat");
-        callAction.setVisibility(inChat?View.VISIBLE:View.GONE);
+        callAction.setVisibility(inChat?View.VISIBLE:View.GONE);videoAction.setVisibility(inChat?View.VISIBLE:View.GONE);
         menuAction.setVisibility(hasIdentity&&!inChat?View.VISIBLE:View.GONE);
         screenTitle.setText(!hasIdentity?"ParanoID":inChat?MessagePresentation.title(selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
@@ -344,6 +351,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         share.setEnabled(active&&!displayedQr.isEmpty()&&!broken);copy.setEnabled(share.isEnabled());share.setAlpha(share.isEnabled()?1f:.45f);copy.setAlpha(copy.isEnabled()?1f:.45f);
         JSONObject dialog=selectedDialog();boolean allowed=DialogPolicy.canReply(dialog,active,broken,drafts.sending());
         callAction.setEnabled(allowed||engine.calls().active());callAction.setAlpha(callAction.isEnabled()?1f:.45f);
+        videoAction.setEnabled(callAction.isEnabled());videoAction.setAlpha(callAction.getAlpha());
         send.setEnabled(allowed&&MessagePresentation.canSend(draft.getText().toString()));send.setAlpha(send.isEnabled()?1f:.45f);
         boolean blocked=dialog!=null&&dialog.optBoolean("blocked");draft.setEnabled(!broken&&!blocked);
         int bytes=MessagePresentation.byteCount(draft.getText().toString());
@@ -351,14 +359,23 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         draftHint.setText(hint);draftHint.setTextColor(bytes>2048?colors.danger:colors.muted);draftHint.setVisibility(hint.isEmpty()?View.GONE:View.VISIBLE);
     }
 
-    private void requestCall(){
+    private void requestCall(boolean video){
         if(engine.calls().active()){showCall();return;}
         JSONObject selected=selectedDialog();
         if(!DialogPolicy.canReply(selected,active,broken,false))return;
         final String account=selectedAccount;
-        new AlertDialog.Builder(this).setTitle("Позвонить собеседнику?")
-            .setMessage(VOICE_PRIVACY)
-            .setPositiveButton("Позвонить",(dialog,which)->requestMicrophone(account,false)).setNegativeButton("Отмена",null).show();
+        new AlertDialog.Builder(this).setTitle(video?"Видеозвонок собеседнику?":"Позвонить собеседнику?")
+            .setMessage(video?VIDEO_PRIVACY:VOICE_PRIVACY)
+            .setPositiveButton(video?"Видеозвонок":"Позвонить",(dialog,which)->{videoCallIntent=video;requestMicrophone(account,false);}).setNegativeButton("Отмена",null).show();
+    }
+    /** Explicit camera toggle during a call. CAMERA is requested only here, never on ring or call start. */
+    private void toggleVideo(){
+        if(!engine.calls().active())return;
+        boolean on=!engine.calls().snapshot().optBoolean("local_video");
+        if(on&&checkSelfPermission(android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            waitingForCamera=true;requestPermissions(new String[]{android.Manifest.permission.CAMERA},CAMERA_PERMISSION);return;
+        }
+        engine.calls().video(on);
     }
     private void requestMicrophone(String account,boolean answer){
         cancelCallIntent();
@@ -366,11 +383,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
             waitingForMicrophone=true;
             // BLUETOOTH_CONNECT is requested alongside but never blocks the call when denied.
-            String[] wanted=Build.VERSION.SDK_INT>=31
-                &&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
-                ?new String[]{android.Manifest.permission.RECORD_AUDIO,android.Manifest.permission.BLUETOOTH_CONNECT}
-                :new String[]{android.Manifest.permission.RECORD_AUDIO};
-            requestPermissions(wanted,MICROPHONE_PERMISSION);return;
+            java.util.List<String> wanted=new java.util.ArrayList<>();wanted.add(android.Manifest.permission.RECORD_AUDIO);
+            if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED)wanted.add(android.Manifest.permission.BLUETOOTH_CONNECT);
+            if(videoCallIntent&&!answer&&checkSelfPermission(android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED)wanted.add(android.Manifest.permission.CAMERA);
+            requestPermissions(wanted.toArray(new String[0]),MICROPHONE_PERMISSION);return;
+        }
+        if(videoCallIntent&&!answer&&checkSelfPermission(android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED){
+            waitingForMicrophone=true;requestPermissions(new String[]{android.Manifest.permission.CAMERA},MICROPHONE_PERMISSION);return;
         }
         if(Build.VERSION.SDK_INT>=31&&checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT)!=android.content.pm.PackageManager.PERMISSION_GRANTED
             &&!getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BLUETOOTH_PROMPT_KEY,false)){
@@ -406,7 +425,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         VoiceCallService.begin(this,()->{
             if(!resumed||intentGeneration!=callIntentGeneration||android.os.SystemClock.elapsedRealtime()>=callIntentDeadline){VoiceCallService.stop(this);return;}
             if(answer){if(engine.calls().snapshot().optString("call_id").equals(callId))engine.calls().answer(true);}
-            else engine.calls().start(account,true);
+            else {boolean video=videoCallIntent&&checkSelfPermission(android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED;videoCallIntent=false;engine.calls().start(account,true,video);}
         });
     }
     private void showCall(){
@@ -415,8 +434,15 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         callDialog=new android.app.Dialog(this,colors.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(colors.canvas);
         LinearLayout body=column();body.setGravity(Gravity.CENTER_HORIZONTAL);body.setPadding(dp(24),dp(24),dp(24),dp(24));scroll.addView(body,new ScrollView.LayoutParams(-1,-1));
-        TextView heading=text("Аудиозвонок",14,colors.muted,true);heading.setGravity(Gravity.CENTER);body.addView(heading,full());space(body,40);
+        TextView heading=text("Звонок",14,colors.muted,true);heading.setGravity(Gravity.CENTER);body.addView(heading,full());space(body,16);
+        // Video stage: remote full-frame, local picture-in-picture. Hidden until any video flows.
+        videoStage=new FrameLayout(this);videoStage.setBackgroundColor(0xff000000);videoStage.setVisibility(View.GONE);
+        remoteRenderer=new org.webrtc.SurfaceViewRenderer(this);localRenderer=new org.webrtc.SurfaceViewRenderer(this);renderersInitialized=false;
+        videoStage.addView(remoteRenderer,new FrameLayout.LayoutParams(-1,-1));
+        FrameLayout.LayoutParams pip=new FrameLayout.LayoutParams(dp(96),dp(128),Gravity.TOP|Gravity.END);pip.setMargins(dp(8),dp(8),dp(8),dp(8));videoStage.addView(localRenderer,pip);
+        LinearLayout.LayoutParams stage=new LinearLayout.LayoutParams(-1,dp(320));stage.setMargins(0,0,0,dp(16));body.addView(videoStage,stage);
         ImageView orbit=new ImageView(this);orbit.setImageDrawable(new Symbol("identity",colors.action));orbit.setBackground(shape(colors.actionSoft,80));orbit.setPadding(dp(32),dp(32),dp(32),dp(32));orbit.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);body.addView(orbit,box(144,144));space(body,24);
+        orbit.setTag("orbit");
         callName=text("",26,colors.text,true);callName.setGravity(Gravity.CENTER);body.addView(callName,full());space(body,12);
         callStatus=text("",18,colors.muted,false);callStatus.setGravity(Gravity.CENTER);callStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(callStatus,full());space(body,12);
         callTrust=text("",13,colors.muted,false);callTrust.setGravity(Gravity.CENTER);body.addView(callTrust,full());space(body,24);
@@ -426,12 +452,18 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         callMute=secondary("Выключить микрофон",()->engine.calls().mute(!engine.calls().snapshot().optBoolean("muted")));
         callSpeaker=secondary("Громкая связь",()->engine.calls().speaker(!engine.calls().snapshot().optBoolean("speaker")));
         LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-2,1);left.rightMargin=dp(6);controls.addView(callMute,left);
-        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1);right.leftMargin=dp(6);controls.addView(callSpeaker,right);space(body,16);
+        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,-2,1);right.leftMargin=dp(6);controls.addView(callSpeaker,right);space(body,12);
+        LinearLayout videoControls=row();body.addView(videoControls,full());
+        callVideo=secondary("Включить камеру",this::toggleVideo);callSwitchCamera=secondary("Сменить камеру",()->{if(engine.media()!=null)engine.media().switchCamera();});
+        LinearLayout.LayoutParams vl=new LinearLayout.LayoutParams(0,-2,1);vl.rightMargin=dp(6);videoControls.addView(callVideo,vl);
+        LinearLayout.LayoutParams vr=new LinearLayout.LayoutParams(0,-2,1);vr.leftMargin=dp(6);videoControls.addView(callSwitchCamera,vr);space(body,16);
         callEnd=secondary("Завершить",()->{if(engine.calls().snapshot().optString("state").equals("incoming"))engine.calls().reject();else if(engine.calls().active())engine.calls().hangup();else callDialog.dismiss();});
         callEnd.setTextColor(colors.dark?colors.canvas:0xffffffff);callEnd.setBackground(ripple(colors.danger,24));body.addView(callEnd,full());space(body,12);
         body.addView(secondary("К переписке",()->callDialog.dismiss()),full());space(body,24);
         TextView note=text("До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием.",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());
-        callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->callDialog=null);callDialog.show();
+        callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->{releaseRenderers();callDialog=null;});
+        callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        callDialog.show();
         if(Build.VERSION.SDK_INT>=30){
             callDialog.getWindow().setDecorFitsSystemWindows(false);
             scroll.setOnApplyWindowInsetsListener((view,insets)->{
@@ -454,7 +486,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(state.equals("connecting"))return "Устанавливаем соединение…";
         if(state.equals("connected")){
             long seconds=value.optLong("elapsed_ms")/1000;
-            return String.format(java.util.Locale.ROOT,"%02d:%02d · Соединение установлено",seconds/60,seconds%60);
+            String kind=value.optBoolean("local_video")||value.optBoolean("remote_video")?"Видео":"Соединение установлено";
+            return String.format(java.util.Locale.ROOT,"%02d:%02d · %s",seconds/60,seconds%60,kind);
         }
         if(state.equals("reconnecting"))return "Восстанавливаем соединение…";
         String reason=value.optString("reason");
@@ -479,6 +512,14 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         boolean live=value.optBoolean("media_active")||state.equals("authorizing");callMute.setEnabled(live);callSpeaker.setEnabled(live);
         callMute.setText(value.optBoolean("muted")?"Включить микрофон":"Выключить микрофон");callMute.setSelected(value.optBoolean("muted"));
         callSpeaker.setText(value.optBoolean("speaker")?"Телефонный динамик":"Громкая связь");callSpeaker.setSelected(value.optBoolean("speaker"));
+        boolean localVideo=value.optBoolean("local_video"),remoteVideo=value.optBoolean("remote_video");
+        callVideo.setEnabled(live);callVideo.setText(localVideo?"Выключить камеру":"Включить камеру");callVideo.setSelected(localVideo);
+        callSwitchCamera.setEnabled(localVideo);callSwitchCamera.setAlpha(localVideo?1f:.45f);
+        boolean showStage=live&&(localVideo||remoteVideo);
+        if(showStage)attachRenderers();
+        videoStage.setVisibility(showStage?View.VISIBLE:View.GONE);localRenderer.setVisibility(localVideo?View.VISIBLE:View.GONE);
+        View orbit=callDialog.findViewById(android.R.id.content).findViewWithTag("orbit");if(orbit!=null)orbit.setVisibility(showStage?View.GONE:View.VISIBLE);
+        if(!live)releaseRenderers();
         callEnd.setText(state.equals("incoming")?"Отклонить":engine.calls().active()?"Завершить":"Закрыть");
     }
 
@@ -533,6 +574,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
                 if(permissionAnswer&&engine.calls().snapshot().optString("call_id").equals(permissionCall))engine.calls().answer(false);
                 Toast.makeText(this,"Для звонка нужен доступ к микрофону. Переписка доступна без него.",Toast.LENGTH_LONG).show();
             }
+            return;
+        }
+        if(request==CAMERA_PERMISSION){
+            waitingForCamera=false;
+            boolean camera=results.length>0&&results[0]==android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if(camera&&engine.calls().active())engine.calls().video(true);
+            else if(!camera)Toast.makeText(this,"Без доступа к камере звонок продолжается как аудио.",Toast.LENGTH_LONG).show();
             return;
         }
         if(request==BLUETOOTH_PERMISSION)return; // Optional: the call proceeds without Bluetooth routing.
@@ -622,9 +670,28 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         }catch(Exception ignored){lastStatus="Не удалось обновить экран. Данные сохранены.";status.setText("Ошибка отображения · подробнее");}
     }
 
-    @Override public void onResume(){super.onResume();resumed=true;engine.listen(this);engine.listenCalls(callListener);handler.removeCallbacks(poll);handler.post(poll);if(pendingCallIntent)handler.post(this::completeCallIntent);}
-    @Override public void onPause(){resumed=false;if(!waitingForMicrophone)cancelCallIntent();handler.removeCallbacks(poll);engine.unlisten(this);engine.unlistenCalls(callListener);super.onPause();}
+    @Override public void onResume(){super.onResume();resumed=true;engine.listen(this);engine.listenCalls(callListener);handler.removeCallbacks(poll);handler.post(poll);if(pendingCallIntent)handler.post(this::completeCallIntent);
+        if(videoPausedByBackground){videoPausedByBackground=false;if(engine.calls().active()&&checkSelfPermission(android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED)engine.calls().video(true);}}
+    @Override public void onPause(){resumed=false;if(!waitingForMicrophone)cancelCallIntent();handler.removeCallbacks(poll);
+        // Camera never runs while the app is not visible; audio continues. Permission dialogs keep the camera.
+        if(!waitingForCamera&&engine.calls().active()&&engine.calls().snapshot().optBoolean("local_video")){videoPausedByBackground=true;engine.calls().video(false);}
+        engine.unlisten(this);engine.unlistenCalls(callListener);super.onPause();}
     @Override public void onDestroy(){if(callDialog!=null){callDialog.dismiss();callDialog=null;}super.onDestroy();}
+    private void attachRenderers(){
+        WebRtcAudioEngine media=engine.media();if(media==null||renderersInitialized)return;
+        org.webrtc.EglBase.Context egl=media.eglContext();if(egl==null)return;
+        try{
+            remoteRenderer.init(egl,null);remoteRenderer.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FIT);remoteRenderer.setEnableHardwareScaler(true);
+            localRenderer.init(egl,null);localRenderer.setScalingType(org.webrtc.RendererCommon.ScalingType.SCALE_ASPECT_FILL);localRenderer.setMirror(true);localRenderer.setZOrderMediaOverlay(true);localRenderer.setEnableHardwareScaler(true);
+            renderersInitialized=true;media.setRemoteSink(remoteRenderer);media.setLocalSink(localRenderer);
+        }catch(RuntimeException failure){renderersInitialized=false;}
+    }
+    private void releaseRenderers(){
+        if(!renderersInitialized)return;renderersInitialized=false;
+        WebRtcAudioEngine media=engine.media();if(media!=null){media.setRemoteSink(null);media.setLocalSink(null);}
+        try{remoteRenderer.release();}catch(RuntimeException ignored){}
+        try{localRenderer.release();}catch(RuntimeException ignored){}
+    }
     @Override public void onBackPressed(){if(page.equals("chat")){show("dialogs");}else if(!page.equals("dialogs")){show("dialogs");}else super.onBackPressed();}
     @Override public Object onRetainNonConfigurationInstance(){return new Retained(drafts,page,selectedAccount);}
     private static final class Retained{final MessagePresentation.Drafts drafts;final String page,account;Retained(MessagePresentation.Drafts d,String p,String a){drafts=d;page=p;account=a;}}
@@ -662,6 +729,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             else if(name.equals("send")){p.moveTo(4,11);p.lineTo(21,3);p.lineTo(13,21);p.lineTo(10,14);p.lineTo(4,11);p.moveTo(10,14);p.lineTo(21,3);c.drawPath(p,paint);}
             else if(name.equals("compose")){p.moveTo(15,4);p.lineTo(20,9);p.lineTo(10,19);p.lineTo(4,20);p.lineTo(5,14);p.close();c.drawPath(p,paint);c.drawLine(13,6,18,11,paint);}
             else if(name.equals("more")){c.drawCircle(12,5,1,paint);c.drawCircle(12,12,1,paint);c.drawCircle(12,19,1,paint);}
+            else if(name.equals("video")){c.drawRoundRect(3,6,15,18,3,3,paint);p.moveTo(15,10);p.lineTo(21,7);p.lineTo(21,17);p.lineTo(15,14);c.drawPath(p,paint);}
             else if(name.equals("phone")){p.moveTo(5,3);p.lineTo(9,3);p.lineTo(11,8);p.lineTo(8,10);p.quadTo(11,16,15,16);p.lineTo(17,13);p.lineTo(22,15);p.lineTo(22,19);p.quadTo(13,25,4,11);p.quadTo(2,5,5,3);c.drawPath(p,paint);}
             else{c.drawCircle(12,9,3,paint);c.drawArc(6,14,18,25,180,180,false,paint);c.drawArc(2,2,22,22,30,280,false,paint);c.drawCircle(21,7,1.3f,paint);}
             c.restore();}

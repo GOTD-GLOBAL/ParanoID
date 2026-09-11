@@ -1,10 +1,29 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-10
+last_reviewed: 2026-09-11
 ---
 
 # Current project state
+
+## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
+
+The owner (Сергей Мальцев, Telegram) requested video calls and resolved the
+RFC-0019 questions (H.264 first with VP8 fallback; speaker on video unless a
+headset is active). [RFC-0019](../rfcs/0019-video-calls.md) is proposed,
+[ADR-0013](../decisions/0013-video-calls.md) is proposed and
+[call-v2](../protocol/call-v2.md) plus the [video threat delta](../security/video-v1-threats.md)
+are written. The native validator, `CallController`, media engine, call UI and
+foreground service implement call-v2 (`0.0.16-video`, versionCode 16, retained
+signer). call-v2 rejects v1 bodies: both alpha phones must update; text is
+unaffected. Physical two-phone video acceptance is outstanding.
+
+Earlier the same day, under explicit owner authority, the existing host was
+updated by the unified kit (`c7d9205b`, transaction `e7f3b9a6`) to messaging
+release `f65254ab` built from `main` `fe9c26c`, same data/TLS/PG identity,
+relay unchanged; `/v2/updates/android` now serves v15 for
+`global.paranoid.messenger` and the owner directed that later versions ship
+through the in-app updater.
 
 ## v15 QR candidate and update publication status — 2026-09-11
 
