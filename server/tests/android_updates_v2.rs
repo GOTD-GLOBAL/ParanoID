@@ -38,7 +38,7 @@ async fn optional_environment_feed_is_v2_only_and_shares_ingress_budget() {
     fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
     let hash = paranoid_key_protocol::digest(b"APK fixture");
     fs::write(root.join(format!("{hash}.apk")), b"APK fixture").unwrap();
-    fs::write(root.join("android.json"), serde_json::json!({"schema":1,"package":"org.paranoid.devtext","version_code":6,"version_name":"0.0.6","min_sdk":26,"abi":"arm64-v8a","apk_sha256":hash,"apk_size":11}).to_string()).unwrap();
+    fs::write(root.join("android.json"), serde_json::json!({"schema":1,"package":"global.paranoid.messenger","version_code":6,"version_name":"0.0.6","min_sdk":26,"abi":"arm64-v8a","apk_sha256":hash,"apk_size":11}).to_string()).unwrap();
     // Only this integration-test binary mutates its process environment.
     std::env::set_var("PARANOID_ANDROID_UPDATE_ROOT", &root);
     let app = paranoid_server::self_service::app(db.clone())

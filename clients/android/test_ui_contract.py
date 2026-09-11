@@ -4,9 +4,9 @@ ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
-        self.assertIn('package="org.paranoid.devtext"',manifest)
-        self.assertIn('android:versionCode="13"',manifest)
-        self.assertIn('android:versionName="0.0.13-voice"',manifest)
+        self.assertIn('package="global.paranoid.messenger"',manifest)
+        self.assertIn('android:versionCode="15"',manifest)
+        self.assertIn('android:versionName="0.0.15-voice"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

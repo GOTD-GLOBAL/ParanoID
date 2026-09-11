@@ -22,8 +22,12 @@ proposed decision; independent review precedes live publication.
 Scope: explicit button -> check -> download verified APK -> Android installer
 confirmation. No background update, forced upgrade, content-key/state export,
 uninstall, data clear, downgrade flag, new signing key or credential in a URL.
-Keep the app package `org.paranoid.devtext`, existing signing certificate and all
-phone keys/history/contacts/outbox/server trust. Android user confirmation and
+For in-place updates from v14 onward keep package `global.paranoid.messenger`,
+the existing signing certificate and all phone keys/history/contacts/outbox/server trust.
+The owner-directed v14 rename is a new Android application identity, not an
+in-place migration from `org.paranoid.devtext`. No automatic data transfer,
+uninstall or reset is authorized. This 2026-09-11 clarification supersedes the
+earlier package pin only; this RFC and ADR-0008 remain drafts. Android user confirmation and
 per-source installation permission remain mandatory; do not evade them.
 
 ## Proposed interoperable contract
@@ -32,7 +36,7 @@ Use the phone's already trusted HTTPS origin and SPKI, never an arbitrary URL or
 trust-all TLS. Public update routes are read-only distribution, not signup/auth.
 
 - GET `/v2/updates/android`: max 8192-byte UTF-8 JSON object with exactly these keys:
-  `schema` (integer 1), `package` (`org.paranoid.devtext`), `version_code` (positive
+  `schema` (integer 1), `package` (`global.paranoid.messenger`), `version_code` (positive
   integer), `version_name` (bounded nonempty string), `min_sdk` (positive integer),
   `abi` (`arm64-v8a`), `apk_sha256` (64 lowercase hex), `apk_size` (1..16777216 bytes).
 - APK URL is derived, NOT supplied by metadata:

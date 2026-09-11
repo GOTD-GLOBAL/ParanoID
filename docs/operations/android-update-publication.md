@@ -34,7 +34,7 @@ up to 8192 bytes including whitespace, exactly eight keys, no duplicates, extra
 fields, floats, numeric strings or trailing input:
 
 - `schema`: integer 1.
-- `package`: `org.paranoid.devtext`.
+- `package`: `global.paranoid.messenger`.
 - `version_code`: positive signed 64-bit integer (Android long version code).
 - `version_name`: 1..128 UTF-8 bytes, no Unicode control characters.
 - `min_sdk`: positive signed 32-bit integer.
@@ -78,7 +78,7 @@ excess reads fail 503. This is not load certification or fair bandwidth control.
    Require successful signature verification, exactly one retained signer with
    certificate SHA-256 equal to the previously trusted installed/release signer
    (not merely a fingerprint supplied by the new APK), package
-   `org.paranoid.devtext`, intended greater version code, exact version name,
+   `global.paranoid.messenger`, intended greater version code, exact version name,
    compatible minSdk and arm64-v8a. Check the actual badging values, not source
    constants. Reject mismatch; never generate a replacement signing identity.
 3. Only after those checks, prepare a private `updates/` staging subdirectory.

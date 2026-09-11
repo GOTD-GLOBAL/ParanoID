@@ -10,7 +10,7 @@ import android.widget.Toast;
 /** Opt-in foreground connection for this no-push alpha, never boot-started. */
 public final class BackgroundConnectionService extends Service {
     public static final int NOTIFICATION_PERMISSION=94;
-    private static final String CHANNEL="paranoid-connection",MESSAGES="paranoid-incoming",STOP="org.paranoid.devtext.STOP_CONNECTION";
+    private static final String CHANNEL="paranoid-connection",MESSAGES="paranoid-incoming",STOP="global.paranoid.messenger.STOP_CONNECTION";
     private static final int CONNECTION_ID=41,MESSAGE_ID=42;
     private static volatile boolean running;
     public static boolean running(){return running;}
@@ -21,12 +21,12 @@ public final class BackgroundConnectionService extends Service {
         try{activity.startForegroundService(new Intent(activity,BackgroundConnectionService.class));}
         catch(RuntimeException unavailable){Toast.makeText(activity,"Не удалось включить фоновое подключение. Откройте приложение и повторите.",Toast.LENGTH_LONG).show();}
     }
-    public static void requestStop(Context context){context.stopService(new Intent(context,BackgroundConnectionService.class));}
+    public static void requestStop(Context context){ConnectionWatchdog.disable(context);context.stopService(new Intent(context,BackgroundConnectionService.class));}
     private static PendingIntent open(Context context) {
         return PendingIntent.getActivity(context,0,new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
     }
     @Override public int onStartCommand(Intent intent,int flags,int startId) {
-        if(intent!=null&&STOP.equals(intent.getAction())){stopSelf();return START_NOT_STICKY;}
+        if(intent!=null&&STOP.equals(intent.getAction())){ConnectionWatchdog.disable(this);stopSelf();return START_STICKY;}
         NotificationManager manager=getSystemService(NotificationManager.class);
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED){stopSelf();return START_NOT_STICKY;}
         NotificationChannel channel=new NotificationChannel(CHANNEL,"Фоновое подключение",NotificationManager.IMPORTANCE_LOW);
@@ -41,9 +41,9 @@ public final class BackgroundConnectionService extends Service {
         try {
             if(Build.VERSION.SDK_INT>=34)startForeground(CONNECTION_ID,notification,android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
             else startForeground(CONNECTION_ID,notification);
-            running=true;TextEngine.get(this).background(true);
+            running=true;TextEngine.get(this).background(true);ConnectionWatchdog.enable(this);
         }catch(RuntimeException failure){stopSelf();}
-        return START_NOT_STICKY;
+        return START_STICKY;
     }
     /** Called only after new incoming plaintext has durably committed. */
     public static void incoming(Context context) {

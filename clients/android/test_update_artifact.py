@@ -31,13 +31,16 @@ def main():
         return dict(package=pkg,version_code=int(version),version_name=name,min_sdk=sdkmin,cert=str(cert),apk_sha256=sha(path),apk_size=path.stat().st_size)
     with tempfile.TemporaryDirectory(prefix='paranoid-update-payload-') as d:
         tmp=Path(d);current=inspect(apk,'v6',tmp);old=inspect(args.previous,'v5',tmp)
-        assert current['version_code']==6 and old['version_code']==5 and current['package']==old['package']=='org.paranoid.devtext'
+        # v14 renamed the application to global.paranoid.messenger (fresh install);
+        # the previous fixture keeps the historical org.paranoid.devtext identity.
+        assert current['package']=='global.paranoid.messenger' and current['version_code']==15
+        assert old['package'] in ('global.paranoid.messenger','org.paranoid.devtext') and old['version_code']<current['version_code']
         metadata={k:current[k] for k in ['package','version_code','version_name','min_sdk','apk_sha256','apk_size']};metadata.update(schema=1,abi='arm64-v8a')
         metadata_file=evidence/'inapp-update-publish-android.json';metadata_file.write_text(json.dumps(metadata,separators=(',',':'))+'\n')
         classes=tmp/'classes';classes.mkdir();dex=tmp/'dex';dex.mkdir()
         run('fresh-java',['javac','--release','8','-Xlint:-options','-encoding','UTF-8','-classpath',str(platform)+':'+str(ROOT/'out/deps/zxing-core-3.5.3.jar'),'-d',classes,*sorted((ROOT/'src/org/paranoid/text').glob('*.java'))])
         run('fresh-dex',[tools/'d8','--lib',platform,'--min-api','26','--output',dex,*sorted((classes/'org/paranoid/text').glob('*.class')),ROOT/'out/deps/zxing-core-3.5.3.jar'])
-        run('fresh-manifest',[tools/'aapt','package','-f','-M',ROOT/'AndroidManifest.xml','-I',platform,'-F',tmp/'manifest.apk'])
+        run('fresh-manifest',[tools/'aapt','package','-f','-M',ROOT/'AndroidManifest.xml','-S',ROOT/'res','-I',platform,'-F',tmp/'manifest.apk'])
         run('native-build',['cargo','build','--locked','--release','--target','aarch64-linux-android','--manifest-path',ROOT.parent/'core/Cargo.toml'])
         with zipfile.ZipFile(apk) as archive,zipfile.ZipFile(tmp/'manifest.apk') as fresh:
             payload={k:hashlib.sha256(archive.read(k)).hexdigest() for k in archive.namelist()}

@@ -6,6 +6,35 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## v15 QR candidate and update publication status — 2026-09-11
+
+The built v15 (`0.0.15-voice`, `global.paranoid.messenger`) retains the v14
+signer and supports an in-place v14 update without resetting data. The scanner
+selects the largest supported preview within 1280px; six synthetic dense-QR
+frames pass the host regression. Physical-phone QR acceptance remains unverified.
+Active RFC-0013, draft ADR-0008 and update runbooks now name the current package;
+no permanent architecture acceptance is implied. Historical artifact evidence
+retains its original package names.
+The live update endpoint was checked with the retained TLS certificate and still
+advertises old-package v13. The current Android parser rejects that metadata.
+Source merge is separate from reviewed server rollout and APK/feed publication;
+none of those live changes is performed by this naming correction.
+
+## Application rename and background watchdog candidate — 2026-09-10
+
+By owner decision the Android application ID changes from
+`org.paranoid.devtext` to `global.paranoid.messenger` as a new application
+identity: testers install v14 (`0.0.14-voice`) fresh; the retained signing
+certificate is unchanged. Client manifest/provider/intents, RFC-0013 client
+package pinning and the server `android_updates.rs` metadata pinning now use
+the new package; the live server publication metadata still carries the old
+package and was intentionally not republished in this change. The
+user-enabled background channel additionally gets `START_STICKY` plus a
+non-exported inexact ~15-minute `AlarmManager` watchdog receiver that
+restarts the foreground service after firmware kills; no boot start and no
+exact-alarm permissions. Historical `org.paranoid.devtext` references below
+this section describe earlier releases and remain accurate for them.
+
 ## Voice deployed to the existing host; first real phone call — 2026-09-10
 
 The unified kit (release `35ce8e7946f4879fd0a7`) was applied to the existing

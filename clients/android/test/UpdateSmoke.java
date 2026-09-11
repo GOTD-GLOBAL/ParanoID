@@ -1,7 +1,7 @@
 package org.paranoid.text;
 import java.nio.charset.StandardCharsets;
 public final class UpdateSmoke {
-    static final String JSON="{\"schema\":1,\"package\":\"org.paranoid.devtext\",\"version_code\":6,\"version_name\":\"0.0.6-update\",\"min_sdk\":26,\"abi\":\"arm64-v8a\",\"apk_sha256\":\""+repeat('a',64)+"\",\"apk_size\":3}";
+    static final String JSON="{\"schema\":1,\"package\":\"global.paranoid.messenger\",\"version_code\":6,\"version_name\":\"0.0.6-update\",\"min_sdk\":26,\"abi\":\"arm64-v8a\",\"apk_sha256\":\""+repeat('a',64)+"\",\"apk_size\":3}";
     static String repeat(char c,int n){char[] b=new char[n];java.util.Arrays.fill(b,c);return new String(b);}
     public static void main(String[] args)throws Exception {
         Class<?> type;

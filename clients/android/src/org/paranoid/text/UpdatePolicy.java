@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 /** Pure policy shared by the Android PackageManager/provider adapters and JVM tests. */
 public final class UpdatePolicy {
-    public static final String URI="content://org.paranoid.devtext.updates/verified.apk";
+    public static final String URI="content://global.paranoid.messenger.updates/verified.apk";
     private UpdatePolicy(){}
     public static boolean available(UpdateManifest m,long installed,int sdk,String[] abis)throws IOException {
         if(m.versionCode<=installed)return false;
@@ -16,7 +16,7 @@ public final class UpdatePolicy {
     }
     public static void verifyIdentity(UpdateManifest m,String pkg,long version,int minSdk,String installedPkg,long installedVersion,
         byte[][] apkSigners,byte[][] installedSigners,int sdk,String[] abis)throws IOException {
-        if(!"org.paranoid.devtext".equals(pkg) || !pkg.equals(installedPkg) || version!=m.versionCode || minSdk!=m.minSdk
+        if(!"global.paranoid.messenger".equals(pkg) || !pkg.equals(installedPkg) || version!=m.versionCode || minSdk!=m.minSdk
             || !available(m,installedVersion,sdk,abis))throw new IOException("APK identity/version mismatch");
         if(apkSigners==null || installedSigners==null || apkSigners.length!=1 || installedSigners.length!=1
             || apkSigners[0]==null || installedSigners[0]==null || apkSigners[0].length==0

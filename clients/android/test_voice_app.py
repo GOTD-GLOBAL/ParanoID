@@ -183,11 +183,11 @@ class Lab:
         self.adb('shell', 'input', 'keyevent', '3')
         time.sleep(3)
         assert self.app()['call']['state'] == 'connected'
-        services = self.adb('shell', 'dumpsys', 'activity', 'services', 'org.paranoid.devtext')
+        services = self.adb('shell', 'dumpsys', 'activity', 'services', 'global.paranoid.messenger')
         (self.out / 'foreground-service.txt').write_text(services)
         assert 'VoiceCallService' in services and 'isForeground=true' in services
         self.save('background-active-call')
-        self.adb('shell', 'am', 'start', '-n', 'org.paranoid.devtext/org.paranoid.text.MainActivity')
+        self.adb('shell', 'am', 'start', '-n', 'global.paranoid.messenger/org.paranoid.text.MainActivity')
         time.sleep(.5)
         self.host('hangup')
         self.cleanup()

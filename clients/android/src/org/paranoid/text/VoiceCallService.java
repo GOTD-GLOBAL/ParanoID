@@ -8,7 +8,7 @@ import android.os.*;
 
 /** Microphone service starts only from a visible explicit call/answer action. */
 public final class VoiceCallService extends Service {
-    private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming-v2",LEGACY_INCOMING="paranoid-call-incoming",STOP="org.paranoid.devtext.END_CALL";
+    private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming-v2",LEGACY_INCOMING="paranoid-call-incoming",STOP="global.paranoid.messenger.END_CALL";
     private static final int ACTIVE_ID=51,INCOMING_ID=52;
     private static Runnable pending;
     private static boolean running;

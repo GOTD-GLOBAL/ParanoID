@@ -170,7 +170,7 @@ fn parse(bytes: &[u8]) -> Result<Manifest, crate::Failure> {
     }
     let m: Manifest = serde_json::from_slice(bytes).map_err(|_| invalid())?;
     if m.schema != 1
-        || m.package != "org.paranoid.devtext"
+        || m.package != "global.paranoid.messenger"
         || m.version_code <= 0
         || m.min_sdk <= 0
         || m.version_name.is_empty()

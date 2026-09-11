@@ -18,7 +18,11 @@ Recommend explicit user-triggered update checks and downloads from the already
 pinned HTTPS origin. Verify bounded metadata, immutable digest-named APK hash/size,
 actual package/version/compatibility and continuity with the installed signer;
 then invoke the standard Android installer with a narrow read-only URI grant.
-Retain package/signing identity, all app state and mandatory Android confirmation.
+Retain `global.paranoid.messenger` package/signing identity from v14 onward,
+all app state and mandatory Android confirmation. The owner-directed v14 rename
+from `org.paranoid.devtext` creates a separate Android application; it is not a
+cross-package in-place update or authorization to erase or transfer old state.
+This 2026-09-11 naming clarification does not accept this draft decision.
 Initial installation of the APK containing Update still needs an external handoff.
 
 Alternatives: keep Telegram-only manual distribution (fails requested convenience);
