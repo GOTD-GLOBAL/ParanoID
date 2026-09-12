@@ -686,7 +686,11 @@ def preflight(intent, kit_root):
                      Path('/etc/systemd/system/paranoid-voice-policy.service')):
             if os.path.lexists(path):
                 raise ValueError('unrecognized relay installation path exists')
-    network = network_module(kit_root)
+    # A recognized installation owns its receipt under the policy of ITS kit; a
+    # candidate kit may render a different (reviewed) policy. Validate the live
+    # state against the owner's module; the candidate's policy is applied by the
+    # coordinated migration inside apply().
+    network = network_module(state_record(state)['kit_path'] if recognized else kit_root)
     policy = network_spec(intent)
     observation = network.observe(policy)
     receipt_path = state / 'network-receipt.json'
@@ -809,6 +813,58 @@ def coordinated_network(state, value, operation):
             operation, '--spec', str(state / 'network-spec.json'), '--expected-policy-sha',
             sha(network.render_nft(spec)), '--receipt', str(state / 'network-receipt.json')]
     return decode_json(command(args, timeout=45))
+
+
+def policy_digest(value):
+    return sha(network_module(value['kit_path']).render_nft(network_spec(value['intent'])))
+
+
+def network_owner(state, value, previous):
+    """The journal (current or previous) whose kit renders the policy the live receipt records."""
+    receipt_path = state / 'network-receipt.json'
+    if not os.path.lexists(receipt_path):
+        return None
+    recorded = decode_json(read_file(receipt_path, private=True)).get('policy_sha256')
+    for candidate in (value, previous):
+        if candidate is not None and policy_digest(candidate) == recorded:
+            return candidate
+    raise ValueError('network receipt matches neither the current nor the previous kit policy')
+
+
+def migrate_network_policy(state, value, previous):
+    """Update with a changed (reviewed) egress policy: after the previous relay is quiesced and its
+    ingress closed, remove the previous table under the previous kit's authority and retire its
+    receipt into the transaction, so stage_relay prepares a fresh receipt for the new policy."""
+    if previous is None or policy_digest(previous) == policy_digest(value):
+        return False
+    transaction = state / 'transactions' / value['transaction']
+    receipt_path = state / 'network-receipt.json'
+    atomic_write(transaction / 'network-receipt.before', read_file(receipt_path, private=True), exclusive=True)
+    value['network_migrated'] = True
+    value['phase'] = 'egress-migration'
+    save_state(state, value)
+    coordinated_network(state, previous, 'remove')
+    receipt_path.unlink()
+    fsync_dir(state)
+    return True
+
+
+def undo_network_migration(state, value, previous):
+    """Rollback of a migrated update: the new table (if written) is removed under the new kit's
+    authority with its ingress closed first, then the previous receipt returns so the previous
+    kit can re-apply its own policy. Idempotent across repeated recovery."""
+    transaction = state / 'transactions' / value['transaction']
+    receipt_path = state / 'network-receipt.json'
+    if os.path.lexists(receipt_path) and network_owner(state, value, previous) is value:
+        coordinated_network(state, value, 'close-ingress')
+        if value.get('relay_staged'):
+            verify_system_artifacts(value)
+            command(['systemctl', 'stop', 'paranoid-turn.service'])
+        coordinated_network(state, value, 'remove')
+        receipt_path.unlink()
+        fsync_dir(state)
+    if not os.path.lexists(receipt_path):
+        atomic_write(receipt_path, read_file(transaction / 'network-receipt.before', private=True), exclusive=True)
 
 
 def require_network_active(intent, kit_root, observed):
@@ -1028,13 +1084,15 @@ def recover(state, value):
             # That predecessor's own rollback already removed its relay
             # artifacts; there is nothing to quiesce or restart from it.
             previous = None
+    if production and value.get('network_migrated'):
+        undo_network_migration(state, value, previous)
     if previous is not None and value.get('prior_relay_stop_intent') and not value.get('relay_staged'):
         restart_previous_relay(state, previous)
         value['phase'] = 'rolled-back'
         save_state(state, value)
         return {'phase': 'rolled-back', 'transaction': value['transaction'], 'retained_data': True}
     if production and os.path.lexists(state / 'network-receipt.json'):
-        coordinated_network(state, previous or value, 'close-ingress')
+        coordinated_network(state, network_owner(state, value, previous), 'close-ingress')
     if production and value.get('relay_staged'):
         verify_system_artifacts(value)
         command(['systemctl', 'stop', 'paranoid-turn.service'])
@@ -1161,6 +1219,7 @@ def apply(intent, kit_root, acceptance, expected_plan, updating=False):
                 value['phase'] = 'prior-relay-stop-intent'
                 save_state(state, value)
                 quiesce_previous_relay(state, previous)
+                migrate_network_policy(state, value, previous)
             if production:
                 # Mark before the first unit write so interruption cannot orphan installed state.
                 value['relay_staged'] = True

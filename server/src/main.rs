@@ -138,6 +138,21 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         turn_relay,
         self_service_local,
     )?;
+    // RFC-0020 push gateway: the service-account JSON path only (systemd credential);
+    // the endpoint override exists for local tests and is refused in public mode.
+    let push_credential =
+        env::var_os("PARANOID_PUSH_CREDENTIAL_FILE").map(std::path::PathBuf::from);
+    let push_endpoint = env::var("PARANOID_PUSH_ENDPOINT").ok();
+    if !self_service && push_credential.is_some() {
+        return Err("push requires self-service-v2 mode".into());
+    }
+    if self_service_public && push_endpoint.is_some() {
+        return Err("push endpoint override is local-only".into());
+    }
+    let push = paranoid_server::self_service::PushConfig::from_options(
+        push_credential.as_deref(),
+        push_endpoint.as_deref(),
+    )?;
     let key_mode = env::var("PARANOID_MODE").as_deref() == Ok("closed-alpha-key-v1");
     let alpha =
         self_service || key_mode || env::var("PARANOID_MODE").as_deref() == Ok("closed-alpha-v0");
@@ -244,7 +259,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
     let app = if self_service {
-        paranoid_server::self_service::app_with_turn(pool, turn).await?
+        paranoid_server::self_service::app_with_services(pool, turn, push).await?
     } else if key_mode {
         paranoid_server::registration::key_app(pool, tokens, quota).await?
     } else {

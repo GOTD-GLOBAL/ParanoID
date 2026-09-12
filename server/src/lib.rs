@@ -17,6 +17,7 @@ use subtle::ConstantTimeEq;
 pub mod android_updates;
 mod key_http;
 mod key_transport;
+pub mod push_fcm;
 pub mod registration;
 pub mod self_service;
 mod self_service_http;

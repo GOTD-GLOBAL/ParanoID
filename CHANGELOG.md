@@ -8,6 +8,31 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Push wake gateway (server) — 2026-09-12
+
+- RFC-0020 (proposed): `POST /v2/push` registers an opaque FCM token over the
+  signed session; after a committed message to a recipient without a live
+  long-poll the server sends one content-free FCM wake (`{"t":"wake"}`),
+  rate-limited per account; `UNREGISTERED` tokens are deleted. Off unless the
+  operator places the Firebase service-account JSON at `<root>/push/` (loaded
+  as a systemd credential; the environment carries the path only). The base v2
+  schema is unchanged; `ss_push_tokens` is created only on a configured
+  gateway. Outbound HTTPS to Google via rustls/webpki roots (`reqwest` moves
+  from dev- to runtime dependency). Android registration/wake handling follows
+  in the next client release.
+
+### Single-host egress policy: orphaned TCP tails were dropped — 2026-09-12
+
+- `deploy/single_host_network.py`: the relay egress chain now accepts
+  established/related **TCP** before the `skuid` dispatch. Segments of a
+  socket already closed by the messaging server carry no owner, did not match
+  `skuid != relay`, and were dropped by `deny-other`; large responses (the
+  16 MB APK on `/v2/updates/android/apk/…`) stalled at ~14.5 MB and the phone
+  reported a failed update check. Relay UDP/bogon/local/IPv6 rules unchanged.
+  Readback canonicalization handles the ct-state set; regression tests and a
+  netns functional reproduction (old: truncated, new: full) in
+  `docs/operations/voice-single-host.md`.
+
 ### 1:1 video calls candidate — 2026-09-11
 
 - Call signaling moves to call-v2: a boolean `video` field, an informative

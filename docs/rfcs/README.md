@@ -107,6 +107,12 @@ Use [the RFC template](rfc-template.md).
 [RFC-0015: overnight realtime](0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
 
+## Push wake
+
+[RFC-0020](0020-push-wake.md) (proposed) covers the content-free FCM wake
+gateway (owner decision recorded 2026-09-12); server implementation and tests
+land first, the Android registration/wake follows in the next APK.
+
 ## Voice relay completion
 
 [RFC-0018](0018-voice-turn.md) (proposed) covers REQ-CALL-006, the issuer,

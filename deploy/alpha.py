@@ -152,6 +152,36 @@ def turn_environment(c):
     return {'PARANOID_TURN_SECRET_FILE': str(path), 'PARANOID_TURN_RELAY_IP': settings['relay_ip']}
 
 
+def push_environment(root):
+    # RFC-0020: the FCM service-account JSON is a systemd credential; only when the
+    # operator placed it at <root>/push/fcm-service-account.json is the gateway on.
+    if not os.path.lexists(root / 'push/fcm-service-account.json'):
+        return {}
+    directory = os.environ.get('CREDENTIALS_DIRECTORY', '')
+    if (not re.fullmatch(r'/[A-Za-z0-9_./-]+', directory)
+            or '..' in Path(directory).parts or str(Path(directory)) != directory):
+        raise ValueError('explicit systemd credential directory required')
+    path = Path(directory) / 'push-fcm-credential'
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        meta = os.fstat(stream.fileno())
+        raw = stream.read(65537)
+        if (not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1
+                or meta.st_uid not in (0, os.geteuid())
+                or stat.S_IMODE(meta.st_mode) not in (0o400, 0o600)
+                or len(raw) > 65536):
+            raise ValueError('private push credential required')
+        try:
+            c = json.loads(raw, object_pairs_hook=unique_object)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError('private push credential required') from error
+        if (not isinstance(c, dict) or c.get('type') != 'service_account'
+                or not isinstance(c.get('private_key'), str) or not isinstance(c.get('client_email'), str)
+                or c.get('token_uri') != 'https://oauth2.googleapis.com/token'):
+            raise ValueError('private push credential required')
+    return {'PARANOID_PUSH_CREDENTIAL_FILE': str(path)}
+
+
 def sql(root, query, database='postgres'):
     return command([PG / 'psql', '-X', '-h', root / 'socket', '-U', 'paranoid_alpha',
                     '-d', database, '-v', 'ON_ERROR_STOP=1', '-Atc', query])
@@ -228,6 +258,7 @@ def environment(root):
         env.pop('PARANOID_ALICE_TOKEN')
         env.pop('PARANOID_BOB_TOKEN')
         env.update(turn_environment(c))
+        env.update(push_environment(root))
     return env
 
 
@@ -781,6 +812,8 @@ def unit(root):
     current_release(root)
     credential = (f'LoadCredential=voice-turn-secret:{root}/voice-turn/issuer.secret\n'
                   if turn_settings(c) is not None else '')
+    if os.path.lexists(root / 'push/fcm-service-account.json'):
+        credential += f'LoadCredential=push-fcm-credential:{root}/push/fcm-service-account.json\n'
     return f'''[Unit]
 Description=ParanoID isolated private test-data alpha
 StartLimitIntervalSec=0
