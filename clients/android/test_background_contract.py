@@ -33,6 +33,13 @@ class BackgroundContract(unittest.TestCase):
         self.assertNotIn('android.permission.SCHEDULE_EXACT_ALARM',permissions)
         self.assertNotIn('android.permission.USE_EXACT_ALARM',permissions)
 
+    def test_threat_model_describes_current_restart_policy(self):
+        threat=(ROOT.parent.parent/'docs/security/realtime-v1-threats.md').read_text()
+        self.assertIn('START_STICKY',threat)
+        self.assertIn('ConnectionWatchdog',threat)
+        self.assertIn('best effort',threat)
+        self.assertNotIn('restarts are non-sticky',threat)
+
     def test_watchdog_restarts_only_user_enabled_background_channel(self):
         service=(ROOT/'src/org/paranoid/text/BackgroundConnectionService.java').read_text()
         watchdog=(ROOT/'src/org/paranoid/text/ConnectionWatchdog.java').read_text()

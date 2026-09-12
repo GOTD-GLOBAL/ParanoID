@@ -94,3 +94,22 @@ At the end of a substantial task, leave a concise handoff containing:
 User instructions take precedence. When a user makes a durable product or
 architecture decision, record it in the appropriate repository document as part
 of the same change.
+
+## Selective agent memory
+
+Keep hot memory limited to stable, critical, nearly-always-needed behavior, safety
+and precise canonical pointers. Importance alone does not justify prompt space.
+Read existing sources before writing: project requirements, roadmap, security/TLS
+and deployment decisions belong in their existing repository documents, with their
+actual approval status. Durable contextual facts may use the project's isolated
+semantic memory with source and verified retrieval; never a personal collection.
+Temporary progress, selected hosts, tester/reviewer availability and one-operation
+DB/backup permissions belong in sessions, tasks or issues, not timeless facts.
+
+Search before adding; update/merge duplicates rather than append. Before demotion,
+verify the destination preserves all safety qualifiers. A one-off no-backup scope
+is not a general policy. Preserve human authority and all protected-domain gates.
+Do not add daily reconciliation, a second memory engine, blanket write approvals
+or larger limits as a workaround. These are selection instructions, not a claim
+of technical semantic-write enforcement. Do not refresh them by resetting active
+sessions or modifying another agent's working tree.
