@@ -10,6 +10,8 @@
 		5A0000000000000000000043 /* ParanoidKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000041 /* ParanoidKit */; };
 		5A0000000000000000000044 /* ParanoidKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000042 /* ParanoidKit */; };
 		5A0000000000000000000046 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000045 /* WebRTC */; };
+		5A0000000000000000000047 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000049 /* WebRTC */; };
+		5A0000000000000000000051 /* THIRD_PARTY_NOTICES.txt in Resources */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000050 /* THIRD_PARTY_NOTICES.txt */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +19,7 @@
 		5A0000000000000000000012 /* ParanoID.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ParanoID.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0000000000000000000022 /* ParanoIDTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParanoIDTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0000000000000000000032 /* ParanoIDUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParanoIDUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000050 /* THIRD_PARTY_NOTICES.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = THIRD_PARTY_NOTICES.txt; path = ../out/THIRD_PARTY_NOTICES.txt; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -57,6 +60,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A0000000000000000000043 /* ParanoidKit in Frameworks */,
+				5A0000000000000000000047 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				5A0000000000000000000004 /* Config */,
+				5A0000000000000000000050 /* THIRD_PARTY_NOTICES.txt */,
 				5A0000000000000000000011 /* ParanoID */,
 				5A0000000000000000000021 /* ParanoIDTests */,
 				5A0000000000000000000031 /* ParanoIDUITests */,
@@ -129,6 +134,7 @@
 			name = ParanoID;
 			packageProductDependencies = (
 				5A0000000000000000000041 /* ParanoidKit */,
+				5A0000000000000000000049 /* WebRTC */,
 			);
 			productName = ParanoID;
 			productReference = 5A0000000000000000000012 /* ParanoID.app */;
@@ -234,6 +240,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5A0000000000000000000051 /* THIRD_PARTY_NOTICES.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -576,6 +583,10 @@
 			productName = ParanoidKit;
 		};
 		5A0000000000000000000045 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WebRTC;
+		};
+		5A0000000000000000000049 /* WebRTC */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = WebRTC;
 		};

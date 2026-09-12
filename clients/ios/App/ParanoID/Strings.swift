@@ -12,8 +12,8 @@ import Foundation
 ///   Android's «Получать в фоне» block and its «Входящие в фоне отключены —
 ///   включить» banner have no counterpart. In their place stands one line —
 ///   «Входящие приходят, пока приложение открыто» — and the paragraph behind
-///   it, from the approved mock-up (`.forge/sketches/ios-client-mockup.html`,
-///   screens `dialogs` and `connection`).
+///   it, from the screen mock-up the owner approved (its `dialogs` and
+///   `connection` screens).
 /// - **no in-app updates.** Builds arrive through TestFlight and the App
 ///   Store, so «Проверить обновления», the update block of «Мой ID» and
 ///   «Доступна версия …» do not exist here at all.

@@ -132,12 +132,25 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
 - `Sources/ParanoidKit/Voice/SdpExtract.swift` reads the DTLS fingerprint
   (lowercase, colon-free) and the ICE credentials out of a session
   description, the three members a `call` control repeats beside its SDP and
-  that the core cross-checks against the text (`voice_v1.rs:126-152`), plus
-  the survey that validator cares about: byte count, `a=setup`, every
-  `a=rtpmap`, and the `a=candidate` / `a=crypto` counts. It is Android's
-  `TextEngine.java:138-144` line scan, cut on UTF-8 bytes like `str::lines()`
-  because Swift folds a CRLF pair into one `Character`. It never rewrites the
-  description.
+  that the core cross-checks against the text (`voice_v1.rs:167-188`), plus
+  the survey that validator cares about. A call-v2 description is two media
+  sections, `m=audio` then `m=video`, bundled on one transport
+  ([call-v2](../../docs/protocol/call-v2.md)), so each of `a=fingerprint`,
+  `a=ice-ufrag`, `a=ice-pwd` and `a=setup` may sit once at session level **or**
+  once in the audio section and at most once more in the video section with
+  the identical value; the scan resolves that one value wherever it is
+  repeated and returns `nil` for a second context or two different values,
+  exactly as `voice_v1.rs:236-242` decides. The survey is per section (`m=`
+  port, transport and payload types, the `a=rtpmap` mappings, the `a=sendrecv`
+  and `a=rtcp-mux` counts, the candidates) and per description (byte count,
+  line count, `a=candidate` / `a=crypto` / blocked-direction counts).
+  `maxSdpBytes` is 9000: the core's own `MAX_SDP` is 12288, but a `call`
+  control travels in one frame2 envelope whose measured ceiling is 10040
+  bytes, so the description is checked against the smaller cap before it is
+  handed to the core. It is Android's `TextEngine.java:138-144` line scan, cut
+  on UTF-8 bytes like `str::lines()` because Swift folds a CRLF pair into one
+  `Character`. It never rewrites the description; the reader itself is pinned
+  on the core's own vector shape by `SdpExtractTests`.
 - `Sources/ParanoidKit/Qr/QrCodec.swift` is the two QR bounds of
   [key enrollment v1](../../docs/protocol/key-enrollment-v1.md) (lines 91-96)
   and the one local encoder, the counterpart of Android's `QrCodec.java`:
@@ -350,12 +363,20 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   `ParanoID/ParanoID.entitlements` is empty: no `aps-environment`, because
   there is no push (see the component documentation).
 - The application and `ParanoIDTests` depend on the local package
-  `../ParanoidKit` (`XCLocalSwiftPackageReference`) and nothing else;
-  `ParanoIDTests` additionally links that package's `WebRTC` product, so it
-  also carries `LD_RUNPATH_SEARCH_PATHS` (`@executable_path/Frameworks`,
-  `@loader_path/Frameworks`) for the dynamic `WebRTC.framework` Xcode embeds
-  in the test bundle. Run `build-core.sh` and `webrtc_dependency.py` first so
-  that both xcframeworks exist.
+  `../ParanoidKit` (`XCLocalSwiftPackageReference`) and nothing else. Both
+  link that package's `WebRTC` product and carry `LD_RUNPATH_SEARCH_PATHS`
+  (`@executable_path/Frameworks`, and `@loader_path/Frameworks` in the test
+  bundle) for the dynamic `WebRTC.framework` Xcode embeds next to the binary.
+  The copy inside `ParanoID.app/Frameworks` is what a phone would run, and in
+  an unsigned build it is byte-for-byte the slice `webrtc_dependency.py`
+  verified against the pinned archive — `test_app_bundle.py` weighs it.
+  Run `build-core.sh` and `webrtc_dependency.py` first so that both
+  xcframeworks exist.
+- The application's resources phase carries exactly one file:
+  `../out/THIRD_PARTY_NOTICES.txt`, written by [`notices.py`](notices.py).
+  The reference is a path relative to the project, not a copy in the source
+  tree, so the generated file is never committed and a build that runs before
+  the packager fails on a missing input.
 - `ParanoID/AppLifecycle.swift` is the only place where UIKit meets the
   realtime lanes: three `NotificationCenter` subscriptions
   (`didBecomeActive`, `willResignActive`, `didEnterBackground`) handed to
@@ -403,20 +424,31 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   one `state.version=3` line (never the snapshot), which proves that the
   `ios-arm64-simulator` slice links and executes. `ParanoIDUITests` only
   launches the shell; screen tests arrive with the screens.
-- `ParanoIDTests/SdpCompatibilityTests.swift` is the voice go/no-go gate. It
-  builds an `RTCPeerConnectionFactory` configured exactly like
-  `WebRtcAudioEngine.java:195-202` (unified plan, max-bundle, RTCP mux
-  required, TCP candidates disabled, gather-once, candidate pool 0, no ICE
-  servers), adds one audio track, restricts the sender to `audio/opus` with
-  `setCodecPreferences`, waits for gather-once and then pushes the resulting
-  offer and answer through the core between two synthetic identities
-  (`send_call_v1` -> `receive_v2`, as `clients/core/tests/voice_calls.rs`
-  does). The SDP is never rewritten: anything the core refuses is fixed
+- `ParanoIDTests/SdpCompatibilityTests.swift` is the call go/no-go gate, and
+  it measures [call-v2](../../docs/protocol/call-v2.md), not voice v1. It
+  builds an `RTCPeerConnectionFactory` with the bundled encoder/decoder
+  factories and the configuration of `WebRtcAudioEngine.java:240-251`
+  (unified plan, max-bundle, RTCP mux required, TCP candidates disabled,
+  gather-once, candidate pool 0, no ICE servers), adds one audio track and one
+  video track that starts disabled, and restricts the senders with
+  `setCodecPreferences`: `audio/opus`, then H.264 first, VP8 as the mandatory
+  fallback and the `rtx`/`red`/`ulpfec`/`flexfec-03` helpers on the video
+  transceiver (`WebRtcAudioEngine.java:263-284`, owner decision 2026-09-11).
+  VP9 and AV1 are in this libwebrtc build and are dropped here, in
+  configuration. It then waits for gather-once and pushes the offer, the
+  answer and one `media` camera-state control through the core between two
+  synthetic identities (`send_call_v1` -> `receive_v2`, as
+  `clients/core/tests/voice_calls.rs` does), with `v: 2` and a real boolean
+  `video` in every body; a fourteen-member v1 body is refused as
+  `invalid_request` before validation, which is the alpha break call-v2
+  declares. The SDP is never rewritten: anything the core refuses is fixed
   through WebRTC configuration. The survey lands in
   `out/evidence/sdp-spike.json` with the ICE credentials masked; measured on
-  the simulator the offer is 1776 B with 7 candidates, one
-  `a=rtpmap:111 opus/48000/2`, no `a=crypto` and `a=setup:actpass`, the
-  answer 1735 B and `a=setup:active`, both accepted by the core.
+  the simulator (2026-09-13) the offer is 3768 B of the 9000-byte cap, 93
+  lines, 6 candidates, sections `audio` then `video` with one `a=sendrecv`
+  each, one `a=rtpmap:111 opus/48000/2` and H.264/VP8 with their helpers in
+  the video section, no `a=crypto`, `a=setup:actpass`; the answer 3664 B and
+  `a=setup:active`; offer, answer and `media` all accepted by the core.
 - `ParanoIDTests/KeychainStoreTests.swift` is the half of the storage rules
   that needs a real platform: the item under `paranoid-text-state-v0` with the
   attributes it was asked for, the install-marker matrix (stale key with no
@@ -646,6 +678,129 @@ The evidence is counts, digests and verdicts, plus the proxy's own
 `latency-samples.json`: no account, no fingerprint, no realm, no pin, no
 message text and no snapshot bytes. One run costs about twenty seconds.
 
+## Third-party notices (`notices.py`)
+
+Android's algorithm (`clients/android/notices.py`), rooted here at
+`bridge/Cargo.toml` and filtered for `aarch64-apple-ios`: resolve the locked
+graph once, walk it from the root so only crates that actually link are
+counted, and copy every `license*`/`licence*`/`copying*`/`notice*`/
+`copyright*` file those crates ship, verbatim, into
+`out/THIRD_PARTY_NOTICES.txt` — 91 crates today, whatever the shared core
+pulls in. A linked crate whose package carries no license text fails the
+build with `Missing license text: <crate> <version>`; it is never skipped.
+Three crates publish none upstream and are served from pinned copies:
+`matrix-pickle` and `matrix-pickle-derive` from
+`spikes/002-android-bootstrap/licenses/matrix-pickle-LICENSE`, `jni-sys-macros`
+from `licenses/jni-sys-macros-LICENSE-{APACHE,MIT}` (byte-for-byte copies of
+Android's, see [licenses/README.md](licenses/README.md)). `jni` itself stays
+in the graph — the core depends on it unconditionally — so its notices ship
+here too.
+
+After the crates comes the pinned `WebRTC.xcframework`: its version, the
+archive and slice digests that `webrtc_dependency.py` enforces, the upstream
+source commit, and every file of `licenses/webrtc-150.7871.01/`. There is no
+ZXing, org.json or Firebase block — this client scans QR with Vision, parses
+JSON in Rust and has no push gateway — and no XcodeGen anywhere.
+
+`--offline` forbids cargo the network (what CI uses, after `cargo check`
+has populated the registry); `--manifest-path` and `--output` exist for the
+tests. The packager writes `out/` and nothing else; the application picks the
+file up from there — the `ParanoID` target's resources phase copies
+`out/THIRD_PARTY_NOTICES.txt` into the bundle root, and
+[`build.sh`](build.sh) regenerates it before every `xcodebuild`, so a build
+that skipped `notices.py` fails on a missing input instead of shipping a
+bundle without notices. No screen reads it yet.
+
+```sh
+python3 clients/ios/notices.py --offline   # -> clients/ios/out/THIRD_PARTY_NOTICES.txt
+python3 clients/ios/test_notices.py        # graph walk, pinned copies, failure modes, the real graph
+grep -c "vodozemac\|WebRTC\|jni 0.21.1" clients/ios/out/THIRD_PARTY_NOTICES.txt   # 23
+```
+
+## Build order (`build.sh`) and the bundle gate (`test_app_bundle.py`)
+
+`bash clients/ios/build.sh` is the whole client in one command, in the order
+`clients/android/build.sh` uses: pins first, then the shared code, then the
+application, then what the application turned out to be. Every step runs
+after the one before it, the script stops at the first failure and says which
+step failed, and nothing in it contacts the hosted server. It re-executes
+itself through [`toolchain.sh`](toolchain.sh), so a non-interactive shell
+without `~/.cargo/bin` on `PATH` is fine.
+
+1. `test_toolchain.py` — the pinned tool versions.
+2. `webrtc_dependency.py`, `test_webrtc_dependency.py` — the pinned WebRTC
+   archive, re-extracted into the SwiftPM binary target on every build.
+3. `test_bridge_lock.py` — the bridge lock still equals `clients/core`'s.
+4. `cargo test --release` of the shared core with the same test targets as
+   `clients/android/build.sh:25` (`--lib`, `clean_first_contact`,
+   `realtime_signing`, `voice_calls`), into `out/core-target` so the red-zone
+   crate's own `target/` is left alone, and `cargo test` of the bridge on the
+   host, where the `rlib` and `bridge/tests/abi.rs` live.
+5. `build-core.sh` — the three release slices and `ParanoidCore.xcframework`.
+6. `swift test` of `ParanoidKit` (scratch path `out/spm`).
+7. The iOS ↔ Android cross-test of plan steps 33-34. It needs a JDK, which
+   this Mac does not have, so the step prints `SKIP:` with that reason and
+   the manifest records it as `skipped`. It is never a silent pass, and it
+   becomes a real run as soon as `java_deps.sh` lands and `javac` exists.
+8. `check-pinned-tls.py` and `test_realtime_transport.py` — the nine leaf
+   checks and the eight socket rules, against real loopback servers.
+9. `notices.py --offline` and `test_notices.py` — the notices that then ship
+   inside the bundle.
+10. `test_ui_contract.py` and `test_component_boundary.py` — the source
+    contracts and the branch boundary.
+11. `xcodebuild test` on `iPhone 17 Pro (26.5)` with `CODE_SIGNING_ALLOWED=NO`,
+    then a second run of `ParanoIDTests/KeychainStoreTests` alone **with** the
+    simulator's own ad-hoc signature. An unsigned application owns no
+    Keychain, so that one bundle of tests cannot say anything in the first
+    run; the ad-hoc simulator signature involves no team, no identity and no
+    owner gate. Splitting the run is the only way both halves are real.
+12. `xcodebuild ... -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO
+    build` in `Release`, copied to `out/ParanoID.app`, and
+    `test_app_bundle.py` on that copy.
+13. The archive. Without `PARANOID_IOS_TEAM_ID` the script prints
+    `Archive skipped: PARANOID_IOS_TEAM_ID unset` and exits 0 — signing is
+    the owner's gate, not the build's. With it set, `xcodebuild archive
+    -allowProvisioningUpdates` and `-exportArchive` run against
+    [`App/ExportOptions.plist`](App/ExportOptions.plist): that template holds
+    no `teamID`, and `build.sh` writes the resolved copy (template plus the
+    one key, taken from the environment) to the git-ignored
+    `out/ExportOptions.plist`. `PARANOID_ASC_KEY_ID`, `PARANOID_ASC_ISSUER_ID`
+    and `PARANOID_ASC_KEY_PATH` are added as `-authenticationKey…` only when
+    all three are set; the `.p8` itself is never copied into the repository.
+    `destination` is `export`, so nothing is uploaded here.
+
+The run then writes `out/evidence/build-manifest.json`: the commit, the tool
+versions, every step with its status and duration (including the skipped
+one), the bundle identity and version, and the SHA-256 of the executable, of
+the embedded `WebRTC.framework`, of the notices on both sides and of both
+lock files, with `out/evidence/bridge-hashes.json` folded in.
+
+`test_app_bundle.py` is the iOS sibling of `clients/android/test_apk.py` and
+the only thing in this directory that reads a finished bundle: bundle
+identifier `global.paranoid.messenger`, the pinned
+`CFBundleShortVersionString` / `CFBundleVersion` pair and the
+`ios_deployment_target` of `toolchain.json`; `UIBackgroundModes` exactly
+`[audio]` with no `voip`, no `aps-environment` in the plist or in the signed
+entitlements and no `NSAppTransportSecurity` / `NSAllowsArbitraryLoads`; one
+arm64 executable and exactly one embedded framework, whose binary is the
+pinned slice; `THIRD_PARTY_NOTICES.txt` identical to what `notices.py` wrote,
+naming the crates that link and none of the Android-only components; and no
+`.p12`, `.p8`, `.env` or `.mobileprovision` anywhere inside. Two rules bend
+for a *signed* bundle and say so on their own line rather than passing
+quietly: the canonical `embedded.mobileprovision` iOS itself puts at the
+bundle root is tolerated and reported, and the WebRTC digest is `SKIPPED`
+because Xcode re-signs an embedded framework (the pin is enforced at
+extraction). A signed bundle must report the Team ID in
+`PARANOID_IOS_TEAM_ID`; a signed bundle with that variable unset is a
+failure, and an unsigned one — all this repository can make without the
+owner's gate — says `SKIPPED`, never `OK`.
+
+```sh
+bash clients/ios/build.sh                        # the whole chain; exit 0 and "Archive skipped: PARANOID_IOS_TEAM_ID unset"
+python3 clients/ios/test_app_bundle.py out/ParanoID.app   # the built bundle (path relative to clients/ios or to the current directory)
+jq '.steps[] | [.step, .status] | @tsv' clients/ios/out/evidence/build-manifest.json -r
+```
+
 ## Checks
 
 ```sh
@@ -660,11 +815,14 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -only-testing:ParanoIDTests/BridgeSmokeTests                                # bridge smoke in the simulator
 python3 clients/ios/webrtc_dependency.py        # re-extract the pinned WebRTC.xcframework (--offline uses the cached archive)
 python3 clients/ios/test_webrtc_dependency.py   # digest, slice and re-extraction rules of that pin
+python3 clients/ios/notices.py                  # bundle the locked crate and WebRTC license texts (--offline in CI)
+python3 clients/ios/test_notices.py             # a linked crate without a license text fails the build
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
-  -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc SDP against the core validator
+  -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc call-v2 SDP against the core validator
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
+swift test --package-path clients/ios/ParanoidKit --filter SdpExtractTests  # transport context, per-section survey, 9000-byte cap
 swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
 swift test --package-path clients/ios/ParanoidKit --filter SelfServiceClientTests # v4 wrapper, opening rules, persist before adopt
 swift test --package-path clients/ios/ParanoidKit --filter ProofFlowTests    # challenge spacing, discovery, session issuance
@@ -740,7 +898,8 @@ python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bi
 - [Self-service v2](../../docs/protocol/self-service-v2.md),
   [realtime v1](../../docs/protocol/realtime-v1.md),
   [first-contact v1](../../docs/protocol/first-contact-v1.md),
-  [voice v1](../../docs/protocol/voice-v1.md),
+  [voice v1](../../docs/protocol/voice-v1.md) with its
+  [call-v2 deltas](../../docs/protocol/call-v2.md),
   [voice TURN v1](../../docs/protocol/voice-turn-v1.md)
 - [Android client](../android/README.md) (behavioural reference, not a
   dependency) and [component boundaries](../../docs/project/component-boundaries.md)
