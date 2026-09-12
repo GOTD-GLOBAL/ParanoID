@@ -7,9 +7,16 @@ A='{http://schemas.android.com/apk/res/android}'
 class UpdateWiring(unittest.TestCase):
     def test_explicit_update_ui_and_narrow_provider(self):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
-        self.assertEqual(m.get(A+'versionCode'),'15')
+        self.assertEqual(m.get(A+'versionCode'),'22')
         self.assertIn('android.permission.REQUEST_INSTALL_PACKAGES',[p.get(A+'name') for p in m.findall('uses-permission')])
-        providers=m.findall('application/provider');self.assertEqual(len(providers),1)
+        # Package visibility: the installer intent must be declared so resolveActivity() can see the system installer on targetSdk>=30.
+        queries=[(i.find('action').get(A+'name'),i.find('data').get(A+'mimeType')) for i in m.findall('queries/intent')]
+        self.assertIn(('android.intent.action.INSTALL_PACKAGE','application/vnd.android.package-archive'),queries)
+        self.assertEqual(m.findall('queries/package'),[],'no package-name enumeration')
+        providers=[p for p in m.findall('application/provider') if p.get(A+'name')=='org.paranoid.text.UpdateProvider'];self.assertEqual(len(providers),1)
+        # v20: the only other provider is Firebase's init provider, not exported.
+        others=[p for p in m.findall('application/provider') if p not in providers]
+        self.assertEqual([(p.get(A+'name'),p.get(A+'exported')) for p in others],[('com.google.firebase.provider.FirebaseInitProvider','false')])
         p=providers[0];self.assertEqual(p.get(A+'exported'),'false');self.assertEqual(p.get(A+'grantUriPermissions'),'false')
         self.assertEqual(p.get(A+'authorities'),'global.paranoid.messenger.updates')
         self.assertEqual([g.get(A+'path') for g in p.findall('grant-uri-permission')],['/verified.apk'])
@@ -19,6 +26,13 @@ class UpdateWiring(unittest.TestCase):
         for text in ['Обновить','Скачать','Установить','Обновлений пока нет','Повторить','canRequestPackageInstalls','ACTION_MANAGE_UNKNOWN_APP_SOURCES','FLAG_GRANT_READ_URI_PERMISSION','ACTION_INSTALL_PACKAGE','UpdateClient.verifyBytes','AndroidUpdateVerifier.verify']:
             self.assertIn(text,controller)
         self.assertIn('if(!activity.hasWindowFocus())',controller)
+        # v19: PackageInstaller session fallback after the intent path, with the same re-verified file, user confirmation kept.
+        for text in ['PackageInstaller.SessionParams.MODE_FULL_INSTALL','session.commit(','STATUS_PENDING_USER_ACTION','session.abandon()','Диагностика: intent']:
+            self.assertIn(text,controller)
+        self.assertLess(controller.index('UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);'),controller.index('sessionInstall(ready);'))
+        self.assertIn('UpdateController.installStatus(this,intent)',ui)
+        self.assertIn('UpdateController.installStatus(this,getIntent())',ui)
+        self.assertIn('FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP',controller)
         for text in ['text-state.enc','KeyStore','createIdentity','FLAG_GRANT_WRITE_URI_PERMISSION','file://','ACTION_PACKAGE_ADDED']:
             self.assertNotIn(text,controller)
         engine=(R/'src/org/paranoid/text/TextEngine.java').read_text()

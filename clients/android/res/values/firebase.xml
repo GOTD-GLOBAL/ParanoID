@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the Firebase project's google-services.json (client identifiers, not secrets).
+     RFC-0020: project para-no-id, Android app global.paranoid.messenger. Equivalent to the
+     values the google-services Gradle plugin would emit. -->
+<resources>
+    <string name="google_app_id" translatable="false">1:839265307344:android:f440f486989f81ec2cecd5</string>
+    <string name="gcm_defaultSenderId" translatable="false">839265307344</string>
+    <string name="project_id" translatable="false">para-no-id</string>
+    <string name="google_api_key" translatable="false">AIzaSyAMlWTe9y6ypjWPuG7VmcvgmEgwNVqM1Yw</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyAMlWTe9y6ypjWPuG7VmcvgmEgwNVqM1Yw</string>
+</resources>

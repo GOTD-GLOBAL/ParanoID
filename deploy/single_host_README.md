@@ -105,6 +105,15 @@ both activation and recovery require the expected packaged executable to be acti
 before reopening ingress. Loaded unit fragments, merged drop-ins, reload state,
 entry points and configured identities are checked; unreviewed overrides refuse.
 These added production branches have offline regression evidence only.
+
+Egress policy migration (2026-09-12): when an `update` kit renders a different
+reviewed nft policy than the active one, `apply` — after quiescing the previous
+relay and closing its ingress — removes the previous table under the previous
+kit's own helper, retires the receipt into the transaction
+(`network-receipt.before`) and lets `stage_relay` prepare a fresh receipt for
+the new policy. Rollback reverses this first (`undo_network_migration`), so the
+previous kit can re-apply its exact policy. Preflight validates the live state
+with the recognized installation's module, not the candidate's.
 Fresh messaging reuses the retained alpha initialization and database primitives,
 then links and validates the loaded unit before separate enable/start operations.
 It does not use the component's combined enable--now operation. One targeted

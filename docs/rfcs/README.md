@@ -121,6 +121,12 @@ Use [the RFC template](rfc-template.md).
 [RFC-0015: overnight realtime](0015-overnight-realtime.md) records the current private-alpha scope and its exact review/test gates.
 No permanent architecture acceptance or physical-phone result is implied.
 
+## Push wake
+
+[RFC-0020](0020-push-wake.md) (proposed) covers the content-free FCM wake
+gateway (owner decision recorded 2026-09-12); server implementation and tests
+land first, the Android registration/wake follows in the next APK.
+
 ## Voice relay completion
 
 [RFC-0018](0018-voice-turn.md) (proposed) covers REQ-CALL-006, the issuer,
@@ -143,3 +149,11 @@ on the published `feat/push-fcm-gateway` branch. RFC-0019 stays with the
 video-call work, RFC-0020 with the push wake gateway, and the iOS candidate
 is RFC-0021. Both moves follow the naming rule below: an unpublished draft
 yields.
+
+## Video calls proposal
+
+[RFC-0019](0019-video-calls.md) (proposed) covers 1:1 camera video on the
+retained E2EE call channel as [call-v2](../protocol/call-v2.md), with
+[ADR-0013](../decisions/0013-video-calls.md) proposed and the
+[threat delta](../security/video-v1-threats.md) drafted. Groups, SFU and
+screen sharing are explicitly excluded.

@@ -1,10 +1,42 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-10
+last_reviewed: 2026-09-11
 ---
 
 # Current project state
+
+## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
+
+The owner (Сергей Мальцев, Telegram) requested video calls and resolved the
+RFC-0019 questions (H.264 first with VP8 fallback; speaker on video unless a
+headset is active). [RFC-0019](../rfcs/0019-video-calls.md) is proposed,
+[ADR-0013](../decisions/0013-video-calls.md) is proposed and
+[call-v2](../protocol/call-v2.md) plus the [video threat delta](../security/video-v1-threats.md)
+are written. The native validator, `CallController`, media engine, call UI and
+foreground service implement call-v2 (`0.0.19-video`, versionCode 19, retained
+signer; v19 adds a PackageInstaller-session fallback for the in-app update; v16 was the first candidate, v17 fixed the video-call start permission
+result and installer visibility, v18 adds screen-on during video, local contact
+names, audible ring/ringback/busy and immediate reconnect on network change).
+Push wake (RFC-0020, proposed): the server gateway is in PR #28 and the
+client half ships in `0.0.20-push` (versionCode 20) — a content-free FCM wake
+only reconnects the E2EE channel. Until the gateway is deployed with the
+Firebase credential no wake is sent and behaviour equals v19. The OEM-killed
+foreground connection remains the residual risk for devices without Google
+services. call-v2 rejects v1 bodies: both alpha phones must update; text is
+unaffected. v16 (`5041ca95…`) is published on `/v2/updates/android`
+(2026-09-12). The first phone download failed because the relay egress policy
+dropped orphaned TCP tails of the 16 MB response; that policy fix (PR #26, kit
+`fa371be1`) was deployed the same day and a real v15 client verified the full
+download against the live host. Physical two-phone video acceptance is
+outstanding.
+
+Earlier the same day, under explicit owner authority, the existing host was
+updated by the unified kit (`c7d9205b`, transaction `e7f3b9a6`) to messaging
+release `f65254ab` built from `main` `fe9c26c`, same data/TLS/PG identity,
+relay unchanged; `/v2/updates/android` now serves v15 for
+`global.paranoid.messenger` and the owner directed that later versions ship
+through the in-app updater.
 
 ## v15 review follow-up — 2026-09-11
 

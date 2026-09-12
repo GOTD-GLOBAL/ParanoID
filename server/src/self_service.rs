@@ -1,4 +1,6 @@
 //! Draft self-service foundation; offline schema changes only.
+pub use crate::push_fcm::PushConfig;
+pub use crate::self_service_http::app_with_services;
 pub use crate::self_service_http::{app, app_with_turn};
 pub use crate::voice_turn::TurnConfig;
 use sqlx::PgPool;

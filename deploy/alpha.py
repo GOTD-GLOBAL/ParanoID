@@ -107,11 +107,13 @@ def config(root):
     with regular_file(root / 'config.json', restricted=True) as stream:
         c = json.load(stream, object_pairs_hook=unique_object)
     if (not isinstance(c, dict) or set(c) not in ({'ip', 'alice', 'bob'},
-            {'ip', 'alice', 'bob', 'deployment'}, {'ip', 'alice', 'bob', 'deployment', 'voice_turn'})
+            {'ip', 'alice', 'bob', 'deployment'}, {'ip', 'alice', 'bob', 'deployment', 'voice_turn'},
+            {'ip', 'alice', 'bob', 'deployment', 'push'}, {'ip', 'alice', 'bob', 'deployment', 'voice_turn', 'push'})
             or ('deployment' in c and c['deployment'] not in ('key-v1', 'self-service-v2'))):
         raise ValueError('exact configuration keys required')
     canonical_ipv4(c['ip'])
     turn_settings(c)
+    push_settings(c)
     for name in ('alice', 'bob'):
         if not isinstance(c[name], str) or not re.fullmatch(r'[0-9a-fA-F]{64}', c[name]):
             raise ValueError('256-bit hex admission tokens required')
@@ -150,6 +152,46 @@ def turn_environment(c):
                 or not re.fullmatch(b'[0-9a-f]{64}', stream.read(65))):
             raise ValueError('private exact TURN credential required')
     return {'PARANOID_TURN_SECRET_FILE': str(path), 'PARANOID_TURN_RELAY_IP': settings['relay_ip']}
+
+
+def push_settings(c):
+    # RFC-0020: like voice_turn, the gateway is enabled by an exact config key that the
+    # journaled update flips together with the unit, never by a file appearing on disk.
+    settings = c.get('push')
+    if 'push' not in c:
+        return None
+    if c.get('deployment') != 'self-service-v2' or settings != {'v': 1, 'provider': 'fcm'}:
+        raise ValueError('exact v2 push configuration required')
+    return settings
+
+
+def push_environment(root, c):
+    # The FCM service-account JSON reaches the process only as a systemd credential.
+    if push_settings(c) is None:
+        return {}
+    directory = os.environ.get('CREDENTIALS_DIRECTORY', '')
+    if (not re.fullmatch(r'/[A-Za-z0-9_./-]+', directory)
+            or '..' in Path(directory).parts or str(Path(directory)) != directory):
+        raise ValueError('explicit systemd credential directory required')
+    path = Path(directory) / 'push-fcm-credential'
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, 'rb') as stream:
+        meta = os.fstat(stream.fileno())
+        raw = stream.read(65537)
+        if (not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1
+                or meta.st_uid not in (0, os.geteuid())
+                or stat.S_IMODE(meta.st_mode) not in (0o400, 0o600)
+                or len(raw) > 65536):
+            raise ValueError('private push credential required')
+        try:
+            c = json.loads(raw, object_pairs_hook=unique_object)
+        except (ValueError, UnicodeDecodeError) as error:
+            raise ValueError('private push credential required') from error
+        if (not isinstance(c, dict) or c.get('type') != 'service_account'
+                or not isinstance(c.get('private_key'), str) or not isinstance(c.get('client_email'), str)
+                or c.get('token_uri') != 'https://oauth2.googleapis.com/token'):
+            raise ValueError('private push credential required')
+    return {'PARANOID_PUSH_CREDENTIAL_FILE': str(path)}
 
 
 def sql(root, query, database='postgres'):
@@ -228,6 +270,7 @@ def environment(root):
         env.pop('PARANOID_ALICE_TOKEN')
         env.pop('PARANOID_BOB_TOKEN')
         env.update(turn_environment(c))
+        env.update(push_environment(root, c))
     return env
 
 
@@ -781,6 +824,8 @@ def unit(root):
     current_release(root)
     credential = (f'LoadCredential=voice-turn-secret:{root}/voice-turn/issuer.secret\n'
                   if turn_settings(c) is not None else '')
+    if push_settings(c) is not None:
+        credential += f'LoadCredential=push-fcm-credential:{root}/push/fcm-service-account.json\n'
     return f'''[Unit]
 Description=ParanoID isolated private test-data alpha
 StartLimitIntervalSec=0
@@ -1175,6 +1220,67 @@ def update_v2(root, release, expected_identifier, name='paranoid-alpha.service')
             raise RuntimeError('v2 update failed; previous release ready on retained current data') from None
 
 
+def enable_push_v2(root, name='paranoid-alpha.service'):
+    """RFC-0020: turn the FCM gateway on for an existing v2 installation on the current release.
+    Requires the operator-placed credential; flips config + unit together under the operation lock,
+    restarts the dedicated unit and restores the exact previous config/unit on any failure."""
+    name = service_name(name)
+    c = config(root)
+    if c.get('deployment') != 'self-service-v2':
+        raise ValueError('push requires an active self-service v2 installation')
+    if push_settings(c) is not None:
+        raise ValueError('push already enabled')
+    credential = root / 'push/fcm-service-account.json'
+    with regular_file(credential, restricted=True) as stream:
+        meta = os.fstat(stream.fileno())
+        raw = stream.read(65537)
+        if meta.st_nlink != 1 or stat.S_IMODE(meta.st_mode) != 0o400 or len(raw) > 65536:
+            raise ValueError('private 0400 push credential required')
+        s = json.loads(raw, object_pairs_hook=unique_object)
+        if (not isinstance(s, dict) or s.get('type') != 'service_account' or not isinstance(s.get('private_key'), str)
+                or not isinstance(s.get('client_email'), str) or s.get('token_uri') != 'https://oauth2.googleapis.com/token'):
+            raise ValueError('service-account credential required')
+    release = current_release(root)
+    with v2_operation_lock(root):
+        v2_unit(root, name)
+        old_config = (root / 'config.json').read_bytes()
+        old_unit = (root / name).read_bytes()
+        new_config = {**c, 'push': {'v': 1, 'provider': 'fcm'}}
+        try:
+            command(['systemctl', '--user', 'stop', name])
+            atomic_config(root, new_config)
+            config(root)
+            unit_path = root / name
+            unit_path.write_text(unit(root))
+            command(['systemd-analyze', '--user', 'verify', unit_path])
+            command(['systemctl', '--user', 'daemon-reload'])
+            command(['systemctl', '--user', 'start', name])
+            wait_health(root)
+        except BaseException:
+            try:
+                command(['systemctl', '--user', 'stop', name])
+                (root / 'config.pending').unlink(missing_ok=True)
+                atomic_config_bytes(root, old_config)
+                (root / name).write_bytes(old_unit)
+                command(['systemctl', '--user', 'daemon-reload'])
+                command(['systemctl', '--user', 'start', name])
+                wait_health(root)
+            except BaseException:
+                command(['systemctl', '--user', 'stop', name])
+                raise RuntimeError('push enable and recovery failed; keep dedicated unit stopped') from None
+            raise RuntimeError('push enable failed; previous exact config/unit restored on retained data') from None
+    return release
+
+
+def atomic_config_bytes(root, data):
+    temporary = root / 'config.pending'
+    with regular_file(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, restricted=True) as stream:
+        os.write(stream.fileno(), data)
+        os.fsync(stream.fileno())
+    temporary.replace(root / 'config.json')
+    fsync_directory(root)
+
+
 def safe_v2_cli(action, root, release, expected_identifier, name):
     def interrupted(*_):
         raise KeyboardInterrupt
@@ -1205,7 +1311,7 @@ def main():
         print(json.dumps({'deployment_api': 1, 'controller': 'key-v1-sticky-offline-v1'}))
         return
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['install', 'update', 'init', 'stage', 'run', 'health', 'backup', 'switch', 'unit', 'migrate-key', 'fresh-v2', 'install-v2', 'replace-v2', 'update-v2', 'backup-v2'])
+    parser.add_argument('action', choices=['install', 'update', 'init', 'stage', 'run', 'health', 'backup', 'switch', 'unit', 'migrate-key', 'fresh-v2', 'install-v2', 'replace-v2', 'update-v2', 'backup-v2', 'enable-push-v2'])
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--ip')
     parser.add_argument('--expected-pg-system-id')
@@ -1260,6 +1366,9 @@ def main():
     elif args.action == 'unit':
         config(root)
         print(unit(root), end='')
+    elif args.action == 'enable-push-v2':
+        enable_push_v2(root, args.unit_name)
+        print('PASS: push gateway enabled on the current release; credential loaded by systemd only')
 
 
 if __name__ == '__main__':

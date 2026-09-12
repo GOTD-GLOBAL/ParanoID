@@ -717,6 +717,19 @@ fn sign_session(
             String::new(),
         ),
         ("turn", None) => ("GET", "/v2/voice/turn".to_owned(), String::new()),
+        // Push wake registration (RFC-0020): the FCM registration token is an opaque
+        // Google-issued string; the server stores it per account/device and never
+        // learns anything else. Empty token = unregister.
+        ("push", Some(token)) => {
+            if token.len() > 4096 || !token.bytes().all(|b| b.is_ascii_graphic()) {
+                return Err("invalid_push_token");
+            }
+            (
+                "POST",
+                "/v2/push".to_owned(),
+                json!({"platform":"fcm","token":token}).to_string(),
+            )
+        }
         _ => return Err("invalid_session_operation"),
     };
     let nonce = uuid::Uuid::new_v4().to_string();

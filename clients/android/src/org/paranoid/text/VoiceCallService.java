@@ -6,13 +6,30 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.os.*;
 
-/** Microphone service starts only from a visible explicit call/answer action. */
+/** Microphone (and, after an explicit camera toggle, camera) service starts only from a visible explicit call/answer action. */
 public final class VoiceCallService extends Service {
     private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming-v2",LEGACY_INCOMING="paranoid-call-incoming",STOP="global.paranoid.messenger.END_CALL";
     private static final int ACTIVE_ID=51,INCOMING_ID=52;
     private static Runnable pending;
-    private static boolean running;
+    private static boolean running,videoActive;
+    private static final String VIDEO="global.paranoid.messenger.CALL_VIDEO";
     private String ownedCall="";
+    /** Promote/demote the foreground type to include camera; never starts the service by itself. */
+    public static void video(Context context,boolean enabled){
+        if(!running||videoActive==enabled)return;videoActive=enabled;
+        try{context.startService(new Intent(context,VoiceCallService.class).setAction(VIDEO).putExtra("video",enabled));}catch(RuntimeException ignored){}
+    }
+    private int types(){
+        if(Build.VERSION.SDK_INT<34)return 0;
+        int t=android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+        if(videoActive&&checkSelfPermission(Manifest.permission.CAMERA)==PackageManager.PERMISSION_GRANTED)t|=android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+        return t;
+    }
+    private Notification active(String title){
+        return new Notification.Builder(this,CHANNEL).setSmallIcon(android.R.drawable.sym_call_outgoing)
+            .setContentTitle(title).setContentText("Нажмите, чтобы вернуться к звонку")
+            .setContentIntent(open(this)).setOngoing(true).setOnlyAlertOnce(true).setCategory(Notification.CATEGORY_CALL).setVisibility(Notification.VISIBILITY_PRIVATE).build();
+    }
     public static void begin(Activity activity,Runnable ready){
         if(activity.isFinishing()||activity.isDestroyed()||activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED)return;
         if(running){ready.run();return;}
@@ -20,7 +37,7 @@ public final class VoiceCallService extends Service {
         try{activity.startForegroundService(new Intent(activity,VoiceCallService.class));}
         catch(RuntimeException error){pending=null;TextEngine.get(activity).calls().authorizationLost();android.widget.Toast.makeText(activity,"Не удалось начать звонок. Откройте приложение и повторите.",android.widget.Toast.LENGTH_LONG).show();}
     }
-    public static void stop(Context context){pending=null;running=false;context.stopService(new Intent(context,VoiceCallService.class));}
+    public static void stop(Context context){pending=null;running=false;videoActive=false;context.stopService(new Intent(context,VoiceCallService.class));}
     private static PendingIntent open(Context context){return PendingIntent.getActivity(context,51,new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);}
     public static void incoming(Context context){
         try{
@@ -37,11 +54,19 @@ public final class VoiceCallService extends Service {
             manager.notify(INCOMING_ID,new Notification.Builder(context,INCOMING).setSmallIcon(android.R.drawable.sym_call_incoming)
                 .setContentTitle("Входящий звонок ParanoID").setContentText("Откройте приложение, чтобы ответить")
                 .setCategory(Notification.CATEGORY_CALL).setContentIntent(open(context)).setFullScreenIntent(full,true)
-                .setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE).build());
+                .setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE).setPriority(Notification.PRIORITY_MAX).build());
         }catch(RuntimeException ignored){/* Never grant microphone access from a notification failure. */}
     }
     public static void clearIncoming(Context context){context.getSystemService(NotificationManager.class).cancel(INCOMING_ID);}
     @Override public int onStartCommand(Intent intent,int flags,int startId){
+        if(intent!=null&&VIDEO.equals(intent.getAction())){
+            if(!running){stopSelf();return START_NOT_STICKY;}
+            try{
+                String title=videoActive?"Видеозвонок ParanoID":"Аудиозвонок ParanoID";
+                if(Build.VERSION.SDK_INT>=34)startForeground(ACTIVE_ID,active(title),types());else startForeground(ACTIVE_ID,active(title));
+            }catch(RuntimeException error){videoActive=false;TextEngine.get(this).calls().videoUnavailable(TextEngine.get(this).calls().snapshot().optLong("generation"));}
+            return START_NOT_STICKY;
+        }
         if(intent!=null&&STOP.equals(intent.getAction())){
             CallController calls=TextEngine.get(this).calls();org.json.JSONObject view=calls.snapshot();
             if(calls.active()&&view.optString("call_id").equals(intent.getStringExtra("call_id"))&&view.optLong("generation")==intent.getLongExtra("generation",-1)){calls.hangup();stopSelf();}

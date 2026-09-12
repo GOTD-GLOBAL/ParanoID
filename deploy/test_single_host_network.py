@@ -103,8 +103,15 @@ class RenderTests(unittest.TestCase):
         names = [r['comment'].split(':')[-1] for r in rules]
         self.assertLess(names.index('same-host-media'), names.index('deny-local'))
         self.assertLess(names.index('deny-local'), names.index('listener-udp'))
-        self.assertEqual(rules[0]['expr'][0]['match']['right'], 1977)
-        self.assertEqual(rules[0]['expr'][-1], {'return': None})
+        # Orphaned TCP tails (closed sockets still draining) have no skuid and
+        # must never reach deny-other; only TCP conntrack continuation is accepted.
+        self.assertEqual(names[0], 'tcp-established')
+        self.assertEqual(rules[0]['expr'][0], {'match': {'op': '==', 'left': {'meta': {'key': 'l4proto'}}, 'right': 'tcp'}})
+        self.assertEqual(rules[0]['expr'][1]['match']['right'], {'set': ['established', 'related']})
+        self.assertEqual(rules[0]['expr'][-1], {'accept': None})
+        self.assertNotIn('udp', json.dumps(rules[0]))
+        self.assertEqual(rules[1]['expr'][0]['match']['right'], 1977)
+        self.assertEqual(rules[1]['expr'][-1], {'return': None})
         self.assertEqual(rules[-1]['expr'], [{'drop': None}])
         own = rules[names.index('same-host-media')]['expr']
         fields = {e['match']['left']['payload']['field']: e['match']['right']

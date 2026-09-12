@@ -37,6 +37,10 @@ public final class RealtimeLoop implements AutoCloseable {
     private volatile long generation;
     private volatile RealtimeTransport transport;
     private volatile Session session;
+    // RFC-0020: FCM token to announce over the signed session; registered once per (session,token).
+    private volatile String pushToken="";
+    private Session pushedSession;private String pushedToken="";
+    public void pushToken(String token){pushToken=token==null?"":token;kick();}
     private volatile boolean discoveryNeeded=true,realtime;
     private long discoveryAt,lastProof;
     private volatile long legacyUntil;
@@ -52,6 +56,19 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     public void start(){synchronized(lifecycle){if(closed)return;if(!enabled){enabled=true;generation++;}lifecycle.notifyAll();}kick();}
     public void kick(){synchronized(wakeGate){if(outbound.availablePermits()==0)outbound.release();}}
+    /** Network changed (Wi-Fi/mobile switch, connectivity restored): abandon the current long-poll and
+     *  backoff pause immediately and reconnect on a fresh generation. No-op while stopped. */
+    public void restart(){
+        synchronized(lifecycle){if(closed||!enabled)return;generation++;lifecycle.notifyAll();}kick();
+        RealtimeTransport current=transport;
+        if(current!=null&&cancelling.compareAndSet(false,true)) {
+            Thread cancel=new Thread(()->{try{current.cancelActive();}finally{cancelling.set(false);}},"paranoid-cancel");cancel.setDaemon(true);cancel.start();
+        }
+    }
+    /** RFC-0020 wake: leave a backoff pause now and poll. Unlike restart() this keeps the
+     *  generation, so an in-flight voice relay request or long-poll is never abandoned. */
+    public void nudge(){synchronized(lifecycle){nudges++;lifecycle.notifyAll();}kick();}
+    private long nudges;
     public void stop(){
         synchronized(lifecycle){enabled=false;generation++;lifecycle.notifyAll();}kick();
         cancelVoiceRelay();
@@ -152,7 +169,7 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     private void pause(long run,long millis)throws InterruptedException {
         long end=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(millis);
-        synchronized(lifecycle){while(current(run)){long left=end-System.nanoTime();if(left<=0)return;TimeUnit.NANOSECONDS.timedWait(lifecycle,left);}}
+        synchronized(lifecycle){long seen=nudges;while(current(run)&&nudges==seen){long left=end-System.nanoTime();if(left<=0)return;TimeUnit.NANOSECONDS.timedWait(lifecycle,left);}}
         guard(run);
     }
     private JSONObject proof(long run,String purpose,String method,String path,String body)throws Exception {
@@ -194,6 +211,21 @@ public final class RealtimeLoop implements AutoCloseable {
             }
         }
     }
+    private void registerPush(long run,Session context)throws Exception {
+        String token=pushToken;
+        if(context==null||token.isEmpty()||(pushedSession==context&&pushedToken.equals(token)))return;
+        // Best effort, never on the critical path of sending: a server without the RFC-0020
+        // route (404), a core without the selector, or any transport error must not stall the
+        // outbox or invalidate the session. Marked done for this session either way; a new
+        // session or a new token retries.
+        pushedSession=context;pushedToken=token;
+        try {
+            JSONObject request=state(run,()->client.sessionRequest(context.context,"push",token));
+            guard(run);
+            transport.call(request.getString("method"),request.getString("path"),request.getString("body"),request.getString("authorization"));
+        } catch(Idle|InterruptedException stop){throw stop;}
+        catch(Exception ignored){pushedSession=null;/* retry with the next session */}
+    }
     private JSONObject sessionCall(long run,Session context,String operation,String id)throws Exception {
         for(int attempt=0;;attempt++) {
             JSONObject request=state(run,()->client.sessionRequest(context.context,operation,id));
@@ -218,6 +250,7 @@ public final class RealtimeLoop implements AutoCloseable {
             try {
                 run=awaitEnabled();if(!outbound.tryAcquire(1,TimeUnit.SECONDS))continue;final long selected=run;
                 Session context=connection(run);
+                registerPush(run,context);
                 JSONArray pending=state(run,client::pending);
                 Exception deferred=null;
                 for(int n=0;n<pending.length();n++) {

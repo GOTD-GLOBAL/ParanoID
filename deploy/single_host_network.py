@@ -94,6 +94,16 @@ def _objects(spec):
     def udp():
         return [_match(_meta('nfproto'), 'ipv4'), _match(_meta('l4proto'), 'udp')]
     relay_range = {'range': [40000, 40015]}
+    # Orphaned TCP segments (a socket closed by its owner while the kernel is
+    # still draining its send queue, e.g. the tail of a 16 MB APK response
+    # followed by `Connection: close`) carry no socket owner, so `skuid !=`
+    # does not match them and they would fall through to deny-other. The
+    # messaging server never uses UDP and the relay's only TCP listener is
+    # covered below, so continuing established/related TCP first keeps every
+    # existing UDP/bogon/local restriction for the relay unchanged.
+    rule('tcp-established', [_match(_meta('l4proto'), 'tcp'),
+                             _match({'ct': {'key': 'state'}}, {'set': ['established', 'related']}, 'in'),
+                             {'accept': None}])
     rule('other-uids', [_match(_meta('skuid'), spec['relay_uid'], '!='), {'return': None}])
     rule('deny-ipv6', [_match(_meta('nfproto'), 'ipv6'), {'drop': None}])
     rule('same-host-media', udp() + [_match(_payload('ip', 'saddr'), spec['ip']),
@@ -208,9 +218,20 @@ def canonical_expr(expr):
             if (isinstance(left, dict) and isinstance(left.get('fib'), dict)
                     and left['fib'].get('result') == 'type' and right in _FIB_TYPES):
                 item['match']['right'] = _FIB_TYPES[right]
-            if (isinstance(left, dict) and left.get('ct') == {'key': 'state'}
-                    and right in _CT_STATES):
-                item['match']['right'] = _CT_STATES[right]
+            if isinstance(left, dict) and left.get('ct') == {'key': 'state'}:
+                if isinstance(right, dict) and set(right) == {'set'} and isinstance(right['set'], list):
+                    # Kernel readback may return numeric bitmask members and any order.
+                    members = [_CT_STATES.get(v, v) if not isinstance(v, dict) else v for v in right['set']]
+                    if all(isinstance(v, str) for v in members):
+                        members = sorted(members)
+                    item['match']['right'] = {'set': members}
+                    # Readback (nftables v1.0.9) reports a bitmask-set membership test as `==`.
+                    if item['match'].get('op') in ('in', '=='):
+                        item['match']['op'] = 'in'
+                elif isinstance(right, list):
+                    item['match']['right'] = {'set': sorted(_CT_STATES.get(v, v) for v in right if not isinstance(v, dict))}
+                elif not isinstance(right, dict) and right in _CT_STATES:
+                    item['match']['right'] = _CT_STATES[right]
         result.append(item)
     return result
 
