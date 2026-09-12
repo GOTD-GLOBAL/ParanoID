@@ -64,6 +64,12 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.21-push` (versionCode 21, 2026-09-12): hotfix — v20 was built from the
+  video branch before it contained the core `push` signing operation (main
+  `dd072ec`), so the Java token registration hit an unknown core selector and
+  the send lane stalled ("В очереди", owner report 2026-09-12 21:30). v21 is
+  built after merging main; registration failures of any kind can no longer
+  block sending (they are logged and retried on the next session).
 - `0.0.20-push` (versionCode 20, 2026-09-12, RFC-0020 client half): Firebase
   Cloud Messaging is embedded through a SHA256-pinned 61-artifact closure in
   the manual javac/d8 build (no Gradle; `firebase_dependency.py`). After the

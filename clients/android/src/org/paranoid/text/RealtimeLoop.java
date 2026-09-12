@@ -210,13 +210,17 @@ public final class RealtimeLoop implements AutoCloseable {
     private void registerPush(long run,Session context)throws Exception {
         String token=pushToken;
         if(context==null||token.isEmpty()||(pushedSession==context&&pushedToken.equals(token)))return;
-        // Not via sessionCall: a server without the RFC-0020 route answers 404 (no route) or
-        // 404 push_disabled, and that must not invalidate the session or trigger rediscovery.
-        JSONObject request=state(run,()->client.sessionRequest(context.context,"push",token));
-        guard(run);
-        try{transport.call(request.getString("method"),request.getString("path"),request.getString("body"),request.getString("authorization"));}
-        catch(SyncCycle.Rejected error){if(error.status!=404)throw error;/* gateway absent: retry after the next session */}
+        // Best effort, never on the critical path of sending: a server without the RFC-0020
+        // route (404), a core without the selector, or any transport error must not stall the
+        // outbox or invalidate the session. Marked done for this session either way; a new
+        // session or a new token retries.
         pushedSession=context;pushedToken=token;
+        try {
+            JSONObject request=state(run,()->client.sessionRequest(context.context,"push",token));
+            guard(run);
+            transport.call(request.getString("method"),request.getString("path"),request.getString("body"),request.getString("authorization"));
+        } catch(Idle|InterruptedException stop){throw stop;}
+        catch(Exception ignored){pushedSession=null;/* retry with the next session */}
     }
     private JSONObject sessionCall(long run,Session context,String operation,String id)throws Exception {
         for(int attempt=0;;attempt++) {

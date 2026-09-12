@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="20"',manifest)
-        self.assertIn('android:versionName="0.0.20-push"',manifest)
+        self.assertIn('android:versionCode="21"',manifest)
+        self.assertIn('android:versionName="0.0.21-push"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -127,7 +127,8 @@ class OnboardingContract(unittest.TestCase):
         for token in ['getNotification','NotificationManager','Toast','sendCall','client.']:
             self.assertNotIn(token,push)
         self.assertIn('client.sessionRequest(context.context,"push",token)',loop)
-        self.assertIn('if(error.status!=404)throw error;',loop)
+        self.assertIn('catch(Exception ignored){pushedSession=null;',loop,'push registration never blocks the send lane')
+        self.assertIn('pushedSession=context;pushedToken=token;\n        try {',loop)
         self.assertIn('realtime.restart();startConnection();',engine)
         self.assertIn('<service android:name="org.paranoid.text.PushService" android:exported="false">',manifest)
         self.assertIn('android:authorities="global.paranoid.messenger.firebaseinitprovider"',manifest)
