@@ -13,7 +13,10 @@
 // `fail_next_commit`, `post_without_accept` and `view`, and `<base64 value>`
 // carries the operation's argument (a contact text, a small JSON object, or
 // nothing). A refused request answers `{"error":…,"detail":…}` instead of a
-// view, exactly as the Java fixture does, and the process stays alive.
+// view, exactly as the Java fixture does, and the process stays alive. One
+// operation is the iOS fixture's own: `longpoll` runs both lanes for the
+// number of seconds it is given, which is the only way to exercise the
+// long-poll transport from a tool that otherwise answers one line per request.
 //
 // Everything below the protocol is the real client: `StateOwner` holds the
 // `SelfServiceClient` and every bridge call runs on it, `SnapshotStore` commits
@@ -35,16 +38,15 @@
 // this tool can only ever dial the realm and pin it was given on the command
 // line. It has no way to reach the hosted server.
 //
-// What is not here yet: `sync` performs the connection cycle of
-// `ProofFlow.connect()` — register if needed, discover the capability, issue
-// and validate a session — and **not** the outbox flush and inbox drain of
-// `SelfServiceClient.java:207-216`, because the iOS sync cycle has not landed
-// yet. The operations that need it (`send`, `pair`, `block`,
-// `fail_next_commit`) enqueue and commit exactly as the client does, and
-// `post_without_accept` signs and sends one envelope, but nothing flushes an
-// outbox or drains an inbox until that step. The registration scenario of
-// `clients/ios/test_clean_self_service.py --registration-only` is what this
-// file is exercised by today.
+// `sync` is one foreground refresh over the shipped lanes: the connection
+// cycle of `ProofFlow.connect()` — register if needed, discover the
+// capability, issue and validate a session — and then `SendLane`, `ReceiveLane`
+// and `SendLane` again, which is `SyncCycle.run(outbound, inbound, frozen)`
+// (`clients/android/src/org/paranoid/text/SyncCycle.java:41-50`). `longpoll`
+// is the same two lanes under one generation for a fixed time, which is
+// `RealtimeLoop.run()` as the application drives it between `didBecomeActive`
+// and `didEnterBackground`. Neither re-implements a protocol step: the lanes,
+// the session and every commit are the shipped ones.
 //
 // Output is public: the state text, the wrapping key and the snapshot bytes
 // never leave this process, and nothing here logs one.
@@ -211,10 +213,68 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
     }
 }
 
+// MARK: - What the lanes published
+
+/// Everything the shipped lanes told this fixture, counted.
+///
+/// It is a `RealtimeListener` and nothing more, so what it records is exactly
+/// what a screen would render: the online flag and the status beside it, plus
+/// the authorization notice. A page, an account and a message never reach it.
+///
+/// Both lanes publish on the state owner and the fixture reads the counters
+/// from its own task, so they are kept under a lock. Zero offline
+/// notifications over a long run is the statement a `longpoll` makes: the lane
+/// publishes every failed cycle as it happens, without a debounce
+/// (`RealtimeLoop.java:237,280`), so a single dropped connection that the
+/// client did not absorb would show up here.
+private final class Tally: RealtimeListener, @unchecked Sendable {
+    private let lock = NSLock()
+    private var online = 0
+    private var offline = 0
+    private var lost = 0
+    private var statuses: [String] = []
+
+    func changed(connected: Bool, status: String) {
+        lock.lock()
+        if connected {
+            online += 1
+        } else {
+            offline += 1
+            if !statuses.contains(status) { statuses.append(status) }
+        }
+        lock.unlock()
+    }
+
+    func authorizationLost() {
+        lock.lock()
+        lost += 1
+        lock.unlock()
+    }
+
+    /// Starts counting again: one `longpoll` run is one measurement.
+    func reset() {
+        lock.lock()
+        online = 0
+        offline = 0
+        lost = 0
+        statuses = []
+        lock.unlock()
+    }
+
+    /// The counts, and the distinct user-facing statuses of the failures.
+    var report: [String: Any] {
+        lock.lock()
+        defer { lock.unlock() }
+        return ["online": online, "offline": offline, "authorization_lost": lost,
+                "offline_statuses": statuses]
+    }
+}
+
 // MARK: - One phone
 
 /// Everything one synthetic phone owns: its directory, its in-memory key, the
-/// state owner over them and the flow that talks to the stand.
+/// state owner over them, the flow that talks to the stand and the two lanes
+/// above both.
 ///
 /// The owner is the only thing that holds the client: every operation below
 /// runs one closure on it and gets back a value, exactly as a lane does in the
@@ -226,8 +286,14 @@ private final class Phone {
     let sink: CountingSink
     let owner: StateOwner
     let flow: ProofFlow
+    /// The shipped lanes, in the object the application holds.
+    let loop: RealtimeLoop
+    /// What those lanes published, for the `longpoll` measurement.
+    let tally: Tally
     /// What the last `sync` ended with: `none`, `idle`, `proof` or `session`.
     var connection = "none"
+    /// What the last `longpoll` run measured; empty until one has run.
+    var poll: [String: Any] = [:]
 
     init(directory: URL, key: SymmetricKey, trust: ServiceTrust) throws {
         let store = SnapshotStore(directory: directory, key: key)
@@ -236,8 +302,19 @@ private final class Phone {
         // `compiled: nil`: there is no built-in realm in this tool, so the
         // stand given on the command line is the only server it can reach.
         let client = try SelfServiceClient(saved: saved, sink: sink, fixture: trust, compiled: nil)
-        owner = StateOwner(client: client)
-        flow = ProofFlow(owner: owner, transport: try RealtimeTransport(realm: trust.realm, pin: trust.pin))
+        let transport = try RealtimeTransport(realm: trust.realm, pin: trust.pin)
+        // The wake seam has to be the one object the owner signals and the send
+        // lane waits on, so it is built here and shared, exactly as the
+        // application builds it (`RealtimeLoop`).
+        let signal = WakeSignal()
+        let owner = StateOwner(client: client, hook: signal)
+        let flow = ProofFlow(owner: owner, transport: transport)
+        let tally = Tally()
+        self.owner = owner
+        self.flow = flow
+        self.tally = tally
+        loop = RealtimeLoop(owner: owner, flow: flow, transport: transport,
+                            listener: tally, signal: signal)
     }
 
     /// Runs one operation of the line protocol.
@@ -246,11 +323,15 @@ private final class Phone {
         case "create":
             try await owner.perform { try $0.createIdentity() }
         case "sync":
-            switch try await flow.connect() {
-            case .idle: connection = "idle"
-            case .proof: connection = "proof"
-            case .session: connection = "session"
+            try await syncCycle()
+        case "longpoll":
+            let request = try object(value)
+            guard let seconds = (request["seconds"] as? NSNumber)?.doubleValue,
+                  seconds >= 0, seconds <= 1800
+            else {
+                throw FixtureError(code: "AssertionError", detail: "seconds must be 0...1800")
             }
+            try await longPoll(seconds: seconds)
         case "pair":
             // Android scans the contact through `QrCodec` first; there is no
             // QR codec in ParanoidKit yet, so the text is handed over as it
@@ -291,6 +372,90 @@ private final class Phone {
         }
     }
 
+    // MARK: - One foreground refresh
+
+    /// `sync`: the connection, one pass over the outbox, one page, and the pass
+    /// that carries the receipts the page queued.
+    ///
+    /// It is `SelfServiceClient.sync()` driven through
+    /// `SyncCycle.run(outbound, inbound, frozen)` (`SyncCycle.java:41-50`) with
+    /// the shipped lanes in place of that class's two closures: a first
+    /// outbound failure is remembered rather than reported, because "receive
+    /// does not depend on a successful outbound batch"
+    /// (`SelfServiceClient.java:135`) and the pass after the page is the one
+    /// whose failure the caller hears; an ambiguous local commit is never
+    /// treated as a network failure and ends the cycle where it happened
+    /// (`SyncCycle.java:34-37`).
+    ///
+    /// The generation is minted per call, which is exactly what
+    /// `didBecomeActive` does in the application (`LifecyclePolicy`): the first
+    /// cycle of a generation reads `messages` instead of waiting on `events`,
+    /// so one `sync` is one immediate page and never a twenty-second long poll.
+    /// The session belongs to the owner and survives that restart, so nothing
+    /// here spends one of the account's two slots
+    /// (`docs/protocol/realtime-v1.md:179-181`).
+    private func syncCycle() async throws {
+        let generation = await restart()
+        switch try await flow.connect(under: generation) {
+        case .idle: connection = "idle"
+        case .proof: connection = "proof"
+        case .session: connection = "session"
+        }
+        do {
+            try await loop.send.cycle(under: generation)
+        } catch {
+            if await owner.isFrozen { throw error }
+        }
+        try await loop.receive.cycle(under: generation)
+        try await loop.send.cycle(under: generation)
+        await loop.stop()
+    }
+
+    /// `longpoll`: both lanes, under one generation, for `seconds`.
+    ///
+    /// This is `RealtimeLoop.run()` as the application runs it between
+    /// `didBecomeActive` and `didEnterBackground`, and nothing else: the
+    /// receive lane waits on `GET /v2/events` — at most twenty seconds per
+    /// wait on this server (`docs/protocol/realtime-v1.md:97-99`) — across the
+    /// server's eight-second idle header timeout and its 120-second absolute
+    /// socket lifetime (`:148-151`), and the session is renewed at 240 seconds
+    /// out of the second account slot (`:179-181`). What the run reports is
+    /// what the lanes published.
+    ///
+    /// The generation is superseded **before** the lane task is cancelled, so
+    /// a request the deadline cuts off publishes nothing: `announce` is silent
+    /// under a superseded run, and the measurement therefore counts only
+    /// failures that happened while the lanes were meant to be running.
+    private func longPoll(seconds: Double) async throws {
+        let generation = await restart()
+        tally.reset()
+        let clock = MonotonicClock.continuous
+        let started = clock.now()
+        let before = await owner.session?.id
+        let lanes = Task.detached { [loop] in await loop.run() }
+        try? await Task.sleep(nanoseconds: UInt64(seconds * Double(MonotonicClock.nanosecondsPerSecond)))
+        await loop.stop()
+        lanes.cancel()
+        await lanes.value
+        let elapsed = Double(clock.now().nanoseconds(since: started))
+            / Double(MonotonicClock.nanosecondsPerSecond)
+        let after = await owner.session?.id
+        var report = tally.report
+        report["seconds"] = (elapsed * 10).rounded() / 10
+        report["superseded"] = !(await owner.isCurrent(generation))
+        report["session_held"] = after != nil
+        report["session_renewed"] = before != nil && after != nil && before != after
+        poll = report
+    }
+
+    /// A fresh generation for the operation that follows
+    /// (`StateOwner.start()` mints one only on stopped lanes, so the stop is
+    /// what makes it new).
+    private func restart() async -> Generation {
+        await loop.stop()
+        return await loop.start()
+    }
+
     /// The answer to one request: the client's own public view plus what the
     /// fixture knows about the connection and the commits it made. No state
     /// text, no key, no snapshot bytes.
@@ -314,6 +479,7 @@ private final class Phone {
         out["connection"] = connection
         out["realtime"] = await owner.isRealtime
         out["session"] = await owner.session != nil
+        if operation == "longpoll" { out["longpoll"] = poll }
         return out
     }
 }

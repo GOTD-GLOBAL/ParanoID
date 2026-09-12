@@ -104,12 +104,13 @@ final class LifecycleTests: XCTestCase {
     // MARK: - a call keeps the signalling lanes
 
     func testTheBackgroundStopsTheLanesUnlessACallIsLive() async throws {
-        // The outgoing states of the call controller are `starting`,
-        // `authorizing` and `connecting` (`CallController.java:96,104,147`);
-        // `incoming` is the answered-or-not screen and `connected` is media
-        // flowing. All five are Android's `callActive`
-        // (`TextEngine.java:86`), and the lanes they are signalled over cannot
-        // be the thing that ends them
+        // An outgoing call passes through `starting`, `authorizing`,
+        // `outgoing` and `connecting`
+        // (`CallController.java:96,139,199,147`) and an incoming one through
+        // `incoming`, `authorizing` and `connecting`
+        // (`:179,104,199`); `connected` is media flowing (`:226`). All six are
+        // Android's `callActive` (`TextEngine.java:86`), and the lanes they
+        // are signalled over cannot be the thing that ends them
         // (`docs/clients/core/voice-calls.md:54-58`).
         for state in CallActivity.allCases {
             let source = FakeMonotonicSource()
@@ -123,7 +124,7 @@ final class LifecycleTests: XCTestCase {
             let action = await runner.handle(.didEnterBackground)
 
             switch state {
-            case .starting, .authorizing, .incoming, .connecting, .connected:
+            case .starting, .authorizing, .outgoing, .incoming, .connecting, .connected:
                 XCTAssertEqual(action, .unchanged, "\(state.rawValue) is a live call")
                 XCTAssertEqual(lanes.log, ["start"])
                 let running = await runner.state.isRunning
@@ -312,12 +313,18 @@ final class LifecycleTests: XCTestCase {
     func testTheCallStatesThatKeepTheLanesAreAndroidsCallActive() {
         // `callActive = !state.equals("idle") && !state.equals("ended")`
         // (`TextEngine.java:86`), and the raw values are the strings the
-        // controller publishes (`CallController.java:49,93,96,104,139,147,179,226,264`).
+        // controller publishes (`CallController.java:49,93,96,104,139,147,179,199,226,264`).
         XCTAssertEqual(CallActivity.allCases.filter(\.isActive).map(\.rawValue),
-                       ["starting", "authorizing", "incoming", "connecting", "connected"])
+                       ["starting", "authorizing", "outgoing", "incoming", "connecting",
+                        "connected"])
         XCTAssertEqual(CallActivity.allCases.filter { !$0.isActive }.map(\.rawValue),
                        ["idle", "ended"])
         XCTAssertEqual(CallActivity(rawValue: "connected"), .connected)
+        // Every published string is a case: a state the controller can publish
+        // and this enum cannot represent would be read as `idle` by the call
+        // screen's `?? .idle` and would take the lanes down mid-call
+        // (`CallController.java:199`).
+        XCTAssertEqual(CallActivity(rawValue: "outgoing"), .outgoing)
         XCTAssertNil(CallActivity(rawValue: "draining"))
     }
 

@@ -22,7 +22,7 @@ public enum LifecyclePhase: Sendable, Equatable {
 }
 
 /// How far along the call controller is, in the words the core and the Android
-/// controller publish (`clients/android/src/org/paranoid/text/CallController.java:49,93,96,104,139,147,179,226,264`).
+/// controller publish (`clients/android/src/org/paranoid/text/CallController.java:49,93,96,104,139,147,179,199,226,264`).
 ///
 /// The raw values are those published strings, so the call controller that
 /// arrives with the call screens maps its view without a table of its own.
@@ -37,11 +37,21 @@ public enum CallActivity: String, Sendable, Equatable, CaseIterable {
     case idle
     /// An outgoing call the user has just placed (`:96`).
     case starting
-    /// An outgoing call waiting for the callee's nonce (`:104,139`).
+    /// The nonce exchange is done and the issuer has not answered yet: an
+    /// outgoing call that received the callee's `ready` (`:139`) or an
+    /// incoming call the user has just answered (`:104`).
     case authorizing
+    /// An outgoing call whose media is authorized: the offer is being
+    /// gathered and sent and the callee's answer has not arrived
+    /// (`:199`, "Вызываем…" in `MainActivity.java:452`). This is the state an
+    /// outgoing call spends most of its life in, and it is a call like any
+    /// other: the offer it is waiting to send leaves through these lanes.
+    case outgoing
     /// An incoming call on the screen, not yet answered (`:179`).
     case incoming
-    /// The answer is known and the media is coming up (`:147`).
+    /// The media is coming up: an outgoing call whose answer has arrived
+    /// (`:147`) or an incoming call whose media has just been authorized
+    /// (`:199`).
     case connecting
     /// Media is flowing (`:226`).
     case connected
@@ -56,7 +66,7 @@ public enum CallActivity: String, Sendable, Equatable, CaseIterable {
         switch self {
         case .idle, .ended:
             return false
-        case .starting, .authorizing, .incoming, .connecting, .connected:
+        case .starting, .authorizing, .outgoing, .incoming, .connecting, .connected:
             return true
         }
     }
@@ -355,9 +365,17 @@ public actor LifecycleRunner {
             let target = self.target
             lanes = Task { await target.run() }
         case .stop:
-            await target.stop()
-            lanes?.cancel()
+            // The handle on the task is taken out of the actor's state before
+            // the await, so an event that interleaved on that suspension —
+            // only the runner's own teardown timer can, but the actor makes no
+            // promise about it — cannot have the task it launched cancelled or
+            // dropped here. The documented order is unchanged: the counter
+            // moves first, which is what makes the answers in flight
+            // worthless, and the cancellation only frees a parked lane sooner.
+            let paused = lanes
             lanes = nil
+            await target.stop()
+            paused?.cancel()
         case .unchanged:
             break
         }
