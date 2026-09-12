@@ -38,19 +38,27 @@ Scenarios are functions, one per protocol story:
     one phone pairs the other's contact and writes to it, the receiver — which
     scanned nothing — shows the conversation as `network_unverified` and
     replies without pairing, both directions end up double-checked, and the
-    server rows are ciphertext and nothing else. Then the four failure stories
-    that matter: an answer lost after the server committed the envelope (the
-    exact retry keeps its sequence and adds no row), a storage fault on an
-    incoming plaintext-and-receipt candidate (nothing is transmitted, the
-    retained snapshot does not move, the client freezes), a blocked contact
-    (the send is refused and an incoming message from it is acknowledged with
-    nothing), and a five-minute run of the real lanes, which is what crosses
-    the server's eight-second idle header timeout, its 120-second absolute
-    socket lifetime and the 240-second session renewal
-    (`docs/protocol/realtime-v1.md:148-151,179-181`).
+    server rows are ciphertext and nothing else. Then the failure stories that
+    matter: an answer lost after the server committed the envelope (the exact
+    retry keeps its sequence and adds no row), a blocked contact (the send is
+    refused and an incoming message from it is acknowledged with nothing) and
+    a storage fault on an incoming plaintext-and-receipt candidate (nothing is
+    transmitted, the retained snapshot does not move, the client freezes).
+
+`longpoll` (`--longpoll`, part of `local-text`)
+    Five minutes of the real lanes, which is what crosses the server's
+    eight-second idle header timeout, its 120-second absolute socket lifetime
+    and the 240-second session renewal
+    (`docs/protocol/realtime-v1.md:148-151,179-181`). It is off by default so
+    that the ordinary run of this file stays under two minutes, and it is the
+    last story the two phones act out: the storage fault that follows it
+    freezes one of them for good, so nothing that needs a live pair of devices
+    can come after it.
 
 Usage:
   python3 clients/ios/test_clean_self_service.py --evidence-dir out/checks/local-text
+  python3 clients/ios/test_clean_self_service.py --longpoll \\
+      --evidence-dir out/checks/local-text
   python3 clients/ios/test_clean_self_service.py --registration-only \\
       --evidence-dir out/checks/registration
 
@@ -455,14 +463,21 @@ def scenario_registration(bridge):
 
 
 def scenario_local_text(alice, bob, database, seconds):
-    """Two phones, four texts, four receipts, and every failure story.
+    """Two phones, their texts and receipts, and every failure story.
 
     The order below is the Android scenario's
     (`clients/android/test_clean_self_service.py:119-215`) reduced to two
     devices, and every step is checked on both sides and in the cluster:
     nothing is taken from the sender's own view alone.
+
+    - Parameter seconds: how long the long-poll story runs, or `None` to leave
+      that story out of this run (`--longpoll`).
     """
     a, b = PHONES['a'], PHONES['b']
+    # Every text this run gets the server to commit. The receipts are counted
+    # against it at the end, so the tally holds whether or not the long-poll
+    # story ran.
+    posted_texts = 0
     view_a, registration_a, secrets = register(alice, a)
     view_b, registration_b, more = register(bob, b)
     secrets = secrets | more
@@ -492,6 +507,7 @@ def scenario_local_text(alice, bob, database, seconds):
             'a queued envelope is not frame 2 before it reaches the network')
 
     sent = alice.rpc(a, 'sync')
+    posted_texts += 1
     mark = dialog(sent, account_b)['messages'][0]
     require(mark['accepted'], 'the server acceptance did not commit')
     require(not mark['delivered'], 'a message is double-checked before any receipt arrived')
@@ -523,6 +539,7 @@ def scenario_local_text(alice, bob, database, seconds):
 
     bob.rpc(b, 'send', json.dumps({'account': account_a, 'text': TEXTS['reply']}))
     bob.rpc(b, 'sync')
+    posted_texts += 1
     answered = alice.rpc(a, 'sync')
     require(texts(dialog(answered, account_b)) == [TEXTS['first'], TEXTS['reply']],
             'the unverified reply did not arrive')
@@ -536,6 +553,7 @@ def scenario_local_text(alice, bob, database, seconds):
     require(len(outbox) == 1, 'the outbox does not hold exactly the text to lose the answer to')
     lost = outbox[0]
     alice.rpc(a, 'post_without_accept')
+    posted_texts += 1
     committed = {row['id']: row for row in database.messages()}
     require(lost['id'] in committed, 'the server did not commit the envelope whose answer was lost')
     require(committed[lost['id']]['ciphertext'] == lost['ciphertext'],
@@ -565,6 +583,7 @@ def scenario_local_text(alice, bob, database, seconds):
             f'sending to a blocked contact was not refused as contact_blocked: {refused}')
     bob.rpc(b, 'send', json.dumps({'account': account_a, 'text': TEXTS['blocked']}))
     bob.rpc(b, 'sync')
+    posted_texts += 1
     before_rows = database.messages()
     suppressed = alice.rpc(a, 'sync')
     require(suppressed['rejected_count'] == 1,
@@ -582,39 +601,65 @@ def scenario_local_text(alice, bob, database, seconds):
     require(dialog(alice.rpc(a, 'view'), account_b)['channel'] == channel,
             'block and unblock moved the channel')
 
-    # -- 6. five minutes of the real lanes ------------------------------------
-    posted = len(database.messages())
-    alice.request(a, 'longpoll', json.dumps({'seconds': seconds}))
-    # The other process keeps working while that one waits: this is why the
-    # scenario needs two of them.
-    bob.rpc(b, 'send', json.dumps({'account': account_a, 'text': TEXTS['polled']}))
-    bob.rpc(b, 'sync')
-    database.wait_for(posted + 2, DELIVERY_TIMEOUT)
-    polled = alice.response(a, 'longpoll')
-    run = polled['longpoll']
-    require(run['seconds'] >= seconds,
-            f'the lanes ran {run["seconds"]} s of the requested {seconds} s')
-    require(run['offline'] == 0 and run['offline_statuses'] == [],
-            f'the lanes reported {run["offline"]} failures: {run["offline_statuses"]}')
-    require(run['authorization_lost'] == 0, 'the lanes lost authorization during the run')
-    pages = max(1, seconds // LONGPOLL_PAGE_SECONDS)
-    require(run['online'] >= pages,
-            f'the lanes published {run["online"]} pages, expected at least {pages} in {seconds} s')
-    require(run['superseded'] is True, 'stopping the lanes did not supersede their generation')
-    require(run['session_held'] is True, 'the run ended without a session')
-    require(texts(dialog(polled, account_b))[-1] == TEXTS['polled'],
-            'the message sent during the run did not arrive through the long poll')
-    require(alice.rpc(a, 'pending')['pending'] == [],
-            'the receipt of that message did not leave the device during the run')
-    reading = bob.rpc(b, 'sync')
-    checked = [message for message in mine(dialog(reading, account_a))
-               if message['text'] == TEXTS['polled']]
-    require(len(checked) == 1 and checked[0]['accepted'] and checked[0]['delivered'],
-            f'the message sent during the run was never double-checked: {checked}')
+    # -- 6. the real lanes, for as long as this run asks ----------------------
+    # Last of the stories the two live phones act out, and the only one this
+    # file leaves out by default: it costs `seconds` of wall clock, and the
+    # storage fault below freezes one of the two devices for good.
+    if seconds is None:
+        longpoll = {'run': False, 'requested_seconds': None}
+    else:
+        posted = len(database.messages())
+        alice.request(a, 'longpoll', json.dumps({'seconds': seconds}))
+        # The other process keeps working while that one waits: this is why the
+        # scenario needs two of them.
+        bob.rpc(b, 'send', json.dumps({'account': account_a, 'text': TEXTS['polled']}))
+        bob.rpc(b, 'sync')
+        posted_texts += 1
+        database.wait_for(posted + 2, DELIVERY_TIMEOUT)
+        polled = alice.response(a, 'longpoll')
+        measured = polled['longpoll']
+        require(measured['seconds'] >= seconds,
+                f'the lanes ran {measured["seconds"]} s of the requested {seconds} s')
+        require(measured['offline'] == 0 and measured['offline_statuses'] == [],
+                f'the lanes reported {measured["offline"]} failures: '
+                f'{measured["offline_statuses"]}')
+        require(measured['authorization_lost'] == 0,
+                'the lanes lost authorization during the run')
+        pages = max(1, seconds // LONGPOLL_PAGE_SECONDS)
+        require(measured['online'] >= pages,
+                f'the lanes published {measured["online"]} pages, '
+                f'expected at least {pages} in {seconds} s')
+        require(measured['superseded'] is True,
+                'stopping the lanes did not supersede their generation')
+        require(measured['session_held'] is True, 'the run ended without a session')
+        require(texts(dialog(polled, account_b))[-1] == TEXTS['polled'],
+                'the message sent during the run did not arrive through the long poll')
+        require(alice.rpc(a, 'pending')['pending'] == [],
+                'the receipt of that message did not leave the device during the run')
+        reading = bob.rpc(b, 'sync')
+        checked = [message for message in mine(dialog(reading, account_a))
+                   if message['text'] == TEXTS['polled']]
+        require(len(checked) == 1 and checked[0]['accepted'] and checked[0]['delivered'],
+                f'the message sent during the run was never double-checked: {checked}')
+        longpoll = {'run': True,
+                    'requested_seconds': seconds, 'measured_seconds': measured['seconds'],
+                    'online_publications': measured['online'],
+                    'offline_publications': measured['offline'],
+                    'offline_statuses': measured['offline_statuses'],
+                    'authorization_lost': measured['authorization_lost'],
+                    'session_held': measured['session_held'],
+                    'session_renewed': measured['session_renewed'],
+                    # The documented server bounds this run spans, so the
+                    # measurement above can be read against them.
+                    'server_idle_header_timeout_seconds': 8,
+                    'server_socket_lifetime_seconds': 120,
+                    'session_renewal_seconds': 240,
+                    'delivered_during_the_run': 1, 'receipt_sent_during_the_run': True}
 
     # -- 7. the storage fault -------------------------------------------------
     bob.rpc(b, 'send', json.dumps({'account': account_a, 'text': TEXTS['lost']}))
     bob.rpc(b, 'sync')
+    posted_texts += 1
     final_a = alice.rpc(a, 'view')
     before_rows = database.messages()
     before_snapshot = digest(alice.snapshot(a))
@@ -649,19 +694,23 @@ def scenario_local_text(alice, bob, database, seconds):
     delivered_a = [message for message in mine(dialog(final_a, account_b)) if message['delivered']]
     delivered_b = [message for message in mine(dialog(final_b, account_a)) if message['delivered']]
     delivered = len(delivered_a) + len(delivered_b)
-    require(delivered == 4, f'{delivered} messages were double-checked, expected 4')
-    # Six texts were posted — four of them double-checked, one blocked and one
-    # lost to the storage fault — and everything else on the server is a
-    # receipt, one per double check.
-    receipts = len(rows) - 6
+    # Every text but two is double-checked: the one the recipient blocked and
+    # the one whose receipt the storage fault took down with it.
+    expected = posted_texts - 2
+    require(delivered == expected,
+            f'{delivered} messages were double-checked, expected {expected}')
+    # Everything on the server that is not one of those texts is a receipt,
+    # one per double check.
+    receipts = len(rows) - posted_texts
     require(receipts == delivered,
-            f'{len(rows)} stored envelopes are 6 texts and {receipts} receipts, '
-            f'but {delivered} messages are double-checked')
+            f'{len(rows)} stored envelopes are {posted_texts} texts and {receipts} '
+            f'receipts, but {delivered} messages are double-checked')
 
     facts = {
         'phones': 2,
         'registration': {'a': registration_a, 'b': registration_b},
-        'messages': {'texts_double_checked': delivered, 'receipts': receipts,
+        'messages': {'texts_posted': posted_texts,
+                     'texts_double_checked': delivered, 'receipts': receipts,
                      'texts_refused_by_the_recipient': 1,
                      'texts_lost_to_the_storage_fault': 1},
         'server_state': {'envelopes': len(rows), 'frame2': frame2,
@@ -674,14 +723,7 @@ def scenario_local_text(alice, bob, database, seconds):
                             'receipts_added': 0, 'channel_unchanged': True},
         'storage_fault': {'snapshot_sha256_unchanged': True, 'envelopes_added': 0,
                           'frozen': True, 'reported_as': failed['detail']},
-        'longpoll': {'requested_seconds': seconds, 'measured_seconds': run['seconds'],
-                     'online_publications': run['online'],
-                     'offline_publications': run['offline'],
-                     'offline_statuses': run['offline_statuses'],
-                     'authorization_lost': run['authorization_lost'],
-                     'session_held': run['session_held'],
-                     'session_renewed': run['session_renewed'],
-                     'delivered_during_the_run': 1, 'receipt_sent_during_the_run': True},
+        'longpoll': longpoll,
         'checks': [
             'two clean phones register themselves, each with four durable commits and a session',
             'only the sender scans: the receiver shows the conversation as network_unverified '
@@ -693,8 +735,11 @@ def scenario_local_text(alice, bob, database, seconds):
             'and adds no row',
             'a blocked contact: the send is refused as contact_blocked and an incoming message '
             'is acknowledged with nothing',
-            f'{seconds} s of the real lanes: no failure published, the page kept arriving, '
-            'and a message sent during the run was delivered and acknowledged',
+            f'{seconds} s of the real lanes across the eight-second idle header timeout and '
+            'the 120-second socket lifetime: no failure published, the page kept arriving, and '
+            'a message sent during the run was delivered and acknowledged'
+            if seconds is not None else
+            'the long-poll story was not part of this run (--longpoll)',
             'a storage fault on an incoming plaintext-and-receipt candidate transmits nothing, '
             'leaves the snapshot byte for byte and freezes the client',
         ],
@@ -754,6 +799,7 @@ def run(args):
     evidence = Path(args.evidence_dir or DEFAULT_EVIDENCE_DIR[scenario])
     if not evidence.is_absolute():
         evidence = HERE / evidence
+    seconds = args.longpoll_seconds if args.longpoll else None
     binary = build_bridge(args.skip_build)
 
     stand_argv = ['--work-dir', str(OUT)]
@@ -781,7 +827,7 @@ def run(args):
                 facts, secrets = scenario_registration(device('device-a'))
             else:
                 facts, secrets = scenario_local_text(device('device-a'), device('device-b'),
-                                                     Database(stand), args.longpoll_seconds)
+                                                     Database(stand), seconds)
             secrets = secrets + [stand.descriptor['tls_spki_sha256'],
                                  stand.descriptor['server_url']]
             path = write_evidence(evidence, scenario, facts, secrets, Path(stand.server_binary))
@@ -794,12 +840,13 @@ def run(args):
               + '; '.join(facts['checks']), flush=True)
     else:
         print('PASS: {phones} phones, {texts} texts, {receipts} receipts, '
-              '{plaintext} plaintext rows, longpoll {seconds} s OK'.format(
+              '{plaintext} plaintext rows, {longpoll}'.format(
                   phones=facts['phones'],
                   texts=facts['messages']['texts_double_checked'],
                   receipts=facts['messages']['receipts'],
                   plaintext=facts['server_state']['plaintext_rows'],
-                  seconds=args.longpoll_seconds), flush=True)
+                  longpoll=f'longpoll {seconds} s OK' if seconds is not None
+                  else 'longpoll skipped (--longpoll)'), flush=True)
         print('checks: ' + '; '.join(facts['checks']), flush=True)
     print(f'evidence: {path}', flush=True)
     return 0
@@ -815,9 +862,14 @@ def main(argv=None):
                         help='where the evidence JSON goes; a relative path is resolved '
                              'against clients/ios (default: out/checks/local-text, or '
                              'out/checks/registration with --registration-only)')
+    parser.add_argument('--longpoll', action='store_true',
+                        help='also run the long-poll story, the last and slowest one: the real '
+                             'lanes across the server socket lifetime and the session renewal '
+                             f'(default: left out, so an ordinary run does not cost '
+                             f'{LONGPOLL_SECONDS} s)')
     parser.add_argument('--longpoll-seconds', type=int, default=LONGPOLL_SECONDS,
-                        help=f'how long the realtime lanes run (default {LONGPOLL_SECONDS}; '
-                             'the documented check uses the default)')
+                        help=f'how long the realtime lanes run under --longpoll (default '
+                             f'{LONGPOLL_SECONDS}; the documented check uses the default)')
     parser.add_argument('--server-binary', metavar='PATH',
                         help='use this paranoid-server instead of building the working tree')
     parser.add_argument('--skip-build', action='store_true',
@@ -825,6 +877,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 0 <= args.longpoll_seconds <= 1800:
         parser.error('--longpoll-seconds must be 0..1800')
+    if args.registration_only and args.longpoll:
+        parser.error('--longpoll belongs to the local-text scenario, not to --registration-only')
     try:
         return run(args)
     except Failure as failure:

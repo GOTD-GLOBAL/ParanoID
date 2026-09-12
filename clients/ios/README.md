@@ -418,7 +418,7 @@ the script relays TCP from `<bind>:<port>`; TLS stays end to end (the
 certificate names the LAN address), the same front/back split
 `clients/android/test_realtime.py` uses.
 
-## Clean-install registration (`test_clean_self_service.py`)
+## Clean-install text messaging (`test_clean_self_service.py`)
 
 `ParanoidKit/Sources/service-bridge` is the host-only fixture that drives the
 shipped client classes from a pipe: it reads `<phone>\t<op>\t<base64 value>`
@@ -426,10 +426,13 @@ lines and answers one base64-encoded public view per line, the line protocol of
 `clients/android/test/CleanSelfServiceBridge.java`, with the same five
 synthetic phone names and the same `create` / `sync` / `pair` / `send` /
 `block` / `pending` / `fail_next_commit` / `post_without_accept` / `view`
-operations. Behind it are the real `StateOwner` over `SelfServiceClient`,
-`SnapshotStore`, `ProofFlow` and `RealtimeTransport`; every operation runs one
-closure on the owner and the tool awaits the network once, at the top level of
-`main.swift`, because it has no lanes of its own. Two things only are the
+operations, plus one of its own: `longpoll` runs both lanes for a fixed number
+of seconds, which is the only way to exercise the long-poll transport from a
+tool that otherwise answers one line per request. Behind it are the real
+`StateOwner` over `SelfServiceClient`, `SnapshotStore`, `ProofFlow` and
+`RealtimeTransport`; every operation runs one closure on the owner and the tool
+awaits the network once, at the top level of `main.swift`, because it has no
+lanes of its own. Two things only are the
 fixture's own, because a command-line tool has neither: the AES-256 wrapping
 key lives **in memory** instead of the Keychain
 (`StorageGuard.requireContinuity` is still evaluated against it, so a state
@@ -439,25 +442,56 @@ passed as `nil`, so the tool can dial only the realm and pin on its own
 command line.
 
 `test_clean_self_service.py` builds that executable, brings up the stand above
-and runs the scenario over one bridge process. `--registration-only` is the
-`create` story of `clients/android/test_clean_self_service.py:106-110`: a phone
-with nothing on it creates an identity (`create_identity` then `upgrade_v2`,
-two durable commits, no enrollment yet), registers against the stand and ends
-up with `enrollment.mode == "active"`, a 64-digit `contact_fingerprint` (two
-more commits) and a realtime session that the core validated before it was
-adopted; repeating both operations commits nothing and leaves the snapshot byte
-for byte. The messaging stories need the iOS sync cycle, so today `sync`
-performs `ProofFlow.connect()` only — register, discover, open a session — and
-the run refuses anything but `--registration-only`.
+and runs one of two scenarios over it. `--registration-only` is the `create`
+story of `clients/android/test_clean_self_service.py:106-110`: a phone with
+nothing on it creates an identity (`create_identity` then `upgrade_v2`, two
+durable commits, no enrollment yet), registers against the stand and ends up
+with `enrollment.mode == "active"`, a 64-digit `contact_fingerprint` (two more
+commits) and a realtime session that the core validated before it was adopted;
+repeating both operations commits nothing and leaves the snapshot byte for
+byte.
+
+The default scenario is the messaging one, and it runs over two bridge
+processes: two devices that share nothing but the server, and a phone parked in
+a long poll cannot answer a line while it waits. In order, each step checked on
+both sides and in the cluster — one phone pairs the other's contact and writes
+to it, which is one check after the server accepted the envelope and never
+before; the receiver, which scanned nothing, shows the conversation as
+`network_unverified` and replies without pairing, and both directions end up
+double-checked; `psql` proves every stored row is frame-2 ciphertext, byte for
+byte what the core signed, and that no text this run sent appears in any table
+of the cluster; an answer lost after the server committed is retried exactly,
+keeps its `sequence` and adds no row; a blocked contact refuses the send as
+`contact_blocked` and acknowledges an incoming message from it with nothing;
+and a storage fault on an incoming plaintext-and-receipt candidate transmits
+nothing, leaves the retained snapshot byte for byte and freezes the client.
+
+`--longpoll` adds the slowest story, which is also the last one the two live
+phones can act out, because the storage fault above freezes one of them for
+good: five minutes of the real lanes, which is what crosses the server's
+eight-second idle header timeout, its 120-second absolute socket lifetime and
+the 240-second session renewal
+(`docs/protocol/realtime-v1.md:148-151,179-181`). The lanes must publish no
+failure over that run, keep the page arriving, and carry a message the peer
+sends in the middle of it together with its receipt. It is off by default, so
+an ordinary run of the file costs about a minute instead of six.
 
 ```sh
 python3 clients/ios/test_clean_self_service.py --registration-only --evidence-dir out/checks/registration
 jq '.enrollment_mode,.session.issued,.snapshot.unchanged_by_repeat' \
   clients/ios/out/checks/registration/registration-result.json   # "active" true true
+python3 clients/ios/test_clean_self_service.py --evidence-dir out/checks/local-text
+# PASS: 2 phones, 3 texts, 3 receipts, 0 plaintext rows, longpoll skipped (--longpoll)
+python3 clients/ios/test_clean_self_service.py --longpoll --evidence-dir out/checks/local-text
+# PASS: 2 phones, 4 texts, 4 receipts, 0 plaintext rows, longpoll 300 s OK
+jq '.server_state.plaintext_rows,.longpoll.offline_publications,.storage_fault.frozen' \
+  clients/ios/out/checks/local-text/clean-fixture-result.json    # 0 0 true
 ```
 
 The evidence names counts, digests and verdicts only: no account, no
-fingerprint, no realm, no pin and no snapshot bytes.
+fingerprint, no realm, no pin and no snapshot bytes. Both scenarios carry the
+digest of the server binary they ran against and of the
+`ParanoidCore.xcframework` slice the bridge linked.
 
 ## Checks
 
@@ -491,6 +525,8 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -only-testing:ParanoIDTests/KeychainStoreTests                              # Keychain and install marker (needs the simulator signature)
 python3 clients/ios/test_clean_self_service.py --registration-only \
   --evidence-dir out/checks/registration                                      # clean-install registration on the local stand
+python3 clients/ios/test_clean_self_service.py --longpoll \
+  --evidence-dir out/checks/local-text                                        # two phones: texts, receipts, ciphertext and every failure story
 ```
 
 ## Rules that apply to every change here
