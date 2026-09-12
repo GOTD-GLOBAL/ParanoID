@@ -11,8 +11,8 @@ git).
 ## Status
 
 This directory is a **candidate under development** proposed in
-[RFC-0019](../../docs/rfcs/0019-ios-client.md) and recorded as
-[draft ADR-0013](../../docs/decisions/0013-ios-client.md) for REQ-CLIENT-001.
+[RFC-0020](../../docs/rfcs/0020-ios-client.md) and recorded as
+[draft ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
 Nothing in it is accepted architecture; no build has been installed on a phone,
 no hosted account has been created and no TestFlight upload has happened unless
 the [verification table](../../docs/clients/ios/verification.md) says `SHOWN`
@@ -98,15 +98,16 @@ libraries without a warning.
 ## Swift package (`ParanoidKit/`)
 
 `ParanoidKit` is the SwiftPM library (iOS 17; macOS 14 only for the host
-tests) that holds everything above the bridge in the RFC-0019 design:
+tests) that holds everything above the bridge in the RFC-0020 design:
 storage, TLS, transport, realtime, calls and the UI model. `Package.swift`
 declares the `ParanoidCoreFFI` binary target at
 `Binaries/ParanoidCore.xcframework` (git-ignored, produced by `build-core.sh`,
 which must run first) and the `WebRTC` binary target at
 `Binaries/WebRTC.xcframework` (git-ignored, produced by
-`webrtc_dependency.py`), and no package dependency at all; the
-`service-bridge`, `core-bridge` and `tls-smoke` executables named in RFC-0019
-arrive with their own pull-request steps. The `WebRTC` target is exported as
+`webrtc_dependency.py`), and no package dependency at all; `service-bridge` is
+the host-only registration fixture described below, and the `core-bridge` and
+`tls-smoke` executables named in RFC-0020 arrive with their own pull-request
+steps. The `WebRTC` target is exported as
 its own product and **no** target of the package depends on it: the
 xcframework carries no macOS slice, so keeping `ParanoidKit` itself free of it
 is what lets the host `swift test` run build. `Sources/ParanoidKit/Core/` is
@@ -160,6 +161,29 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   stale Keychain key is deleted and the marker is recorded, and only then is
   Android's exclusive-or (`StorageGuard.java:7-8`) evaluated — a key without a
   file, or a file without a key, freezes.
+- `Sources/ParanoidKit/Service/` is the application adapter over the unchanged
+  v2 opaque transport, the port of `SelfServiceClient.java`. `Snapshot` is the
+  stored version-4 wrapper
+  (`{"version":4,"realm":…,"tls_pin":…,"token":"","state":…}`) with the core
+  state inlined verbatim; opening one follows `SelfServiceClient.java:23-44`:
+  a wrapper version other than 4 is `unsupportedSnapshot` and the retained
+  bytes are left exactly as they are, `token` is empty or 64 hexadecimal
+  digits, a schema-0 state left by a crash is validated by running `upgrade_v2`
+  as a dry run that commits nothing, and the realm of the wrapper must be the
+  realm the core state was created for. Every state transition goes through one
+  `apply`, which commits the candidate through `SnapshotSink` **before** it is
+  adopted in memory, handed to a listener or acted on; a `receive_v2` reply
+  without an authenticated disposition is dropped before it is written, and a
+  failed commit freezes the client for the rest of the process. `updateTrust()`
+  is the only source of the realm and the pin, so a frozen client also takes
+  the application off the network — nothing here opens a connection itself.
+  `createIdentity()` is `create_identity` and then `upgrade_v2`, each committed,
+  before any request exists (`SelfServiceClient.java:186`). `ServiceTrust`
+  carries the pair through the same checks the TLS layer uses: a saved pair
+  always wins over a compiled one and a fixture that disagrees with it is
+  refused, and the hosted defaults (`KeyClient.java:9-10`) apply only in a
+  Release build or under `-paranoid-allow-hosted`, so a Debug build with no
+  stand has no realm at all and creates no identity.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests
@@ -177,7 +201,7 @@ from the package directory.
 ## Application project (`App/`)
 
 `App/ParanoID.xcodeproj` is a hand-written project (`objectVersion` 77, no
-generator: ADR-0013 rejects XcodeGen) with three targets, listed by
+generator: ADR-0014 rejects XcodeGen) with three targets, listed by
 `xcodebuild -project clients/ios/App/ParanoID.xcodeproj -list`: the `ParanoID`
 application, the `ParanoIDTests` unit-test bundle hosted in the application
 and the `ParanoIDUITests` UI-test bundle. Each target's sources are a
@@ -294,6 +318,44 @@ the script relays TCP from `<bind>:<port>`; TLS stays end to end (the
 certificate names the LAN address), the same front/back split
 `clients/android/test_realtime.py` uses.
 
+## Clean-install registration (`test_clean_self_service.py`)
+
+`ParanoidKit/Sources/service-bridge` is the host-only fixture that drives the
+shipped client classes from a pipe: it reads `<phone>\t<op>\t<base64 value>`
+lines and answers one base64-encoded public view per line, the line protocol of
+`clients/android/test/CleanSelfServiceBridge.java`, with the same five
+synthetic phone names and the same `create` / `sync` / `pair` / `send` /
+`block` / `pending` / `fail_next_commit` / `post_without_accept` / `view`
+operations. Behind it are the real `SelfServiceClient`, `SnapshotStore`,
+`ProofFlow` and `RealtimeTransport`; two things only are the fixture's own,
+because a command-line tool has neither: the AES-256 wrapping key lives **in
+memory** instead of the Keychain (`StorageGuard.requireContinuity` is still
+evaluated against it, so a state file whose key died with the process freezes)
+and the state file lives under the directory given as the first argument. The
+compiled hosted default is passed as `nil`, so the tool can dial only the realm
+and pin on its own command line.
+
+`test_clean_self_service.py` builds that executable, brings up the stand above
+and runs the scenario over one bridge process. `--registration-only` is the
+`create` story of `clients/android/test_clean_self_service.py:106-110`: a phone
+with nothing on it creates an identity (`create_identity` then `upgrade_v2`,
+two durable commits, no enrollment yet), registers against the stand and ends
+up with `enrollment.mode == "active"`, a 64-digit `contact_fingerprint` (two
+more commits) and a realtime session that the core validated before it was
+adopted; repeating both operations commits nothing and leaves the snapshot byte
+for byte. The messaging stories need the iOS sync cycle, so today `sync`
+performs `ProofFlow.connect()` only — register, discover, open a session — and
+the run refuses anything but `--registration-only`.
+
+```sh
+python3 clients/ios/test_clean_self_service.py --registration-only --evidence-dir out/checks/registration
+jq '.enrollment_mode,.session.issued,.snapshot.unchanged_by_repeat' \
+  clients/ios/out/checks/registration/registration-result.json   # "active" true true
+```
+
+The evidence names counts, digests and verdicts only: no account, no
+fingerprint, no realm, no pin and no snapshot bytes.
+
 ## Checks
 
 ```sh
@@ -314,10 +376,13 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc SDP against the core validator
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
 swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
+swift test --package-path clients/ios/ParanoidKit --filter SelfServiceClientTests # v4 wrapper, opening rules, persist before adopt
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App-signed \
   -only-testing:ParanoIDTests/KeychainStoreTests                              # Keychain and install marker (needs the simulator signature)
+python3 clients/ios/test_clean_self_service.py --registration-only \
+  --evidence-dir out/checks/registration                                      # clean-install registration on the local stand
 ```
 
 ## Rules that apply to every change here
