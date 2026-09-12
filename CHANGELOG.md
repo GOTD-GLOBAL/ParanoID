@@ -64,6 +64,11 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.23-push` (versionCode 23, 2026-09-12): the v22 crash dialog only
+  captured Java exceptions; the owner's call crash left no report, which points
+  at a native (WebRTC/JNI) abort. `CrashLog` now also reads the system's own
+  `ApplicationExitInfo` (Android 11+: CRASH_NATIVE/ANR/SIGNALED with the
+  tombstone head) and shows it once on the next launch. Diagnostic only.
 - `0.0.22-push` (versionCode 22, 2026-09-12): call setup froze after a crash
   on v21 (owner report). A push wake called `RealtimeLoop.restart()`, which
   bumps the loop generation and abandons an in-flight voice-relay (TURN)
