@@ -359,5 +359,65 @@ class LoadedRuntimeBoundaryTests(unittest.TestCase):
         self.assertNotIn('open-ingress',calls)
 
 
+class PolicyMigrationTests(unittest.TestCase):
+    """An update whose kit renders a different reviewed egress policy must retire the previous
+    table under the previous kit's authority and prepare a fresh receipt; rollback restores it."""
+    def setUp(self):
+        import tempfile, os, json
+        self.tmp = tempfile.TemporaryDirectory(prefix='paranoid-migrate-')
+        self.state = Path(self.tmp.name) / 'state'
+        self.state.mkdir(mode=0o700)
+        (self.state / 'transactions' / 'tx2').mkdir(parents=True, mode=0o700)
+        os.chmod(self.state / 'transactions', 0o700)
+        intent = {'profile': installer.PRODUCTION, 'ip': installer.PUBLIC_IP, 'interface': 'enp5s0', 'relay': {'uid': 1999}}
+        self.previous = {'kit_path': str(HERE), 'intent': intent, 'transaction': 'tx1'}
+        self.value = {'kit_path': str(HERE), 'intent': intent, 'transaction': 'tx2'}
+        self.receipt = self.state / 'network-receipt.json'
+        self.receipt.write_bytes(b'{"policy_sha256":"old"}'); os.chmod(self.receipt, 0o600)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_same_policy_is_not_migrated(self):
+        from unittest.mock import patch
+        with patch.object(installer, 'coordinated_network') as network:
+            self.assertFalse(installer.migrate_network_policy(self.state, self.value, self.previous))
+        network.assert_not_called()
+        self.assertTrue(self.receipt.exists())
+
+    def test_changed_policy_removes_previous_table_and_retires_receipt(self):
+        from unittest.mock import patch
+        calls = []
+        digests = {id(self.previous): 'old', id(self.value): 'new'}
+        with patch.object(installer, 'policy_digest', side_effect=lambda v: digests[id(v)]), \
+             patch.object(installer, 'coordinated_network', side_effect=lambda s, v, o: calls.append((v is self.previous, o))), \
+             patch.object(installer, 'save_state'):
+            self.assertTrue(installer.migrate_network_policy(self.state, self.value, self.previous))
+        self.assertEqual(calls, [(True, 'remove')])
+        self.assertFalse(self.receipt.exists())
+        self.assertEqual((self.state / 'transactions/tx2/network-receipt.before').read_bytes(), b'{"policy_sha256":"old"}')
+        self.assertTrue(self.value['network_migrated'])
+        # Rollback before the new receipt existed: the previous receipt simply returns.
+        with patch.object(installer, 'policy_digest', side_effect=lambda v: digests[id(v)]), \
+             patch.object(installer, 'coordinated_network', side_effect=lambda s, v, o: calls.append((v is self.previous, o))):
+            installer.undo_network_migration(self.state, self.value, self.previous)
+        self.assertEqual(self.receipt.read_bytes(), b'{"policy_sha256":"old"}')
+        self.assertEqual(calls, [(True, 'remove')])
+        # Rollback after the new receipt/table existed: close, remove under the NEW kit, then restore.
+        self.receipt.write_bytes(b'{"policy_sha256":"new"}')
+        calls.clear()
+        with patch.object(installer, 'policy_digest', side_effect=lambda v: digests[id(v)]), \
+             patch.object(installer, 'coordinated_network', side_effect=lambda s, v, o: calls.append((v is self.value, o))):
+            installer.undo_network_migration(self.state, self.value, self.previous)
+        self.assertEqual(calls, [(True, 'close-ingress'), (True, 'remove')])
+        self.assertEqual(self.receipt.read_bytes(), b'{"policy_sha256":"old"}')
+
+    def test_receipt_owner_must_match_a_known_kit_policy(self):
+        from unittest.mock import patch
+        with patch.object(installer, 'policy_digest', return_value='other'):
+            with self.assertRaises(ValueError):
+                installer.network_owner(self.state, self.value, self.previous)
+
+
 if __name__ == '__main__':
     unittest.main()
