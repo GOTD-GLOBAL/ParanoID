@@ -397,7 +397,8 @@ public final class WebRtcAudioEngine {
     }
     private void updateProximity() {
         if (proximity == null) return;
-        boolean earpiece = !speaker && connected;
+        // The proximity sensor must never blank the screen while the local camera is on (the user looks at the screen).
+        boolean earpiece = !speaker && connected && !videoEnabled;
         if (Build.VERSION.SDK_INT >= 31) {
             AudioDeviceInfo current = audio.getCommunicationDevice();
             earpiece = earpiece && current != null && current.getType() == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;

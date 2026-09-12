@@ -518,6 +518,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         boolean showStage=live&&(localVideo||remoteVideo);
         if(showStage)attachRenderers();
         videoStage.setVisibility(showStage?View.VISIBLE:View.GONE);localRenderer.setVisibility(localVideo?View.VISIBLE:View.GONE);
+        // Owner request 2026-09-12: the screen must not time out while video is shown. Bound to the call window only,
+        // so it ends with the call view; audio-only calls keep the system timeout (proximity handles the earpiece case).
+        if(showStage)callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else callDialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         View orbit=callDialog.findViewById(android.R.id.content).findViewWithTag("orbit");if(orbit!=null)orbit.setVisibility(showStage?View.GONE:View.VISIBLE);
         if(!live)releaseRenderers();
         callEnd.setText(state.equals("incoming")?"Отклонить":engine.calls().active()?"Завершить":"Закрыть");

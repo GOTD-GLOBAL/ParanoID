@@ -72,6 +72,11 @@ class OnboardingContract(unittest.TestCase):
         self.assertNotIn('CAMERA',answer)
         self.assertIn('FLAG_SECURE',ui)
         self.assertIn('videoPausedByBackground=true;engine.calls().video(false)',ui)
+        # Screen stays on only while the video stage is shown; flag lives on the call window (owner request 2026-09-12).
+        self.assertIn('if(showStage)callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);',ui)
+        self.assertIn('else callDialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);',ui)
+        self.assertNotIn('getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)',ui.replace('callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)',''))
+        self.assertIn('boolean earpiece = !speaker && connected && !videoEnabled;',media)
         self.assertIn('Видео и звук защищены сквозным шифрованием',ui)
         # Engine: camera capture only through applyVideo after explicit setVideo; H.264 first, VP8 mandatory.
         self.assertIn('throw new SecurityException("Camera permission required")',media)

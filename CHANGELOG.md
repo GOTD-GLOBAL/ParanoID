@@ -23,6 +23,9 @@ public contract is declared.
   result; the in-app update declares the installer `<queries>` intent and
   falls back from the system-only resolver, fixing "Установщик Android
   недоступен" seen on one alpha phone. No protocol change.
+- Video call view keeps the screen on while local or remote video is shown and
+  the proximity sensor no longer blanks the screen with the camera on; audio
+  calls are unchanged (owner request 2026-09-12).
 - Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
   serves `global.paranoid.messenger` update metadata; v15 published.
 

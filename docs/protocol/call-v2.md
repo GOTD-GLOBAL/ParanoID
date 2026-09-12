@@ -67,6 +67,10 @@ DTLS-SRTP transport. A forged `media` cannot open a camera.
 - The app leaving the foreground disables the camera (audio continues) and
   re-enables it on return if the user had it on. A permission dialog is not
   "leaving the foreground".
+- While any video is shown (local or remote) the call window keeps the screen
+  on and the proximity sensor does not blank it; audio-only calls keep the
+  system screen timeout and the earpiece proximity behaviour (owner request,
+  2026-09-12).
 - A camera failure (no permission, no device, capture error, foreground-type
   promotion refused) stops capture, restores the audio route, downgrades the
   call to audio and sends `media: false`; it never ends the call.
