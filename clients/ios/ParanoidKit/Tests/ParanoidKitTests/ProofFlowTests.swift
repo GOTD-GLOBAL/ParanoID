@@ -25,10 +25,10 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - the order of one connection
 
-    func testAConnectionRegistersDiscoversAndOpensASessionInThatOrder() throws {
+    func testAConnectionRegistersDiscoversAndOpensASessionInThatOrder() async throws {
         let stand = try Stand()
 
-        guard case .session(let session) = try stand.flow.connect() else {
+        guard case .session(let session) = try await stand.flow.connect() else {
             return XCTFail("the stand offers the realtime capability")
         }
 
@@ -56,15 +56,17 @@ final class ProofFlowTests: XCTestCase {
         XCTAssertNotNil(try stand.device.client.contactText())
         XCTAssertEqual(session.account, try stand.device.client.credential()["account"] as? String)
         XCTAssertEqual(session.realm, Self.stand.realm)
-        XCTAssertTrue(stand.flow.isRealtime)
-        XCTAssertEqual(stand.flow.session?.id, session.id)
+        let realtime = await stand.owner.isRealtime
+        XCTAssertTrue(realtime)
+        let held = await stand.owner.session
+        XCTAssertEqual(held?.id, session.id)
         XCTAssertEqual(stand.server.issuedSessions, 1)
     }
 
-    func testEachChallengeIntentNamesExactlyTheRequestItAuthorizes() throws {
+    func testEachChallengeIntentNamesExactlyTheRequestItAuthorizes() async throws {
         let stand = try Stand()
 
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
 
         // `register` carries the whole credential object; the account is not
         // known to the server yet (`SelfServiceClient.java:176`).
@@ -99,7 +101,7 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - the challenge meter
 
-    func testTwoChallengesAreSpacedByAtLeastSixHundredMilliseconds() throws {
+    func testTwoChallengesAreSpacedByAtLeastSixHundredMilliseconds() async throws {
         // The clock never moves on its own here, so the second challenge is as
         // early as it can possibly be.
         let stand = try Stand()
@@ -108,7 +110,7 @@ final class ProofFlowTests: XCTestCase {
             pathsWhenPaused = stand?.transport.calls.map(\.path) ?? []
         }
 
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
 
         // The server meters 2 challenges per account per second, so the client
         // spaces its own at 600 ms (`RealtimeLoop.java:170`).
@@ -118,22 +120,22 @@ final class ProofFlowTests: XCTestCase {
                        ["/v2/registration/challenge", "/v2/registration/commit", "/health"])
     }
 
-    func testNoWaitIsAskedForWhenTheSpacingHasAlreadyElapsed() throws {
+    func testNoWaitIsAskedForWhenTheSpacingHasAlreadyElapsed() async throws {
         let stand = try Stand()
         // Every request takes 700 ms of real time, so the meter is satisfied
         // by the flow's own latency and nothing sleeps.
         stand.transport.onCall = { [weak stand] _ in stand?.source.advance(700_000_000) }
 
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
 
         XCTAssertTrue(stand.pacer.waits.isEmpty)
     }
 
-    func testThePartialSpacingIsWaitedOut() throws {
+    func testThePartialSpacingIsWaitedOut() async throws {
         let stand = try Stand()
         stand.transport.onCall = { [weak stand] _ in stand?.source.advance(100_000_000) }
 
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
 
         // Three requests of 100 ms each stand between the two challenges.
         XCTAssertEqual(stand.pacer.waits, [300_000_000])
@@ -141,14 +143,14 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - registration happens once
 
-    func testASecondConnectionRegistersNothingAndCommitsNothing() throws {
+    func testASecondConnectionRegistersNothingAndCommitsNothing() async throws {
         let stand = try Stand()
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         let commits = stand.device.commits
         let calls = stand.transport.calls.count
         stand.source.advance(second)
 
-        guard case .session = try stand.flow.connect() else { return XCTFail("session reused") }
+        guard case .session = try await stand.flow.connect() else { return XCTFail("session reused") }
 
         // Nothing was dialled: the enrollment is active, the capability is
         // still fresh and the session is younger than 240 seconds.
@@ -157,9 +159,9 @@ final class ProofFlowTests: XCTestCase {
         XCTAssertEqual(stand.server.issuedSessions, 1)
     }
 
-    func testAnIdenticalRegistrationAnswerIsAppliedOnceAndCommitsNothingAgain() throws {
+    func testAnIdenticalRegistrationAnswerIsAppliedOnceAndCommitsNothingAgain() async throws {
         let stand = try Stand()
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         let commits = stand.device.commits
 
         // "Fresh identical registration retries return the same mapping"
@@ -174,39 +176,41 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - the session is the core's to accept
 
-    func testASessionIssuedForAnotherAccountIsRefusedByTheCoreAndNotAdopted() throws {
+    func testASessionIssuedForAnotherAccountIsRefusedByTheCoreAndNotAdopted() async throws {
         let stand = try Stand()
         let other = try Device(name: "other", trust: Self.stand)
         try other.register()
         stand.server.sessionAccount = try XCTUnwrap(try other.client.credential()["account"] as? String)
 
-        XCTAssertThrowsError(try stand.flow.connect()) { failure in
+        await assertThrows({ try await stand.flow.connect() }, { failure in
             // The context parses and is scoped to this realm, so only the
             // saved identity can tell it apart — and the identity lives in the
             // core (`clean_service.rs:688-699`).
             XCTAssertEqual(failure as? CoreError, .rejected("session_context_mismatch"))
-        }
+        })
 
-        XCTAssertNil(stand.flow.session, "a session the core refuses is never held")
+        let held = await stand.owner.session
+        XCTAssertNil(held, "a session the core refuses is never held")
         XCTAssertEqual(stand.transport.calls.last?.path, "/v2/session")
         XCTAssertTrue(try stand.device.client.registered())
     }
 
-    func testASessionIssuedForAnotherRealmIsRefusedBeforeTheCoreIsAsked() throws {
+    func testASessionIssuedForAnotherRealmIsRefusedBeforeTheCoreIsAsked() async throws {
         let stand = try Stand()
         stand.server.sessionRealm = "https://127.0.0.3:38443"
 
-        XCTAssertThrowsError(try stand.flow.connect()) { failure in
+        await assertThrows({ try await stand.flow.connect() }, { failure in
             XCTAssertEqual(failure as? SessionFailure, .foreignRealm)
-        }
-        XCTAssertNil(stand.flow.session)
+        })
+        let held = await stand.owner.session
+        XCTAssertNil(held)
 
         // The pin is the other half of the same scope.
         let pinned = try Stand()
         pinned.server.sessionPin = String(repeating: "cd", count: 32)
-        XCTAssertThrowsError(try pinned.flow.connect()) { failure in
+        await assertThrows({ try await pinned.flow.connect() }, { failure in
             XCTAssertEqual(failure as? SessionFailure, .foreignRealm)
-        }
+        })
     }
 
     func testASessionAnswerThatIsNotTheStrictObjectIsRefused() throws {
@@ -251,26 +255,27 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - lifetime on the monotonic clock
 
-    func testASessionIsReusedUntilTwoHundredFortySecondsAndRenewedAfterThat() throws {
+    func testASessionIsReusedUntilTwoHundredFortySecondsAndRenewedAfterThat() async throws {
         let stand = try Stand()
-        guard case .session(let first) = try stand.flow.connect() else {
+        guard case .session(let first) = try await stand.flow.connect() else {
             return XCTFail("session issued")
         }
 
         stand.source.advance(239 * second)
-        guard case .session(let reused) = try stand.flow.connect() else {
+        guard case .session(let reused) = try await stand.flow.connect() else {
             return XCTFail("session reused")
         }
         XCTAssertEqual(reused.id, first.id)
         XCTAssertEqual(stand.server.issuedSessions, 1)
 
         stand.source.advance(second)
-        guard case .session(let renewed) = try stand.flow.connect() else {
+        guard case .session(let renewed) = try await stand.flow.connect() else {
             return XCTFail("session renewed")
         }
         XCTAssertNotEqual(renewed.id, first.id)
         XCTAssertEqual(stand.server.issuedSessions, 2)
-        XCTAssertEqual(stand.flow.session?.id, renewed.id)
+        let held = await stand.owner.session
+        XCTAssertEqual(held?.id, renewed.id)
     }
 
     func testTheClampedLifetimeIsThreeHundredSecondsFromTheMonotonicReceipt() throws {
@@ -290,45 +295,48 @@ final class ProofFlowTests: XCTestCase {
 
     // MARK: - capability discovery
 
-    func testDiscoveryRepeatsAfterSixtySecondsAndWheneverALaneInvalidatesIt() throws {
+    func testDiscoveryRepeatsAfterSixtySecondsAndWheneverALaneInvalidatesIt() async throws {
         let stand = try Stand()
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         XCTAssertEqual(stand.transport.calls.filter { $0.path == "/health" }.count, 1)
 
         stand.source.advance(30 * second)
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         XCTAssertEqual(stand.transport.calls.filter { $0.path == "/health" }.count, 1)
 
         stand.source.advance(31 * second)
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         XCTAssertEqual(stand.transport.calls.filter { $0.path == "/health" }.count, 2)
 
         // A 404 on a cached session route, or a failed renewal, rediscovers at
         // once (`docs/protocol/realtime-v1.md:172-177`).
-        stand.flow.invalidateDiscovery()
-        _ = try stand.flow.connect()
+        await stand.owner.invalidateDiscovery()
+        _ = try await stand.flow.connect()
         XCTAssertEqual(stand.transport.calls.filter { $0.path == "/health" }.count, 3)
     }
 
-    func testAServerWithoutTheRealtimeCapabilityKeepsTheChallengeTransport() throws {
+    func testAServerWithoutTheRealtimeCapabilityKeepsTheChallengeTransport() async throws {
         let stand = try Stand()
-        _ = try stand.flow.connect()
-        XCTAssertNotNil(stand.flow.session)
+        _ = try await stand.flow.connect()
+        let issued = await stand.owner.session
+        XCTAssertNotNil(issued)
         stand.server.realtimeCapability = nil
-        stand.flow.invalidateDiscovery()
+        await stand.owner.invalidateDiscovery()
 
-        guard case .proof = try stand.flow.connect() else {
+        guard case .proof = try await stand.flow.connect() else {
             return XCTFail("an older v2 server selects the retained proof transport")
         }
 
         // The session went with the capability, and no new one was asked for.
-        XCTAssertNil(stand.flow.session)
-        XCTAssertFalse(stand.flow.isRealtime)
+        let held = await stand.owner.session
+        XCTAssertNil(held)
+        let realtime = await stand.owner.isRealtime
+        XCTAssertFalse(realtime)
         XCTAssertEqual(stand.server.issuedSessions, 1)
         XCTAssertEqual(stand.transport.calls.last?.path, "/health")
     }
 
-    func testAHealthReplyOfAnotherProtocolStopsTheConnection() throws {
+    func testAHealthReplyOfAnotherProtocolStopsTheConnection() async throws {
         let replies: [[String: Any]] = [["status": "ok", "protocol": "something-else"],
                                         ["status": "starting", "protocol": "paranoid-self-service-v2"],
                                         ["protocol": "paranoid-self-service-v2"],
@@ -336,44 +344,45 @@ final class ProofFlowTests: XCTestCase {
         for reply in replies {
             let stand = try Stand()
             stand.server.health = reply
-            XCTAssertThrowsError(try stand.flow.connect()) { failure in
+            await assertThrows({ try await stand.flow.connect() }, { failure in
                 XCTAssertEqual(failure as? TransportError, .protocolMismatch, "\(reply)")
-            }
-            XCTAssertNil(stand.flow.session)
+            })
+            let held = await stand.owner.session
+            XCTAssertNil(held)
             XCTAssertEqual(stand.transport.calls.last?.path, "/health",
                            "nothing is asked for after a server that is not this one")
         }
     }
 
-    func testAHeldSessionRouteUsesTheChallengeTransportUntilTheHoldElapses() throws {
+    func testAHeldSessionRouteUsesTheChallengeTransportUntilTheHoldElapses() async throws {
         let stand = try Stand()
-        _ = try stand.flow.connect()
+        _ = try await stand.flow.connect()
         // What a lane does with a 429 `session_capacity` on `/v2/session`
         // (`RealtimeLoop.java:209`).
-        stand.flow.dropSession()
-        stand.flow.holdSessions(for: 5 * second)
+        await stand.owner.dropSession()
+        await stand.owner.holdSessions(for: 5 * second)
 
         stand.source.advance(4 * second)
-        guard case .proof = try stand.flow.connect() else { return XCTFail("the hold stands") }
+        guard case .proof = try await stand.flow.connect() else { return XCTFail("the hold stands") }
         XCTAssertEqual(stand.server.issuedSessions, 1)
 
         stand.source.advance(2 * second)
-        guard case .session = try stand.flow.connect() else { return XCTFail("the hold elapsed") }
+        guard case .session = try await stand.flow.connect() else { return XCTFail("the hold elapsed") }
         XCTAssertEqual(stand.server.issuedSessions, 2)
     }
 
     // MARK: - nothing is dialled without an identity, or after a failed commit
 
-    func testAClientWithoutAnIdentityDialsNothing() throws {
+    func testAClientWithoutAnIdentityDialsNothing() async throws {
         let device = try Device(name: "empty", trust: Self.stand)
         let stand = try Stand(device: device, createIdentity: false)
 
-        guard case .idle = try stand.flow.connect() else { return XCTFail("no identity yet") }
+        guard case .idle = try await stand.flow.connect() else { return XCTFail("no identity yet") }
 
         XCTAssertTrue(stand.transport.calls.isEmpty)
     }
 
-    func testAFrozenClientDialsNothing() throws {
+    func testAFrozenClientDialsNothing() async throws {
         let device = try Device(name: "frozen", trust: Self.stand)
         device.fileSystem.failure = { call in
             guard case .write = call else { return nil }
@@ -383,9 +392,9 @@ final class ProofFlowTests: XCTestCase {
         XCTAssertTrue(device.client.isBroken)
         let stand = try Stand(device: device, createIdentity: false)
 
-        XCTAssertThrowsError(try stand.flow.connect()) { failure in
+        await assertThrows({ try await stand.flow.connect() }, { failure in
             XCTAssertEqual(failure as? SelfServiceError, .frozen)
-        }
+        })
 
         XCTAssertTrue(stand.transport.calls.isEmpty)
     }
@@ -461,14 +470,19 @@ final class ProofFlowTests: XCTestCase {
          "credential": String(repeating: "1f", count: 32)]
     }
 
-    /// One synthetic device, the server it talks to, the fake clock and the
-    /// flow over all three.
+    /// One synthetic device, the owner over it, the server it talks to, the
+    /// fake clock and the flow over all four.
+    ///
+    /// The device keeps its client so that these tests can read the state
+    /// directly, which a lane may not do; everything the flow itself does goes
+    /// through the owner.
     private final class Stand {
         let device: Device
         let server: StandServer
         let transport: FakeTransport
         let source: FakeMonotonicSource
         let pacer: RecordingPacer
+        let owner: StateOwner
         let flow: ProofFlow
 
         init(device: Device? = nil, createIdentity: Bool = true) throws {
@@ -481,7 +495,8 @@ final class ProofFlowTests: XCTestCase {
             transport = FakeTransport(server: server)
             source = FakeMonotonicSource()
             pacer = RecordingPacer()
-            flow = ProofFlow(client: self.device.client, transport: transport,
+            owner = StateOwner(client: self.device.client, clock: source.clock)
+            flow = ProofFlow(owner: owner, transport: transport,
                              clock: source.clock, pacer: pacer)
         }
 
@@ -510,13 +525,47 @@ final class FakeMonotonicSource: @unchecked Sendable {
 
 /// Records every wait the flow asks for, and lets the test decide whether time
 /// actually passes.
-final class RecordingPacer: ProofPacer {
-    private(set) var waits: [UInt64] = []
+///
+/// `@unchecked Sendable`: a pacer is reached from the lane's task, so the
+/// protocol requires it; the recording is kept under a lock and the test reads
+/// it only after the flow has returned.
+final class RecordingPacer: ProofPacer, @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [UInt64] = []
+    /// Runs instead of sleeping; the test uses it to let time pass, or not.
     var onWait: ((UInt64) -> Void)?
 
-    func wait(nanoseconds: UInt64) throws {
-        waits.append(nanoseconds)
+    var waits: [UInt64] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
+    /// Forgets what was recorded, so that one test can measure two phases.
+    func reset() {
+        lock.withLock { recorded.removeAll() }
+    }
+
+    func wait(nanoseconds: UInt64) async throws {
+        lock.withLock { recorded.append(nanoseconds) }
         onWait?(nanoseconds)
+    }
+}
+
+/// `XCTAssertThrowsError` for an expression that has to be awaited.
+///
+/// XCTest's own assertion takes an autoclosure, which cannot be `async`, so the
+/// expression is passed as a closure and the error is handed to the same kind
+/// of handler.
+func assertThrows<T>(_ expression: () async throws -> T,
+                     _ handler: (any Error) -> Void = { _ in },
+                     file: StaticString = #filePath,
+                     line: UInt = #line) async {
+    do {
+        _ = try await expression()
+        XCTFail("expected an error", file: file, line: line)
+    } catch {
+        handler(error)
     }
 }
 
@@ -589,8 +638,13 @@ final class StandServer {
 }
 
 /// The network seam of the proof flow, recorded and answered locally.
-final class FakeTransport: ProofTransport {
-    struct Call {
+///
+/// `@unchecked Sendable` like every fake in this target: `ProofTransport` is
+/// reached from a lane's task, the recording is kept under a lock, and the
+/// hooks the tests install run on whichever task made the call — which is
+/// never the state owner, and `StateOwnerTests` is what proves it.
+final class FakeTransport: ProofTransport, @unchecked Sendable {
+    struct Call: Sendable {
         let method: String
         let path: String
         let body: String
@@ -601,9 +655,11 @@ final class FakeTransport: ProofTransport {
 
     enum Failure: Error, Equatable {
         case unexpectedRoute(String)
+        case unencodableReply
     }
 
-    private(set) var calls: [Call] = []
+    private let lock = NSLock()
+    private var recorded: [Call] = []
     /// Runs before every answer; the test uses it to let time pass.
     var onCall: ((Call) -> Void)?
     /// Answers a call itself when it returns something.
@@ -615,24 +671,39 @@ final class FakeTransport: ProofTransport {
         self.server = server
     }
 
+    var calls: [Call] {
+        lock.lock()
+        defer { lock.unlock() }
+        return recorded
+    }
+
     func call(method: String, path: String, body: String,
-              authorization: String?) throws -> [String: Any] {
+              authorization: String?) async throws -> RealtimeTransport.Reply {
         let call = Call(method: method, path: path, body: body, authorization: authorization)
-        calls.append(call)
+        lock.withLock { recorded.append(call) }
         onCall?(call)
-        if let reply = try answer?(call) { return reply }
+        if let reply = try answer?(call) { return try Self.reply(reply) }
         switch path {
         case ChallengeIntent.registrationChallengePath, ChallengeIntent.authChallengePath:
             let intent = (try? JSONSerialization.jsonObject(with: Data(body.utf8))) as? [String: Any]
-            return server.challenge(for: intent ?? [:])
+            return try Self.reply(server.challenge(for: intent ?? [:]))
         case ChallengeIntent.registrationCommitPath:
-            return server.status
+            return try Self.reply(server.status)
         case HealthDiscovery.path:
-            return server.healthReply()
+            return try Self.reply(server.healthReply())
         case ChallengeIntent.sessionPath:
-            return server.session()
+            return try Self.reply(server.session())
         default:
             throw Failure.unexpectedRoute(path)
         }
+    }
+
+    /// One answer in the shape the real transport hands back: the body as
+    /// text, which the state owner decodes on the owner.
+    private static func reply(_ object: [String: Any]) throws -> RealtimeTransport.Reply {
+        guard let data = try? JSONSerialization.data(withJSONObject: object),
+              let text = String(data: data, encoding: .utf8)
+        else { throw Failure.unencodableReply }
+        return RealtimeTransport.Reply(text: text, bytes: data.count)
     }
 }

@@ -184,6 +184,80 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   refused, and the hosted defaults (`KeyClient.java:9-10`) apply only in a
   Release build or under `-paranoid-allow-hosted`, so a Debug build with no
   stand has no realm at all and creates no identity.
+- `Sources/ParanoidKit/Realtime/` is the owner of that state and the lanes
+  around it. `StateOwner` is an `actor` on its own serial queue — the port of
+  the single-threaded `TextEngine.worker` — and it holds the client, every
+  bridge call, every commit, the realtime session and the discovered
+  capability. No member of it is `async`, so it cannot wait for a socket; a
+  lane is a `Task` that awaits the network in its own task and hands the
+  finished answer over through `perform`, which asserts at runtime that it is
+  running on the owner. Only `Sendable` values cross: a signed request out, a
+  `Reply` in, never a decoded core reply. `Generation` is the run counter of
+  `RealtimeLoop.java:36-37,53-56`: `start()` on an enabled loop mints nothing,
+  `stop()` moves the counter, and a result that returns under a superseded run
+  is refused with `Superseded` before it can touch the state
+  (`docs/protocol/realtime-v1.md:127-130`). The session belongs to the owner
+  and not to a generation, because the account has two live-session slots
+  (`server/src/self_service_http.rs:377-391`) and renewal needs the second: a
+  pause keeps it, a new generation reuses one younger than 240 seconds by the
+  monotonic clock, and it is dropped only on a second 401, a 404,
+  `session_exhausted`, a server that stopped advertising the capability, or
+  renewal (`:179-181`). `Backoff` is
+  `min(30 s, 0.5 s · 2^min(n,5)) + rand(0…250 ms)`, and `PushHook` is the one
+  seam a future background delivery would enter through; `NoPushHook` is what
+  this foreground-only client installs.
+- `ReceiveLane` is the first of those lanes, the port of
+  `RealtimeLoop.receiveLoop()`. One cycle is one page and the order inside it
+  is the specification: a page above twenty events is refused
+  ([first-contact v1](../../docs/protocol/first-contact-v1.md) line 165), the
+  receive cursor is read again **on the owner** and must still be the one the
+  request was signed with, `changed(true, "Подключено")` is published *before*
+  the page so that call signalling sees an online client when a `call` control
+  arrives in it, and then every event goes through `receive_v2` one by one,
+  each one sealed, renamed and read back before the notification that follows
+  it — "renderer publication follows successful full native candidate
+  persistence and precedes receipt network completion"
+  ([realtime v1](../../docs/protocol/realtime-v1.md) lines 97-99). Only after
+  the page is the send lane woken, so a receipt leaves the device after the
+  message it acknowledges has been shown. The first cycle of a generation asks
+  for `messages` and every later one for `events`, a 429 `waiter_busy` reads
+  the inbox instead of queueing for the account's one wait slot, a client
+  without a session fetches the same page through the retained challenge
+  transport, and a polling cycle that came back short waits three seconds. The
+  online flag carries no debounce, exactly as Android v15
+  (`RealtimeLoop.java:237,261-263,280`): every failure publishes
+  `changed(false, …)` as it happens and is followed by the shared backoff, and
+  a failed commit stops the lane and says so once. `RealtimeListener` is
+  `RealtimeLoop.Listener` and it is invoked on the state owner and nowhere
+  else; `RealtimeStatus` holds the user-facing texts of
+  `RealtimeLoop.errorMessage` plus the 404 of `TextEngine.userError`
+  (`TextEngine.java:198-207`), which Android's lanes do not distinguish.
+- `SendLane` is the other lane, the port of `RealtimeLoop.sendLoop()`. One
+  cycle is one pass over the outbox, oldest first: the identifiers (and, with
+  no session, the envelope bytes) are read **on the owner**, each entry is sent
+  exactly as `sign_session_v2 {operation:"send", id}` described it — the core's
+  method, path and body, never a route this lane composed — and the answer
+  `{id, sequence >= 1}` is committed through `accepted_v2` before the delivery
+  mark it produces is published ([self-service v2](../../docs/protocol/self-service-v2.md)
+  lines 56-58). A 409 or a 507 defers that envelope and the rest of the batch
+  still goes out, with the last deferred rejection thrown when the pass ends
+  (`:80-81`); anything else ends the pass at once. Unlike the receive lane it
+  does not spin: a pass runs when `WakeSignal` has been armed — by `start()`,
+  by a page the receive lane has just delivered or by the user enqueueing a
+  message — and a failed pass re-arms it after the backoff, which is Android's
+  `outbound` semaphore and its `kick()`.
+- `SessionCall` is the shared `RealtimeLoop.sessionCall`, so both lanes repeat
+  a first 401 exactly once with a freshly signed nonce (a pooled socket can
+  lose the answer after the server consumed it) and treat a second 401, a 404
+  or `session_exhausted` as the end of that session; a 401 or a 404 also
+  rediscovers the capability. The rejections of `/v2/session` **itself** are
+  mapped once, in `ProofFlow.connect`, because both lanes share that
+  connection: 401 and 404 drop the session and rediscover, and a 429 leaves the
+  route alone for `ProofFlow.legacyWindow` (5 s) while the retained challenge
+  transport carries the traffic. `RealtimeLoop` is the object the application
+  holds: it owns the two lanes and the signal, `start()`/`stop()` are the
+  generation lifecycle on the owner, and `run()` drives both lanes in one task
+  group until the generation they started under is superseded.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests
@@ -326,14 +400,17 @@ lines and answers one base64-encoded public view per line, the line protocol of
 `clients/android/test/CleanSelfServiceBridge.java`, with the same five
 synthetic phone names and the same `create` / `sync` / `pair` / `send` /
 `block` / `pending` / `fail_next_commit` / `post_without_accept` / `view`
-operations. Behind it are the real `SelfServiceClient`, `SnapshotStore`,
-`ProofFlow` and `RealtimeTransport`; two things only are the fixture's own,
-because a command-line tool has neither: the AES-256 wrapping key lives **in
-memory** instead of the Keychain (`StorageGuard.requireContinuity` is still
-evaluated against it, so a state file whose key died with the process freezes)
-and the state file lives under the directory given as the first argument. The
-compiled hosted default is passed as `nil`, so the tool can dial only the realm
-and pin on its own command line.
+operations. Behind it are the real `StateOwner` over `SelfServiceClient`,
+`SnapshotStore`, `ProofFlow` and `RealtimeTransport`; every operation runs one
+closure on the owner and the tool awaits the network once, at the top level of
+`main.swift`, because it has no lanes of its own. Two things only are the
+fixture's own, because a command-line tool has neither: the AES-256 wrapping
+key lives **in memory** instead of the Keychain
+(`StorageGuard.requireContinuity` is still evaluated against it, so a state
+file whose key died with the process freezes) and the state file lives under
+the directory given as the first argument. The compiled hosted default is
+passed as `nil`, so the tool can dial only the realm and pin on its own
+command line.
 
 `test_clean_self_service.py` builds that executable, brings up the stand above
 and runs the scenario over one bridge process. `--registration-only` is the
@@ -377,6 +454,10 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
 swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
 swift test --package-path clients/ios/ParanoidKit --filter SelfServiceClientTests # v4 wrapper, opening rules, persist before adopt
+swift test --package-path clients/ios/ParanoidKit --filter ProofFlowTests    # challenge spacing, discovery, session issuance
+swift test --package-path clients/ios/ParanoidKit --filter StateOwnerTests   # owner executor, generations, session ownership, backoff
+swift test --package-path clients/ios/ParanoidKit --filter ReceiveLaneTests  # messages first, page limit, cursor recheck, persist before publish
+swift test --package-path clients/ios/ParanoidKit --filter RealtimeLoopTests # outbox order, 401 once, deferred 409/507, renewal, legacy window
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App-signed \

@@ -15,12 +15,12 @@
 // nothing). A refused request answers `{"error":…,"detail":…}` instead of a
 // view, exactly as the Java fixture does, and the process stays alive.
 //
-// Everything below the protocol is the real client: `SelfServiceClient` owns
-// the state, `SnapshotStore` commits it through the five durable steps,
-// `ProofFlow` runs the challenge/sign/request cycle and `RealtimeTransport`
-// carries every byte over the pinned TLS stack. Nothing is mocked and nothing
-// is re-implemented here. Two things are the fixture's own, because a command
-// line tool has neither of them:
+// Everything below the protocol is the real client: `StateOwner` holds the
+// `SelfServiceClient` and every bridge call runs on it, `SnapshotStore` commits
+// through the five durable steps, `ProofFlow` runs the challenge/sign/request
+// cycle and `RealtimeTransport` carries every byte over the pinned TLS stack.
+// Nothing is mocked and nothing is re-implemented here. Two things are the
+// fixture's own, because a command line tool has neither of them:
 //
 // - the AES-256 wrapping key lives **in memory** for the life of this process
 //   instead of in the Keychain (a signed application is what the Keychain
@@ -103,68 +103,29 @@ private func describe(_ error: any Error) -> (code: String, detail: String) {
     }
 }
 
-// MARK: - The network, synchronously
+// MARK: - Small helpers
 
-/// One completed call, readable from the thread that waits for it.
-private final class Waiting: @unchecked Sendable {
-    private let lock = NSLock()
-    private var outcome: Result<RealtimeTransport.Reply, any Error>?
-
-    func finish(_ value: Result<RealtimeTransport.Reply, any Error>) {
-        lock.lock()
-        if outcome == nil { outcome = value }
-        lock.unlock()
+private func object(_ value: String) throws -> [String: Any] {
+    guard let object = try? JSONSerialization.jsonObject(with: Data(value.utf8)) as? [String: Any] else {
+        throw FixtureError(code: "AssertionError", detail: "expected one JSON object")
     }
-
-    func take() -> Result<RealtimeTransport.Reply, any Error>? {
-        lock.lock()
-        defer { lock.unlock() }
-        return outcome
-    }
+    return object
 }
 
-/// `RealtimeTransport` under the synchronous `ProofTransport` protocol.
-///
-/// `ProofFlow` is synchronous by design — it is driven from one lane — while
-/// the transport is `async`, so the two are joined by a detached task and a
-/// semaphore. The wait is bounded by the transport's own resource timeout
-/// (`RealtimeTransport.resourceTimeout`) plus a margin; the fallback exists so
-/// that a lost callback ends the request instead of the process.
-///
-/// Nothing is added to the request here: the path, the body and the
-/// `Authorization` header are the ones `ProofFlow` built.
-private final class BlockingTransport: ProofTransport {
-    /// Longer than `RealtimeTransport.resourceTimeout`, so the transport's own
-    /// bound is what normally ends a call.
-    static let bound: TimeInterval = RealtimeTransport.resourceTimeout + 60
-
-    private let transport: RealtimeTransport
-
-    init(realm: String, pin: String) throws {
-        transport = try RealtimeTransport(realm: realm, pin: pin)
+private func string(_ object: [String: Any], _ member: String) throws -> String {
+    guard let value = object[member] as? String else {
+        throw FixtureError(code: "AssertionError", detail: "expected a string \(member)")
     }
+    return value
+}
 
-    func call(method: String, path: String, body: String, authorization: String?) throws -> [String: Any] {
-        let waiting = Waiting()
-        let done = DispatchSemaphore(value: 0)
-        let transport = transport
-        Task.detached {
-            do {
-                let reply = try await transport.call(method: method, path: path,
-                                                     body: body, authorization: authorization)
-                waiting.finish(.success(reply))
-            } catch {
-                waiting.finish(.failure(error))
-            }
-            done.signal()
-        }
-        guard done.wait(timeout: .now() + Self.bound) == .success, let outcome = waiting.take() else {
-            throw FixtureError(code: "TransportTimeout", detail: "\(method) \(path)")
-        }
-        // `Reply.json()` is the client's own decoder, including its refusal of
-        // a body that is not one JSON object.
-        return try outcome.get().json()
+private func encode(_ object: [String: Any]) throws -> String {
+    guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
+          let text = String(data: data, encoding: .utf8)
+    else {
+        throw FixtureError(code: "AssertionError", detail: "unencodable object")
     }
+    return text
 }
 
 // MARK: - The commit seam
@@ -177,25 +138,61 @@ private final class BlockingTransport: ProofTransport {
 /// (`CleanSelfServiceBridge.java:30-38`), and like the Java fixture it refuses
 /// to fire on a candidate that is not the one the scenario means to lose: an
 /// incoming text together with its durable receipt.
-private final class CountingSink: SnapshotSink {
+///
+/// Both counters are read from the fixture's own task and written on the state
+/// owner, so they are kept under a lock; the store behind them is only ever
+/// used from the owner.
+private final class CountingSink: SnapshotSink, @unchecked Sendable {
     private let store: SnapshotStore
-    private(set) var commits = 0
-    var failNextCommit = false
+    private let lock = NSLock()
+    private var made = 0
+    private var fault = false
+
+    /// How many candidates reached the device.
+    var commits: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return made
+    }
+
+    var failNextCommit: Bool {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return fault
+        }
+        set {
+            lock.lock()
+            fault = newValue
+            lock.unlock()
+        }
+    }
 
     init(store: SnapshotStore) {
         self.store = store
     }
 
+    /// Consumes the one-shot fault: it is armed from the fixture's task and
+    /// disarmed on the owner, in one step, so it can fire only once.
+    private func takeFault() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let armed = fault
+        fault = false
+        return armed
+    }
+
     func save(_ snapshot: String) throws {
-        if failNextCommit {
-            failNextCommit = false
+        if takeFault() {
             try requireIncomingCandidate(snapshot)
             FileHandle.standardError.write(Data(
                 "INJECTED storage failure on incoming plaintext + receipt candidate before commit\n".utf8))
             throw FixtureError(code: "IOException", detail: "fixture commit fault")
         }
         try store.commit(snapshot)
-        commits += 1
+        lock.lock()
+        made += 1
+        lock.unlock()
     }
 
     /// The candidate must hold a queued receipt and a dialog, or the fault
@@ -217,10 +214,17 @@ private final class CountingSink: SnapshotSink {
 // MARK: - One phone
 
 /// Everything one synthetic phone owns: its directory, its in-memory key, the
-/// real client over them and the flow that talks to the stand.
+/// state owner over them and the flow that talks to the stand.
+///
+/// The owner is the only thing that holds the client: every operation below
+/// runs one closure on it and gets back a value, exactly as a lane does in the
+/// application (`StateOwner.perform`). The fixture's own task never touches the
+/// core, so the two halves of this file are the two halves of the client — the
+/// state owner and the network — and nothing joins them but `await`.
+@MainActor
 private final class Phone {
     let sink: CountingSink
-    let client: SelfServiceClient
+    let owner: StateOwner
     let flow: ProofFlow
     /// What the last `sync` ended with: `none`, `idle`, `proof` or `session`.
     var connection = "none"
@@ -231,18 +235,18 @@ private final class Phone {
         sink = CountingSink(store: store)
         // `compiled: nil`: there is no built-in realm in this tool, so the
         // stand given on the command line is the only server it can reach.
-        client = try SelfServiceClient(saved: saved, sink: sink, fixture: trust, compiled: nil)
-        flow = ProofFlow(client: client,
-                         transport: try BlockingTransport(realm: trust.realm, pin: trust.pin))
+        let client = try SelfServiceClient(saved: saved, sink: sink, fixture: trust, compiled: nil)
+        owner = StateOwner(client: client)
+        flow = ProofFlow(owner: owner, transport: try RealtimeTransport(realm: trust.realm, pin: trust.pin))
     }
 
     /// Runs one operation of the line protocol.
-    func perform(_ operation: String, _ value: String) throws {
+    func perform(_ operation: String, _ value: String) async throws {
         switch operation {
         case "create":
-            try client.createIdentity()
+            try await owner.perform { try $0.createIdentity() }
         case "sync":
-            switch try flow.connect() {
+            switch try await flow.connect() {
             case .idle: connection = "idle"
             case .proof: connection = "proof"
             case .session: connection = "session"
@@ -251,27 +255,35 @@ private final class Phone {
             // Android scans the contact through `QrCodec` first; there is no
             // QR codec in ParanoidKit yet, so the text is handed over as it
             // is. Everything the core checks is unchanged.
-            _ = try client.previewContact(value)
-            try client.pair(value, verified: true)
+            try await owner.perform { client in
+                _ = try client.previewContact(value)
+                try client.pair(value, verified: true)
+            }
         case "send":
             let request = try object(value)
-            try client.send(account: try string(request, "account"), text: try string(request, "text"))
+            let account = try string(request, "account")
+            let text = try string(request, "text")
+            try await owner.perform { try $0.send(account: account, text: text) }
         case "block":
             let request = try object(value)
+            let account = try string(request, "account")
             guard let blocked = request["blocked"] as? Bool else {
                 throw FixtureError(code: "AssertionError", detail: "blocked must be a boolean")
             }
-            try client.block(account: try string(request, "account"), blocked: blocked)
+            try await owner.perform { try $0.block(account: account, blocked: blocked) }
         case "fail_next_commit":
             sink.failNextCommit = true
         case "post_without_accept":
             // The server commits the envelope and the caller loses the answer
             // before the local acceptance (`CleanSelfServiceBridge.java:60-65`).
-            guard let envelope = try client.pending().first else {
+            let envelope = try await owner.perform { client -> String? in
+                try client.pending().first.map(encode)
+            }
+            guard let envelope else {
                 throw FixtureError(code: "AssertionError", detail: "outbox is empty")
             }
-            _ = try flow.proof(purpose: ChallengeIntent.messagePurpose, method: "POST",
-                               path: "/v2/messages", body: try encode(envelope))
+            _ = try await flow.proof(purpose: ChallengeIntent.messagePurpose, method: "POST",
+                                     path: "/v2/messages", body: envelope)
         case "pending", "view":
             break
         default:
@@ -282,42 +294,27 @@ private final class Phone {
     /// The answer to one request: the client's own public view plus what the
     /// fixture knows about the connection and the commits it made. No state
     /// text, no key, no snapshot bytes.
-    func view(after operation: String) throws -> [String: Any] {
-        var out = try client.publicView()
+    ///
+    /// The view is built and encoded on the owner, because a decoded core
+    /// reply is exactly the kind of value that may not leave it; what comes
+    /// back is one JSON text, which the fixture then adds its own counters to.
+    func view(after operation: String) async throws -> [String: Any] {
+        let text = try await owner.perform { client -> String in
+            var out = try client.publicView()
+            // `mode`, `account`, `device` and the credential fingerprint: the
+            // same public identifiers `publicView` already carries.
+            out["enrollment"] = try client.enrollment().map { $0 as Any } ?? NSNull()
+            if operation == "pending" {
+                out["pending"] = try client.pending()
+            }
+            return try encode(out)
+        }
+        var out = try object(text)
         out["commits"] = sink.commits
         out["connection"] = connection
-        out["realtime"] = flow.isRealtime
-        out["session"] = flow.session != nil
-        // `mode`, `account`, `device` and the credential fingerprint: the same
-        // public identifiers `publicView` already carries.
-        out["enrollment"] = try client.enrollment().map { $0 as Any } ?? NSNull()
-        if operation == "pending" {
-            out["pending"] = try client.pending()
-        }
+        out["realtime"] = await owner.isRealtime
+        out["session"] = await owner.session != nil
         return out
-    }
-
-    private func object(_ value: String) throws -> [String: Any] {
-        guard let object = try? JSONSerialization.jsonObject(with: Data(value.utf8)) as? [String: Any] else {
-            throw FixtureError(code: "AssertionError", detail: "expected one JSON object")
-        }
-        return object
-    }
-
-    private func string(_ object: [String: Any], _ member: String) throws -> String {
-        guard let value = object[member] as? String else {
-            throw FixtureError(code: "AssertionError", detail: "expected a string \(member)")
-        }
-        return value
-    }
-
-    private func encode(_ object: [String: Any]) throws -> String {
-        guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]),
-              let text = String(data: data, encoding: .utf8)
-        else {
-            throw FixtureError(code: "AssertionError", detail: "unencodable envelope")
-        }
-        return text
     }
 }
 
@@ -354,6 +351,7 @@ do {
 ///
 /// The keys exist for this process only: closing the bridge loses them, which
 /// is what makes a retained state file freeze the next one.
+@MainActor
 private final class Registry {
     private let root: URL
     private let trust: ServiceTrust
@@ -401,8 +399,12 @@ while let line = readLine(strippingNewline: true) {
             throw FixtureError(code: "IOException", detail: "value is not base64 UTF-8")
         }
         let open = try registry.phone(parts[0])
-        try open.perform(operation, value)
-        out = try open.view(after: operation)
+        // The one place this fixture waits for the network. `ProofFlow` is
+        // asynchronous from end to end — the lanes of the application await it
+        // from their own tasks — so the command-line tool that has no lanes
+        // awaits it here, at the top level, and needs no adapter of its own.
+        try await open.perform(operation, value)
+        out = try await open.view(after: operation)
     } catch {
         let (code, detail) = describe(error)
         out = ["error": code, "detail": detail]

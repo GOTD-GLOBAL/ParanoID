@@ -462,7 +462,12 @@ final class SelfServiceClientTests: XCTestCase {
 
 /// One synthetic device: an in-memory file system, its own wrapping key, the
 /// store over them and the client over that.
-final class Device {
+/// `@unchecked Sendable` because these tests keep the client and hand the same
+/// one to a `StateOwner` (`ProofFlowTests.Stand`, `StateOwnerTests`), which the
+/// application never does: there the client is built and given away in one
+/// expression, and the compiler is what keeps the owner its only caller. The
+/// tests are single-threaded and the owner's calls and theirs never overlap.
+final class Device: @unchecked Sendable {
     let fileSystem: FakeFileSystem
     let directory: URL
     let store: SnapshotStore
