@@ -57,6 +57,19 @@ fabricated permanent architecture or public-release approval.
 Founder input is recorded in [RFC-0006](../rfcs/0006-single-server-text-contract.md).
 One server and Android first do not remove future iPhone or multi-server support.
 Multiple servers are a later milestone, not a gate for this slice.
+Blockchain naming/registration (REQ-ID-003) also belongs to the later roadmap,
+not the first messaging gate. The owner's self-service messenger direction and
+future common/independent-server, invitations and store-continuation UX are
+recorded in issue #16 and `docs/product/self-service-messenger.md` plus
+`docs/product/requirements.md` on `feat/self-service-registration`. Those documents
+are branch-scoped product intent, not merged architecture or delivered behavior.
+
+The subsequent owner correction asks for the first incoming message without
+mutual contact addition or a mandatory contact QR. Receipt of a message does not
+verify the sender's identity. This is product intent for the same workstream,
+not approval to weaken E2EE, key-substitution checks, admission or server TLS.
+Independent contact verification and its security contract remain separate.
+
 Technical recommendations are delegated to the assistant; protected decisions
 still require human disposition. The source Telegram permalink is unavailable
 to this tool context, so approval evidence requires owner GitHub confirmation.
