@@ -231,8 +231,16 @@ public actor SendLane {
         while remaining > 0, await owner.isCurrent(generation) {
             remaining -= 1
             guard signal.take() else {
-                // Nothing to do until something wakes this lane.
-                do { try await pacer.wait(nanoseconds: Self.wakePoll) } catch { return }
+                // Nothing to do until something wakes this lane, and `kick()`
+                // is what wakes it: `outbound.tryAcquire(1, SECONDS)`
+                // (`RealtimeLoop.java:219`) blocks on the semaphore and
+                // returns the instant a permit is released, so the message the
+                // user has just written leaves the device now rather than at
+                // the end of a poll. The bound is still `wakePoll` and it is
+                // still waited out through the pacer, so a stopped lane
+                // abandons it at once.
+                await waitForWake()
+                if Task.isCancelled { return }
                 continue
             }
             do {
@@ -268,6 +276,37 @@ public actor SendLane {
                 // wait.
                 signal.wake()
             }
+        }
+    }
+
+    // MARK: - Waiting for a wake
+
+    /// Waits for a wake, and for at most `wakePoll`: the two halves of
+    /// `outbound.tryAcquire(1, TimeUnit.SECONDS)` (`RealtimeLoop.java:219`).
+    ///
+    /// They race in one task group. The signal resumes this lane the instant
+    /// `kick()` arms it — which is what keeps a message the user just wrote
+    /// from waiting out a poll — and the bound is waited out through the
+    /// pacer, which is also how a cancelled lane leaves: cancelling this lane
+    /// cancels both children. Whichever finishes first ends the wait, and the
+    /// pacer's child ends the signal's wait on its way out, so nothing is left
+    /// suspended on a permit that is not coming.
+    ///
+    /// The ticket is taken **before** the group starts, so a wake or a bound
+    /// that lands before either child has run releases it and the wait returns
+    /// at once instead of missing what it was waiting for.
+    private func waitForWake() async {
+        let signal = self.signal
+        let ticket = signal.enroll()
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await signal.wait(ticket: ticket) }
+            group.addTask { [pacer] in
+                try? await pacer.wait(nanoseconds: Self.wakePoll)
+                signal.endWait()
+            }
+            await group.next()
+            group.cancelAll()
+            await group.waitForAll()
         }
     }
 

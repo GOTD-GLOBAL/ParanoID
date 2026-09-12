@@ -330,6 +330,34 @@ final class RealtimeLoopTests: XCTestCase {
         XCTAssertEqual(queue.listener.losses, 0)
     }
 
+    func testAWakeResumesAWaitingLaneAndTheBoundEndsTheWaitWithoutAPermit() async throws {
+        // The seam an idle lane waits on: `outbound.tryAcquire(1, SECONDS)`
+        // returns the instant `kick()` releases a permit
+        // (`RealtimeLoop.java:219,54`), so the message a user has just written
+        // leaves the device now and not at the end of an interval. Every wait
+        // below would hang for ever if a wake could be missed, which is what
+        // the ticket is for: it is taken before the caller suspends.
+        let signal = WakeSignal()
+        let early = signal.enroll()
+        signal.wake()
+        await signal.wait(ticket: early)
+        XCTAssertTrue(signal.take(), "a wake before the wait is still a permit")
+
+        let ticket = signal.enroll()
+        let waiting = Task { await signal.wait(ticket: ticket) }
+        signal.wake()
+        await waiting.value
+        XCTAssertTrue(signal.take())
+
+        // The bound of the wait, and a lane that stopped, end a wait that no
+        // permit arrived for — and arm nothing.
+        let bounded = signal.enroll()
+        let elapsing = Task { await signal.wait(ticket: bounded) }
+        signal.endWait()
+        await elapsing.value
+        XCTAssertFalse(signal.take(), "ending a wait is not a permit")
+    }
+
     func testADeviceWithoutAnIdentityDialsNothingAndDoesNotPause() async throws {
         let queue = try Queue(registered: false)
         let run = await queue.owner.start()

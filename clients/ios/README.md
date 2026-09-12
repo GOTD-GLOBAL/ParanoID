@@ -138,6 +138,27 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   `TextEngine.java:138-144` line scan, cut on UTF-8 bytes like `str::lines()`
   because Swift folds a CRLF pair into one `Character`. It never rewrites the
   description.
+- `Sources/ParanoidKit/Qr/QrCodec.swift` is the two QR bounds of
+  [key enrollment v1](../../docs/protocol/key-enrollment-v1.md) (lines 91-96)
+  and the one local encoder, the counterpart of Android's `QrCodec.java`:
+  2048 bytes for a QR payload, 4096 for a text import, and
+  `CIQRCodeGenerator` at error-correction level `M` in place of ZXing
+  (`QrCodec.java:12-16`). `checkedPayload` and `checkedImport` measure a
+  string and hand back the string they were given, and `image(for:)` encodes
+  exactly those bytes, so what a peer scans is the `contact` member
+  `SelfServiceClient.contactText()` sliced out of the core's reply, byte for
+  byte; Android re-serialises that member through `org.json` on the way
+  (`MainActivity.java:612-614`), which this client does not need to do. The
+  generator emits one pixel per module with one module of quiet zone; the
+  other three modules of Android's `MARGIN` hint are added in white, and the
+  result is multiplied by a whole number with nearest-neighbour sampling until
+  it reaches 640 px, because the v15 add-contact bug was a dense ~900-byte
+  contact code losing its modules at 480p (`QrScanActivity.java:42-47`,
+  `QrDenseSmoke.java:3-6`). There is no
+  decoder here: the scanner reads `AVCaptureMetadataOutput`, and a QR proves
+  nothing on its own — the full fingerprint is still compared on the other
+  phone ([first contact v1](../../docs/protocol/first-contact-v1.md), lines
+  90-91).
 - `Sources/ParanoidKit/Storage/` holds the at-rest rules of
   [first-contact v1](../../docs/protocol/first-contact-v1.md) (lines 173-178)
   and [the core contract](../../docs/clients/core/self-service.md) (lines
@@ -245,7 +266,13 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   does not spin: a pass runs when `WakeSignal` has been armed — by `start()`,
   by a page the receive lane has just delivered or by the user enqueueing a
   message — and a failed pass re-arms it after the backoff, which is Android's
-  `outbound` semaphore and its `kick()`.
+  `outbound` semaphore and its `kick()`. An idle lane **waits** on that signal
+  for at most a second instead of looking at it again later, so a wake resumes
+  it at once: that is the other half of `outbound.tryAcquire(1, SECONDS)`
+  (`RealtimeLoop.java:219`), and it is what keeps the message a user has just
+  written from sitting out an interval nobody can see —
+  `test_realtime.py` measures a P50 of about 70 ms where a polled wake
+  measured 813 ms, against a 500 ms target.
 - `SessionCall` is the shared `RealtimeLoop.sessionCall`, so both lanes repeat
   a first 401 exactly once with a freshly signed nonce (a pooled socket can
   lose the answer after the server consumed it) and treat a second 401, a 404
@@ -317,7 +344,9 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   xcframework's simulator slice is arm64-only.
 - `ParanoID/Info.plist` is explicit (`GENERATE_INFOPLIST_FILE = NO`): bundle
   identity from the build settings, portrait, iPhone only, no
-  `NSAppTransportSecurity` / `NSAllowsArbitraryLoads`.
+  `NSAppTransportSecurity` / `NSAllowsArbitraryLoads`, and one purpose string
+  — `NSCameraUsageDescription`, which says what the camera is for and that no
+  picture is kept.
   `ParanoID/ParanoID.entitlements` is empty: no `aps-environment`, because
   there is no push (see the component documentation).
 - The application and `ParanoIDTests` depend on the local package
@@ -332,6 +361,43 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   (`didBecomeActive`, `willResignActive`, `didEnterBackground`) handed to
   `LifecycleRunner.post(_:)`, and one task draining that queue. It holds no
   rule of its own; every decision is `LifecyclePolicy`'s, in the package.
+- `ParanoID/Qr/` is the contact in both directions, and the same string on
+  both sides of it. `ContactQrView` draws the code for the exact `contact`
+  text (regenerated only when that text changes, Android's `displayedQr`
+  guard, `MainActivity.java:613`) and carries the two ways to hand it over as
+  text: the share sheet (`UIActivityViewController` with the string itself,
+  `MainActivity.java:175`) and the clipboard (`UIPasteboard`, local to this
+  device, with Android's confirmation wording, `MainActivity.java:181,521`).
+  `QrScannerView` is the port of `QrScanActivity.java`: it asks for the camera
+  when the answer is not known yet, runs one `AVCaptureSession` with a single
+  `AVCaptureMetadataOutput` restricted to `.qr` (set after `addOutput`) at
+  `.hd1920x1080` — `.high` if the session refuses it — with `rectOfInterest`
+  left alone and the lens told to look near, which is the dense-QR fix of v15
+  in iOS terms. No photo, video-data or movie output exists, so a frame never
+  reaches this process: what arrives is the decoded string, and the first
+  accepted one stops the session and leaves verbatim. A payload above 2048
+  bytes is refused and the session keeps scanning; cancelling touches neither
+  the identity nor the snapshot nor the network. `.denied` and `.restricted`
+  become `ScanDeniedView` (Настройки through `UIApplication.openSettingsURLString`,
+  or the paste field), and `PasteContactSheet` is the 4096-byte text import of
+  `MainActivity.pasteContact()` — trimmed of surrounding whitespace as Android
+  trims it, and otherwise not touched, so duplicate and unknown members fail
+  in Rust's strict parser rather than being collapsed on the way.
+- `ParanoIDTests/QrTests.swift` is the round trip, with a contact the core
+  itself produced: a freshly created identity is registered with the
+  enrollment it would have received — `server_status_v2` only compares that
+  enrollment against the local credential (`clean_service.rs:796-810`) and the
+  credential fingerprint is a digest over public fields
+  (`key-protocol/src/lib.rs:57-71`), so no server is involved — and
+  `prepare_contact_v2` then builds the genuine ~900-byte
+  `paranoid-contact-v2` text. That text through `CIQRCodeGenerator` and back
+  through `CIDetector` is byte-identical; so is a 2048-byte boundary vector at
+  level M; 2049 bytes are refused by this client although the encoder would
+  have taken them; and a text with a non-ASCII member or a duplicated member
+  reaches the core unchanged and is refused there as `invalid_contact`, which
+  is the rule of `key-enrollment-v1.md:91-92`. Scanning a code off a real
+  camera is a device action and stays `NOT RUN`
+  ([verification](../../docs/clients/ios/verification.md), REQ-ID-007).
 - `ParanoIDTests/BridgeSmokeTests.swift` runs `create_identity` ->
   `upgrade_v2` inside the application process on the simulator and prints
   one `state.version=3` line (never the snapshot), which proves that the
@@ -426,9 +492,18 @@ lines and answers one base64-encoded public view per line, the line protocol of
 `clients/android/test/CleanSelfServiceBridge.java`, with the same five
 synthetic phone names and the same `create` / `sync` / `pair` / `send` /
 `block` / `pending` / `fail_next_commit` / `post_without_accept` / `view`
-operations, plus one of its own: `longpoll` runs both lanes for a fixed number
+operations, plus the `start` / `stop` / `kick` of
+`clients/android/test/RealtimeBridge.java:75-78` and one of its own:
+`longpoll` runs both lanes for a fixed number
 of seconds, which is the only way to exercise the long-poll transport from a
-tool that otherwise answers one line per request. Behind it are the real
+tool that otherwise answers one line per request. `start` leaves the lanes
+running between two lines instead of driving one cycle per line, which is what
+the realtime fault fixture below needs, and every view
+then also carries what those lanes published: the online flag, the
+notification counts and the instant each incoming text became durable — read
+back out of the committed file, so a publication that ran ahead of its commit
+is recorded as a failure and refuses the next command
+(`RealtimeBridge.java:36-49,80`). Behind it are the real
 `StateOwner` over `SelfServiceClient`, `SnapshotStore`, `ProofFlow` and
 `RealtimeTransport`; every operation runs one closure on the owner and the tool
 awaits the network once, at the top level of `main.swift`, because it has no
@@ -493,6 +568,84 @@ fingerprint, no realm, no pin and no snapshot bytes. Both scenarios carry the
 digest of the server binary they ran against and of the
 `ParanoidCore.xcframework` slice the bridge linked.
 
+## Realtime faults (`test_realtime.py`)
+
+The same stand and the same fixture, with the lanes left running and one thing
+between the client and the server: `FaultProxy`, **imported** from
+`clients/android/test_realtime.py` and never copied, so the faults this client
+is measured under are the ones Android was measured under. It is a
+verified-TLS forwarder that can hold one sender's POST on the wire, drop an
+answer the server has already committed, replay a consumed authorization so
+that the *backend itself* answers 401, and call back at the instant a phone is
+opening a session.
+
+That class hard-codes port 38443 for both its front and its back address
+(`clients/android/test_realtime.py:103,182,253`), so the run needs two
+addresses of this Mac: the throw-away certificate, the realm and the pin name
+the front address the client dials (`https://127.0.0.22:38443`, a literal
+IPv4 origin) and the server binds the back address (127.0.0.23). Both are
+`lo0` aliases, added once by the operator:
+
+```sh
+sudo ifconfig lo0 alias 127.0.0.22 up
+sudo ifconfig lo0 alias 127.0.0.23 up
+```
+
+Without them nothing is faked: the run prints `NOT RUN: lo0 alias missing`,
+records that reason in the evidence and exits 2. Three synthetic phones share
+one `service-bridge` process — as the Java fixture's peers share one JVM,
+which is what makes the monotonic instants of two phones readings of one
+clock — and five stories run over them:
+
+- **A receipt held on the wire.** The receiving phone's receipt POST is
+  stopped inside the proxy while the message it acknowledges is already
+  sealed, renamed, read back and published from that file: the two halves of
+  "renderer publication follows successful full native candidate persistence
+  and precedes receipt network completion"
+  ([realtime v1](../../docs/protocol/realtime-v1.md) lines 97-99). Meanwhile
+  the sender shows no delivery mark, the cluster holds no receipt row, and the
+  blocked phone's state owner still answers a local send in about 13 ms
+  against a budget of 1500 ms — its receipt lane is blocked, not its ratchet.
+- **24 warm foreground samples**, alternating direction, from the instant the
+  sending phone was handed the text to the instant the receiving phone
+  published it out of its durable snapshot: P50 ≤ 500 ms and P95 ≤ 1500 ms
+  (57 to 74 ms and 81 to 86 ms over repeated runs).
+- **An answer lost after the server committed** (`drop_sender`). The one
+  identical repeat of `RealtimeTransport.send` is refused as a replay by the
+  server — the nonce is spent — `SessionCall` re-signs exactly once, and the
+  row keeps its `sequence` and its ciphertext: `200, 401, 200` on the wire,
+  one stored envelope, no authority declared lost.
+- **A consumed authorization replayed** (`consume_401_sender`): the 401 is the
+  server's own, one retry with a freshly signed nonce carries the unchanged
+  ciphertext through, the session is kept and `authorizationLost` is never
+  published.
+- **The server rolled at the session-open boundary**
+  (`before_session_challenge`). At the genuine instant a fresh phone opens a
+  session, the same binary is stopped and started again on the same data — no
+  database reset, no new identity, no client restart. The server's in-memory
+  sessions (`server/src/self_service_http.rs:28`) are gone, so an established
+  phone meets a real 401 twice, drops the session, rediscovers the capability
+  ([realtime v1](../../docs/protocol/realtime-v1.md) lines 172-177) and opens
+  a new one, while the fresh phone registers across the boundary and its first
+  message crosses with its receipt. Android rolls a *second, older* binary in
+  at that point (`--legacy-server-binary`); there is none to roll in here, so
+  this is the same boundary with the same binary.
+
+```sh
+python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bin \
+  --evidence-dir out/checks/realtime
+# 24 warm samples P50=57.4 ms P95=81.0 ms
+# result: PASS
+jq -c '.result,.lost_answer.statuses,.consumed_nonce.statuses,.rolled_session.sessions_reopened' \
+  clients/ios/out/checks/realtime/realtime-fixture-result.json   # "PASS" [200,401,200] [401,200] 1
+jq 'length' clients/ios/out/checks/realtime/network-timings.json  # every request the proxy forwarded
+```
+
+The evidence is counts, digests and verdicts, plus the proxy's own
+`network-timings.json` (path, method, status, milliseconds) and
+`latency-samples.json`: no account, no fingerprint, no realm, no pin, no
+message text and no snapshot bytes. One run costs about twenty seconds.
+
 ## Checks
 
 ```sh
@@ -521,12 +674,18 @@ swift test --package-path clients/ios/ParanoidKit --filter RealtimeLoopTests # o
 swift test --package-path clients/ios/ParanoidKit --filter LifecycleTests   # foreground rule: an alert is not a pause, a call keeps the lanes
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
+  -only-testing:ParanoIDTests/QrTests                                         # QR round trip on the core's own contact, and both byte bounds
+xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App-signed \
   -only-testing:ParanoIDTests/KeychainStoreTests                              # Keychain and install marker (needs the simulator signature)
 python3 clients/ios/test_clean_self_service.py --registration-only \
   --evidence-dir out/checks/registration                                      # clean-install registration on the local stand
 python3 clients/ios/test_clean_self_service.py --longpoll \
   --evidence-dir out/checks/local-text                                        # two phones: texts, receipts, ciphertext and every failure story
+python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bin \
+  --evidence-dir out/checks/realtime                                          # running lanes under the imported fault proxy (needs the two lo0 aliases)
 ```
 
 ## Rules that apply to every change here

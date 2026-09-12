@@ -18,6 +18,14 @@
 // number of seconds it is given, which is the only way to exercise the
 // long-poll transport from a tool that otherwise answers one line per request.
 //
+// `start`, `stop` and `kick` are the other half of the same tool: the
+// operations of `clients/android/test/RealtimeBridge.java:75-78`, which leave
+// the lanes running between two lines instead of driving one cycle per line.
+// They are what `clients/ios/test_realtime.py` needs — a phone whose lanes are
+// live while a fault proxy blocks, drops or replays one request — and every
+// view then also carries what those lanes published: the online flag, the
+// notification counts and the instant each incoming text became durable.
+//
 // Everything below the protocol is the real client: `StateOwner` holds the
 // `SelfServiceClient` and every bridge call runs on it, `SnapshotStore` commits
 // through the five durable steps, `ProofFlow` runs the challenge/sign/request
@@ -149,12 +157,25 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
     private let lock = NSLock()
     private var made = 0
     private var fault = false
+    private var saved: String?
 
     /// How many candidates reached the device.
     var commits: Int {
         lock.lock()
         defer { lock.unlock() }
         return made
+    }
+
+    /// The last text that actually reached the device, starting with whatever
+    /// was already on it when this phone was opened.
+    ///
+    /// It is the value the durable file must hold whenever a lane publishes
+    /// anything, which is what `Tally` checks on every notification
+    /// (`RealtimeBridge.java:36-38`).
+    var lastCommitted: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return saved
     }
 
     var failNextCommit: Bool {
@@ -170,8 +191,9 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
         }
     }
 
-    init(store: SnapshotStore) {
+    init(store: SnapshotStore, saved: String?) {
         self.store = store
+        self.saved = saved
     }
 
     /// Consumes the one-shot fault: it is armed from the fixture's task and
@@ -194,6 +216,7 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
         try store.commit(snapshot)
         lock.lock()
         made += 1
+        saved = snapshot
         lock.unlock()
     }
 
@@ -215,7 +238,8 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
 
 // MARK: - What the lanes published
 
-/// Everything the shipped lanes told this fixture, counted.
+/// Everything the shipped lanes told this fixture, counted — and the one
+/// ordering rule every notification carries.
 ///
 /// It is a `RealtimeListener` and nothing more, so what it records is exactly
 /// what a screen would render: the online flag and the status beside it, plus
@@ -227,15 +251,51 @@ private final class CountingSink: SnapshotSink, @unchecked Sendable {
 /// publishes every failed cycle as it happens, without a debounce
 /// (`RealtimeLoop.java:237,280`), so a single dropped connection that the
 /// client did not absorb would show up here.
+///
+/// ## The ordering check
+///
+/// "Renderer publication follows successful full native candidate persistence
+/// and precedes receipt network completion"
+/// (`docs/protocol/realtime-v1.md:97-99`) is checked here, on every
+/// notification, because the listener runs on the state owner: the committed
+/// file is read and opened with this phone's key, it must hold exactly the
+/// last text the sink committed, and the texts this witness reports as *seen*
+/// — with the instant they were first published — are read out of that
+/// durable snapshot and never out of a candidate. A publication that ran ahead
+/// of its commit therefore cannot be recorded at all; it is remembered as a
+/// failure and the next command of the line protocol is refused with it
+/// (`RealtimeBridge.java:36-49,80`). Where the Java fixture compares the
+/// disk-derived dialogs with `client.publicView()`, this one derives
+/// everything from the disk: the listener of the shipped client is handed no
+/// client, which is the stricter half of the same statement.
 private final class Tally: RealtimeListener, @unchecked Sendable {
+    /// The committed state file, and the key it is sealed with. Read directly
+    /// rather than through `SnapshotStore`, so that this witness can never
+    /// break the store the client commits through.
+    private let snapshot: URL
+    private let key: SymmetricKey
+    private let sink: CountingSink
     private let lock = NSLock()
     private var online = 0
     private var offline = 0
     private var lost = 0
+    private var published = 0
+    private var connected = false
     private var statuses: [String] = []
+    private var witnessed: [String: UInt64] = [:]
+    private var violation: String?
+
+    init(snapshot: URL, key: SymmetricKey, sink: CountingSink) {
+        self.snapshot = snapshot
+        self.key = key
+        self.sink = sink
+    }
 
     func changed(connected: Bool, status: String) {
+        let instant = MonotonicClock.continuous.now().nanoseconds
         lock.lock()
+        published += 1
+        self.connected = connected
         if connected {
             online += 1
         } else {
@@ -243,6 +303,7 @@ private final class Tally: RealtimeListener, @unchecked Sendable {
             if !statuses.contains(status) { statuses.append(status) }
         }
         lock.unlock()
+        inspect(at: instant)
     }
 
     func authorizationLost() {
@@ -251,7 +312,44 @@ private final class Tally: RealtimeListener, @unchecked Sendable {
         lock.unlock()
     }
 
-    /// Starts counting again: one `longpoll` run is one measurement.
+    /// The durable snapshot at the moment of a notification: it must be the
+    /// candidate the sink last committed, and the incoming texts it holds are
+    /// what this device has genuinely published.
+    private func inspect(at instant: UInt64) {
+        guard let committed = sink.lastCommitted else { return }
+        do {
+            let sealed = try Data(contentsOf: snapshot, options: [.uncached])
+            let durable = try SnapshotCodec.open(key: key, value: sealed)
+            guard durable == committed else {
+                throw FixtureError(code: "AssertionError",
+                                   detail: "notification preceded the durable snapshot")
+            }
+            guard let state = JsonSpan.value(of: "state", in: durable) else {
+                throw FixtureError(code: "AssertionError",
+                                   detail: "durable snapshot without a state member")
+            }
+            let view = try CoreBridge.command(state: state, request: "{\"op\":\"view\"}")
+            for dialog in view.object["dialogs"] as? [[String: Any]] ?? [] {
+                let own = dialog["own"] as? String
+                for message in dialog["messages"] as? [[String: Any]] ?? [] {
+                    guard let text = message["text"] as? String,
+                          let author = message["author"] as? String,
+                          author != own
+                    else { continue }
+                    lock.lock()
+                    if witnessed[text] == nil { witnessed[text] = instant }
+                    lock.unlock()
+                }
+            }
+        } catch {
+            lock.lock()
+            if violation == nil { violation = describe(error).detail }
+            lock.unlock()
+        }
+    }
+
+    /// Starts counting again: one `longpoll` run is one measurement. What was
+    /// published and when is cumulative and is not reset.
     func reset() {
         lock.lock()
         online = 0
@@ -261,12 +359,31 @@ private final class Tally: RealtimeListener, @unchecked Sendable {
         lock.unlock()
     }
 
+    /// The first ordering violation this witness saw, if any.
+    var failure: String? {
+        lock.lock()
+        defer { lock.unlock() }
+        return violation
+    }
+
     /// The counts, and the distinct user-facing statuses of the failures.
     var report: [String: Any] {
         lock.lock()
         defer { lock.unlock() }
         return ["online": online, "offline": offline, "authorization_lost": lost,
                 "offline_statuses": statuses]
+    }
+
+    /// What a view carries beside the client's own: the online flag as it was
+    /// last published, how many notifications there were, how many of them
+    /// said "online", the authorization notices, and when each incoming text
+    /// was first published (`RealtimeBridge.java:100`).
+    var publications: [String: Any] {
+        lock.lock()
+        defer { lock.unlock() }
+        return ["connected": connected, "notifications": published,
+                "online_notifications": online, "authorization_failures": lost,
+                "seen": witnessed.mapValues { NSNumber(value: $0) }]
     }
 }
 
@@ -294,11 +411,15 @@ private final class Phone {
     var connection = "none"
     /// What the last `longpoll` run measured; empty until one has run.
     var poll: [String: Any] = [:]
+    /// The task both lanes run in between `start` and `stop`, as the
+    /// application runs them between `didBecomeActive` and
+    /// `didEnterBackground`; `nil` while the lanes are stopped.
+    var lanes: Task<Void, Never>?
 
     init(directory: URL, key: SymmetricKey, trust: ServiceTrust) throws {
         let store = SnapshotStore(directory: directory, key: key)
         let saved = try store.load()
-        sink = CountingSink(store: store)
+        sink = CountingSink(store: store, saved: saved)
         // `compiled: nil`: there is no built-in realm in this tool, so the
         // stand given on the command line is the only server it can reach.
         let client = try SelfServiceClient(saved: saved, sink: sink, fixture: trust, compiled: nil)
@@ -309,7 +430,7 @@ private final class Phone {
         let signal = WakeSignal()
         let owner = StateOwner(client: client, hook: signal)
         let flow = ProofFlow(owner: owner, transport: transport)
-        let tally = Tally()
+        let tally = Tally(snapshot: store.fileURL, key: key, sink: sink)
         self.owner = owner
         self.flow = flow
         self.tally = tally
@@ -319,11 +440,40 @@ private final class Phone {
 
     /// Runs one operation of the line protocol.
     func perform(_ operation: String, _ value: String) async throws {
+        if let failure = tally.failure {
+            // The listener saw a publication that was not durable. Nothing
+            // this phone says afterwards means anything
+            // (`RealtimeBridge.java:80`).
+            throw FixtureError(code: "AssertionError", detail: failure)
+        }
         switch operation {
         case "create":
             try await owner.perform { try $0.createIdentity() }
         case "sync":
             try await syncCycle()
+        case "start":
+            // `RealtimeLoop.start()` and the task the application runs the
+            // lanes in (`AppLifecycle.swift`, `LifecycleRunner`): the
+            // generation is minted only if they were stopped, and one task
+            // drives both lanes until it is superseded. It returns at once, so
+            // the line protocol stays answerable while they run.
+            await loop.start()
+            if lanes == nil {
+                lanes = Task.detached { [loop] in await loop.run() }
+            }
+        case "stop":
+            // `RealtimeLoop.stop()` (`RealtimeLoop.java:55-56`): the counter
+            // moves, so every answer still in flight is refused when it comes
+            // back, and the session, the capability and the state stay exactly
+            // as they are. The task is cancelled rather than awaited, because
+            // a lane parked on a twenty-second long poll must not hold up the
+            // command that stopped it.
+            await loop.stop()
+            lanes?.cancel()
+            lanes = nil
+        case "kick":
+            // `RealtimeLoop.kick()` (`:54`): the user enqueued a message.
+            loop.wake()
         case "longpoll":
             let request = try object(value)
             guard let seconds = (request["seconds"] as? NSNumber)?.doubleValue,
@@ -453,6 +603,8 @@ private final class Phone {
     /// what makes it new).
     private func restart() async -> Generation {
         await loop.stop()
+        lanes?.cancel()
+        lanes = nil
         return await loop.start()
     }
 
@@ -479,6 +631,10 @@ private final class Phone {
         out["connection"] = connection
         out["realtime"] = await owner.isRealtime
         out["session"] = await owner.session != nil
+        out["lanes"] = lanes != nil
+        // What the lanes published, and when each incoming text became
+        // durable: the half of the view `RealtimeBridge.java:100` adds.
+        for (member, value) in tally.publications { out[member] = value }
         if operation == "longpoll" { out["longpoll"] = poll }
         return out
     }
@@ -548,6 +704,7 @@ private final class Registry {
 private let registry = Registry(root: root, trust: trust)
 
 while let line = readLine(strippingNewline: true) {
+    let started = MonotonicClock.continuous.now().nanoseconds
     var out: [String: Any]
     var operation = ""
     do {
@@ -570,7 +727,16 @@ while let line = readLine(strippingNewline: true) {
         // from their own tasks — so the command-line tool that has no lanes
         // awaits it here, at the top level, and needs no adapter of its own.
         try await open.perform(operation, value)
+        // The two instants `RealtimeBridge.java:92` answers with, on the
+        // machine-wide monotonic clock: when the line arrived and when the
+        // work on the state owner was done. A harness reads the difference to
+        // see that an owner command did not wait behind another lane's
+        // network, and it measures a message against the instant the receiving
+        // phone published it.
+        let completed = MonotonicClock.continuous.now().nanoseconds
         out = try await open.view(after: operation)
+        out["command_start_ns"] = NSNumber(value: started)
+        out["owner_completed_ns"] = NSNumber(value: completed)
     } catch {
         let (code, detail) = describe(error)
         out = ["error": code, "detail": detail]

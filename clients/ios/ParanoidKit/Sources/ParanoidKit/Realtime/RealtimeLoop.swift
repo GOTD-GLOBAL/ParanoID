@@ -14,15 +14,38 @@ import Foundation
 /// `StateOwner.start()` and `StateOwner.wake()` the way in: the receive lane
 /// wakes the send lane after a page, and the application wakes it when the
 /// user enqueues a message.
+///
+/// A lane that has nothing to do **waits** on the signal rather than looking
+/// at it again later, which is the other half of `tryAcquire(1, SECONDS)`: a
+/// kick resumes the lane at once, so the message the user just wrote leaves
+/// the device now and not at the end of a poll.
+///
+/// A wait is taken in two steps, the way `RealtimeTransport.Gate` takes a
+/// slot: `enroll()` reserves a ticket **before** the caller suspends, and
+/// `wait(ticket:)` suspends on it. A wake or an `endWait()` that arrives in
+/// between releases the ticket, so `wait` returns at once instead of waiting
+/// for a permit that has already been and gone — the one hazard a suspended
+/// wait has. Every waiter is resumed exactly once, because its continuation is
+/// taken out of the table under the lock before it is resumed.
 public final class WakeSignal: PushHook, @unchecked Sendable {
     private let lock = NSLock()
     private var armed = false
+    /// Tickets that have been taken and not released yet.
+    private var pending: Set<UInt64> = []
+    /// The continuation of every ticket whose caller is suspended right now.
+    private var waiters: [UInt64: CheckedContinuation<Void, Never>] = [:]
+    private var issued: UInt64 = 0
 
     public init() {}
 
-    /// Arms the signal. It never blocks: it is called from the state owner.
+    /// Arms the signal and resumes whoever is waiting for it. It never blocks:
+    /// it is called from the state owner.
     public func wake() {
-        lock.withLock { armed = true }
+        lock.lock()
+        armed = true
+        let waiting = releaseAll()
+        lock.unlock()
+        for continuation in waiting { continuation.resume() }
     }
 
     /// Consumes the permit, if there is one.
@@ -34,6 +57,56 @@ public final class WakeSignal: PushHook, @unchecked Sendable {
             self.armed = false
             return armed
         }
+    }
+
+    /// Reserves a place in the wait. It must be taken before the caller
+    /// suspends, so that nothing that happens in between is lost.
+    ///
+    /// It is the lane's side of this seam, with `wait(ticket:)`: the two are
+    /// how `SendLane` waits for a kick rather than looking again later.
+    public func enroll() -> UInt64 {
+        lock.withLock {
+            issued += 1
+            pending.insert(issued)
+            return issued
+        }
+    }
+
+    /// Suspends on `ticket` until it is released — by a wake, by the bound or
+    /// by a lane that stopped — and returns at once if it already was, or if a
+    /// permit is armed. The permit is not consumed here: `take()` consumes it.
+    public func wait(ticket: UInt64) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            lock.lock()
+            guard pending.contains(ticket), !armed else {
+                pending.remove(ticket)
+                lock.unlock()
+                continuation.resume()
+                return
+            }
+            waiters[ticket] = continuation
+            lock.unlock()
+        }
+    }
+
+    /// Ends every wait that no permit arrived for: the bound elapsed, or the
+    /// lane was stopped. Releasing nobody is a no-op, so it is safe to call
+    /// whenever a wait may be over.
+    public func endWait() {
+        lock.lock()
+        let waiting = releaseAll()
+        lock.unlock()
+        for continuation in waiting { continuation.resume() }
+    }
+
+    /// Releases every ticket and hands back the continuations to resume.
+    /// The caller holds the lock and resumes them after unlocking, because a
+    /// resumption must never run under it.
+    private func releaseAll() -> [CheckedContinuation<Void, Never>] {
+        pending.removeAll()
+        let waiting = Array(waiters.values)
+        waiters.removeAll()
+        return waiting
     }
 }
 
