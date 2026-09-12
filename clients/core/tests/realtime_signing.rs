@@ -282,7 +282,10 @@ fn push_selector_signs_exact_fcm_registration_and_rejects_bad_tokens() {
         unregister["body"],
         json!({"platform":"fcm","token":""}).to_string()
     );
-    assert!(sign(&a, &context, "push", None).is_err(), "token is required");
+    assert!(
+        sign(&a, &context, "push", None).is_err(),
+        "token is required"
+    );
     for bad in ["with space", "tab\there", "\u{e9}", &"x".repeat(4097)] {
         assert!(sign(&a, &context, "push", Some(bad)).is_err(), "{bad:?}");
     }
