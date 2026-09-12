@@ -264,3 +264,31 @@ fn voice_turn_selector_signs_only_exact_empty_get_and_retained_device_context() 
         before
     );
 }
+
+#[test]
+fn push_selector_signs_exact_fcm_registration_and_rejects_bad_tokens() {
+    let a = ready();
+    let context = session(&a);
+    let before = a["state"].clone();
+    let request = sign(&a, &context, "push", Some("fcm-token_ABC:123")).unwrap();
+    assert_eq!(request["method"], "POST");
+    assert_eq!(request["path"], "/v2/push");
+    assert_eq!(
+        request["body"],
+        json!({"platform":"fcm","token":"fcm-token_ABC:123"}).to_string()
+    );
+    let unregister = sign(&a, &context, "push", Some("")).unwrap();
+    assert_eq!(
+        unregister["body"],
+        json!({"platform":"fcm","token":""}).to_string()
+    );
+    assert!(sign(&a, &context, "push", None).is_err(), "token is required");
+    for bad in ["with space", "tab\there", "\u{e9}", &"x".repeat(4097)] {
+        assert!(sign(&a, &context, "push", Some(bad)).is_err(), "{bad:?}");
+    }
+    assert_eq!(
+        call(&a["state"], json!({"op":"view"})).unwrap()["state"],
+        before,
+        "signing a push registration mutates no state"
+    );
+}

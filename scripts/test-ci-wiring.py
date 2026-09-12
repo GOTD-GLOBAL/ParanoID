@@ -11,7 +11,7 @@ class Wiring(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/server.yml").read_text()
         package = workflow.split("  native-package:\n", 1)[1].split("  postgres-http:\n", 1)[0]
         for name in ('deploy/turn/test_package.py', 'deploy/turn/test_runtime.py',
-                     'deploy/test_turn_environment.py'):
+                     'deploy/test_turn_environment.py', 'deploy/test_push_environment.py'):
             self.assertIn('python3 ' + name, package)
             self.assertTrue((ROOT / name).is_file())
 

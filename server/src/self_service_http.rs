@@ -29,6 +29,7 @@ struct Service {
     waiters: Mutex<HashSet<String>>,
     changed: tokio::sync::Notify,
     turn: Option<crate::voice_turn::Issuer>,
+    push: Option<Arc<crate::push_fcm::Gateway>>,
 }
 struct Session {
     context: SessionV2,
@@ -79,6 +80,25 @@ pub async fn app_with_turn(
     pool: PgPool,
     turn: Option<crate::voice_turn::TurnConfig>,
 ) -> Result<Router, sqlx::Error> {
+    app_with_services(pool, turn, None).await
+}
+
+pub async fn app_with_services(
+    pool: PgPool,
+    turn: Option<crate::voice_turn::TurnConfig>,
+    push: Option<crate::push_fcm::PushConfig>,
+) -> Result<Router, sqlx::Error> {
+    let push = push
+        .map(|config| config.gateway().map(Arc::new))
+        .transpose()
+        .map_err(|e| sqlx::Error::Configuration(e.into()))?;
+    if push.is_some() {
+        // Additive, idempotent: the pinned v2 base schema stays byte-identical;
+        // the token table exists only on gateways that actually send wakes.
+        sqlx::raw_sql("CREATE TABLE IF NOT EXISTS ss_push_tokens(account TEXT PRIMARY KEY REFERENCES ss_accounts(account),device TEXT NOT NULL REFERENCES ss_devices(device),platform TEXT NOT NULL CHECK(platform='fcm'),token TEXT NOT NULL CHECK(octet_length(token) BETWEEN 1 AND 4096),updated BIGINT NOT NULL CHECK(updated>0))")
+            .execute(&pool)
+            .await?;
+    }
     let (realm, pin): (String, String) =
         sqlx::query_as("SELECT realm,pin FROM ss_meta WHERE id=1 AND version=2")
             .fetch_one(&pool)
@@ -96,6 +116,7 @@ pub async fn app_with_turn(
         waiters: Mutex::new(HashSet::new()),
         changed: tokio::sync::Notify::new(),
         turn,
+        push,
     });
     Ok(Router::new()
         .route(
@@ -129,6 +150,7 @@ pub async fn app_with_turn(
                 .get(operation)
                 .layer(DefaultBodyLimit::max(24576)),
         )
+        .route("/v2/push", post(session_operation))
         .with_state(s)
         .merge(crate::android_updates::router(
             std::env::var_os("PARANOID_ANDROID_UPDATE_ROOT").map(std::path::PathBuf::from),
@@ -448,7 +470,8 @@ fn session_proof(
     if headers.get_all("authorization").iter().count() != 1
         || !matches!(
             (method.as_str(), route),
-            ("GET", "/v2/messages" | "/v2/events" | "/v2/voice/turn") | ("POST", "/v2/messages")
+            ("GET", "/v2/messages" | "/v2/events" | "/v2/voice/turn")
+                | ("POST", "/v2/messages" | "/v2/push")
         )
         || (method == Method::POST && uri.query().is_some())
         || (route == "/v2/voice/turn" && (uri.query().is_some() || !body.is_empty()))
@@ -537,6 +560,43 @@ async fn session_query(
         tx.commit().await?;
         return Ok(result);
     }
+    if uri.path() == "/v2/push" {
+        // RFC-0020: register/unregister this device's FCM token. The token is
+        // opaque to us; it binds to the authenticated account+device only.
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Push {
+            platform: String,
+            token: String,
+        }
+        let p: Push = serde_json::from_slice(body).map_err(|_| crate::invalid())?;
+        if p.platform != "fcm" || !crate::push_fcm::valid_token(&p.token) {
+            return Err(crate::invalid());
+        }
+        if s.push.is_none() {
+            tx.commit().await?;
+            return Err(Failure(StatusCode::NOT_FOUND, "push_disabled"));
+        }
+        if p.token.is_empty() {
+            sqlx::query("DELETE FROM ss_push_tokens WHERE account=$1")
+                .bind(&credential.account)
+                .execute(&mut *tx)
+                .await?;
+        } else {
+            sqlx::query("INSERT INTO ss_push_tokens VALUES($1,$2,'fcm',$3,$4) ON CONFLICT(account) DO UPDATE SET device=EXCLUDED.device,token=EXCLUDED.token,updated=EXCLUDED.updated")
+                .bind(&credential.account).bind(&credential.device).bind(&p.token).bind(now())
+                .execute(&mut *tx).await?;
+        }
+        tx.commit().await?;
+        return Ok(serde_json::json!({"registered": !p.token.is_empty()}));
+    }
+    let recipient = if method == Method::POST {
+        serde_json::from_slice::<crate::Submission>(body)
+            .ok()
+            .map(|i| i.recipient)
+    } else {
+        None
+    };
     let result = crate::self_service_messages::messages(
         &mut tx,
         &credential.account,
@@ -548,8 +608,40 @@ async fn session_query(
     tx.commit().await?;
     if method == Method::POST {
         s.changed.notify_waiters();
+        if let Some(recipient) = recipient {
+            wake_recipient(s, recipient);
+        }
     }
     Ok(result)
+}
+
+/// After a committed message: if the recipient is not attached to a live long-poll,
+/// send a content-free FCM wake (rate-limited). Failures never affect the sender.
+fn wake_recipient(s: &Service, recipient: String) {
+    let Some(gateway) = s.push.clone() else {
+        return;
+    };
+    if s.waiters.lock().unwrap().contains(&recipient) || !gateway.admit(&recipient) {
+        return;
+    }
+    let pool = s.pool.clone();
+    tokio::spawn(async move {
+        let token: Option<String> =
+            sqlx::query_scalar("SELECT token FROM ss_push_tokens WHERE account=$1")
+                .bind(&recipient)
+                .fetch_optional(&pool)
+                .await
+                .ok()
+                .flatten();
+        let Some(token) = token else { return };
+        if let Ok(false) = gateway.wake(&token).await {
+            let _ = sqlx::query("DELETE FROM ss_push_tokens WHERE account=$1 AND token=$2")
+                .bind(&recipient)
+                .bind(&token)
+                .execute(&pool)
+                .await;
+        }
+    });
 }
 
 // Unlocked hints only. A true result always leads to the locked authorization
