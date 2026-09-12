@@ -18,6 +18,11 @@ public contract is declared.
   remote/local renderers, `FLAG_SECURE` call window, camera pause when the
   app is not visible, speaker on video unless a headset is active, camera
   foreground-service type only while the camera is on (`0.0.16-video`).
+- `0.0.17-video` (versionCode 17, 2026-09-12): a video-call start with the
+  microphone already granted no longer cancels on the CAMERA-only permission
+  result; the in-app update declares the installer `<queries>` intent and
+  falls back from the system-only resolver, fixing "Установщик Android
+  недоступен" seen on one alpha phone. No protocol change.
 - Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
   serves `global.paranoid.messenger` update metadata; v15 published.
 
