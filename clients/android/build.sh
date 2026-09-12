@@ -8,6 +8,8 @@ umask 077
 python3 dependencies.py
 python3 webrtc_dependency.py
 python3 test_webrtc_dependency.py
+python3 firebase_dependency.py
+python3 test_firebase_dependency.py
 python3 test_call_controller.py
 python3 test_voice_relay.py
 TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
@@ -48,9 +50,25 @@ python3 test_update_wiring.py
 python3 test_update_artifact_regression.py
 cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
 python3 notices.py
-javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar:out/deps/webrtc-classes.jar" -d out/classes src/org/paranoid/text/*.java
-"$TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output out/dex out/classes/org/paranoid/text/*.class out/deps/zxing-core-3.5.3.jar out/deps/webrtc-classes.jar
-"$TOOLS/aapt" package -f -M AndroidManifest.xml -S res -I "$PLATFORM" -F out/unsigned.apk
+# RFC-0020: Firebase Messaging closure (pinned AARs). aapt merges the library resources and generates
+# each library's R class (--extra-packages), which their bytecode references; the closure is dexed
+# with --release so the 61 artifacts stay a single classes.dex under the 64K method limit.
+FCM_CP="$(ls out/deps/fcm-jars/*.jar | paste -sd:)"
+FCM_RES="$(for d in out/deps/fcm-res/*/; do printf -- '-S %s ' "$d"; done)"
+FCM_PACKAGES="$(paste -sd: out/deps/fcm-packages.txt)"
+python3 -c 'from pathlib import Path; import shutil; p=Path("out/gen"); shutil.rmtree(p, ignore_errors=True); p.mkdir()'
+"$TOOLS/aapt" package -f -m --auto-add-overlay -M AndroidManifest.xml -S res $FCM_RES -I "$PLATFORM" -J out/gen --extra-packages "$FCM_PACKAGES" -F out/unsigned.apk
+javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar:out/deps/webrtc-classes.jar:$FCM_CP" -d out/classes src/org/paranoid/text/*.java $(find out/gen -name R.java)
+# R8 shrink-only (see proguard.pro): the closure's own consumer rules (proguard.txt inside each AAR) are
+# honoured, ours forbid optimization/renaming. Keeps the APK under the 16 MiB in-app update bound.
+python3 -c 'from pathlib import Path; import shutil; p=Path("out/r8-rules"); shutil.rmtree(p, ignore_errors=True); p.mkdir(); import zipfile
+for aar in sorted(Path("out/deps/fcm-archives").glob("*.aar")):
+    with zipfile.ZipFile(aar) as z:
+        if "proguard.txt" in z.namelist(): (p/(aar.stem+".pro")).write_bytes(z.read("proguard.txt"))'
+rm -rf out/dex && mkdir -p out/dex
+java -cp "$TOOLS/lib/d8.jar" com.android.tools.r8.R8 --release --lib "$PLATFORM" --min-api 26 --output out/dex --pg-conf proguard.pro $(for f in out/r8-rules/*.pro; do printf -- '--pg-conf %s ' "$f"; done) $(find out/classes -name '*.class') out/deps/zxing-core-3.5.3.jar out/deps/webrtc-classes.jar out/deps/fcm-jars/*.jar > out/r8.log 2>&1 || { grep -v "^Warning\|^Info\|does not match anything\|^  \|^}$" out/r8.log; exit 1; }
+test -s out/dex/classes.dex
+python3 test_dex_shrink.py
 python3 -c 'import zipfile; z=zipfile.ZipFile("out/unsigned.apk","a",compression=zipfile.ZIP_DEFLATED); z.write("out/dex/classes.dex","classes.dex"); z.write("../core/target/aarch64-linux-android/release/libparanoid_client_core.so","lib/arm64-v8a/libparanoid_client_core.so",compress_type=zipfile.ZIP_STORED); z.write("out/deps/webrtc/arm64-v8a/libjingle_peerconnection_so.so","lib/arm64-v8a/libjingle_peerconnection_so.so",compress_type=zipfile.ZIP_STORED); z.write("out/THIRD_PARTY_NOTICES.txt","assets/THIRD_PARTY_NOTICES.txt"); z.close()'
 "$TOOLS/zipalign" -P 16 -f 4 out/unsigned.apk out/aligned.apk
 # Preserve the existing test signing identity. No key generation/copy or secrets in argv.

@@ -120,6 +120,8 @@ public final class TextEngine {
                 });
                 publish("Готово. Только тестовые сообщения.");
                 ui.post(TextEngine.this::watchNetwork);
+                if(!pendingPushToken.isEmpty())realtime.pushToken(pendingPushToken);
+                ui.post(()->PushService.requestToken(TextEngine.this));
             } catch(Throwable error) {broken=true;unsupportedSnapshot=error instanceof SelfServiceClient.UnsupportedSnapshot;publish("Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются.");}
         });
     }
@@ -171,10 +173,26 @@ public final class TextEngine {
         public void onVideoUnavailable(String reason){calls.videoUnavailable(generation);VoiceCallService.video(context,false);}
     }
     public WebRtcAudioEngine media(){return media;}
+    /** RFC-0020: the Firebase token is announced over the signed session by the realtime loop. */
+    public void pushToken(String token){worker.execute(()->{pendingPushToken=token==null?"":token;if(realtime!=null)realtime.pushToken(pendingPushToken);});}
+    private String pendingPushToken="";
+    /** A content-free wake arrived: reconnect now. With background enabled the foreground channel is
+     *  restarted; otherwise a bounded fetch runs so the message/call is picked up over the E2EE path. */
+    public void pushWake(){
+        worker.execute(()->{
+            if(broken||realtime==null)return;
+            wakeUntil=android.os.SystemClock.elapsedRealtime()+WAKE_WINDOW_MS;
+            realtime.restart();startConnection();
+            ui.postDelayed(()->worker.execute(()->{if(android.os.SystemClock.elapsedRealtime()>=wakeUntil&&listener==null&&!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null)stopConnection();}),WAKE_WINDOW_MS+500);
+        });
+        BackgroundConnectionService.wake(context);
+    }
+    private static final long WAKE_WINDOW_MS=25_000;
+    private volatile long wakeUntil;
     public void listen(Listener next) {listener=next;worker.execute(()->{publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();});}
     public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
     private void stopConnection(){if(realtime!=null)realtime.stop();connected=false;ui.post(()->calls.connection(false));}
-    private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining)){realtime.start();realtime.kick();}}
+    private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining||android.os.SystemClock.elapsedRealtime()<wakeUntil)){realtime.start();realtime.kick();}}
     /** Owner report 2026-09-12 (slow/absent notifications): a network switch used to leave the long-poll
      *  stuck until its 30 s timeout plus backoff. Reconnect at once when the default network changes. */
     private void watchNetwork(){

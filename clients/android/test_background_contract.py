@@ -13,16 +13,29 @@ class BackgroundContract(unittest.TestCase):
         permissions={p.get(A+'name') for p in manifest.findall('uses-permission')}
         self.assertTrue({'android.permission.FOREGROUND_SERVICE','android.permission.FOREGROUND_SERVICE_SPECIAL_USE','android.permission.POST_NOTIFICATIONS'}<=permissions)
         services=manifest.findall('application/service')
-        self.assertEqual(len(services),2)
+        own=[s for s in services if s.get(A+'name').startswith('org.paranoid.text.')]
+        self.assertEqual(sorted(s.get(A+'name') for s in own),['org.paranoid.text.BackgroundConnectionService','org.paranoid.text.PushService','org.paranoid.text.VoiceCallService'])
+        # v20 (RFC-0020): the remaining services/receivers belong to the Firebase Messaging closure; none is
+        # a foreground service, none is exported except the FCM receiver guarded by Google's SEND permission.
+        library=[s for s in services if s not in own]
+        self.assertTrue(all(s.get(A+'exported')=='false' and s.get(A+'foregroundServiceType') is None for s in library),[s.get(A+'name') for s in library])
+        push=next(s for s in own if s.get(A+'name')=='org.paranoid.text.PushService')
+        self.assertEqual(push.get(A+'exported'),'false');self.assertIsNone(push.get(A+'foregroundServiceType'))
         service=next(s for s in services if s.get(A+'name')=='org.paranoid.text.BackgroundConnectionService')
         self.assertEqual(service.get(A+'name'),'org.paranoid.text.BackgroundConnectionService')
         self.assertEqual(service.get(A+'exported'),'false')
         self.assertEqual(service.get(A+'foregroundServiceType'),'specialUse')
         self.assertEqual(len(service.findall('property')),1)
         receivers=manifest.findall('application/receiver')
-        self.assertEqual([r.get(A+'name') for r in receivers],['org.paranoid.text.ConnectionWatchdog'])
-        self.assertEqual(receivers[0].get(A+'exported'),'false')
-        self.assertEqual(receivers[0].findall('intent-filter'),[],'watchdog must not listen to broadcasts like BOOT_COMPLETED')
+        watchdog=[r for r in receivers if r.get(A+'name')=='org.paranoid.text.ConnectionWatchdog']
+        self.assertEqual(len(watchdog),1)
+        self.assertEqual(watchdog[0].get(A+'exported'),'false')
+        self.assertEqual(watchdog[0].findall('intent-filter'),[],'watchdog must not listen to broadcasts like BOOT_COMPLETED')
+        exported=[(r.get(A+'name'),r.get(A+'permission')) for r in receivers if r.get(A+'exported')=='true']
+        self.assertEqual(exported,[('com.google.firebase.iid.FirebaseInstanceIdReceiver','com.google.android.c2dm.permission.SEND')])
+        for r in receivers:
+            for action in r.findall('intent-filter/action'):
+                self.assertNotIn('BOOT_COMPLETED',action.get(A+'name'))
         self.assertIn('android.permission.WAKE_LOCK',permissions)
         voice=next(s for s in services if s.get(A+'name')=='org.paranoid.text.VoiceCallService')
         self.assertEqual(voice.get(A+'exported'),'false')

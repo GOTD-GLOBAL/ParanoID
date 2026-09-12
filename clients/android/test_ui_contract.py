@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="19"',manifest)
-        self.assertIn('android:versionName="0.0.19-video"',manifest)
+        self.assertIn('android:versionCode="20"',manifest)
+        self.assertIn('android:versionName="0.0.20-push"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -120,7 +120,20 @@ class OnboardingContract(unittest.TestCase):
         self.assertIn('registerDefaultNetworkCallback',engine)
         self.assertIn('public void restart(){',loop)
         self.assertIn('if(changed)realtime.restart();startConnection();',engine)
-        self.assertNotIn('firebase',engine.lower()); self.assertNotIn('fcm',(ROOT/'AndroidManifest.xml').read_text().lower())
+        # v20: FCM wake is content-free and only reconnects; the token goes over the signed session.
+        push=(ROOT/'src/org/paranoid/text/PushService.java').read_text()
+        manifest=(ROOT/'AndroidManifest.xml').read_text()
+        self.assertIn('if(!"wake".equals(message.getData().get("t")))return;',push)
+        for token in ['getNotification','NotificationManager','Toast','sendCall','client.']:
+            self.assertNotIn(token,push)
+        self.assertIn('client.sessionRequest(context.context,"push",token)',loop)
+        self.assertIn('if(error.status!=404)throw error;',loop)
+        self.assertIn('realtime.restart();startConnection();',engine)
+        self.assertIn('<service android:name="org.paranoid.text.PushService" android:exported="false">',manifest)
+        self.assertIn('android:authorities="global.paranoid.messenger.firebaseinitprovider"',manifest)
+        self.assertIn('com.google.android.c2dm.permission.RECEIVE',manifest)
+        values=(ROOT/'res/values/firebase.xml').read_text()
+        self.assertIn('<string name="project_id" translatable="false">para-no-id</string>',values)
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

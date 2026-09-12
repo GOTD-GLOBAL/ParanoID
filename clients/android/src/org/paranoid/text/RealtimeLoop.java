@@ -37,6 +37,10 @@ public final class RealtimeLoop implements AutoCloseable {
     private volatile long generation;
     private volatile RealtimeTransport transport;
     private volatile Session session;
+    // RFC-0020: FCM token to announce over the signed session; registered once per (session,token).
+    private volatile String pushToken="";
+    private Session pushedSession;private String pushedToken="";
+    public void pushToken(String token){pushToken=token==null?"":token;kick();}
     private volatile boolean discoveryNeeded=true,realtime;
     private long discoveryAt,lastProof;
     private volatile long legacyUntil;
@@ -203,6 +207,17 @@ public final class RealtimeLoop implements AutoCloseable {
             }
         }
     }
+    private void registerPush(long run,Session context)throws Exception {
+        String token=pushToken;
+        if(context==null||token.isEmpty()||(pushedSession==context&&pushedToken.equals(token)))return;
+        // Not via sessionCall: a server without the RFC-0020 route answers 404 (no route) or
+        // 404 push_disabled, and that must not invalidate the session or trigger rediscovery.
+        JSONObject request=state(run,()->client.sessionRequest(context.context,"push",token));
+        guard(run);
+        try{transport.call(request.getString("method"),request.getString("path"),request.getString("body"),request.getString("authorization"));}
+        catch(SyncCycle.Rejected error){if(error.status!=404)throw error;/* gateway absent: retry after the next session */}
+        pushedSession=context;pushedToken=token;
+    }
     private JSONObject sessionCall(long run,Session context,String operation,String id)throws Exception {
         for(int attempt=0;;attempt++) {
             JSONObject request=state(run,()->client.sessionRequest(context.context,operation,id));
@@ -227,6 +242,7 @@ public final class RealtimeLoop implements AutoCloseable {
             try {
                 run=awaitEnabled();if(!outbound.tryAcquire(1,TimeUnit.SECONDS))continue;final long selected=run;
                 Session context=connection(run);
+                registerPush(run,context);
                 JSONArray pending=state(run,client::pending);
                 Exception deferred=null;
                 for(int n=0;n<pending.length();n++) {

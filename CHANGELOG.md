@@ -39,6 +39,16 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.20-push` (versionCode 20, 2026-09-12, RFC-0020 client half): Firebase
+  Cloud Messaging is embedded through a SHA256-pinned 61-artifact closure in
+  the manual javac/d8 build (no Gradle; `firebase_dependency.py`). After the
+  signed session exists the FCM token is registered with `POST /v2/push`; a
+  content-free `{"t":"wake"}` data message restarts the realtime loop (and the
+  user-enabled background service) so the real message/call arrives over the
+  E2EE channel. No notification content ever transits Google. Requires the
+  server gateway (PR #28) to be deployed for wakes to be sent; without it the
+  token registration is answered `push_disabled` and nothing changes. APK
+  grows by about 5 MB.
 - `0.0.19-video` (versionCode 19, 2026-09-12): in-app update falls back to a
   `PackageInstaller` session when the installer intent cannot be started
   (owner report "Установщик Android недоступен" repeated on one OPPO phone);
