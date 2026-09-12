@@ -30,11 +30,11 @@ Keep the current monorepo; this direction does not request separate repositories
 - `server/`: server source and component entry-point README.
 - `clients/core/`: shared client source and entry-point README.
 - `clients/android/`: Android application and entry-point README.
-- `clients/ios/`: native iOS client (RFC-0019; candidate, not accepted).
+- `clients/ios/`: native iOS client (RFC-0020; candidate, not accepted).
 - `docs/server/`: server-specific implementation, storage and operational guidance.
 - `docs/clients/core/`: shared client state, E2EE integration and migration guidance.
 - `docs/clients/android/`: Android UI, build, installation and platform verification.
-- `docs/clients/ios/`: iOS documentation (RFC-0019).
+- `docs/clients/ios/`: iOS documentation (RFC-0020).
 - `docs/protocol/` and `docs/api/`: one shared versioned wire-contract source of truth.
 - `docs/product/`, `docs/rfcs/`, `docs/decisions/`, `docs/security/` and
   `docs/project/`: shared requirements, decisions, threat boundaries and navigation.

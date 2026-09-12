@@ -6,8 +6,8 @@ last_reviewed: 2026-09-11
 
 # iOS client verification: requirement-to-test mapping
 
-Validation plan for [RFC-0019](../../rfcs/0019-ios-client.md) and
-[draft ADR-0013](../../decisions/0013-ios-client.md), written before any
+Validation plan for [RFC-0020](../../rfcs/0020-ios-client.md) and
+[draft ADR-0014](../../decisions/0014-ios-client.md), written before any
 client code exists. Every row is `NOT RUN`. Under the
 [closed-alpha policy](../../governance/documentation-policy.md#closed-alpha-review-exception)
 item 4, acceptance criteria for delivered behaviour must actually pass and

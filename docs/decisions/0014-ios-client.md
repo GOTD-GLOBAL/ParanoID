@@ -7,13 +7,13 @@ review_mode: closed-alpha-ai
 last_reviewed: 2026-09-11
 ---
 
-# ADR-0013: iOS client as a native SwiftUI shell over the shared Rust core
+# ADR-0014: iOS client as a native SwiftUI shell over the shared Rust core
 
 This record is a **draft**: the decision below is a candidate, not an accepted
 architecture. It cannot move to `proposed` until the closed-alpha scope has a
 permanent owner approval permalink and the open questions marked blocking are
 answered. Nothing described here is built, reviewed or deployed at the time
-of writing; [RFC-0019](../rfcs/0019-ios-client.md) carries the proposal text.
+of writing; [RFC-0020](../rfcs/0020-ios-client.md) carries the proposal text.
 
 ## Required review rationale
 
@@ -87,7 +87,7 @@ compatibility.
    sufficient and reviewable as text.
 
 Storage, pinning and media sub-decisions within option 3 are recorded in
-[RFC-0019 Proposed design](../rfcs/0019-ios-client.md#proposed-design): the
+[RFC-0020 Proposed design](../rfcs/0020-ios-client.md#proposed-design): the
 install marker rule (Keychain outlives the container, so an absent marker means
 a fresh install and stale keys are deleted, while marker-present ambiguity
 freezes exactly like Android `StorageGuard`), `Security.framework` leaf-SPKI
@@ -181,7 +181,7 @@ unaffected because nothing on the server changes.
 
 ## Open questions with deadlines
 
-The same table as [RFC-0019 Open questions](../rfcs/0019-ios-client.md#open-questions);
+The same table as [RFC-0020 Open questions](../rfcs/0020-ios-client.md#open-questions);
 questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
 
 | # | Question | Owner | Proposed deadline |
@@ -219,7 +219,7 @@ questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
 
 - Requirement: [REQ-CLIENT-001](../product/requirements.md), REQ-ID-005/007/008,
   REQ-MSG-002/003/005, [REQ-CALL-002/003](../product/voice-calls.md)
-- RFC: [RFC-0019](../rfcs/0019-ios-client.md)
+- RFC: [RFC-0020](../rfcs/0020-ios-client.md)
 - Threat model: [threat model](../security/threat-model.md); iOS threat delta
   `docs/security/ios-client-threats.md` is written with the client pull
   request, not yet present

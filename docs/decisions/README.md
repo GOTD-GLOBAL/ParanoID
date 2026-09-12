@@ -12,6 +12,10 @@ last_reviewed: 2026-08-15
 # Architecture decision log
 
 ADRs preserve why durable choices were made. Numbers are never reused.
+Allocate a number only after checking every published branch, not just `main`
+(the command is in [the RFC index](../rfcs/README.md#naming)). ADR-0014 was
+moved from ADR-0013 for that reason, before it was proposed; ADR-0013 stays
+with the video-call work.
 
 ## Decisions
 
@@ -108,9 +112,9 @@ isolated packaging. Local task authorization does not constitute ADR acceptance.
 
 ## iOS client candidate
 
-[Draft ADR-0013](0013-ios-client.md): native SwiftUI iOS client over the
+[Draft ADR-0014](0014-ios-client.md): native SwiftUI iOS client over the
 unchanged shared Rust core through a thin C-ABI bridge, Keychain/Data
 Protection storage with an install marker, `Security.framework` leaf-SPKI
 pinning to the retained pin and the pinned WebRTC iOS dependency, for the
-bounded private alpha ([RFC-0019](../rfcs/0019-ios-client.md)). Draft, not
+bounded private alpha ([RFC-0020](../rfcs/0020-ios-client.md)). Draft, not
 proposed: closed-alpha scope approval and blocking owner questions are open.

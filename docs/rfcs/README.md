@@ -94,6 +94,20 @@ Follow the human authority and acceptance-evidence rules in the
 Use `NNNN-short-title.md`. Allocate the next number and never reuse it. Add active
 RFCs to this file when the first proposal is opened.
 
+A number is only free when no other branch has taken it. Before allocating,
+check every published branch, not just `main`:
+
+```sh
+git fetch --all --prune
+for ref in $(git for-each-ref --format='%(refname)' refs/remotes/origin); do
+  git ls-tree -r --name-only "$ref" -- docs/rfcs docs/decisions
+done | grep -oE '[0-9]{4}' | sort -u | tail -1
+```
+
+When two branches reach the same number anyway, the branch that is merged
+later renumbers and records the correction here in one sentence, as done for
+RFC-0016 and RFC-0020. Numbers are never silently reused or swapped.
+
 ## Required use
 
 Create an RFC for every
@@ -115,10 +129,13 @@ deployment authority remain separate gates.
 
 ## iOS client candidate
 
-[RFC-0019: Native iOS client on the shared Rust core](0019-ios-client.md)
+[RFC-0020: Native iOS client on the shared Rust core](0020-ios-client.md)
 (draft) proposes a SwiftUI shell over the unchanged `clients/core` through a
 thin C-ABI bridge, the same wire contracts and pin as Android v15, Keychain
 plus Data Protection storage with an install marker, and the pinned WebRTC
-iOS dependency; [draft ADR-0013](../decisions/0013-ios-client.md). Its
+iOS dependency; [draft ADR-0014](../decisions/0014-ios-client.md). Its
 decision deadline is a placeholder until the client pull request is opened.
-No build, phone result, hosted account or architecture acceptance is implied.
+No build, phone result, hosted account or architecture acceptance is implied. This candidate first carried the number RFC-0019; that number had already
+been allocated on the unmerged `feat/video-calls-v16` branch, so the iOS
+candidate was moved to RFC-0020 before it was proposed, as a transparent
+numbering correction. RFC-0019 stays with the video-call work.

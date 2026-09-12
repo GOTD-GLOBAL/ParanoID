@@ -8,7 +8,7 @@ review_mode: closed-alpha-ai
 last_reviewed: 2026-09-11
 ---
 
-# RFC-0019: Native iOS client on the shared Rust core (track A)
+# RFC-0020: Native iOS client on the shared Rust core (track A)
 
 This proposal is a **draft**. It describes a candidate second client for
 [REQ-CLIENT-001](../product/requirements.md); nothing in it is accepted
@@ -31,7 +31,7 @@ be run in a fresh context, separate from the implementing context, and recorded
 in the client pull request; it is not a human audit and does not appear in the
 reviewer list. Protected domains touched by this proposal are listed in
 [Proposed design](#proposed-design) and recorded in
-[draft ADR-0013](../decisions/0013-ios-client.md). Before real sensitive
+[draft ADR-0014](../decisions/0014-ios-client.md). Before real sensitive
 communication, public release or any production claim, independent qualified
 human review of identity, cryptography, persistence and application security
 remains required (policy item 6).
@@ -120,7 +120,7 @@ Network: URLSession + pinned-leaf delegate -> https://<realm>:38443 (self-servic
 Voice: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP/Opus; relay only via /v2/voice/turn
 ```
 
-### Protected domains touched (recorded in ADR-0013)
+### Protected domains touched (recorded in ADR-0014)
 
 1. **Foundational dependency.** The WebRTC iOS xcframework `150.7871.01`
    from the same `webrtc-sdk` release line as the Android dependency, pinned
@@ -198,7 +198,7 @@ against its smoke test scenarios.
 
 ## Alternatives
 
-Compared in [draft ADR-0013](../decisions/0013-ios-client.md): the Kotlin
+Compared in [draft ADR-0014](../decisions/0014-ios-client.md): the Kotlin
 Multiplatform scaffold from closed PR #1 (abandoned), UniFFI-generated
 bindings (excessive for one function), a pure-Swift reimplementation of the
 core (would duplicate a protected domain), the selected thin C-ABI bridge, and
@@ -305,7 +305,7 @@ client pull request.
 - Delegation evidence permalink, if applicable: not applicable.
 - Required-review evidence permalinks: independent AI review pending (recorded
   separately from human reviewers).
-- Resulting ADR: [draft ADR-0013](../decisions/0013-ios-client.md).
+- Resulting ADR: [draft ADR-0014](../decisions/0014-ios-client.md).
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: not applicable.
