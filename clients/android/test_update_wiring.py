@@ -7,7 +7,7 @@ A='{http://schemas.android.com/apk/res/android}'
 class UpdateWiring(unittest.TestCase):
     def test_explicit_update_ui_and_narrow_provider(self):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
-        self.assertEqual(m.get(A+'versionCode'),'18')
+        self.assertEqual(m.get(A+'versionCode'),'19')
         self.assertIn('android.permission.REQUEST_INSTALL_PACKAGES',[p.get(A+'name') for p in m.findall('uses-permission')])
         # Package visibility: the installer intent must be declared so resolveActivity() can see the system installer on targetSdk>=30.
         queries=[(i.find('action').get(A+'name'),i.find('data').get(A+'mimeType')) for i in m.findall('queries/intent')]
@@ -28,6 +28,8 @@ class UpdateWiring(unittest.TestCase):
             self.assertIn(text,controller)
         self.assertLess(controller.index('UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);'),controller.index('sessionInstall(ready);'))
         self.assertIn('UpdateController.installStatus(this,intent)',ui)
+        self.assertIn('UpdateController.installStatus(this,getIntent())',ui)
+        self.assertIn('FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP',controller)
         for text in ['text-state.enc','KeyStore','createIdentity','FLAG_GRANT_WRITE_URI_PERMISSION','file://','ACTION_PACKAGE_ADDED']:
             self.assertNotIn(text,controller)
         engine=(R/'src/org/paranoid/text/TextEngine.java').read_text()

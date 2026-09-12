@@ -39,6 +39,11 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.19-video` (versionCode 19, 2026-09-12): in-app update falls back to a
+  `PackageInstaller` session when the installer intent cannot be started
+  (owner report "Установщик Android недоступен" repeated on one OPPO phone);
+  the system confirmation dialog is preserved and the status line now shows
+  the intent/session failure classes for diagnosis. No protocol change.
 - Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
   serves `global.paranoid.messenger` update metadata; v15 published.
 

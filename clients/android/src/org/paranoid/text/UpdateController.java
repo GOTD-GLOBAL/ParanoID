@@ -116,7 +116,7 @@ public final class UpdateController {
                 if(total!=ready.length())throw new IOException("short copy");
                 session.fsync(out);
             }
-            Intent result=new Intent(activity,MainActivity.class).setAction(INSTALL_STATUS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            Intent result=new Intent(activity,MainActivity.class).setAction(INSTALL_STATUS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
             int flags=PendingIntent.FLAG_UPDATE_CURRENT|(Build.VERSION.SDK_INT>=31?PendingIntent.FLAG_MUTABLE:0);
             session.commit(PendingIntent.getActivity(activity,54,result,flags).getIntentSender());
         }catch(IOException|RuntimeException failure){try{session.abandon();}catch(RuntimeException ignored){}throw failure;}

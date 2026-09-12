@@ -106,10 +106,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         buildWelcome();buildDialogs();buildContacts();buildIdentity();buildChat();restoreDraft();buildNavigation();
         show(page);
         updateLockScreen(engine.calls().snapshot().optString("state"));
+        String install=UpdateController.installStatus(this,getIntent());
+        if(install!=null){updateController.showStatus(install);show("identity");}
     }
     @Override protected void onNewIntent(Intent intent){
         super.onNewIntent(intent);
         updateLockScreen(engine.calls().snapshot().optString("state"));
+        setIntent(intent);
         String install=UpdateController.installStatus(this,intent);
         if(install!=null){if(updateController!=null)updateController.showStatus(install);show("identity");}
     }

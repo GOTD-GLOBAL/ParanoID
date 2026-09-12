@@ -14,8 +14,8 @@ headset is active). [RFC-0019](../rfcs/0019-video-calls.md) is proposed,
 [ADR-0013](../decisions/0013-video-calls.md) is proposed and
 [call-v2](../protocol/call-v2.md) plus the [video threat delta](../security/video-v1-threats.md)
 are written. The native validator, `CallController`, media engine, call UI and
-foreground service implement call-v2 (`0.0.18-video`, versionCode 18, retained
-signer; v16 was the first candidate, v17 fixed the video-call start permission
+foreground service implement call-v2 (`0.0.19-video`, versionCode 19, retained
+signer; v19 adds a PackageInstaller-session fallback for the in-app update; v16 was the first candidate, v17 fixed the video-call start permission
 result and installer visibility, v18 adds screen-on during video, local contact
 names, audible ring/ringback/busy and immediate reconnect on network change).
 No push provider exists: the owner reports notifications as unreliable; the
