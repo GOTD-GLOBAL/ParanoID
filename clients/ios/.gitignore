@@ -1,0 +1,11 @@
+/out/
+/ParanoidKit/Binaries/
+/ParanoidKit/.build/
+/ParanoidKit/.swiftpm/
+DerivedData/
+*.xcarchive
+*.p8
+*.p12
+*.mobileprovision
+xcuserdata/
+*.xcuserstate

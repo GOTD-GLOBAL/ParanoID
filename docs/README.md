@@ -132,3 +132,13 @@ packet tests are NOT RUN; no deployment or permanent decision approval is implie
 [Exact owner authority and REQ-DEPLOY-003](operations/voice-single-host.md) track
 one unified installer on the existing host, preserved state and mandatory missing
 runtime/review gates. No relay deployment has occurred.
+
+## iOS client candidate
+
+[RFC-0019](rfcs/0019-ios-client.md) and [draft ADR-0013](decisions/0013-ios-client.md)
+propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
+The [iOS component documentation](clients/ios/README.md) records the intended
+differences from Android, the [requirement-to-test mapping](clients/ios/verification.md)
+(every row `NOT RUN`) and the [rule-to-source table](clients/ios/protocol-sources.md)
+used to write behaviour from the protocol documents and the core. No build,
+phone result, hosted account or architecture acceptance is implied.

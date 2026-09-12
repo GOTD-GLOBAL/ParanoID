@@ -105,3 +105,12 @@ No permanent architecture acceptance or physical-phone result is implied.
 
 [Proposed ADR-0012](0012-voice-turn.md) specifies ephemeral relay issuance and
 isolated packaging. Local task authorization does not constitute ADR acceptance.
+
+## iOS client candidate
+
+[Draft ADR-0013](0013-ios-client.md): native SwiftUI iOS client over the
+unchanged shared Rust core through a thin C-ABI bridge, Keychain/Data
+Protection storage with an install marker, `Security.framework` leaf-SPKI
+pinning to the retained pin and the pinned WebRTC iOS dependency, for the
+bounded private alpha ([RFC-0019](../rfcs/0019-ios-client.md)). Draft, not
+proposed: closed-alpha scope approval and blocking owner questions are open.

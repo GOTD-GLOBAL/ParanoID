@@ -112,3 +112,13 @@ No permanent architecture acceptance or physical-phone result is implied.
 [RFC-0018](0018-voice-turn.md) (proposed) covers REQ-CALL-006, the issuer,
 Android contract and isolated relay package. Independent review and explicit
 deployment authority remain separate gates.
+
+## iOS client candidate
+
+[RFC-0019: Native iOS client on the shared Rust core](0019-ios-client.md)
+(draft) proposes a SwiftUI shell over the unchanged `clients/core` through a
+thin C-ABI bridge, the same wire contracts and pin as Android v15, Keychain
+plus Data Protection storage with an install marker, and the pinned WebRTC
+iOS dependency; [draft ADR-0013](../decisions/0013-ios-client.md). Its
+decision deadline is a placeholder until the client pull request is opened.
+No build, phone result, hosted account or architecture acceptance is implied.
