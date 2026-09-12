@@ -12,7 +12,9 @@ from unittest.mock import patch
 import test_v2_update as fixtures
 
 alpha = fixtures.alpha
-SA = {'type': 'service_account', 'project_id': 'para-no-id', 'private_key': '-----BEGIN PRIVATE KEY-----\nMIIB\n-----END PRIVATE KEY-----\n',
+# A real (throwaway) RSA key: the packaged runtime parses the credential at startup and must come up.
+KEY = subprocess.run(['openssl', 'genpkey', '-algorithm', 'RSA', '-pkeyopt', 'rsa_keygen_bits:2048'], capture_output=True, text=True, check=True).stdout
+SA = {'type': 'service_account', 'project_id': 'para-no-id', 'private_key': KEY,
       'client_email': 'gw@para-no-id.iam.gserviceaccount.com', 'token_uri': 'https://oauth2.googleapis.com/token'}
 
 
