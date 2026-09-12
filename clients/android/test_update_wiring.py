@@ -9,6 +9,10 @@ class UpdateWiring(unittest.TestCase):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
         self.assertEqual(m.get(A+'versionCode'),'16')
         self.assertIn('android.permission.REQUEST_INSTALL_PACKAGES',[p.get(A+'name') for p in m.findall('uses-permission')])
+        # Package visibility: the installer intent must be declared so resolveActivity() can see the system installer on targetSdk>=30.
+        queries=[(i.find('action').get(A+'name'),i.find('data').get(A+'mimeType')) for i in m.findall('queries/intent')]
+        self.assertIn(('android.intent.action.INSTALL_PACKAGE','application/vnd.android.package-archive'),queries)
+        self.assertEqual(m.findall('queries/package'),[],'no package-name enumeration')
         providers=m.findall('application/provider');self.assertEqual(len(providers),1)
         p=providers[0];self.assertEqual(p.get(A+'exported'),'false');self.assertEqual(p.get(A+'grantUriPermissions'),'false')
         self.assertEqual(p.get(A+'authorities'),'global.paranoid.messenger.updates')

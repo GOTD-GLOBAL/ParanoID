@@ -77,7 +77,10 @@ public final class UpdateController {
                         Uri uri=Uri.parse(UpdatePolicy.URI);
                         Intent install=new Intent(Intent.ACTION_INSTALL_PACKAGE).setDataAndType(uri,"application/vnd.android.package-archive");
                         install.setClipData(ClipData.newRawUri("Verified ParanoID update",uri));install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        // Prefer the system installer; some firmware hides it under MATCH_SYSTEM_ONLY,
+                        // so fall back to the default resolver before declaring the installer unavailable.
                         ResolveInfo target=activity.getPackageManager().resolveActivity(install,PackageManager.MATCH_DEFAULT_ONLY|PackageManager.MATCH_SYSTEM_ONLY);
+                        if(target==null || target.activityInfo==null)target=activity.getPackageManager().resolveActivity(install,PackageManager.MATCH_DEFAULT_ONLY);
                         if(target==null || target.activityInfo==null)throw new IOException("system installer unavailable");
                         install.setPackage(target.activityInfo.packageName);activity.startActivity(install);
                         status.setText("Открыт установщик Android — подтвердите обновление. Если отменили, можно нажать «Установить» снова. Установка ещё не подтверждена приложением.");
