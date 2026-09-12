@@ -102,10 +102,15 @@ tests) that holds everything above the bridge in the RFC-0019 design:
 storage, TLS, transport, realtime, calls and the UI model. `Package.swift`
 declares the `ParanoidCoreFFI` binary target at
 `Binaries/ParanoidCore.xcframework` (git-ignored, produced by `build-core.sh`,
-which must run first) and no other dependency; the `service-bridge`,
-`core-bridge` and `tls-smoke` executables named in RFC-0019 arrive with their
-own pull-request steps. `Sources/ParanoidKit/Core/` is the counterpart of
-`CoreBridge.java` plus the `nativeCall`/`apply` rules of
+which must run first) and the `WebRTC` binary target at
+`Binaries/WebRTC.xcframework` (git-ignored, produced by
+`webrtc_dependency.py`), and no package dependency at all; the
+`service-bridge`, `core-bridge` and `tls-smoke` executables named in RFC-0019
+arrive with their own pull-request steps. The `WebRTC` target is exported as
+its own product and **no** target of the package depends on it: the
+xcframework carries no macOS slice, so keeping `ParanoidKit` itself free of it
+is what lets the host `swift test` run build. `Sources/ParanoidKit/Core/` is
+the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
 `SelfServiceClient.java`:
 
 - `CoreBridge.command(state:request:) throws -> CoreReply` calls
@@ -123,6 +128,38 @@ own pull-request steps. `Sources/ParanoidKit/Core/` is the counterpart of
   `SelfServiceClient.java:73-76` and is sound because the core serialises
   through `serde_json::Value` (sorted keys, no insignificant whitespace).
   Anything that is not one well-formed top-level object yields `nil`.
+- `Sources/ParanoidKit/Voice/SdpExtract.swift` reads the DTLS fingerprint
+  (lowercase, colon-free) and the ICE credentials out of a session
+  description, the three members a `call` control repeats beside its SDP and
+  that the core cross-checks against the text (`voice_v1.rs:126-152`), plus
+  the survey that validator cares about: byte count, `a=setup`, every
+  `a=rtpmap`, and the `a=candidate` / `a=crypto` counts. It is Android's
+  `TextEngine.java:138-144` line scan, cut on UTF-8 bytes like `str::lines()`
+  because Swift folds a CRLF pair into one `Character`. It never rewrites the
+  description.
+- `Sources/ParanoidKit/Storage/` holds the at-rest rules of
+  [first-contact v1](../../docs/protocol/first-contact-v1.md) (lines 173-178)
+  and [the core contract](../../docs/clients/core/self-service.md) (lines
+  97-100). `SnapshotStore.commit(_:)` is five durable steps in one order —
+  write `text-state.enc.tmp`, `F_FULLFSYNC` it, `rename(2)` it over
+  `text-state.enc`, read the committed file back and compare it byte for byte,
+  `F_FULLFSYNC` the directory — and any failure sets `isBroken` for the rest of
+  the process, so nothing derived from that candidate is adopted or sent
+  (`TextEngine.java:226-237`). The candidate is excluded from backup **before**
+  the rename, because the flag lives on the inode: setting it on the committed
+  name alone would cover only the first commit, and a later iCloud restore
+  would hand back a stale ratchet while the Keychain key still worked.
+  `FileSystem` is the seam the host tests fail one step at a time;
+  `DataProtectionFileSystem` is the real one (`Application Support/paranoid/`,
+  owner-only, `completeUntilFirstUserAuthentication`, 9 MiB read ceiling).
+  `KeychainKey` is the AES-256 wrapping key (`kSecClassGenericPassword`,
+  account `paranoid-text-state-v0`, accessible after first unlock on this
+  device only, not synchronizable), never regenerated over an existing file
+  (`TextEngine.java:206-218`). `InstallMarker` (`paranoid.install.v1`, standard
+  defaults) and `StorageGuard` carry the reinstall rule: with no marker the
+  stale Keychain key is deleted and the marker is recorded, and only then is
+  Android's exclusive-or (`StorageGuard.java:7-8`) evaluated — a key without a
+  file, or a file without a key, freezes.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests
@@ -165,13 +202,48 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   `ParanoID/ParanoID.entitlements` is empty: no `aps-environment`, because
   there is no push (see the component documentation).
 - The application and `ParanoIDTests` depend on the local package
-  `../ParanoidKit` (`XCLocalSwiftPackageReference`); nothing else is linked.
-  Run `build-core.sh` first so that the xcframework exists.
+  `../ParanoidKit` (`XCLocalSwiftPackageReference`) and nothing else;
+  `ParanoIDTests` additionally links that package's `WebRTC` product, so it
+  also carries `LD_RUNPATH_SEARCH_PATHS` (`@executable_path/Frameworks`,
+  `@loader_path/Frameworks`) for the dynamic `WebRTC.framework` Xcode embeds
+  in the test bundle. Run `build-core.sh` and `webrtc_dependency.py` first so
+  that both xcframeworks exist.
 - `ParanoIDTests/BridgeSmokeTests.swift` runs `create_identity` ->
   `upgrade_v2` inside the application process on the simulator and prints
   one `state.version=3` line (never the snapshot), which proves that the
   `ios-arm64-simulator` slice links and executes. `ParanoIDUITests` only
   launches the shell; screen tests arrive with the screens.
+- `ParanoIDTests/SdpCompatibilityTests.swift` is the voice go/no-go gate. It
+  builds an `RTCPeerConnectionFactory` configured exactly like
+  `WebRtcAudioEngine.java:195-202` (unified plan, max-bundle, RTCP mux
+  required, TCP candidates disabled, gather-once, candidate pool 0, no ICE
+  servers), adds one audio track, restricts the sender to `audio/opus` with
+  `setCodecPreferences`, waits for gather-once and then pushes the resulting
+  offer and answer through the core between two synthetic identities
+  (`send_call_v1` -> `receive_v2`, as `clients/core/tests/voice_calls.rs`
+  does). The SDP is never rewritten: anything the core refuses is fixed
+  through WebRTC configuration. The survey lands in
+  `out/evidence/sdp-spike.json` with the ICE credentials masked; measured on
+  the simulator the offer is 1776 B with 7 candidates, one
+  `a=rtpmap:111 opus/48000/2`, no `a=crypto` and `a=setup:actpass`, the
+  answer 1735 B and `a=setup:active`, both accepted by the core.
+- `ParanoIDTests/KeychainStoreTests.swift` is the half of the storage rules
+  that needs a real platform: the item under `paranoid-text-state-v0` with the
+  attributes it was asked for, the install-marker matrix (stale key with no
+  marker is wiped and `create_identity` then works; marker with a key and no
+  file, and marker with a file and no key, both freeze; marker with neither is
+  a fresh install) and one commit driven through `open`/`F_FULLFSYNC`/
+  `rename(2)` on a real file system. It runs with the **default** simulator
+  signature, not `CODE_SIGNING_ALLOWED=NO`: without signing Xcode skips
+  `ProcessProductPackaging`, the process carries no `application-identifier`,
+  and every `SecItem` call returns `errSecMissingEntitlement` (-34018). A
+  separate `-derivedDataPath` keeps that signed build apart from the unsigned
+  ones. The test uses the real Keychain account and a scratch defaults suite,
+  and deletes both in `setUp` and `tearDown`; its state file goes to a
+  temporary directory, never to the application's own `Application Support`.
+  The simulator has no Data Protection and reports no protection class, so the
+  class the write asks for can only be observed on a device, which is a live
+  action.
 
 ```sh
 xcodebuild -project clients/ios/App/ParanoID.xcodeproj -list      # Targets: ParanoID, ParanoIDTests, ParanoIDUITests
@@ -234,6 +306,18 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
   -only-testing:ParanoIDTests/BridgeSmokeTests                                # bridge smoke in the simulator
+python3 clients/ios/webrtc_dependency.py        # re-extract the pinned WebRTC.xcframework (--offline uses the cached archive)
+python3 clients/ios/test_webrtc_dependency.py   # digest, slice and re-extraction rules of that pin
+xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
+  -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc SDP against the core validator
+jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
+swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
+xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath clients/ios/out/DerivedData-App-signed \
+  -only-testing:ParanoIDTests/KeychainStoreTests                              # Keychain and install marker (needs the simulator signature)
 ```
 
 ## Rules that apply to every change here

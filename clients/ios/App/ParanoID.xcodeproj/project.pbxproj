@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		5A0000000000000000000043 /* ParanoidKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000041 /* ParanoidKit */; };
 		5A0000000000000000000044 /* ParanoidKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000042 /* ParanoidKit */; };
+		5A0000000000000000000046 /* WebRTC in Frameworks */ = {isa = PBXBuildFile; productRef = 5A0000000000000000000045 /* WebRTC */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,6 +65,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5A0000000000000000000044 /* ParanoidKit in Frameworks */,
+				5A0000000000000000000046 /* WebRTC in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -151,6 +153,7 @@
 			name = ParanoIDTests;
 			packageProductDependencies = (
 				5A0000000000000000000042 /* ParanoidKit */,
+				5A0000000000000000000045 /* WebRTC */,
 			);
 			productName = ParanoIDTests;
 			productReference = 5A0000000000000000000022 /* ParanoIDTests.xctest */;
@@ -454,6 +457,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = global.paranoid.messenger.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -469,6 +477,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
 				MARKETING_VERSION = 0.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = global.paranoid.messenger.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -561,6 +574,10 @@
 		5A0000000000000000000042 /* ParanoidKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = ParanoidKit;
+		};
+		5A0000000000000000000045 /* WebRTC */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = WebRTC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
