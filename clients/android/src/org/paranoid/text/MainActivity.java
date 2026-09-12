@@ -110,6 +110,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     @Override protected void onNewIntent(Intent intent){
         super.onNewIntent(intent);
         updateLockScreen(engine.calls().snapshot().optString("state"));
+        String install=UpdateController.installStatus(this,intent);
+        if(install!=null){if(updateController!=null)updateController.showStatus(install);show("identity");}
     }
     /** Over-lock display only while an incoming call rings; never a permanent lock bypass. */
     private void updateLockScreen(String state){

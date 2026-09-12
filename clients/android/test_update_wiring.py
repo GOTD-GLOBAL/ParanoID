@@ -23,6 +23,11 @@ class UpdateWiring(unittest.TestCase):
         for text in ['Обновить','Скачать','Установить','Обновлений пока нет','Повторить','canRequestPackageInstalls','ACTION_MANAGE_UNKNOWN_APP_SOURCES','FLAG_GRANT_READ_URI_PERMISSION','ACTION_INSTALL_PACKAGE','UpdateClient.verifyBytes','AndroidUpdateVerifier.verify']:
             self.assertIn(text,controller)
         self.assertIn('if(!activity.hasWindowFocus())',controller)
+        # v19: PackageInstaller session fallback after the intent path, with the same re-verified file, user confirmation kept.
+        for text in ['PackageInstaller.SessionParams.MODE_FULL_INSTALL','session.commit(','STATUS_PENDING_USER_ACTION','session.abandon()','Диагностика: intent']:
+            self.assertIn(text,controller)
+        self.assertLess(controller.index('UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);'),controller.index('sessionInstall(ready);'))
+        self.assertIn('UpdateController.installStatus(this,intent)',ui)
         for text in ['text-state.enc','KeyStore','createIdentity','FLAG_GRANT_WRITE_URI_PERMISSION','file://','ACTION_PACKAGE_ADDED']:
             self.assertNotIn(text,controller)
         engine=(R/'src/org/paranoid/text/TextEngine.java').read_text()
