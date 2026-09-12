@@ -23,9 +23,22 @@ public contract is declared.
   result; the in-app update declares the installer `<queries>` intent and
   falls back from the system-only resolver, fixing "Установщик Android
   недоступен" seen on one alpha phone. No protocol change.
-- Video call view keeps the screen on while local or remote video is shown and
-  the proximity sensor no longer blanks the screen with the camera on; audio
-  calls are unchanged (owner request 2026-09-12).
+- `0.0.18-video` (versionCode 18, 2026-09-12), owner requests of 2026-09-12:
+  - video call view keeps the screen on while local or remote video is shown
+    and the proximity sensor no longer blanks the screen with the camera on;
+  - local-only contact display names ("Переименовать" in contact details;
+    stored in app-private preferences, never sent to the peer or server, not
+    part of the encrypted state file);
+  - audible call progress driven by the authenticated call state: incoming
+    ring with the system ringtone and vibration (respects silent/vibrate
+    ringer mode, 60 s cap), outgoing ringback while the peer's phone rings,
+    short busy tone on busy/reject/timeout; incoming notification raised to
+    maximum priority;
+  - delivery: a default-network change (Wi-Fi/mobile switch, connectivity
+    restored) restarts the long-poll immediately instead of waiting out the
+    30 s poll and backoff. There is still no push provider (no FCM) in this
+    build; background delivery relies on the user-enabled foreground
+    connection and the OEM battery exception.
 - Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
   serves `global.paranoid.messenger` update metadata; v15 published.
 

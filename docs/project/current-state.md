@@ -14,9 +14,13 @@ headset is active). [RFC-0019](../rfcs/0019-video-calls.md) is proposed,
 [ADR-0013](../decisions/0013-video-calls.md) is proposed and
 [call-v2](../protocol/call-v2.md) plus the [video threat delta](../security/video-v1-threats.md)
 are written. The native validator, `CallController`, media engine, call UI and
-foreground service implement call-v2 (`0.0.17-video`, versionCode 17, retained
-signer; v16 was the first candidate, v17 fixes the video-call start permission
-result and installer visibility). call-v2 rejects v1 bodies: both alpha phones must update; text is
+foreground service implement call-v2 (`0.0.18-video`, versionCode 18, retained
+signer; v16 was the first candidate, v17 fixed the video-call start permission
+result and installer visibility, v18 adds screen-on during video, local contact
+names, audible ring/ringback/busy and immediate reconnect on network change).
+No push provider exists: the owner reports notifications as unreliable; the
+known limitation remains the OEM-killed foreground connection (RFC on push
+pending). call-v2 rejects v1 bodies: both alpha phones must update; text is
 unaffected. v16 (`5041ca95…`) is published on `/v2/updates/android`
 (2026-09-12). The first phone download failed because the relay egress policy
 dropped orphaned TCP tails of the 16 MB response; that policy fix (PR #26, kit

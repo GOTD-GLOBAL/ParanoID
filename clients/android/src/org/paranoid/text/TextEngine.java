@@ -45,6 +45,7 @@ public final class TextEngine {
     private long drainGeneration;
     private final java.util.Map<String,CallController.Completion> callCompletions=new java.util.HashMap<>();
     private String lastCallState="idle";
+    private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
     private boolean connected=false,backgroundEnabled=false;
@@ -52,7 +53,7 @@ public final class TextEngine {
     private boolean broken=false, hasSnapshot=false, unsupportedSnapshot=false;
     private SecretKey storageKey;
     private TextEngine(Context context) {
-        this.context=context;
+        this.context=context;tones=new CallTones(context);
         calls=new CallController(new CallController.Clock(){
             public long wallMillis(){return System.currentTimeMillis();}
             public long monotonicMillis(){return android.os.SystemClock.elapsedRealtime();}
@@ -91,6 +92,9 @@ public final class TextEngine {
                 String state=view.optString("state");callActive=!state.equals("idle")&&!state.equals("ended");
                 if(state.equals("incoming")&&!lastCallState.equals(state)&&listener==null)VoiceCallService.incoming(context);
                 if(!state.equals("incoming"))VoiceCallService.clearIncoming(context);lastCallState=state;
+                // Audible progress (incoming ring, outgoing ringback, busy) follows the authenticated controller state
+                // in every app state; the notification above only adds the lock-screen surface.
+                tones.changed(view);
                 if(callListener!=null)callListener.changed(view);
                 worker.execute(()->{if(callActive||callDraining)startConnection();else if(listener==null&&!backgroundEnabled&&realtime!=null){stopConnection();}});
             }
@@ -115,6 +119,7 @@ public final class TextEngine {
                     public void authorizationLost(){ui.post(()->calls.authorizationLost());}
                 });
                 publish("Готово. Только тестовые сообщения.");
+                ui.post(TextEngine.this::watchNetwork);
             } catch(Throwable error) {broken=true;unsupportedSnapshot=error instanceof SelfServiceClient.UnsupportedSnapshot;publish("Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются.");}
         });
     }
@@ -170,6 +175,22 @@ public final class TextEngine {
     public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
     private void stopConnection(){if(realtime!=null)realtime.stop();connected=false;ui.post(()->calls.connection(false));}
     private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining)){realtime.start();realtime.kick();}}
+    /** Owner report 2026-09-12 (slow/absent notifications): a network switch used to leave the long-poll
+     *  stuck until its 30 s timeout plus backoff. Reconnect at once when the default network changes. */
+    private void watchNetwork(){
+        try{
+            android.net.ConnectivityManager cm=(android.net.ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if(cm==null)return;
+            cm.registerDefaultNetworkCallback(new android.net.ConnectivityManager.NetworkCallback(){
+                private android.net.Network last;
+                @Override public void onAvailable(android.net.Network network){
+                    boolean changed=last!=null&&!last.equals(network);last=network;
+                    worker.execute(()->{if(realtime==null||broken)return;if(changed)realtime.restart();startConnection();});
+                }
+                @Override public void onLost(android.net.Network network){if(network.equals(last))last=null;}
+            });
+        }catch(RuntimeException ignored){/* Without the callback the loop still recovers by timeout/backoff. */}
+    }
     public void background(boolean enabled){worker.execute(()->{backgroundEnabled=enabled;if(enabled)startConnection();else if(listener==null&&!callActive&&!callDraining&&realtime!=null){stopConnection();}publish(enabled?"Фоновое подключение включено":"Фоновое подключение выключено");});}
     private interface Task {void run() throws Exception;}
     private void submit(Task task) {

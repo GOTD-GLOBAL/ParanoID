@@ -262,7 +262,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         boolean inChat=hasIdentity&&next.equals("chat");
         callAction.setVisibility(inChat?View.VISIBLE:View.GONE);videoAction.setVisibility(inChat?View.VISIBLE:View.GONE);
         menuAction.setVisibility(hasIdentity&&!inChat?View.VISIBLE:View.GONE);
-        screenTitle.setText(!hasIdentity?"ParanoID":inChat?MessagePresentation.title(selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
+        screenTitle.setText(!hasIdentity?"ParanoID":inChat?ContactNames.title(this,selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
         leading.setImageDrawable(new Symbol(inChat?"back":"identity",colors.action));leading.setContentDescription(inChat?"Назад в чаты":"Мой ID");
         leading.setVisibility(hasIdentity?View.VISIBLE:View.GONE);
@@ -504,7 +504,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateLockScreen(state);
         if(resumed&&engine.calls().active()&&!id.equals(displayedCall)){displayedCall=id;showCall();}
         if(callDialog==null)return;
-        callName.setText(MessagePresentation.title(value.optString("account")));callStatus.setText(callLabel(value));
+        callName.setText(ContactNames.title(this,value.optString("account")));callStatus.setText(callLabel(value));
         JSONObject peer=null;JSONArray entries=latest.optJSONArray("dialogs");if(entries!=null)for(int n=0;n<entries.length();n++){JSONObject item=entries.optJSONObject(n);if(item!=null&&item.optString("account").equals(value.optString("account")))peer=item;}
         callTrust.setText(peer==null?"Личность не проверена":DialogPolicy.trustLabel(peer));
         callAnswer.setVisibility(state.equals("incoming")?View.VISIBLE:View.GONE);
@@ -550,14 +550,23 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private void contactDetails(){
         JSONObject selected=selectedDialog();if(selected==null)return;
         String account=selectedAccount;boolean blocked=selected.optBoolean("blocked");
-        new AlertDialog.Builder(this).setTitle(MessagePresentation.title(account))
-            .setMessage(DialogPolicy.trustLabel(selected)+"\n\n"+account+"\n\nСообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат.\n\n✓ Сохранено сервером\n✓✓ Доставлено, не прочитано")
-            .setPositiveButton("Закрыть",null).setNeutralButton("Проверить QR",(d,w)->addContact())
+        new AlertDialog.Builder(this).setTitle(ContactNames.title(this,account))
+            .setMessage(DialogPolicy.trustLabel(selected)+"\n\n"+account+"\n\nСообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат. Имя контакта хранится только на этом телефоне.\n\n✓ Сохранено сервером\n✓✓ Доставлено, не прочитано")
+            .setPositiveButton("Переименовать",(d,w)->renameContact(account)).setNeutralButton("Проверить QR",(d,w)->addContact())
             .setNegativeButton(blocked?"Разблокировать контакт":"Заблокировать контакт",(d,w)->{
                 if(blocked)engine.block(account,false);
                 else new AlertDialog.Builder(this).setTitle("Заблокировать контакт?").setMessage("Новые сообщения и подтверждения доставки для этого контакта будут отключены. История останется на телефоне.")
                     .setNegativeButton("Отмена",null).setPositiveButton("Заблокировать",(confirm,which)->engine.block(account,true)).show();
             }).show();
+    }
+    /** Local-only display name (owner request 2026-09-12); never leaves the phone. */
+    private void renameContact(String account){
+        final EditText field=new EditText(this);field.setSingleLine(true);field.setHint("Имя контакта");field.setText(ContactNames.get(this,account));
+        field.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(ContactNames.MAX_LENGTH)});field.setSelection(field.getText().length());
+        FrameLayout wrap=new FrameLayout(this);wrap.setPadding(dp(20),dp(8),dp(20),0);wrap.addView(field,new FrameLayout.LayoutParams(-1,-2));
+        new AlertDialog.Builder(this).setTitle("Имя контакта").setMessage("Отображается только на этом телефоне. Оставьте пустым, чтобы вернуть имя по умолчанию.").setView(wrap)
+            .setNegativeButton("Отмена",null).setPositiveButton("Сохранить",(d,w)->{ContactNames.set(this,account,field.getText().toString());renderedDialogs="";renderedHistory="";changed(latest,lastStatus);show(page);}).show();
+        field.requestFocus();
     }
     private void connectionDetails(){
         String info=lastStatus+"\n\nID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети.";
@@ -614,7 +623,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         String account=dialog.optString("account");LinearLayout row=row();row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(14),dp(12),dp(14));row.setMinimumHeight(dp(88));row.setBackground(ripple(colors.canvas,18));row.setOnClickListener(v->openChat(account));row.setFocusable(true);
         TextView avatar=text(account.substring(0,Math.min(2,account.length())).toUpperCase(java.util.Locale.ROOT),17,colors.actionText,true);avatar.setGravity(Gravity.CENTER);avatar.setBackground(shape(colors.actionSoft,28));avatar.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(avatar,box(52,52));
         LinearLayout lines=column();LinearLayout.LayoutParams lineParams=new LinearLayout.LayoutParams(0,-2,1);lineParams.setMargins(dp(12),0,dp(8),0);row.addView(lines,lineParams);
-        TextView title=text(MessagePresentation.title(account),16,colors.text,true);title.setMaxLines(1);title.setEllipsize(TextUtils.TruncateAt.END);lines.addView(title);
+        TextView title=text(ContactNames.title(this,account),16,colors.text,true);title.setMaxLines(1);title.setEllipsize(TextUtils.TruncateAt.END);lines.addView(title);
         TextView snippet=text(preview,14,colors.muted,false);snippet.setMaxLines(2);snippet.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams snippetParams=full();snippetParams.topMargin=dp(4);lines.addView(snippet,snippetParams);
         String marker=dialog.optBoolean("blocked")?"Блок":dialog.optString("trust").equals("out_of_band_verified")?"Проверен":"";
         if(!marker.isEmpty()){TextView badge=text(marker,11,colors.muted,false);row.addView(badge);}

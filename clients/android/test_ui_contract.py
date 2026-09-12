@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="17"',manifest)
-        self.assertIn('android:versionName="0.0.17-video"',manifest)
+        self.assertIn('android:versionCode="18"',manifest)
+        self.assertIn('android:versionName="0.0.18-video"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -94,6 +94,33 @@ class OnboardingContract(unittest.TestCase):
         handler=ui[ui.index('if(request==MICROPHONE_PERMISSION){'):ui.index('if(request==CAMERA_PERMISSION){')]
         self.assertIn('boolean microphone=checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)==android.content.pm.PackageManager.PERMISSION_GRANTED;',handler)
         self.assertNotIn('RECORD_AUDIO.equals(permissions[n])',handler)
+
+    def test_v18_contact_names_tones_and_network_reconnect(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        tones=(ROOT/'src/org/paranoid/text/CallTones.java').read_text()
+        names=(ROOT/'src/org/paranoid/text/ContactNames.java').read_text()
+        loop=(ROOT/'src/org/paranoid/text/RealtimeLoop.java').read_text()
+        service=(ROOT/'src/org/paranoid/text/VoiceCallService.java').read_text()
+        # 1. Local-only contact names: every title site uses ContactNames; stored outside the encrypted snapshot.
+        self.assertNotIn('MessagePresentation.title(',ui)
+        self.assertEqual(ui.count('ContactNames.title(this,'),4)
+        self.assertIn('setPositiveButton("Переименовать"',ui)
+        self.assertIn('paranoid-contact-names-v1',names)
+        for token in ['text-state.enc','SnapshotCodec','KeyStore','sendCall','client.']:
+            self.assertNotIn(token,names)
+        # 2/4. Audible progress from the authenticated controller state only: incoming ring, outgoing ringback, busy.
+        self.assertIn('tones.changed(view);',engine)
+        for token in ['TYPE_RINGTONE','RINGER_MODE_SILENT','TONE_SUP_RINGTONE','TONE_SUP_BUSY','STREAM_VOICE_CALL','VibrationEffect.createWaveform','MAX_RING_MS']:
+            self.assertIn(token,tones)
+        for token in ['mediaVideo','mediaMute','RECORD_AUDIO','CAMERA','startCapture']:
+            self.assertNotIn(token,tones)
+        self.assertIn('setPriority(Notification.PRIORITY_MAX)',service)
+        # 3. Delivery: default-network change restarts the long-poll immediately (no FCM exists in this build).
+        self.assertIn('registerDefaultNetworkCallback',engine)
+        self.assertIn('public void restart(){',loop)
+        self.assertIn('if(changed)realtime.restart();startConnection();',engine)
+        self.assertNotIn('firebase',engine.lower()); self.assertNotIn('fcm',(ROOT/'AndroidManifest.xml').read_text().lower())
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

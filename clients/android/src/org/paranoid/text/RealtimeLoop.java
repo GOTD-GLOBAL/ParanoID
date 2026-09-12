@@ -52,6 +52,15 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     public void start(){synchronized(lifecycle){if(closed)return;if(!enabled){enabled=true;generation++;}lifecycle.notifyAll();}kick();}
     public void kick(){synchronized(wakeGate){if(outbound.availablePermits()==0)outbound.release();}}
+    /** Network changed (Wi-Fi/mobile switch, connectivity restored): abandon the current long-poll and
+     *  backoff pause immediately and reconnect on a fresh generation. No-op while stopped. */
+    public void restart(){
+        synchronized(lifecycle){if(closed||!enabled)return;generation++;lifecycle.notifyAll();}kick();
+        RealtimeTransport current=transport;
+        if(current!=null&&cancelling.compareAndSet(false,true)) {
+            Thread cancel=new Thread(()->{try{current.cancelActive();}finally{cancelling.set(false);}},"paranoid-cancel");cancel.setDaemon(true);cancel.start();
+        }
+    }
     public void stop(){
         synchronized(lifecycle){enabled=false;generation++;lifecycle.notifyAll();}kick();
         cancelVoiceRelay();

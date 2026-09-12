@@ -54,7 +54,7 @@ public final class VoiceCallService extends Service {
             manager.notify(INCOMING_ID,new Notification.Builder(context,INCOMING).setSmallIcon(android.R.drawable.sym_call_incoming)
                 .setContentTitle("Входящий звонок ParanoID").setContentText("Откройте приложение, чтобы ответить")
                 .setCategory(Notification.CATEGORY_CALL).setContentIntent(open(context)).setFullScreenIntent(full,true)
-                .setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE).build());
+                .setOngoing(true).setVisibility(Notification.VISIBILITY_PRIVATE).setPriority(Notification.PRIORITY_MAX).build());
         }catch(RuntimeException ignored){/* Never grant microphone access from a notification failure. */}
     }
     public static void clearIncoming(Context context){context.getSystemService(NotificationManager.class).cancel(INCOMING_ID);}
