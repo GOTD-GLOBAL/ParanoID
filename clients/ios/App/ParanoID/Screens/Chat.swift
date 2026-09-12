@@ -29,6 +29,15 @@ struct ChatScreen: View {
             history
             composer
         }
+        // SwiftUI propagates an accessibility modifier to every element under
+        // the view it is applied to, so a bare `.accessibilityIdentifier` on
+        // a screen's root would *replace* the identifier of every control
+        // inside it — the composer, the send button and the trust banner
+        // would all answer to "chat". `children: .contain` declares this view
+        // an accessibility container instead, which is what a `ScrollView`
+        // already is: the screen keeps its name and the controls keep theirs.
+        // Every screen whose root is a stack does the same.
+        .accessibilityElement(children: .contain)
         .navigationTitle(MessagePresentation.title(model.chatAccount ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -50,6 +50,9 @@ struct ConfirmContactSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(20)
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("confirm")
     }
 }

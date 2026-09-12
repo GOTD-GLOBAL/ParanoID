@@ -67,6 +67,9 @@ struct FrozenScreen: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("frozen")
     }
 }

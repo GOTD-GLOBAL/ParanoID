@@ -151,6 +151,32 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   on UTF-8 bytes like `str::lines()` because Swift folds a CRLF pair into one
   `Character`. It never rewrites the description; the reader itself is pinned
   on the core's own vector shape by `SdpExtractTests`.
+- `Sources/ParanoidKit/Voice/VoiceRelayConfig.swift` is the answer to
+  `GET /v2/voice/turn`, validated as
+  [voice TURN v1](../../docs/protocol/voice-turn-v1.md) demands and the port of
+  `VoiceRelayConfig.java:58-237`: at most 2048 bytes, exactly the six fields
+  with no duplicate and no unknown name, `v` 1, `ttl` 1200, and `urls` exactly
+  `turn:<realm IPv4>:34781?transport=udp` then the same with `tcp` — the two
+  literal forms on the host of the **retained** origin, so no response can move
+  media to another host or ask for a DNS lookup. `username` is the decimal
+  `expires` plus `:` and 32 lowercase hex digits; `credential` is canonical
+  padded Base64 of exactly 20 bytes, and it is the canonicality check that
+  refuses a last character whose unused bits a tolerant decoder would ignore.
+  The document carries its own bounded, non-recursive grammar rather than a
+  general JSON reader, because `1.0`, `1e0`, `01`, a duplicate key and a `v`
+  spelled `v` all have to be refused exactly the way Android refuses them;
+  it runs over UTF-16 code units, like Java's, so `\uD800` alone is a rejection
+  and not a replacement character. The remaining lifetime must be 1 000 000 to
+  1 205 000 ms on receipt, and `usable(wallMilliseconds:monotonicNanoseconds:)`
+  is called again immediately before the peer connection is created: it spends
+  that same window on the monotonic clock, so neither an asynchronous disposal
+  of an older engine nor a wall-clock rollback buys time. The credentials are
+  volatile — the type is not `Codable` and its description is
+  `VoiceRelayConfig[redacted]`. `VoiceRelayConfigTests` runs it against
+  [`test/fixtures/voice-relay-vectors.json`](test/fixtures/voice-relay-vectors.json),
+  the transcription of `clients/android/test/VoiceRelaySmoke.java`: six accepted
+  documents, its 49 negatives — each compared by the reason the parser gives,
+  not merely counted — and the nine `usable` probes on the window boundaries.
 - `Sources/ParanoidKit/Qr/QrCodec.swift` is the two QR bounds of
   [key enrollment v1](../../docs/protocol/key-enrollment-v1.md) (lines 91-96)
   and the one local encoder, the counterpart of Android's `QrCodec.java`:
@@ -678,6 +704,90 @@ The evidence is counts, digests and verdicts, plus the proxy's own
 `latency-samples.json`: no account, no fingerprint, no realm, no pin, no
 message text and no snapshot bytes. One run costs about twenty seconds.
 
+## Application in the simulator (`test_sim_text.py`)
+
+The two fixtures above drive the client's classes; this one drives the
+**application**. `ParanoIDUITests/TextFlowUITests` taps its way through the
+shipped screens on `iPhone 17 Pro (26.5)` while the other side of every
+message is a second `service-bridge` phone on the same stand, so a `✓` on the
+screen means the unchanged server stored that envelope and a `✓✓` means the
+peer's own core acknowledged it.
+
+The application is built **with** the default simulator signature — not with
+`CODE_SIGNING_ALLOWED=NO`, which the rest of this README uses. Without a
+signature the process carries no `application-identifier`, every `SecItem`
+call answers `errSecMissingEntitlement` (-34018) and the client freezes before
+it can open its state; `DerivedData-sim-text` keeps that signed build apart
+from the unsigned ones, exactly as `DerivedData-App-signed` does for
+`KeychainStoreTests`. The stand's `-paranoid-realm` / `-paranoid-pin` pair is
+passed on every launch, so the run cannot reach the hosted alpha even by
+accident, and the test asserts that the stand guard is *not* what it sees.
+
+Two scenarios run, in this order:
+
+`text`
+    `xcrun simctl uninstall global.paranoid.messenger`, then «Создать ID» →
+    «Мой ID» with the contact QR and a 64-digit account → «Вставить контакт»
+    with the peer's own contact text → «Отпечаток совпадает» against the
+    fingerprint that peer's core published → the chat → one tap on
+    «Отправить» → `✓` → the peer answers → its bubble and `✓✓` → a **double**
+    tap on «Отправить» → one bubble, one envelope at the peer and one `✓✓` →
+    «Заблокировать контакт», which disables the composer, and
+    «Разблокировать контакт», which restores it.
+
+`reinstall`
+    Uninstall again and launch again. The container is gone and the
+    simulator's Keychain is not, which is the reinstall of `StorageGuard`
+    (D-004): the launch must find no identity, must **not** freeze over the
+    retained key, and «Создать ID» must produce an account that is not the
+    previous one's. That the item really did survive is measured rather than
+    assumed — the fixture counts this application's rows in the device's own
+    `keychain-2*.db` on both sides of the uninstall and refuses to call the
+    run a reinstall if the count drops. The account cannot be looked for by
+    name there: a data-protection item stores `acct` and `svce` as digests,
+    and only the access group is plain.
+
+The test and the script meet in a rendezvous directory rather than on a clock.
+The test writes one request and blocks; the script answers it. That is what
+makes every `xcrun simctl io <udid> screenshot` a photograph of the screen the
+assertion was just made about, and what lets the test wait for the peer's own
+core to hold a message instead of for a fixed number of seconds. Five requests
+exist — a screenshot, a note for the evidence, and the peer's `expect`, `send`
+and `sync`.
+
+```sh
+python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text
+# PASS: 13 screenshots, 6 stored envelopes, 0 plaintext rows, one bubble per tap
+# text: PASS
+# reinstall: PASS
+jq '.scenarios,.reinstall,.server_state' \
+  clients/ios/out/evidence/sim-text/sim-text-result.json
+```
+
+The evidence is that JSON and the screenshots beside it. The JSON names
+counts, digests and verdicts only: no account, no fingerprint, no contact, no
+realm, no pin and no snapshot bytes. The screenshots are of the screens
+themselves, so they do show this run's throw-away account — they are evidence
+for the owner, not a document to quote from. Everything under `out/` is
+git-ignored.
+
+Two things this fixture found in the screens, both fixed in them rather than
+worked around here:
+
+- SwiftUI propagates an accessibility modifier to **every** element under the
+  view it is applied to, so `.accessibilityIdentifier("chat")` on a screen's
+  root stack replaced the identifier of every control inside it — the
+  composer, the send button and the trust banner all answered to `chat`. The
+  screens whose root is a stack now declare themselves accessibility
+  containers (`.accessibilityElement(children: .contain)`), which is what a
+  `ScrollView` already was: that is why «Мой ID» and «Контакты» were never
+  affected.
+- A message is two accessibility elements, not one: the combined bubble
+  («<текст>, ✓ Сохранено сервером») and the selectable `Text` inside it.
+  Counting bubbles counts the first of the two; counting both would count
+  every message twice, which is the difference between a double-tap guard
+  that holds and one that only looks as if it does.
+
 ## Third-party notices (`notices.py`)
 
 Android's algorithm (`clients/android/notices.py`), rooted here at
@@ -746,8 +856,9 @@ without `~/.cargo/bin` on `PATH` is fine.
    checks and the eight socket rules, against real loopback servers.
 9. `notices.py --offline` and `test_notices.py` — the notices that then ship
    inside the bundle.
-10. `test_ui_contract.py` and `test_component_boundary.py` — the source
-    contracts and the branch boundary.
+10. `test_ui_contract.py`, `test_call_controller_parity.py` and
+    `test_component_boundary.py` — the source contracts, the call scenarios
+    this client shares with the Android smoke, and the branch boundary.
 11. `xcodebuild test` on `iPhone 17 Pro (26.5)` with `CODE_SIGNING_ALLOWED=NO`,
     then a second run of `ParanoIDTests/KeychainStoreTests` alone **with** the
     simulator's own ad-hoc signature. An unsigned application owns no
@@ -823,6 +934,7 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc call-v2 SDP against the core validator
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
 swift test --package-path clients/ios/ParanoidKit --filter SdpExtractTests  # transport context, per-section survey, 9000-byte cap
+swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayConfigTests # TURN metadata: 6 accepted, the 49 Android negatives, the admission window
 swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
 swift test --package-path clients/ios/ParanoidKit --filter SelfServiceClientTests # v4 wrapper, opening rules, persist before adopt
 swift test --package-path clients/ios/ParanoidKit --filter ProofFlowTests    # challenge spacing, discovery, session issuance
@@ -844,6 +956,7 @@ python3 clients/ios/test_clean_self_service.py --longpoll \
   --evidence-dir out/checks/local-text                                        # two phones: texts, receipts, ciphertext and every failure story
 python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bin \
   --evidence-dir out/checks/realtime                                          # running lanes under the imported fault proxy (needs the two lo0 aliases)
+python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text     # the application itself in the simulator, plus the reinstall scenario
 ```
 
 ## Rules that apply to every change here

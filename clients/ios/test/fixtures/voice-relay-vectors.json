@@ -1,0 +1,602 @@
+{
+  "source": "clients/android/test/VoiceRelaySmoke.java",
+  "parser": "clients/android/src/org/paranoid/text/VoiceRelayConfig.java:58-237",
+  "protocol": "docs/protocol/voice-turn-v1.md",
+  "note": "Transcription of the Android relay-metadata smoke. `source_line` is the line of VoiceRelaySmoke.java the vector comes from; `realm`, `wall_millis` and `mono_nanos` default to `constants` when a vector omits them. `body.kind` is `text` (UTF-8 of `value`), `hex` (raw bytes of `value`), `zeros` (`count` zero bytes) or `none` (no body at all). `reason` is the VoiceRelayError case description; the Java smoke only counts rejections, so a wrong-reason rejection is an iOS-side addition. `usable_at_receipt` is asserted by VoiceRelaySmoke.java:21,68-69,81,83 and is true for the port-less realm of line 82 as well. The credential here is Base64 of twenty zero bytes, the same placeholder VoiceRelaySmoke.java uses: it is the canonical encoding of a 20-byte HMAC and not an issued credential, so no relay password enters git.",
+  "constants": {
+    "realm": "https://127.0.0.1:38443",
+    "wall_millis": 1800000000000,
+    "mono_nanos": 5000000000,
+    "expires_seconds": 1800001200,
+    "username": "1800001200:0123456789abcdef0123456789abcdef",
+    "credential": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    "urls": [
+      "turn:127.0.0.1:34781?transport=udp",
+      "turn:127.0.0.1:34781?transport=tcp"
+    ],
+    "body": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+  },
+  "accepted": [
+    {
+      "source_line": 19,
+      "note": "the issuer document the server promises",
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 68,
+      "note": "exactly the minimum remaining lifetime",
+      "wall_millis": 1800000200000,
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 69,
+      "note": "exactly the maximum remaining lifetime",
+      "wall_millis": 1799999995000,
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 81,
+      "note": "legal escaping and surrounding whitespace",
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": " \n{\"\\u0076\":1,\"urls\":[\"\\u0074urn:127.0.0.1:34781?transport=udp\",\"\\u0074urn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}\r\t"
+      }
+    },
+    {
+      "source_line": 82,
+      "note": "a retained origin written without its port",
+      "realm": "https://127.0.0.1",
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 83,
+      "note": "a monotonic origin that is negative",
+      "mono_nanos": -1000000000,
+      "usable_at_receipt": true,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "source_line": 24,
+      "note": "the same field twice",
+      "reason": "relay duplicate field",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 25,
+      "note": "a seventh field",
+      "reason": "relay unknown field",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"extra\":0,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 26,
+      "note": "a fraction where an integer is required",
+      "reason": "relay JSON separator",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1.0,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 27,
+      "note": "a boolean where an integer is required",
+      "reason": "relay JSON integer",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":true,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 28,
+      "note": "ttl is not 1200",
+      "reason": "relay metadata schema",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1201}"
+      }
+    },
+    {
+      "source_line": 29,
+      "note": "a relay host that is not the retained realm",
+      "reason": "relay URL binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:192.0.2.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 30,
+      "note": "a relay port that is not 34781",
+      "reason": "relay URL binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34782?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 31,
+      "note": "an unauthenticated STUN scheme",
+      "reason": "relay URL binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"stun:127.0.0.1:34781?transport=udp\",\"stun:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 32,
+      "note": "a username that does not begin with the expiry",
+      "reason": "relay username binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"01800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 33,
+      "note": "a username bound to another expiry",
+      "reason": "relay username binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001199:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 34,
+      "note": "an unpadded credential",
+      "reason": "relay credential encoding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 35,
+      "note": "an expiry beyond 64 signed bits",
+      "reason": "relay JSON integer overflow",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":9223372036854775808,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 36,
+      "note": "one byte after the object",
+      "reason": "relay JSON trailing input",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}x"
+      }
+    },
+    {
+      "source_line": 37,
+      "note": "a realm host that would need a DNS lookup",
+      "reason": "relay realm",
+      "realm": "https://localhost:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 38,
+      "note": "less than 1 000 000 ms of life left on receipt",
+      "reason": "relay credential lifetime",
+      "wall_millis": 1800000201000,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 39,
+      "note": "more life than the issuer can have granted",
+      "reason": "relay credential lifetime",
+      "wall_millis": 1799999994000,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 40,
+      "note": "a body that is not UTF-8",
+      "reason": "relay metadata encoding",
+      "body": {
+        "kind": "hex",
+        "value": "ff"
+      }
+    },
+    {
+      "source_line": 41,
+      "note": "a body over 2048 bytes",
+      "reason": "relay metadata size",
+      "body": {
+        "kind": "zeros",
+        "count": 2049
+      }
+    },
+    {
+      "source_line": 43,
+      "note": "an escaped spelling of an existing key",
+      "reason": "relay duplicate field",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"\\u0076\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 44,
+      "note": "five fields instead of six",
+      "reason": "relay metadata schema",
+      "body": {
+        "kind": "text",
+        "value": "{\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 45,
+      "note": "a leading zero",
+      "reason": "relay JSON integer",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":01,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 46,
+      "note": "an exponent",
+      "reason": "relay JSON separator",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1e0,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 47,
+      "note": "a signed zero",
+      "reason": "relay JSON integer",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":-0,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 48,
+      "note": "null where an integer is required",
+      "reason": "relay JSON integer",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":null,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 49,
+      "note": "a number inside the URL array",
+      "reason": "relay JSON syntax",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[0,\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 50,
+      "note": "two UDP URLs and no TCP URL",
+      "reason": "relay URL binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=udp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 51,
+      "note": "a third URL",
+      "reason": "relay JSON syntax",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"extra\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 52,
+      "note": "a query the issuer never mints",
+      "reason": "relay URL binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp&x=y\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 53,
+      "note": "an unpaired high surrogate",
+      "reason": "relay JSON surrogate",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"\\uD8001800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 54,
+      "note": "an unpaired low surrogate",
+      "reason": "relay JSON surrogate",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"\\uDC001800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 55,
+      "note": "an escape this grammar does not define",
+      "reason": "relay JSON escape",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"\\x1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 56,
+      "note": "uppercase hex in the username",
+      "reason": "relay username binding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789ABCDEF0123456789ABCDEF\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 57,
+      "note": "a credential whose unused bits are not zero",
+      "reason": "relay credential encoding",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAB=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 58,
+      "note": "an overlong UTF-8 sequence",
+      "reason": "relay metadata encoding",
+      "body": {
+        "kind": "hex",
+        "value": "c0af"
+      }
+    },
+    {
+      "source_line": 59,
+      "note": "no body at all",
+      "reason": "relay metadata size",
+      "body": {
+        "kind": "none"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a scheme that is not HTTPS",
+      "reason": "relay realm",
+      "realm": "http://127.0.0.1:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a zero-padded octet",
+      "reason": "relay realm",
+      "realm": "https://127.000.0.1:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a short-form address",
+      "reason": "relay realm",
+      "realm": "https://127.1:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "user information",
+      "reason": "relay realm",
+      "realm": "https://user@127.0.0.1:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a path",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:38443/path",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a query",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:38443?x=1",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a fragment",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:38443#fragment",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a bracketed IPv6 host",
+      "reason": "relay realm",
+      "realm": "https://[::1]:38443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a port above 65535",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:65536",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "port zero",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:0",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 61,
+      "note": "a zero-padded port",
+      "reason": "relay realm",
+      "realm": "https://127.0.0.1:038443",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 70,
+      "note": "one millisecond past the minimum remaining lifetime",
+      "reason": "relay credential lifetime",
+      "wall_millis": 1800000200001,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 71,
+      "note": "one millisecond past the maximum remaining lifetime",
+      "reason": "relay credential lifetime",
+      "wall_millis": 1799999994999,
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"1800001200:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":1800001200,\"ttl\":1200}"
+      }
+    },
+    {
+      "source_line": 77,
+      "note": "an expiry whose millisecond form overflows",
+      "reason": "relay credential lifetime",
+      "body": {
+        "kind": "text",
+        "value": "{\"v\":1,\"urls\":[\"turn:127.0.0.1:34781?transport=udp\",\"turn:127.0.0.1:34781?transport=tcp\"],\"username\":\"9223372036854775807:0123456789abcdef0123456789abcdef\",\"credential\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAA=\",\"expires\":9223372036854775807,\"ttl\":1200}"
+      }
+    }
+  ],
+  "usable_probes": [
+    {
+      "source_line": 21,
+      "note": "at receipt",
+      "wall_millis": 1800000000000,
+      "mono_nanos": 5000000000,
+      "expected": true
+    },
+    {
+      "source_line": 21,
+      "note": "both clocks past the admission budget",
+      "wall_millis": 1800000201000,
+      "mono_nanos": 206000000000,
+      "expected": false
+    },
+    {
+      "source_line": 22,
+      "note": "the monotonic clock alone past the budget",
+      "wall_millis": 1800000000000,
+      "mono_nanos": 206000000000,
+      "expected": false
+    },
+    {
+      "source_line": 22,
+      "note": "the monotonic clock moved backwards",
+      "wall_millis": 1800000000000,
+      "mono_nanos": 4999999999,
+      "expected": false
+    },
+    {
+      "source_line": 72,
+      "note": "exactly the admission budget on both clocks",
+      "wall_millis": 1800000200000,
+      "mono_nanos": 205000000000,
+      "expected": true
+    },
+    {
+      "source_line": 73,
+      "note": "one nanosecond past the admission budget",
+      "wall_millis": 1800000000000,
+      "mono_nanos": 205000000001,
+      "expected": false
+    },
+    {
+      "source_line": 74,
+      "note": "one millisecond past the minimum remaining lifetime",
+      "wall_millis": 1800000200001,
+      "mono_nanos": 5000000000,
+      "expected": false
+    },
+    {
+      "source_line": 75,
+      "note": "a negative wall clock",
+      "wall_millis": -9223372036854775808,
+      "mono_nanos": 5000000000,
+      "expected": false
+    },
+    {
+      "source_line": 76,
+      "note": "a monotonic reading that overflows the elapsed subtraction",
+      "wall_millis": 1800000000000,
+      "mono_nanos": -9223372036854775808,
+      "expected": false
+    }
+  ]
+}

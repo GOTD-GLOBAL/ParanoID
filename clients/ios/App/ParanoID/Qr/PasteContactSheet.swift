@@ -64,6 +64,9 @@ struct PasteContactSheet: View {
             .padding(.top, 20)
         }
         .padding(20)
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("paste")
     }
 

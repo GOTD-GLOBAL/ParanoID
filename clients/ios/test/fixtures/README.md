@@ -1,9 +1,26 @@
-# TLS test fixtures
+# Test fixtures
 
-This directory holds no fixture files, and it never will: every certificate the
-iOS tests need is generated while the test runs and deleted when it ends.
+This directory holds protocol vectors and nothing else. No certificate and no
+key is committed here, and none ever will be: every certificate the iOS tests
+need is generated while the test runs and deleted when it ends.
 
-## Why nothing is committed here
+## Committed vectors
+
+- [`voice-relay-vectors.json`](voice-relay-vectors.json) — the issuer documents
+  of [voice TURN v1](../../../../docs/protocol/voice-turn-v1.md), transcribed
+  from `clients/android/test/VoiceRelaySmoke.java`: six accepted documents, the
+  49 the Android smoke refuses, and the nine `usable` probes that walk the
+  admission window on both clocks. Each vector names the line of the Java smoke
+  it comes from, and each rejection names the reason the parser must give, so
+  `VoiceRelayConfigTests` compares reasons rather than counting refusals. Its
+  `credential` is Base64 of twenty zero bytes — the canonical encoding of a
+  20-byte HMAC and the same placeholder the Java smoke uses, never an issued
+  credential.
+
+A vector file may be committed because it is a description of the wire, not a
+secret and not a thing that expires. A certificate is neither.
+
+## Why no certificate is committed here
 
 A committed certificate would be a committed key pair. `scripts/create-test-tls.py`
 writes `server.key` next to `server.crt`, and even a throw-away private key in
@@ -41,11 +58,13 @@ certificate.
 
 ## Running the checks
 
-The fixture needs OpenSSL 3 (LibreSSL has no `-addext`) and `python3` on `PATH`;
-`python3 clients/ios/test_toolchain.py` is what verifies those pins.
+The certificate fixture needs OpenSSL 3 (LibreSSL has no `-addext`) and
+`python3` on `PATH`; `python3 clients/ios/test_toolchain.py` is what verifies
+those pins. The relay vectors need neither.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter X509LeafTests
+swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayConfigTests
 ```
 
 If a generated certificate ever has to be inspected by hand, run the script into

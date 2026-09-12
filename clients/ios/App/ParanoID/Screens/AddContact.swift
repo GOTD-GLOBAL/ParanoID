@@ -45,6 +45,9 @@ struct AddContactSheet: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 8)
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("add")
         .presentationDetents([.height(280)])
     }

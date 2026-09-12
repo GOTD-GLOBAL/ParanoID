@@ -137,19 +137,21 @@ step "realtime transport rules" python3 test_realtime_transport.py --evidence-di
 step "third-party notices" python3 notices.py --offline
 step "notices rules" python3 test_notices.py
 
-# 14-15. Source contracts: the captions/stand guard/Info.plist, and the branch
-# boundary (no red-zone file may be touched by a committed change).
+# 14-16. Source contracts: the captions/stand guard/Info.plist, every scenario
+# of the Android call smoke, and the branch boundary (no red-zone file may be
+# touched by a committed change).
 step "UI contract" python3 test_ui_contract.py
+step "call scenario parity" python3 test_call_controller_parity.py
 step "component boundary" python3 test_component_boundary.py
 
-# 16. The simulator, unsigned. KeychainStoreTests is excluded here on purpose:
-# an unsigned application has no Keychain access of its own, so it runs in 17.
+# 17. The simulator, unsigned. KeychainStoreTests is excluded here on purpose:
+# an unsigned application has no Keychain access of its own, so it runs in 18.
 step "simulator tests (unsigned)" \
   xcodebuild test -project "$PROJECT" -scheme "$SCHEME" \
   -destination "$SIMULATOR" -derivedDataPath "$DERIVED" \
   CODE_SIGNING_ALLOWED=NO -skip-testing:ParanoIDTests/KeychainStoreTests
 
-# 17. The same simulator, signed the way a simulator signs itself: ad hoc, no
+# 18. The same simulator, signed the way a simulator signs itself: ad hoc, no
 # team, no identity of the owner's. This is the only run where the application
 # owns a Keychain, which is what KeychainStoreTests is about.
 step "simulator Keychain tests (ad-hoc signature)" \
@@ -157,7 +159,7 @@ step "simulator Keychain tests (ad-hoc signature)" \
   -destination "$SIMULATOR" -derivedDataPath "$DERIVED_SIGNED" \
   -only-testing:ParanoIDTests/KeychainStoreTests
 
-# 18. The device build. Release, unsigned, and copied to out/ParanoID.app so
+# 19. The device build. Release, unsigned, and copied to out/ParanoID.app so
 # the bundle gate always reads a freshly built bundle.
 build_device() {
   rm -rf "$APP"
@@ -168,10 +170,10 @@ build_device() {
 }
 step "device build (Release, unsigned)" build_device
 
-# 19. What that bundle actually contains.
+# 20. What that bundle actually contains.
 step "application bundle" python3 test_app_bundle.py "$APP"
 
-# 20. The owner's signing gate. Everything above runs without it.
+# 21. The owner's signing gate. Everything above runs without it.
 archive_and_export() {
   local auth=()
   if [ -n "${PARANOID_ASC_KEY_ID:-}" ] && [ -n "${PARANOID_ASC_ISSUER_ID:-}" ] && [ -n "${PARANOID_ASC_KEY_PATH:-}" ]; then

@@ -83,6 +83,9 @@ struct QrScannerView: View {
             .padding(.top, 12)
             .padding(.bottom, 28)
         }
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("scan")
         .task { await open() }
         .onDisappear { camera.stop() }

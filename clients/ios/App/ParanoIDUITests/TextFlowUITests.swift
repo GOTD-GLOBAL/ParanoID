@@ -104,8 +104,13 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertTrue(send.isEnabled, "«Отправить» is disabled for a text that fits")
         send.tap()
         let sent = try fixture.bubble(app, fixture.firstText, marked: "✓", "the first message")
-        XCTAssertEqual(app.descendants(matching: .any)["compose-field"].value as? String,
-                       "Сообщение", "the composer was not cleared by the tap")
+        // The peer has not been asked to run a cycle yet, so nothing can have
+        // acknowledged this message: a `✓✓` here would be one the client drew
+        // of its own accord.
+        XCTAssertFalse(sent.label.contains("✓✓"),
+                       "the first message was double-checked before the peer acknowledged it")
+        XCTAssertNotEqual(app.descendants(matching: .any)["compose-field"].value as? String,
+                          fixture.firstText, "the composer was not cleared by the tap")
         try fixture.shot("08-sent")
 
         // The peer answers. `peer-expect` returns only once that phone's core
@@ -118,8 +123,6 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertTrue(reply.waitForExistence(timeout: Timeout.delivery),
                       "the peer's reply never arrived: " + Diagnosis.of(app))
         _ = try fixture.bubble(app, fixture.firstText, marked: "✓✓", "the first message")
-        XCTAssertEqual(sent.label.components(separatedBy: "✓✓").count - 1, 0,
-                       "the first message was double-checked before the peer acknowledged it")
         try fixture.shot("09-delivered")
 
         // Two taps in one gesture: the guard is `Drafts.begin`, which is
@@ -128,17 +131,13 @@ final class TextFlowUITests: XCTestCase {
         try fixture.compose(app, fixture.doubleText)
         send.doubleTap()
         let doubled = try fixture.bubble(app, fixture.doubleText, marked: "✓", "the double-tapped message")
-        XCTAssertEqual(app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.doubleText)).count, 1,
-                       "a double tap drew more than one bubble")
+        try fixture.exactlyOne(app, fixture.doubleText, "after the second tap")
         XCTAssertEqual(try fixture.ask("peer-expect", fixture.doubleText), "1",
                        "a double tap put more than one envelope on the server")
         _ = try fixture.bubble(app, fixture.doubleText, marked: "✓✓", "the double-tapped message")
         XCTAssertEqual(doubled.label.components(separatedBy: "✓✓").count - 1, 1,
                        "the double-tapped message carries more than one ✓✓")
-        XCTAssertEqual(app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.doubleText)).count, 1,
-                       "a double tap drew more than one bubble")
+        try fixture.exactlyOne(app, fixture.doubleText, "after the peer acknowledged it")
         try fixture.shot("10-double-tap")
 
         // «Заблокировать контакт» and back.
@@ -330,19 +329,43 @@ private struct Fixture {
         return false
     }
 
-    /// The one bubble whose text is `text`, once it carries `mark`.
+    /// The bubbles this device wrote that say `text`.
     ///
-    /// A bubble is one accessibility element — `MessageBubble` combines its
-    /// children — whose label starts with the message and ends with the tick
-    /// and the word behind it, so `BEGINSWITH` names the bubble and nothing
-    /// else: a conversation row carries the same text after a title and a
-    /// «Вы: » prefix.
+    /// A message is two accessibility elements, not one: `MessageBubble`
+    /// combines its children, which gives the bubble — «<текст>, ✓ Сохранено
+    /// сервером» — and the selectable `Text` inside it stays an element of
+    /// its own, whose label is the message and nothing else. Counting the
+    /// first of the two is counting bubbles; counting both would count every
+    /// message twice. A bubble of the peer's carries no tick, so it is
+    /// indistinguishable from its own inner text and is looked for by
+    /// existence rather than by count.
+    @MainActor
+    func bubbles(_ app: XCUIApplication, _ text: String) -> XCUIElementQuery {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@ AND label != %@", text, text))
+    }
+
+    /// Asserts that the conversation is showing this message once and once
+    /// only, and says what it is showing instead when it is not.
+    @MainActor
+    func exactlyOne(_ app: XCUIApplication, _ text: String, _ when: String) throws {
+        let found = bubbles(app, text).allElementsBoundByIndex
+        XCTAssertEqual(found.count, 1,
+                       "\(found.count) bubbles carry this message \(when): "
+                       + found.map { "\($0.elementType.rawValue)/«\($0.label)»" }
+                           .joined(separator: " | ")
+                       + "\n" + Diagnosis.of(app))
+    }
+
+    /// The bubble of `text`, once it carries `mark`.
+    ///
+    /// `BEGINSWITH` names the bubble and nothing else: a conversation row
+    /// carries the same text, but after a title and a «Вы: » prefix.
     @MainActor
     @discardableResult
     func bubble(_ app: XCUIApplication, _ text: String, marked mark: String,
                 _ what: String) throws -> XCUIElement {
-        let query = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label BEGINSWITH %@", text))
+        let query = bubbles(app, text)
         let deadline = Date().addingTimeInterval(Timeout.delivery)
         while Date() < deadline {
             let element = query.firstMatch
@@ -501,6 +524,9 @@ private enum Diagnosis {
         if app.staticTexts["status-line"].exists {
             parts.append("status «\(app.staticTexts["status-line"].label)»")
         }
-        return parts.isEmpty ? "nothing recognisable on the screen" : parts.joined(separator: ", ")
+        let stage = parts.isEmpty ? "nothing recognisable on the screen" : parts.joined(separator: ", ")
+        // The tree costs a whole run to reproduce otherwise, and a failure
+        // here is always "the element is not where the test looked".
+        return stage + "\n" + app.debugDescription
     }
 }

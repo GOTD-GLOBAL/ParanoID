@@ -60,6 +60,9 @@ struct WelcomeScreen: View {
                 .padding(.bottom, 16)
                 .accessibilityIdentifier("status-line")
         }
+        // A container keeps the identifiers inside it only when it is one
+        // (`Screens/Chat.swift`).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("welcome")
     }
 }

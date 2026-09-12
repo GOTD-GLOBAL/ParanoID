@@ -154,7 +154,7 @@ def check_identity(plist, report):
     report.equal('CFBundleExecutable', plist.get('CFBundleExecutable'), 'ParanoID')
 
 
-def check_delivery_path(bundle, plist, raw, report):
+def check_delivery_path(plist, raw, report):
     modes = plist.get('UIBackgroundModes')
     report.equal('UIBackgroundModes', modes, ['audio'])
     for key in ('aps-environment', 'NSAppTransportSecurity', 'NSAllowsArbitraryLoads'):
@@ -359,7 +359,7 @@ def main(argv=None):
     print(f'bundle: {bundle}')
     report = Report()
     check_identity(plist, report)
-    check_delivery_path(bundle, plist, raw.decode('utf-8', 'replace'), report)
+    check_delivery_path(plist, raw.decode('utf-8', 'replace'), report)
     check_executable(bundle, plist, report)
     webrtc_digest = check_frameworks(bundle, plist, webrtc, report)
     notices_digest = check_notices(bundle, report)

@@ -8,7 +8,8 @@ last_reviewed: 2026-09-11
 
 Validation plan for [RFC-0021](../../rfcs/0021-ios-client.md) and
 [draft ADR-0014](../../decisions/0014-ios-client.md), written before any
-client code exists. Every row is `NOT RUN`. Under the
+client code existed. A row moves off `NOT RUN` only when the check named
+beside it has actually been run and its evidence file exists. Under the
 [closed-alpha policy](../../governance/documentation-policy.md#closed-alpha-review-exception)
 item 4, acceptance criteria for delivered behaviour must actually pass and
 missing phone evidence cannot be replaced by a simulator or dependency build.
@@ -55,5 +56,6 @@ evidence; they are never a substitute for the `SHOWN` rows.
 | Pinned TLS: nine leaf checks on DER fixtures (wrong pin, CA chain, expired, corrupted signature, wrong SAN) | unit tests, no network | NOT RUN |
 | Storage: fsync or read-back failure freezes; key without file and file without key freeze; install marker matrix | unit tests with injected file-system faults; device test for Keychain persistence | NOT RUN |
 | Component boundary: no diff outside the allowlist | boundary gate script output in CI | NOT RUN |
+| Call scenario parity: every `check(…, "<label>")` of the Android `CallControllerSmoke` is named by an iOS assertion | `python3 clients/ios/test_call_controller_parity.py` → `labels: 94/94 covered`, over the scenarios `swift test --filter CallControllerTests` runs. It says the scenarios match, not that the media does; REQ-CALL-002/003 still need `stage2-voice.md` | CLAIMED |
 | WebRTC dependency: archive and slice digests, bundled notices | dependency test output | NOT RUN |
-| Reinstall on the simulator starts a new identity; marker-present missing file freezes | simulator scenario | NOT RUN |
+| Reinstall on the simulator starts a new identity; marker-present missing file freezes | `clients/ios/test_sim_text.py::reinstall`: `xcrun simctl uninstall` keeps the Keychain item (counted in the device's own keychain database on both sides) and takes the container, and the next launch creates a new account instead of freezing — `sim-text-result.json` plus the `20-`/`21-` screenshots; the two freezing rows of the marker matrix stay with `ParanoIDTests/KeychainStoreTests` | CLAIMED |
