@@ -64,6 +64,19 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.24-push` (versionCode 24, 2026-09-12): **calls crashed the caller on
+  v20–v23** (owner tombstone: `SIGABRT`, `JNI DETECTED ERROR: java_class ==
+  null in GetStaticMethodID` from `libjingle_peerconnection_so.so` during
+  `PeerConnectionFactory.initialize`). Root cause: the whole-program R8 shrink
+  introduced in v20 (to fit Firebase under the 16 MiB update bound) broke
+  libjingle's JNI class lookup through `org.webrtc.WebRtcClassLoader` even
+  with `-keep class org.webrtc.** { *; }`. Reproduced on the x86_64 emulator
+  (R8 recipe: crash; d8: pass). Fix: R8 shrinks only the Firebase closure with
+  app/WebRTC/ZXing on `--classpath`; app/WebRTC/ZXing are dexed by d8 untouched;
+  d8 merges into one `classes.dex`. Emulator: `initialize` + factory PASS.
+  The v22 "wake restarts the loop" change stays (it was a real hazard) but was
+  not the cause. `test_dex_shrink.py` now asserts every WebRTC/app class of the
+  d8 dex survives in the merged dex.
 - `0.0.23-push` (versionCode 23, 2026-09-12): the v22 crash dialog only
   captured Java exceptions; the owner's call crash left no report, which points
   at a native (WebRTC/JNI) abort. `CrashLog` now also reads the system's own
