@@ -565,9 +565,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         super.onRequestPermissionsResult(request,permissions,results);
         if(request==MICROPHONE_PERMISSION){
             waitingForMicrophone=false;
-            boolean microphone=false;
-            for(int n=0;n<permissions.length&&n<results.length;n++)
-                if(android.Manifest.permission.RECORD_AUDIO.equals(permissions[n]))microphone=results[n]==android.content.pm.PackageManager.PERMISSION_GRANTED;
+            // The request may carry only CAMERA (video-call intent with the microphone already granted):
+            // decide on the actual microphone grant, not on the array contents. A denied CAMERA never blocks the call.
+            boolean microphone=checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)==android.content.pm.PackageManager.PERMISSION_GRANTED;
             if(microphone){queueCallIntent();}
             else {
                 cancelCallIntent();

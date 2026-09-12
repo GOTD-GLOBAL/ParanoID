@@ -81,6 +81,14 @@ class OnboardingContract(unittest.TestCase):
         # Controller: video on -> speaker unless headset; off restores route; port checks CAMERA.
         self.assertIn('c.speakerBeforeVideo=c.speaker;c.speaker=true;',controller)
         self.assertIn('throw new SecurityException("camera permission")',engine)
+        # Engine: an attached headset wins over the speakerphone while the camera is on (SDK>=31 and legacy).
+        self.assertIn('if (speaker && attached != null && videoEnabled)',media)
+        self.assertIn('boolean useSpeaker = speaker && !(videoEnabled && headset);',media)
+        # A video-call start with the microphone already granted requests CAMERA alone under the microphone
+        # request code; the result handler must decide on the real microphone grant, not on the array contents.
+        handler=ui[ui.index('if(request==MICROPHONE_PERMISSION){'):ui.index('if(request==CAMERA_PERMISSION){')]
+        self.assertIn('boolean microphone=checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)==android.content.pm.PackageManager.PERMISSION_GRANTED;',handler)
+        self.assertNotIn('RECORD_AUDIO.equals(permissions[n])',handler)
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
