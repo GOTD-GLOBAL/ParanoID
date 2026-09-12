@@ -63,6 +63,15 @@ Unique `(sender,id)` exact retries preserve sequence; altered bytes/recipient co
 General accounts/devices and unordered account-pair conversations replace slots.
 E2EE/receipts remain client-owned opaque content; no server delivery/read claims.
 
+POST `/v2/push` (RFC-0020, proposed; signed session only):
+`{platform:"fcm", token: ≤4096 graphic-ASCII}`; empty token unregisters.
+Response `{registered: bool}`; `404 push_disabled` when no gateway is
+configured; malformed body 400. The token is opaque and bound to the
+authenticated account/device. After a committed `POST /v2/messages` the server
+may send the recipient one content-free FCM wake (`{"t":"wake"}`) when it holds
+no live `/v2/events` waiter, at most once per 10 s per account. The base v2
+schema is unchanged; `ss_push_tokens` exists only on a configured gateway.
+
 ## Bounds and errors
 
 At most eight new accounts per server per fixed 60-second window, durably metered
