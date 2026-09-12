@@ -97,11 +97,25 @@ policy acceptance claim. The official Android type description is the basis:
 [foreground service types](https://developer.android.com/develop/background-work/services/fgs/service-types).
 `remoteMessaging` specifically describes continuity between a user's devices;
 this alpha uses no such claim to bypass background limits. No boot receiver,
-wake lock, mandatory Google provider or fabricated FCM credentials. Service
-restarts are non-sticky; force-stop/process/OEM/Doze can prevent delivery.
+exact-alarm permission, mandatory Google provider or fabricated FCM credentials.
+The connection service holds no CPU wake lock; the application's WAKE_LOCK
+permission supports the separate voice proximity-screen lock.
 
-The service is private/nonexported and only begins from explicit visible user
-interaction. Notification content includes neither sender nor message text;
+As implemented in v14/v15, an explicit visible user action initially enables the
+private/nonexported connection service. Successful foreground start records
+opt-in and arms the private `ConnectionWatchdog` receiver. `START_STICKY` allows
+system recreation after process death; an inexact ELAPSED_REALTIME_WAKEUP alarm
+requests recovery approximately every 15 minutes while opt-in remains enabled.
+Both explicit stop paths clear opt-in and cancel the alarm. This is best effort,
+not a guaranteed restart interval: Android 12+ can reject a background FGS start,
+Doze can defer alarms, and force-stop or OEM policy can prevent recovery/delivery.
+Rejected watchdog starts are caught without bypassing platform restrictions.
+No boot receiver restores the alarm after reboot. Persisted opt-in is not a
+promise of delivery after reboot or force-stop, nor authority to start microphone
+capture. Physical kill/restart/stop races and OPPO/Doze behavior remain unverified;
+`test_background_contract.py` checks source/manifest/documentation wiring only.
+
+Notification content includes neither sender nor message text;
 notifications follow durable new incoming state. Android system notifications
 still expose app use/timing to the OS and observers. Network retry is bounded
 with backoff; connection/session/socket caps are not a battery-life guarantee.

@@ -6,6 +6,16 @@ last_reviewed: 2026-09-10
 
 # Current project state
 
+## v15 review follow-up — 2026-09-11
+
+The realtime threat delta now describes the actual opt-in START_STICKY/inexact
+watchdog behavior and Android/OEM limitations, not non-sticky or visible-only
+restarts. This corrects documentation, not device-level reliability evidence.
+The host APK verifier requires a same-package older APK, includes WebRTC in
+fresh Java/DEX compilation and runs policy against freshly compiled classes.
+Full retained-signer v14-to-v15 artifact verification and explicit old-package
+v13 rejection are exercised locally; this does not install or publish an APK.
+
 ## v15 QR candidate and update publication status — 2026-09-11
 
 The built v15 (`0.0.15-voice`, `global.paranoid.messenger`) retains the v14

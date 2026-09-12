@@ -44,6 +44,7 @@ python3 test_message_presentation.py
 python3 test_background_contract.py
 python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
 python3 test_update_wiring.py
+python3 test_update_artifact_regression.py
 cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
 python3 notices.py
 javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar:out/deps/webrtc-classes.jar" -d out/classes src/org/paranoid/text/*.java
