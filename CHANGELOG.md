@@ -8,6 +8,18 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Single-host egress policy: orphaned TCP tails were dropped — 2026-09-12
+
+- `deploy/single_host_network.py`: the relay egress chain now accepts
+  established/related **TCP** before the `skuid` dispatch. Segments of a
+  socket already closed by the messaging server carry no owner, did not match
+  `skuid != relay`, and were dropped by `deny-other`; large responses (the
+  16 MB APK on `/v2/updates/android/apk/…`) stalled at ~14.5 MB and the phone
+  reported a failed update check. Relay UDP/bogon/local/IPv6 rules unchanged.
+  Readback canonicalization handles the ct-state set; regression tests and a
+  netns functional reproduction (old: truncated, new: full) in
+  `docs/operations/voice-single-host.md`.
+
 ### v15 review follow-up — 2026-09-11
 
 - Corrected the threat model to describe opt-in `START_STICKY` and the inexact

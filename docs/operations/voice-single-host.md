@@ -133,7 +133,23 @@ Rollback restores journaled prior configuration bytes before starting the prior
 code, with all current data retained. The relay requires the dedicated persistent
 policy oneshot; it loads or verifies exact rules, never flushes them on stop.
 Exact systemd dependency resolution passes after genuine RED, but packet and actual
-relay lifecycle gates remain unrun. UFW preflight must reject every existing
+relay lifecycle gates remain unrun.
+
+**Egress policy incident (2026-09-12).** The output chain began with
+`meta skuid != <relay uid> return`. Orphaned TCP segments — a socket the
+messaging server already closed while the kernel still drains its send queue,
+exactly the tail of a 16 MB APK response followed by `Connection: close` — have
+no socket owner, so that match does not fire and they fell through to
+`deny-other drop`. Symptom on the live host: `/v2/updates/android/apk/…`
+stalled at ~14.3–14.8 MB of 16 046 098, sockets stuck in `FIN-WAIT-1/CLOSING`
+with ~1.4 MB `notsent`, `kfree_skb` reason `NETFILTER_DROP` in `nft_do_chain`;
+the phone reported "update failed verification". Reproduced in a veth netns
+pair with 2 ms delay: old policy truncates at ~14.0 MB, fixed policy delivers
+all bytes. The policy now starts with `meta l4proto tcp ct state
+{established, related} accept`; every UDP, bogon, local and IPv6 restriction
+for the relay is unchanged (the relay's only TCP listener was already
+permitted). Kernel readback of the set match differs syntactically
+(`op ==`, numeric members) and is canonicalized for the drift check. UFW preflight must reject every existing
 semantic tuple regardless of comment; removals require the exact nonempty owner
 comment. No shared firewall command has been executed.
 
