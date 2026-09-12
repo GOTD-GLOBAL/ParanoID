@@ -64,6 +64,15 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.22-push` (versionCode 22, 2026-09-12): call setup froze after a crash
+  on v21 (owner report). A push wake called `RealtimeLoop.restart()`, which
+  bumps the loop generation and abandons an in-flight voice-relay (TURN)
+  request and long-poll — exactly during call setup, when the peer's signaling
+  triggers a wake. Wakes now only `nudge()` (leave a backoff pause without
+  changing generation) and never act while a call is active/draining or the
+  loop is already connected. Adds `CrashLog`: the last uncaught stack trace is
+  kept in app-private storage and shown (copyable) on next launch; nothing is
+  sent anywhere.
 - `0.0.21-push` (versionCode 21, 2026-09-12): hotfix — v20 was built from the
   video branch before it contained the core `push` signing operation (main
   `dd072ec`), so the Java token registration hit an unknown core selector and

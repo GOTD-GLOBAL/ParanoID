@@ -65,6 +65,10 @@ public final class RealtimeLoop implements AutoCloseable {
             Thread cancel=new Thread(()->{try{current.cancelActive();}finally{cancelling.set(false);}},"paranoid-cancel");cancel.setDaemon(true);cancel.start();
         }
     }
+    /** RFC-0020 wake: leave a backoff pause now and poll. Unlike restart() this keeps the
+     *  generation, so an in-flight voice relay request or long-poll is never abandoned. */
+    public void nudge(){synchronized(lifecycle){nudges++;lifecycle.notifyAll();}kick();}
+    private long nudges;
     public void stop(){
         synchronized(lifecycle){enabled=false;generation++;lifecycle.notifyAll();}kick();
         cancelVoiceRelay();
@@ -165,7 +169,7 @@ public final class RealtimeLoop implements AutoCloseable {
     }
     private void pause(long run,long millis)throws InterruptedException {
         long end=System.nanoTime()+TimeUnit.MILLISECONDS.toNanos(millis);
-        synchronized(lifecycle){while(current(run)){long left=end-System.nanoTime();if(left<=0)return;TimeUnit.NANOSECONDS.timedWait(lifecycle,left);}}
+        synchronized(lifecycle){long seen=nudges;while(current(run)&&nudges==seen){long left=end-System.nanoTime();if(left<=0)return;TimeUnit.NANOSECONDS.timedWait(lifecycle,left);}}
         guard(run);
     }
     private JSONObject proof(long run,String purpose,String method,String path,String body)throws Exception {

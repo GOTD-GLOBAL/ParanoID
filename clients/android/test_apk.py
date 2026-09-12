@@ -11,8 +11,8 @@ class PackageTest(unittest.TestCase):
         tools=Path(os.environ["ANDROID_SDK_ROOT"])/"build-tools/35.0.0"
         result=subprocess.run([str(tools/"aapt"),"dump","badging",str(apk)],capture_output=True,text=True,check=True).stdout
         self.assertIn("package: name='global.paranoid.messenger'",result)
-        self.assertIn("versionCode='21'",result)
-        self.assertIn("versionName='0.0.21-push'",result)
+        self.assertIn("versionCode='22'",result)
+        self.assertIn("versionName='0.0.22-push'",result)
         self.assertIn("sdkVersion:'26'",result)
         self.assertIn("native-code: 'arm64-v8a'",result)
         self.assertIn("application-icon-",result)

@@ -53,7 +53,7 @@ public final class TextEngine {
     private boolean broken=false, hasSnapshot=false, unsupportedSnapshot=false;
     private SecretKey storageKey;
     private TextEngine(Context context) {
-        this.context=context;tones=new CallTones(context);
+        this.context=context;tones=new CallTones(context);CrashLog.install(context);
         calls=new CallController(new CallController.Clock(){
             public long wallMillis(){return System.currentTimeMillis();}
             public long monotonicMillis(){return android.os.SystemClock.elapsedRealtime();}
@@ -181,8 +181,12 @@ public final class TextEngine {
     public void pushWake(){
         worker.execute(()->{
             if(broken||realtime==null)return;
+            // A wake is only a hint that something is waiting. It must never restart a live
+            // loop: restart() bumps the generation and abandons an in-flight voice relay
+            // request/long-poll, which froze call setup in v20/v21 (owner report 2026-09-12).
+            if(callActive||callDraining||connected){realtime.nudge();return;}
             wakeUntil=android.os.SystemClock.elapsedRealtime()+WAKE_WINDOW_MS;
-            realtime.restart();startConnection();
+            startConnection();realtime.nudge();
             ui.postDelayed(()->worker.execute(()->{if(android.os.SystemClock.elapsedRealtime()>=wakeUntil&&listener==null&&!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null)stopConnection();}),WAKE_WINDOW_MS+500);
         });
         BackgroundConnectionService.wake(context);

@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="21"',manifest)
-        self.assertIn('android:versionName="0.0.21-push"',manifest)
+        self.assertIn('android:versionCode="22"',manifest)
+        self.assertIn('android:versionName="0.0.22-push"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -129,7 +129,11 @@ class OnboardingContract(unittest.TestCase):
         self.assertIn('client.sessionRequest(context.context,"push",token)',loop)
         self.assertIn('catch(Exception ignored){pushedSession=null;',loop,'push registration never blocks the send lane')
         self.assertIn('pushedSession=context;pushedToken=token;\n        try {',loop)
-        self.assertIn('realtime.restart();startConnection();',engine)
+        # A wake never restarts a live loop or touches an active call (v22 regression: call setup froze).
+        self.assertIn('if(callActive||callDraining||connected){realtime.nudge();return;}',engine)
+        self.assertNotIn('realtime.restart();startConnection();realtime.nudge()',engine)
+        self.assertIn('public void nudge(){synchronized(lifecycle){nudges++;lifecycle.notifyAll();}kick();}',loop)
+        self.assertIn('CrashLog.install(context);',engine)
         self.assertIn('<service android:name="org.paranoid.text.PushService" android:exported="false">',manifest)
         self.assertIn('android:authorities="global.paranoid.messenger.firebaseinitprovider"',manifest)
         self.assertIn('com.google.android.c2dm.permission.RECEIVE',manifest)
