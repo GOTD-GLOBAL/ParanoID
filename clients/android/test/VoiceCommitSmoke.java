@@ -25,7 +25,7 @@ public final class VoiceCommitSmoke {
     }
     static JSONObject knock() throws Exception {
         long now=System.currentTimeMillis();
-        return new JSONObject().put("v",1).put("kind","knock").put("call_id",java.util.UUID.randomUUID().toString())
+        return new JSONObject().put("v",2).put("video",true).put("kind","knock").put("call_id",java.util.UUID.randomUUID().toString())
             .put("caller_nonce","aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").put("callee_nonce","")
             .put("seq",0).put("sent_ms",now).put("expires_ms",now+45000)
             .put("sdp","").put("fingerprint","").put("ice_ufrag","").put("ice_pwd","").put("offer_digest","").put("reason","");

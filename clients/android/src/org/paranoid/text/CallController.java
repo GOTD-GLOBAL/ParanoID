@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Voice-v1 runtime authority. All methods and Port completions belong to one
+ * Call-v2 runtime authority (audio call with optional camera video). All methods and Port completions belong to one
  * owner (Android's main handler). No call authority is loaded from storage.
  * Input events must come from the native authenticated, committed receive path.
  */
@@ -27,14 +27,16 @@ public final class CallController {
         void mediaRemoteAnswer(long generation, String remoteSdp);
         void mediaMute(boolean muted);
         void mediaSpeaker(boolean speaker);
+        /** Local camera on/off; only ever called after explicit user video intent + permission. */
+        void mediaVideo(boolean enabled);
         void mediaClose();
         void changed(JSONObject publicView);
     }
     private static final long TTL=45_000, HEARTBEAT=10_000, SILENCE=30_000,
         DISCONNECTED=10_000, MAX_CALL=900_000, CLOCK_SKEW=5_000;
-    private static final int MAX_READY=8, MAX_TERMINALS=64;
+    private static final int MAX_READY=8, MAX_TERMINALS=64, MAX_SDP=12288;
     private static final String[] FIELDS={"v","kind","call_id","caller_nonce","callee_nonce",
-        "seq","sent_ms","expires_ms","sdp","fingerprint","ice_ufrag","ice_pwd","offer_digest","reason"};
+        "seq","sent_ms","expires_ms","sdp","fingerprint","ice_ufrag","ice_pwd","offer_digest","reason","video"};
     private final Clock clock;
     private final Port port;
     private final SecureRandom random=new SecureRandom();
@@ -61,6 +63,8 @@ public final class CallController {
         String offerDigest="",remoteSdp="";
         int nextSequence=2,remoteSequence=-1;
         boolean media,muted,speaker,heartbeatPending,answerKnown,descriptionSent;
+        /** localVideo: user turned own camera on; remoteVideo: peer's last authenticated media control. */
+        boolean localVideo,remoteVideo,videoIntent,speakerBeforeVideo;
         long heartbeatSent,heartbeatReceived,disconnectedAt=-1,connectedAt=-1;
         Call(Slot slot,boolean outgoing,long generation,long now){
             super(slot.account,slot.id,slot.caller,slot.callee,slot.deadline);
@@ -80,20 +84,23 @@ public final class CallController {
             .put("call_id",c==null?lastCallId:c.id).put("generation",generation)
             .put("muted",c!=null&&c.muted).put("speaker",c!=null&&c.speaker)
             .put("reconnecting",c!=null&&c.disconnectedAt>=0)
-            .put("reason",reason).put("media_active",c!=null&&c.media).put("elapsed_ms",elapsed);
+            .put("reason",reason).put("media_active",c!=null&&c.media).put("elapsed_ms",elapsed)
+            .put("local_video",c!=null&&c.localVideo).put("remote_video",c!=null&&c.remoteVideo);
         }catch(Exception failure){throw new IllegalStateException("call view",failure);}
     }
     private void publish(){port.changed(snapshot());}
     public void connection(boolean connected){own();online=connected;}
 
-    public void start(String account,boolean microphonePermission){
+    public void start(String account,boolean microphonePermission){start(account,microphonePermission,false);}
+    /** videoIntent requests the camera immediately after media authority; it never bypasses CAMERA permission (port decides). */
+    public void start(String account,boolean microphonePermission,boolean videoIntent){
         own();if(!checkClock())return;purge();
         if(call!=null)return;
         if(!microphonePermission||!online||!hex(account,64)||!terminalRoom()){
             lastAccount=account==null?"":account;state="ended";reason=microphonePermission?"unavailable":"reject";publish();return;
         }
         long now=clock.monotonicMillis();Slot slot=new Slot(account,UUID.randomUUID().toString(),nonce(),"",now+TTL);
-        call=new Call(slot,true,++generation,now);state="starting";reason="";publish();
+        call=new Call(slot,true,++generation,now);call.videoIntent=videoIntent;state="starting";reason="";publish();
         sendActive(body(call,"knock",0,"","","","",""),false);
     }
     public void answer(boolean microphonePermission){
@@ -119,6 +126,33 @@ public final class CallController {
     public void speaker(boolean speaker){
         own();if(call!=null)try{call.speaker=speaker;if(call.media)port.mediaSpeaker(speaker);publish();}
         catch(RuntimeException failure){finish("failed",true);}
+    }
+    /** Explicit user camera toggle. Owner decision 2026-09-11: video on -> speaker unless a headset is active (port resolves headset); video off restores the previous route. */
+    public void video(boolean enabled){
+        own();Call c=call;if(c==null||!c.media||c.localVideo==enabled)return;
+        try{port.mediaVideo(enabled);}
+        catch(SecurityException denied){publish();return;/* No permission: stay audio-only. */}
+        catch(RuntimeException failure){finish("failed",true);return;}
+        try{
+            if(enabled){c.speakerBeforeVideo=c.speaker;c.speaker=true;}else c.speaker=c.speakerBeforeVideo;
+            c.localVideo=enabled;port.mediaSpeaker(c.speaker);
+            if(c.descriptionSent&&(state.equals("connecting")||state.equals("connected")))sendActive(body(c,"media",c.nextSequence++,"","","","",""),false);
+            publish();
+        }catch(RuntimeException failure){finish("failed",true);}
+    }
+    /** Called by the media owner once the engine for this generation exists: applies a pending explicit video-call intent. */
+    public void mediaReady(long callbackGeneration){
+        own();Call c=call;if(c==null||c.generation!=callbackGeneration||!c.media||!c.videoIntent)return;
+        c.videoIntent=false;video(true);
+    }
+    /** Engine reported the camera cannot run: revert to audio, tell the peer, keep the call. */
+    public void videoUnavailable(long callbackGeneration){
+        own();Call c=call;if(c==null||c.generation!=callbackGeneration||!c.localVideo)return;
+        c.localVideo=false;c.speaker=c.speakerBeforeVideo;
+        try{port.mediaVideo(false);}catch(RuntimeException ignored){/* engine already stopped capture */}
+        try{port.mediaSpeaker(c.speaker);}catch(RuntimeException ignored){/* route restore is best effort */}
+        if(c.descriptionSent&&(state.equals("connecting")||state.equals("connected")))sendActive(body(c,"media",c.nextSequence++,"","","","",""),false);
+        publish();
     }
     private void applyRoutes(Call c){port.mediaMute(c.muted);port.mediaSpeaker(c.speaker);}
 
@@ -146,10 +180,16 @@ public final class CallController {
                 if(!c.outgoing||!state.equals("outgoing")||!c.descriptionSent||c.offerDigest.isEmpty()||seq!=1||expired(c))return;
                 c.remoteSequence=seq;c.answerKnown=true;state="connecting";
                 c.heartbeatReceived=clock.monotonicMillis();c.heartbeatSent=c.heartbeatReceived;publish();
-                try{port.mediaRemoteAnswer(c.generation,b.getString("sdp"));}catch(RuntimeException failure){finish("failed",true);}return;
+                try{port.mediaRemoteAnswer(c.generation,b.getString("sdp"));}catch(RuntimeException failure){finish("failed",true);return;}
+                if(c.localVideo)sendActive(body(c,"media",c.nextSequence++,"","","","",""),false);
+                return;
             }
             if(kind.equals("heartbeat")&&(state.equals("connecting")||state.equals("connected"))&&seq>=2){
                 c.remoteSequence=seq;c.heartbeatReceived=clock.monotonicMillis();
+            }
+            if(kind.equals("media")&&(state.equals("connecting")||state.equals("connected"))&&seq>=2){
+                // Informative only: the UI states what the peer claims; actual frames come from the engine.
+                c.remoteSequence=seq;c.heartbeatReceived=clock.monotonicMillis();c.remoteVideo=b.getBoolean("video");publish();
             }
         }catch(Exception invalid){/* Invalid input cannot grant UI or media authority. */}
     }
@@ -206,7 +246,7 @@ public final class CallController {
         own();if(!checkClock())return;
         Call c=call;if(c==null||c.generation!=callbackGeneration||c.descriptionSent)return;
         if(expired(c)){finish("timeout",true);return;}
-        if(sdp==null||sdp.isEmpty()||sdp.getBytes(StandardCharsets.UTF_8).length>6144||!hex(fingerprint,64)||!ice(ufrag,4,256)||!ice(password,22,256)){
+        if(sdp==null||sdp.isEmpty()||sdp.getBytes(StandardCharsets.UTF_8).length>MAX_SDP||!hex(fingerprint,64)||!ice(ufrag,4,256)||!ice(password,22,256)){
             finish("failed",true);return;
         }
         String kind;
@@ -214,7 +254,10 @@ public final class CallController {
         else if(!c.outgoing&&state.equals("connecting")){kind="answer";c.answerKnown=true;}
         else return;
         c.descriptionSent=true;
-        sendActive(body(c,kind,1,sdp,fingerprint,ufrag,password,""),false);publish();
+        sendActive(body(c,kind,1,sdp,fingerprint,ufrag,password,""),false);
+        // Callee: a camera toggled during Answer negotiation is announced only after its own answer (seq 1).
+        if(kind.equals("answer")&&c.localVideo)sendActive(body(c,"media",c.nextSequence++,"","","","",""),false);
+        publish();
     }
     public void mediaState(long callbackGeneration,String mediaState){
         own();if(!checkClock())return;
@@ -268,7 +311,8 @@ public final class CallController {
     }
     private JSONObject body(Slot s,String kind,int seq,String sdp,String fp,String ufrag,String pwd,String endReason){
         long wall=clock.wallMillis();
-        try{return new JSONObject().put("v",1).put("kind",kind).put("call_id",s.id)
+        boolean video=kind.equals("media")?s instanceof Call&&((Call)s).localVideo:(kind.equals("knock")||kind.equals("ready")||kind.equals("offer")||kind.equals("answer"));
+        try{return new JSONObject().put("v",2).put("kind",kind).put("call_id",s.id).put("video",video)
             .put("caller_nonce",s.caller).put("callee_nonce",s.callee).put("seq",seq)
             .put("sent_ms",wall).put("expires_ms",Math.addExact(wall,TTL)).put("sdp",sdp)
             .put("fingerprint",fp).put("ice_ufrag",ufrag).put("ice_pwd",pwd)
@@ -277,8 +321,9 @@ public final class CallController {
     }
     private boolean valid(JSONObject b)throws Exception{
         if(b.length()!=FIELDS.length)return false;for(String f:FIELDS)if(!b.has(f)||b.isNull(f))return false;
-        if(!number(b,"v")||b.getInt("v")!=1||!number(b,"seq")||b.getLong("seq")<0||b.getLong("seq")>Integer.MAX_VALUE||!number(b,"sent_ms")||!number(b,"expires_ms"))return false;
-        for(String f:FIELDS)if(!f.equals("v")&&!f.equals("seq")&&!f.equals("sent_ms")&&!f.equals("expires_ms")&&!(b.get(f) instanceof String))return false;
+        if(!number(b,"v")||b.getInt("v")!=2||!number(b,"seq")||b.getLong("seq")<0||b.getLong("seq")>Integer.MAX_VALUE||!number(b,"sent_ms")||!number(b,"expires_ms"))return false;
+        if(!(b.get("video") instanceof Boolean))return false;
+        for(String f:FIELDS)if(!f.equals("v")&&!f.equals("seq")&&!f.equals("sent_ms")&&!f.equals("expires_ms")&&!f.equals("video")&&!(b.get(f) instanceof String))return false;
         long sent=b.getLong("sent_ms"),expires=b.getLong("expires_ms"),wall=clock.wallMillis();
         if(sent<=0||expires<=sent||expires-sent>TTL||wall>=expires||sent-wall>CLOCK_SKEW)return false;
         if(!b.getString("call_id").matches("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")||!hex(b.getString("caller_nonce"),64))return false;
@@ -287,13 +332,14 @@ public final class CallController {
         if(!callee.isEmpty()&&!hex(callee,64))return false;
         boolean description=kind.equals("offer")||kind.equals("answer");
         if(description){
-            if(seq!=1||callee.isEmpty()||sdp.isEmpty()||sdp.getBytes(StandardCharsets.UTF_8).length>6144||!hex(od,64)||!hex(b.getString("fingerprint"),64)||!ice(b.getString("ice_ufrag"),4,256)||!ice(b.getString("ice_pwd"),22,256)||!r.isEmpty())return false;
+            if(seq!=1||callee.isEmpty()||sdp.isEmpty()||sdp.getBytes(StandardCharsets.UTF_8).length>MAX_SDP||!hex(od,64)||!hex(b.getString("fingerprint"),64)||!ice(b.getString("ice_ufrag"),4,256)||!ice(b.getString("ice_pwd"),22,256)||!r.isEmpty())return false;
         }else{
             if(!sdp.isEmpty()||!b.getString("fingerprint").isEmpty()||!b.getString("ice_ufrag").isEmpty()||!b.getString("ice_pwd").isEmpty())return false;
             if(kind.equals("knock"))return seq==0&&callee.isEmpty()&&od.isEmpty()&&r.isEmpty();
             if(kind.equals("ready"))return seq==0&&!callee.isEmpty()&&od.isEmpty()&&r.isEmpty();
-            if(kind.equals("heartbeat"))return seq>=2&&!callee.isEmpty()&&hex(od,64)&&r.isEmpty();
-            if(kind.equals("end"))return seq>=2&&(od.isEmpty()||hex(od,64))&&r.matches("hangup|reject|cancel|busy|timeout|failed|unavailable");
+            if(kind.equals("heartbeat"))return seq>=2&&!callee.isEmpty()&&hex(od,64)&&r.isEmpty()&&!b.getBoolean("video");
+            if(kind.equals("media"))return seq>=2&&!callee.isEmpty()&&hex(od,64)&&r.isEmpty();
+            if(kind.equals("end"))return seq>=2&&(od.isEmpty()||hex(od,64))&&r.matches("hangup|reject|cancel|busy|timeout|failed|unavailable")&&!b.getBoolean("video");
             return false;
         }
         return true;

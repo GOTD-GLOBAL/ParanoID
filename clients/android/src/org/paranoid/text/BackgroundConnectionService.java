@@ -21,6 +21,13 @@ public final class BackgroundConnectionService extends Service {
         try{activity.startForegroundService(new Intent(activity,BackgroundConnectionService.class));}
         catch(RuntimeException unavailable){Toast.makeText(activity,"Не удалось включить фоновое подключение. Откройте приложение и повторите.",Toast.LENGTH_LONG).show();}
     }
+    /** RFC-0020: a push wake is a legitimate FGS start reason on Android 12+ (high-priority FCM grants a
+     *  short window). Only when the user previously enabled the background channel; failures stay silent. */
+    public static void wake(Context context){
+        if(!ConnectionWatchdog.enabled(context)||running)return;
+        try{context.startForegroundService(new Intent(context,BackgroundConnectionService.class));}
+        catch(RuntimeException notAllowed){/* bounded fetch in TextEngine still runs */}
+    }
     public static void requestStop(Context context){ConnectionWatchdog.disable(context);context.stopService(new Intent(context,BackgroundConnectionService.class));}
     private static PendingIntent open(Context context) {
         return PendingIntent.getActivity(context,0,new Intent(context,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);

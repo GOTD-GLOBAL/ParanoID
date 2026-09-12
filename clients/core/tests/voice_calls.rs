@@ -171,8 +171,9 @@ fn assert_only_notice(before: &Value, after: &Value) {
 }
 
 fn audio_sdp(answer: bool) -> String {
+    // call-v2 bundled audio + video (H.264 preferred, VP8 mandatory fallback).
     format!(
-        "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=ice-ufrag:abcd1234\r\na=ice-pwd:abcdefghijklmnopqrstuvwx\r\na=fingerprint:sha-256 {}\r\na=setup:{}\r\na=sendrecv\r\na=rtcp-mux\r\na=rtpmap:111 opus/48000/2\r\na=candidate:1 1 udp 2122260223 127.0.0.1 40000 typ host\r\na=end-of-candidates\r\n",
+        "v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\nm=audio 9 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=ice-ufrag:abcd1234\r\na=ice-pwd:abcdefghijklmnopqrstuvwx\r\na=fingerprint:sha-256 {}\r\na=setup:{}\r\na=sendrecv\r\na=rtcp-mux\r\na=rtpmap:111 opus/48000/2\r\na=candidate:1 1 udp 2122260223 127.0.0.1 40000 typ host\r\na=end-of-candidates\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 98\r\nc=IN IP4 0.0.0.0\r\na=mid:1\r\na=sendrecv\r\na=rtcp-mux\r\na=rtpmap:96 H264/90000\r\na=rtpmap:97 VP8/90000\r\na=rtpmap:98 rtx/90000\r\na=fmtp:98 apt=97\r\n",
         std::iter::repeat_n("AB", 32).collect::<Vec<_>>().join(":"),
         if answer { "active" } else { "actpass" }
     )
@@ -181,7 +182,8 @@ fn audio_sdp(answer: bool) -> String {
 fn body(kind: &str) -> Value {
     let media = matches!(kind, "offer" | "answer");
     let offer = audio_sdp(false);
-    json!({"v":1,"kind":kind,"call_id":uuid::Uuid::new_v4().to_string(),
+    json!({"v":2,"kind":kind,"call_id":uuid::Uuid::new_v4().to_string(),
+        "video":matches!(kind,"knock"|"ready"|"offer"|"answer"|"media"),
         "caller_nonce":"1".repeat(64),"callee_nonce":if kind=="knock" {String::new()} else {"2".repeat(64)},
         "seq":if matches!(kind,"knock"|"ready"){0}else if media{1}else{2},
         "sent_ms":1_789_000_000_000u64,"expires_ms":1_789_000_045_000u64,
@@ -359,8 +361,10 @@ fn call_control_preserves_v8_snapshot_shape_and_exact_retry_bytes() {
 fn flat_call_shape_limits_and_kind_sequences_are_strict_on_send_and_receive() {
     let (a, b) = known();
     let cases = [
-        ("v", json!(2)),
+        ("v", json!(1)),
         ("v", json!(1.5)),
+        ("video", json!("true")),
+        ("video", json!(1)),
         ("kind", json!("candidate")),
         ("call_id", json!("00000000-0000-0000-0000-000000000000")),
         ("caller_nonce", json!("A".repeat(64))),
@@ -392,7 +396,16 @@ fn flat_call_shape_limits_and_kind_sequences_are_strict_on_send_and_receive() {
         );
         assert_only_notice(&b, &receive(&b, event(&a, &b, &malformed)));
     }
-    for kind in ["ready", "offer", "answer", "heartbeat", "end"] {
+    for kind in ["heartbeat", "end"] {
+        let mut malformed = body(kind);
+        malformed["video"] = json!(true);
+        assert!(call(
+            &a["state"],
+            json!({"op":"send_call_v1","account":id(&b),"body":malformed})
+        )
+        .is_err());
+    }
+    for kind in ["ready", "offer", "answer", "heartbeat", "media", "end"] {
         let mut malformed = body(kind);
         malformed["seq"] = if kind == "ready" { json!(1) } else { json!(0) };
         assert!(call(
@@ -444,37 +457,101 @@ fn sdp_exact_fingerprint_ice_offer_digest_and_audio_only_contract_are_enforced()
         assert_only_notice(&b, &receive(&b, event(&a, &b, &malformed)));
     }
     let sdp = audio_sdp(false);
+    // Lines inserted into the audio section (before the bundled video section).
+    let in_audio = |line: &str| sdp.replacen("m=video", &format!("{line}\r\nm=video"), 1);
     let invalid = [
         sdp.replace("m=audio", "m=video"),
         format!("{sdp}m=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n"),
-        format!(
-            "{sdp}a=fingerprint:sha-256 {}\r\n",
+        sdp[..sdp.find("m=video").unwrap()].to_string(),
+        format!("{sdp}m=video 9 UDP/TLS/RTP/SAVPF 96\r\na=mid:2\r\na=sendrecv\r\na=rtcp-mux\r\na=rtpmap:96 VP8/90000\r\n"),
+        sdp.replace("a=rtpmap:96 H264/90000\r\na=rtpmap:97 VP8/90000\r\n", "a=rtpmap:96 VP9/90000\r\na=rtpmap:97 AV1/90000\r\n"),
+        sdp.replace("a=mid:1\r\na=sendrecv", "a=mid:1\r\na=recvonly"),
+        format!("{sdp}a=fingerprint:sha-256 {}\r\n", std::iter::repeat_n("CD", 32).collect::<Vec<_>>().join(":")),
+        format!("{sdp}a=ice-ufrag:efgh5678\r\n"),
+        format!("{sdp}a=setup:actpass\r\na=setup:actpass\r\n"),
+        in_audio(&format!(
+            "a=fingerprint:sha-256 {}",
             std::iter::repeat_n("AB", 32).collect::<Vec<_>>().join(":")
-        ),
-        format!("{sdp}a=ice-ufrag:abcd1234\r\n"),
+        )),
+        in_audio("a=ice-ufrag:abcd1234"),
+        in_audio("a=rtcp-mux"),
         sdp.replace("UDP/TLS/RTP/SAVPF", "RTP/AVP"),
         sdp.replace("sha-256", "sha-1"),
         sdp.replace("a=rtcp-mux\r\n", ""),
         sdp.replace("opus/48000/2", "PCMU/8000"),
-        format!("{sdp}a=rtpmap:111 PCMU/8000\r\n"),
+        in_audio("a=rtpmap:111 PCMU/8000"),
+        format!("{sdp}a=rtpmap:96 VP8/90000\r\n"),
         sdp.replace("a=sendrecv", "a=inactive"),
         format!(
             "{sdp}{}",
             "a=candidate:2 1 udp 2122260223 127.0.0.1 40001 typ host\r\n".repeat(16)
         ),
+        in_audio("a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:abc"),
+        format!("{sdp}{}", "a=rtcp-mux\r\n".repeat(256)),
+        format!("{sdp}{}", "a=x:y\r\n".repeat(600)),
         format!("{sdp}a=candidate:{}\r\n", "a".repeat(513)),
         format!("{sdp}a=x:{}\r\n", "é".repeat(3072)),
+        format!("{sdp}a=x:{}\r\n", "x".repeat(12288)),
     ];
-    for sdp in invalid {
+    for (index, sdp) in invalid.into_iter().enumerate() {
         let mut malformed = body("offer");
         malformed["sdp"] = json!(sdp);
         malformed["offer_digest"] = json!(paranoid_key_protocol::digest(sdp.as_bytes()));
-        assert!(call(
-            &a["state"],
-            json!({"op":"send_call_v1","account":id(&b),"body":malformed})
-        )
-        .is_err());
+        assert!(
+            call(
+                &a["state"],
+                json!({"op":"send_call_v1","account":id(&b),"body":malformed})
+            )
+            .is_err(),
+            "invalid sdp case {index}"
+        );
         assert_only_notice(&b, &receive(&b, event(&a, &b, &malformed)));
+    }
+    {
+        let answer = audio_sdp(true);
+        let mixed = format!("{answer}a=setup:passive\r\n");
+        let mut malformed = body("answer");
+        malformed["sdp"] = json!(mixed);
+        assert!(
+            call(
+                &a["state"],
+                json!({"op":"send_call_v1","account":id(&b),"body":malformed})
+            )
+            .is_err(),
+            "answer setup active+passive across sections"
+        );
+        let same = format!("{answer}a=setup:active\r\n");
+        let mut accepted = body("answer");
+        accepted["sdp"] = json!(same);
+        assert!(
+            call(
+                &a["state"],
+                json!({"op":"send_call_v1","account":id(&b),"body":accepted})
+            )
+            .is_ok(),
+            "answer repeated identical setup"
+        );
+    }
+    let valid = [
+        format!(
+            "{sdp}a=ice-ufrag:abcd1234\r\na=ice-pwd:abcdefghijklmnopqrstuvwx\r\na=fingerprint:sha-256 {}\r\na=setup:actpass\r\n",
+            std::iter::repeat_n("AB", 32).collect::<Vec<_>>().join(":")
+        ),
+        sdp.replace("a=rtpmap:96 H264/90000\r\n", ""),
+        sdp.replace("m=video 9", "m=video 0"),
+    ];
+    for (index, sdp) in valid.into_iter().enumerate() {
+        let mut accepted = body("offer");
+        accepted["sdp"] = json!(sdp);
+        accepted["offer_digest"] = json!(paranoid_key_protocol::digest(sdp.as_bytes()));
+        assert!(
+            call(
+                &a["state"],
+                json!({"op":"send_call_v1","account":id(&b),"body":accepted})
+            )
+            .is_ok(),
+            "valid sdp case {index}"
+        );
     }
 }
 

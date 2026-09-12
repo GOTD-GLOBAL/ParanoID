@@ -23,7 +23,7 @@ public final class CallControllerSmoke {
     }
     static final class Port implements CallController.Port {
         final List<Sent> sent=new ArrayList<>();
-        int offers,answers,remoteAnswers,closes;boolean failSave,muted,speaker,holdHeartbeat,deferSignals,deferMedia;
+        int offers,answers,remoteAnswers,closes,videoCalls;boolean failSave,muted,speaker,video,holdHeartbeat,deferSignals,deferMedia;
         CallController controller;
         final List<CallController.Completion> deferred=new ArrayList<>();
         JSONObject view;
@@ -32,12 +32,14 @@ public final class CallControllerSmoke {
             if(deferSignals)deferred.add(completion);
             else if(!holdHeartbeat||!body.getString("kind").equals("heartbeat"))completion.done(!failSave);
         }
-        public void mediaOffer(long generation){offers++;if(!deferMedia)controller.mediaAuthorized(generation,true);}
-        public void mediaAnswer(long generation,String sdp){answers++;if(!deferMedia)controller.mediaAuthorized(generation,true);}
+        boolean engine;
+        public void mediaOffer(long generation){offers++;if(!deferMedia&&controller.mediaAuthorized(generation,true)){engine=true;controller.mediaReady(generation);}}
+        public void mediaAnswer(long generation,String sdp){answers++;if(!deferMedia&&controller.mediaAuthorized(generation,true)){engine=true;controller.mediaReady(generation);}}
         public void mediaRemoteAnswer(long generation,String sdp){remoteAnswers++;}
         public void mediaMute(boolean value){muted=value;}
         public void mediaSpeaker(boolean value){speaker=value;}
-        public void mediaClose(){closes++;}
+        public void mediaVideo(boolean value){if(value&&!engine)throw new IllegalStateException("no media engine");video=value;videoCalls++;}
+        public void mediaClose(){closes++;engine=false;}
         public void changed(JSONObject value){view=new JSONObject(value.toString());}
         Sent take(){check(!sent.isEmpty(),"expected outgoing control");return sent.remove(0);}
     }
@@ -120,7 +122,7 @@ public final class CallControllerSmoke {
         Pair p=new Pair();p.connect();p.a.mediaState(p.a.snapshot().getLong("generation"),"disconnected");check(p.a.snapshot().getBoolean("reconnecting"),"ICE loss is visible before its failure deadline");p.time.advance(9_999);p.a.tick();check(p.a.active(),"brief ICE loss gets bounded recovery");
         p.a.mediaState(p.a.snapshot().getLong("generation"),"connected");p.time.advance(1);p.a.tick();check(p.a.active()&&!p.a.snapshot().getBoolean("reconnecting"),"ICE reconnection cancels disconnect deadline and presentation");
         p.a.mediaState(p.a.snapshot().getLong("generation"),"disconnected");p.time.advance(10_001);p.a.tick();check(!p.a.active(),"ICE disconnection deadline cleans media");
-        Pair large=new Pair();large.ready();large.a.localDescription(large.a.snapshot().getLong("generation"),repeat('x',6145),FP,U,P);check(!large.a.active()&&large.pa.closes>0,"oversized local SDP cleans capture before offer");
+        Pair large=new Pair();large.ready();large.a.localDescription(large.a.snapshot().getLong("generation"),repeat('x',12289),FP,U,P);check(!large.a.active()&&large.pa.closes>0,"oversized local SDP cleans capture before offer");
         Pair failed=new Pair();failed.ready();failed.pa.failSave=true;failed.a.localDescription(failed.a.snapshot().getLong("generation"),SDP,FP,U,P);check(!failed.a.active()&&failed.pa.closes>0,"offer enqueue failure cleans already-created caller media");
         Pair limited=new Pair();limited.connect();for(int n=0;n<90&&limited.a.active();n++){
             limited.time.advance(10_000);limited.a.tick();limited.b.tick();
@@ -161,5 +163,48 @@ public final class CallControllerSmoke {
         check("authorizing".equals(receiver.b.snapshot().getString("state"))&&!receiver.b.snapshot().getBoolean("media_active"),"explicit Answer still waits for relay authority");
         receiver.b.authorizationLost();check(!receiver.b.mediaAuthorized(receiver.b.snapshot().getLong("generation"),true),"revoked consent never resumes");
     }
-    public static void main(String[] args){relayAuthorityBeforeCapture();permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
+    static void videoConsentAndSignaling(){
+        Pair p=new Pair();p.a.start(B,true);Sent knock=p.pa.take();
+        check(knock.body.getInt("v")==2&&knock.body.getBoolean("video"),"v2 knock advertises video capability");
+        p.deliver(p.b,A,knock);check(p.pb.videoCalls==0,"incoming knock never touches the camera");
+        p.deliver(p.a,B,p.pb.take());check(p.pa.videoCalls==0&&!p.pa.video,"audio-first: media authority alone never opens the camera");
+        p.a.localDescription(p.a.snapshot().getLong("generation"),SDP,FP,U,P);p.deliver(p.b,A,p.pa.take());
+        check(p.pb.videoCalls==0,"incoming ring never opens the camera");
+        p.b.video(true);check(p.pb.videoCalls==0,"video toggle before Answer is ignored (no media)");
+        p.b.answer(true);p.b.localDescription(p.b.snapshot().getLong("generation"),SDP.replace("actpass","active"),FP,U,P);
+        Sent answer=p.pb.take();check(!answer.body.getBoolean("video")||answer.body.getString("kind").equals("answer"),"answer body carries video flag");
+        p.deliver(p.a,B,answer);p.a.mediaState(p.a.snapshot().getLong("generation"),"connected");p.b.mediaState(p.b.snapshot().getLong("generation"),"connected");
+        check(p.pa.sent.isEmpty()&&p.pb.sent.isEmpty(),"no media control before anyone turns video on");
+        p.a.speaker(false);p.a.video(true);
+        check(p.pa.video&&p.pa.videoCalls==1&&p.pa.speaker&&p.a.snapshot().getBoolean("local_video"),"explicit toggle opens camera and routes to speaker");
+        Sent media=p.pa.take();check("media".equals(media.body.getString("kind"))&&media.body.getBoolean("video")&&media.body.getInt("seq")>=2,"authenticated media control announces camera on");
+        p.deliver(p.b,A,media);check(p.b.snapshot().getBoolean("remote_video")&&p.pb.videoCalls==0,"peer learns remote video without opening its own camera");
+        p.deliver(p.b,A,media);check(p.b.snapshot().getBoolean("remote_video"),"replayed media control is idempotent");
+        p.a.video(false);check(!p.pa.video&&!p.pa.speaker&&!p.a.snapshot().getBoolean("local_video"),"video off restores previous audio route");
+        Sent off=p.pa.take();check(!off.body.getBoolean("video"),"media control announces camera off");
+        p.deliver(p.b,A,off);check(!p.b.snapshot().getBoolean("remote_video"),"peer sees camera off");
+        Sent stale=new Sent(A,media.body);p.deliver(p.b,A,stale);check(!p.b.snapshot().getBoolean("remote_video"),"lower-sequence replay of camera-on is ignored");
+        p.time.advance(10_001);p.a.tick();Sent hb=p.pa.take();check("heartbeat".equals(hb.body.getString("kind"))&&!hb.body.getBoolean("video"),"heartbeat never carries video");
+        Sent forged=new Sent(A,hb.body);forged.body.put("video",true);int before=p.pb.sent.size();p.deliver(p.b,A,forged);
+        Sent v1=new Sent(A,off.body);v1.body.put("v",1);p.deliver(p.b,A,v1);
+        Sent typed=new Sent(A,off.body);typed.body.put("video","true");p.deliver(p.b,A,typed);
+        check(p.b.active()&&p.pb.sent.size()==before,"invalid video/v1 bodies are ignored without effect");
+        p.a.hangup();check(!p.a.active()&&p.pa.closes>0,"hangup with video active closes engine");
+        Pair intent=new Pair();intent.a.start(B,true,true);intent.deliver(intent.b,A,intent.pa.take());
+        check(intent.pa.videoCalls==0,"video intent waits for media authority");
+        intent.deliver(intent.a,B,intent.pb.take());check(intent.pa.video&&intent.pa.speaker&&intent.a.snapshot().getBoolean("local_video"),"video-call intent opens camera only after ready+authorization");
+        check(intent.pa.sent.isEmpty(),"media control is deferred until the answer is known");
+        Pair early=new Pair();early.ring();early.b.answer(true);early.b.video(true);
+        check(early.pb.video&&early.pb.sent.isEmpty(),"callee camera during negotiation is not announced before its answer");
+        early.b.localDescription(early.b.snapshot().getLong("generation"),SDP.replace("actpass","active"),FP,U,P);
+        Sent ans=early.pb.take(),med=early.pb.take();check("answer".equals(ans.body.getString("kind"))&&"media".equals(med.body.getString("kind"))&&med.body.getInt("seq")==2,"answer precedes media announcement");
+        early.deliver(early.a,B,ans);early.deliver(early.a,B,med);check(early.a.snapshot().getBoolean("remote_video"),"caller learns callee camera announced after answer");
+        Pair unavailable=new Pair();unavailable.connect();unavailable.a.video(true);unavailable.pa.take();
+        unavailable.a.videoUnavailable(unavailable.a.snapshot().getLong("generation"));
+        check(!unavailable.pa.video&&!unavailable.a.snapshot().getBoolean("local_video")&&!unavailable.pa.speaker,"camera failure stops capture, restores route, keeps call");
+        check(!unavailable.pa.take().body.getBoolean("video")&&unavailable.a.active(),"camera failure announces off and keeps the call");
+        Pair large=new Pair();large.ready();large.a.localDescription(large.a.snapshot().getLong("generation"),repeat('x',12289),FP,U,P);check(!large.a.active(),"12288-byte SDP limit");
+        Pair fits=new Pair();fits.ready();fits.a.localDescription(fits.a.snapshot().getLong("generation"),repeat('x',12288),FP,U,P);check(fits.a.active(),"12288-byte SDP accepted");
+    }
+    public static void main(String[] args){videoConsentAndSignaling();relayAuthorityBeforeCapture();permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: video consent/signaling, consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
 }

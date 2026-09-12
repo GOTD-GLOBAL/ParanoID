@@ -33,6 +33,70 @@ public contract is declared.
   netns functional reproduction (old: truncated, new: full) in
   `docs/operations/voice-single-host.md`.
 
+### 1:1 video calls candidate — 2026-09-11
+
+- Call signaling moves to call-v2: a boolean `video` field, an informative
+  encrypted `media` (camera on/off) control and a bundled `m=video` section
+  (H.264 first, VP8 mandatory fallback, 12288-byte SDP). v2 rejects v1 call
+  bodies; both alpha phones must update (text unaffected).
+- Android: "Видеозвонок" button, in-call camera toggle and camera switch,
+  remote/local renderers, `FLAG_SECURE` call window, camera pause when the
+  app is not visible, speaker on video unless a headset is active, camera
+  foreground-service type only while the camera is on (`0.0.16-video`).
+- `0.0.17-video` (versionCode 17, 2026-09-12): a video-call start with the
+  microphone already granted no longer cancels on the CAMERA-only permission
+  result; the in-app update declares the installer `<queries>` intent and
+  falls back from the system-only resolver, fixing "Установщик Android
+  недоступен" seen on one alpha phone. No protocol change.
+- `0.0.18-video` (versionCode 18, 2026-09-12), owner requests of 2026-09-12:
+  - video call view keeps the screen on while local or remote video is shown
+    and the proximity sensor no longer blanks the screen with the camera on;
+  - local-only contact display names ("Переименовать" in contact details;
+    stored in app-private preferences, never sent to the peer or server, not
+    part of the encrypted state file);
+  - audible call progress driven by the authenticated call state: incoming
+    ring with the system ringtone and vibration (respects silent/vibrate
+    ringer mode, 60 s cap), outgoing ringback while the peer's phone rings,
+    short busy tone on busy/reject/timeout; incoming notification raised to
+    maximum priority;
+  - delivery: a default-network change (Wi-Fi/mobile switch, connectivity
+    restored) restarts the long-poll immediately instead of waiting out the
+    30 s poll and backoff. There is still no push provider (no FCM) in this
+    build; background delivery relies on the user-enabled foreground
+    connection and the OEM battery exception.
+- `0.0.22-push` (versionCode 22, 2026-09-12): call setup froze after a crash
+  on v21 (owner report). A push wake called `RealtimeLoop.restart()`, which
+  bumps the loop generation and abandons an in-flight voice-relay (TURN)
+  request and long-poll — exactly during call setup, when the peer's signaling
+  triggers a wake. Wakes now only `nudge()` (leave a backoff pause without
+  changing generation) and never act while a call is active/draining or the
+  loop is already connected. Adds `CrashLog`: the last uncaught stack trace is
+  kept in app-private storage and shown (copyable) on next launch; nothing is
+  sent anywhere.
+- `0.0.21-push` (versionCode 21, 2026-09-12): hotfix — v20 was built from the
+  video branch before it contained the core `push` signing operation (main
+  `dd072ec`), so the Java token registration hit an unknown core selector and
+  the send lane stalled ("В очереди", owner report 2026-09-12 21:30). v21 is
+  built after merging main; registration failures of any kind can no longer
+  block sending (they are logged and retried on the next session).
+- `0.0.20-push` (versionCode 20, 2026-09-12, RFC-0020 client half): Firebase
+  Cloud Messaging is embedded through a SHA256-pinned 61-artifact closure in
+  the manual javac/d8 build (no Gradle; `firebase_dependency.py`). After the
+  signed session exists the FCM token is registered with `POST /v2/push`; a
+  content-free `{"t":"wake"}` data message restarts the realtime loop (and the
+  user-enabled background service) so the real message/call arrives over the
+  E2EE channel. No notification content ever transits Google. Requires the
+  server gateway (PR #28) to be deployed for wakes to be sent; without it the
+  token registration is answered `push_disabled` and nothing changes. APK
+  grows by about 5 MB.
+- `0.0.19-video` (versionCode 19, 2026-09-12): in-app update falls back to a
+  `PackageInstaller` session when the installer intent cannot be started
+  (owner report "Установщик Android недоступен" repeated on one OPPO phone);
+  the system confirmation dialog is preserved and the status line now shows
+  the intent/session failure classes for diagnosis. No protocol change.
+- Server: the existing host runs release `f65254ab` (main `fe9c26c`), which
+  serves `global.paranoid.messenger` update metadata; v15 published.
+
 ### v15 review follow-up — 2026-09-11
 
 - Corrected the threat model to describe opt-in `START_STICKY` and the inexact

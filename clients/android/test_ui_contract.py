@@ -5,8 +5,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="15"',manifest)
-        self.assertIn('android:versionName="0.0.15-voice"',manifest)
+        self.assertIn('android:versionCode="22"',manifest)
+        self.assertIn('android:versionName="0.0.22-push"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -56,10 +56,89 @@ class OnboardingContract(unittest.TestCase):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         self.assertIn('оператор ретранслятора видит ваш IP-адрес, время и объём трафика',ui)
         self.assertIn('собеседник может видеть ваш IP-адрес',ui)
-        outgoing=ui[ui.index('private void requestCall()'):ui.index('private void requestMicrophone')]
-        self.assertLess(outgoing.index('.setMessage(VOICE_PRIVACY)'),outgoing.index('.setPositiveButton("Позвонить"'))
+        outgoing=ui[ui.index('private void requestCall(boolean video)'):ui.index('private void requestMicrophone')]
+        self.assertLess(outgoing.index('video?VIDEO_PRIVACY:VOICE_PRIVACY'),outgoing.index('.setPositiveButton(video?"Видеозвонок":"Позвонить"'))
         incoming=ui[ui.index('private void showCall()'):ui.index('private static String callLabel')]
         self.assertLess(incoming.index('callPrivacy=text(VOICE_PRIVACY'),incoming.index('callAnswer=action("Ответить"'))
+
+    def test_video_calls_require_explicit_camera_toggle_and_pause_in_background(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        media=(ROOT/'src/org/paranoid/text/WebRtcAudioEngine.java').read_text()
+        controller=(ROOT/'src/org/paranoid/text/CallController.java').read_text()
+        # CAMERA is requested only from the explicit toggle or explicit video-call intent, never on ring.
+        self.assertIn('requestPermissions(new String[]{android.Manifest.permission.CAMERA},CAMERA_PERMISSION)',ui)
+        answer=ui[ui.index('callAnswer=action("Ответить"'):ui.index('callAnswer=action("Ответить"')+120]
+        self.assertNotIn('CAMERA',answer)
+        self.assertIn('FLAG_SECURE',ui)
+        self.assertIn('videoPausedByBackground=true;engine.calls().video(false)',ui)
+        # Screen stays on only while the video stage is shown; flag lives on the call window (owner request 2026-09-12).
+        self.assertIn('if(showStage)callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);',ui)
+        self.assertIn('else callDialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);',ui)
+        self.assertNotIn('getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)',ui.replace('callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)',''))
+        self.assertIn('boolean earpiece = !speaker && connected && !videoEnabled;',media)
+        self.assertIn('Видео и звук защищены сквозным шифрованием',ui)
+        # Engine: camera capture only through applyVideo after explicit setVideo; H.264 first, VP8 mandatory.
+        self.assertIn('throw new SecurityException("Camera permission required")',media)
+        self.assertIn('if (fallback.isEmpty()) throw new IllegalStateException("VP8 unavailable")',media)
+        self.assertLess(media.index('mime.equals("video/h264")'),media.index('mime.equals("video/vp8")'))
+        self.assertIn('localVideo.setEnabled(false);\n        peer.addTrack(localVideo',media)
+        # Controller: video on -> speaker unless headset; off restores route; port checks CAMERA.
+        self.assertIn('c.speakerBeforeVideo=c.speaker;c.speaker=true;',controller)
+        self.assertIn('throw new SecurityException("camera permission")',engine)
+        # Engine: an attached headset wins over the speakerphone while the camera is on (SDK>=31 and legacy).
+        self.assertIn('if (speaker && attached != null && videoEnabled)',media)
+        self.assertIn('boolean useSpeaker = speaker && !(videoEnabled && headset);',media)
+        # A video-call start with the microphone already granted requests CAMERA alone under the microphone
+        # request code; the result handler must decide on the real microphone grant, not on the array contents.
+        handler=ui[ui.index('if(request==MICROPHONE_PERMISSION){'):ui.index('if(request==CAMERA_PERMISSION){')]
+        self.assertIn('boolean microphone=checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)==android.content.pm.PackageManager.PERMISSION_GRANTED;',handler)
+        self.assertNotIn('RECORD_AUDIO.equals(permissions[n])',handler)
+
+    def test_v18_contact_names_tones_and_network_reconnect(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        tones=(ROOT/'src/org/paranoid/text/CallTones.java').read_text()
+        names=(ROOT/'src/org/paranoid/text/ContactNames.java').read_text()
+        loop=(ROOT/'src/org/paranoid/text/RealtimeLoop.java').read_text()
+        service=(ROOT/'src/org/paranoid/text/VoiceCallService.java').read_text()
+        # 1. Local-only contact names: every title site uses ContactNames; stored outside the encrypted snapshot.
+        self.assertNotIn('MessagePresentation.title(',ui)
+        self.assertEqual(ui.count('ContactNames.title(this,'),4)
+        self.assertIn('setPositiveButton("Переименовать"',ui)
+        self.assertIn('paranoid-contact-names-v1',names)
+        for token in ['text-state.enc','SnapshotCodec','KeyStore','sendCall','client.']:
+            self.assertNotIn(token,names)
+        # 2/4. Audible progress from the authenticated controller state only: incoming ring, outgoing ringback, busy.
+        self.assertIn('tones.changed(view);',engine)
+        for token in ['TYPE_RINGTONE','RINGER_MODE_SILENT','TONE_SUP_RINGTONE','TONE_SUP_BUSY','STREAM_VOICE_CALL','VibrationEffect.createWaveform','MAX_RING_MS']:
+            self.assertIn(token,tones)
+        for token in ['mediaVideo','mediaMute','RECORD_AUDIO','CAMERA','startCapture']:
+            self.assertNotIn(token,tones)
+        self.assertIn('setPriority(Notification.PRIORITY_MAX)',service)
+        # 3. Delivery: default-network change restarts the long-poll immediately (no FCM exists in this build).
+        self.assertIn('registerDefaultNetworkCallback',engine)
+        self.assertIn('public void restart(){',loop)
+        self.assertIn('if(changed)realtime.restart();startConnection();',engine)
+        # v20: FCM wake is content-free and only reconnects; the token goes over the signed session.
+        push=(ROOT/'src/org/paranoid/text/PushService.java').read_text()
+        manifest=(ROOT/'AndroidManifest.xml').read_text()
+        self.assertIn('if(!"wake".equals(message.getData().get("t")))return;',push)
+        for token in ['getNotification','NotificationManager','Toast','sendCall','client.']:
+            self.assertNotIn(token,push)
+        self.assertIn('client.sessionRequest(context.context,"push",token)',loop)
+        self.assertIn('catch(Exception ignored){pushedSession=null;',loop,'push registration never blocks the send lane')
+        self.assertIn('pushedSession=context;pushedToken=token;\n        try {',loop)
+        # A wake never restarts a live loop or touches an active call (v22 regression: call setup froze).
+        self.assertIn('if(callActive||callDraining||connected){realtime.nudge();return;}',engine)
+        self.assertNotIn('realtime.restart();startConnection();realtime.nudge()',engine)
+        self.assertIn('public void nudge(){synchronized(lifecycle){nudges++;lifecycle.notifyAll();}kick();}',loop)
+        self.assertIn('CrashLog.install(context);',engine)
+        self.assertIn('<service android:name="org.paranoid.text.PushService" android:exported="false">',manifest)
+        self.assertIn('android:authorities="global.paranoid.messenger.firebaseinitprovider"',manifest)
+        self.assertIn('com.google.android.c2dm.permission.RECEIVE',manifest)
+        values=(ROOT/'res/values/firebase.xml').read_text()
+        self.assertIn('<string name="project_id" translatable="false">para-no-id</string>',values)
 
     def test_first_contact_badge_reply_and_block_are_visible(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()

@@ -45,6 +45,7 @@ public final class TextEngine {
     private long drainGeneration;
     private final java.util.Map<String,CallController.Completion> callCompletions=new java.util.HashMap<>();
     private String lastCallState="idle";
+    private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
     private boolean connected=false,backgroundEnabled=false;
@@ -52,7 +53,7 @@ public final class TextEngine {
     private boolean broken=false, hasSnapshot=false, unsupportedSnapshot=false;
     private SecretKey storageKey;
     private TextEngine(Context context) {
-        this.context=context;
+        this.context=context;tones=new CallTones(context);CrashLog.install(context);
         calls=new CallController(new CallController.Clock(){
             public long wallMillis(){return System.currentTimeMillis();}
             public long monotonicMillis(){return android.os.SystemClock.elapsedRealtime();}
@@ -73,6 +74,11 @@ public final class TextEngine {
             public void mediaRemoteAnswer(long generation,String sdp){if(media!=null&&calls.snapshot().optLong("generation")==generation)media.setAnswer(sdp);}
             public void mediaMute(boolean value){if(media!=null)media.setMuted(value);}
             public void mediaSpeaker(boolean value){if(media!=null)media.setSpeaker(value);}
+            public void mediaVideo(boolean value){
+                if(media==null){if(value)throw new IllegalStateException("no media engine");return;}
+                if(value&&context.checkSelfPermission(android.Manifest.permission.CAMERA)!=android.content.pm.PackageManager.PERMISSION_GRANTED)throw new SecurityException("camera permission");
+                media.setVideo(value);VoiceCallService.video(context,value);
+            }
             public void mediaClose(){
                 if(realtime!=null)realtime.cancelVoiceRelay();
                 pendingMedia=null;WebRtcAudioEngine owned=media;media=null;
@@ -86,6 +92,9 @@ public final class TextEngine {
                 String state=view.optString("state");callActive=!state.equals("idle")&&!state.equals("ended");
                 if(state.equals("incoming")&&!lastCallState.equals(state)&&listener==null)VoiceCallService.incoming(context);
                 if(!state.equals("incoming"))VoiceCallService.clearIncoming(context);lastCallState=state;
+                // Audible progress (incoming ring, outgoing ringback, busy) follows the authenticated controller state
+                // in every app state; the notification above only adds the lock-screen surface.
+                tones.changed(view);
                 if(callListener!=null)callListener.changed(view);
                 worker.execute(()->{if(callActive||callDraining)startConnection();else if(listener==null&&!backgroundEnabled&&realtime!=null){stopConnection();}});
             }
@@ -110,6 +119,9 @@ public final class TextEngine {
                     public void authorizationLost(){ui.post(()->calls.authorizationLost());}
                 });
                 publish("Готово. Только тестовые сообщения.");
+                ui.post(TextEngine.this::watchNetwork);
+                if(!pendingPushToken.isEmpty())realtime.pushToken(pendingPushToken);
+                ui.post(()->PushService.requestToken(TextEngine.this));
             } catch(Throwable error) {broken=true;unsupportedSnapshot=error instanceof SelfServiceClient.UnsupportedSnapshot;publish("Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются.");}
         });
     }
@@ -133,31 +145,74 @@ public final class TextEngine {
         try{
             java.util.List<org.webrtc.PeerConnection.IceServer> servers=config==null?java.util.Collections.emptyList():java.util.Collections.singletonList(
                 org.webrtc.PeerConnection.IceServer.builder(config.urls()).setUsername(config.username()).setPassword(config.password()).createIceServer());
-            media=new WebRtcAudioEngine(context,new WebRtcAudioEngine.Listener(){
-                public void onLocalDescription(String type,String sdp){
-                    String fingerprint="",ufrag="",password="";
-                    for(String line:sdp.split("\\r?\\n")){
-                        if(line.startsWith("a=fingerprint:sha-256 "))fingerprint=line.substring(22).replace(":","").toLowerCase(java.util.Locale.ROOT);
-                        if(line.startsWith("a=ice-ufrag:"))ufrag=line.substring(12);
-                        if(line.startsWith("a=ice-pwd:"))password=line.substring(10);
-                    }
-                    calls.localDescription(generation,sdp,fingerprint,ufrag,password);
-                }
-                public void onConnected(){calls.mediaState(generation,"connected");}
-                public void onDisconnected(){calls.mediaState(generation,"disconnected");}
-                public void onError(String reason){calls.mediaState(generation,"failed");}
-            },null,servers,config!=null);
+            media=new WebRtcAudioEngine(context,new MediaListener(generation),null,servers,config!=null);
             // Creation may have waited for an older engine's asynchronous close.
             // Apply this generation's current intent before capture can start.
             JSONObject desired=calls.snapshot();
             media.setMuted(desired.optBoolean("muted"));media.setSpeaker(desired.optBoolean("speaker"));
             if(offer==null)media.createOffer();else media.createAnswer(offer);
+            calls.mediaReady(generation);
         }catch(RuntimeException failure){calls.mediaState(generation,"failed");}
     }
+    /** Engine callbacks for one media generation. Camera failure downgrades to audio; it never ends the call. */
+    private final class MediaListener implements WebRtcAudioEngine.Listener,WebRtcAudioEngine.VideoListener{
+        private final long generation;
+        MediaListener(long generation){this.generation=generation;}
+        public void onLocalDescription(String type,String sdp){
+            String fingerprint="",ufrag="",password="";
+            for(String line:sdp.split("\\r?\\n")){
+                if(line.startsWith("a=fingerprint:sha-256 "))fingerprint=line.substring(22).replace(":","").toLowerCase(java.util.Locale.ROOT);
+                if(line.startsWith("a=ice-ufrag:"))ufrag=line.substring(12);
+                if(line.startsWith("a=ice-pwd:"))password=line.substring(10);
+            }
+            calls.localDescription(generation,sdp,fingerprint,ufrag,password);
+        }
+        public void onConnected(){calls.mediaState(generation,"connected");}
+        public void onDisconnected(){calls.mediaState(generation,"disconnected");}
+        public void onError(String reason){calls.mediaState(generation,"failed");}
+        public void onVideoUnavailable(String reason){calls.videoUnavailable(generation);VoiceCallService.video(context,false);}
+    }
+    public WebRtcAudioEngine media(){return media;}
+    /** RFC-0020: the Firebase token is announced over the signed session by the realtime loop. */
+    public void pushToken(String token){worker.execute(()->{pendingPushToken=token==null?"":token;if(realtime!=null)realtime.pushToken(pendingPushToken);});}
+    private String pendingPushToken="";
+    /** A content-free wake arrived: reconnect now. With background enabled the foreground channel is
+     *  restarted; otherwise a bounded fetch runs so the message/call is picked up over the E2EE path. */
+    public void pushWake(){
+        worker.execute(()->{
+            if(broken||realtime==null)return;
+            // A wake is only a hint that something is waiting. It must never restart a live
+            // loop: restart() bumps the generation and abandons an in-flight voice relay
+            // request/long-poll, which froze call setup in v20/v21 (owner report 2026-09-12).
+            if(callActive||callDraining||connected){realtime.nudge();return;}
+            wakeUntil=android.os.SystemClock.elapsedRealtime()+WAKE_WINDOW_MS;
+            startConnection();realtime.nudge();
+            ui.postDelayed(()->worker.execute(()->{if(android.os.SystemClock.elapsedRealtime()>=wakeUntil&&listener==null&&!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null)stopConnection();}),WAKE_WINDOW_MS+500);
+        });
+        BackgroundConnectionService.wake(context);
+    }
+    private static final long WAKE_WINDOW_MS=25_000;
+    private volatile long wakeUntil;
     public void listen(Listener next) {listener=next;worker.execute(()->{publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();});}
     public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
     private void stopConnection(){if(realtime!=null)realtime.stop();connected=false;ui.post(()->calls.connection(false));}
-    private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining)){realtime.start();realtime.kick();}}
+    private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining||android.os.SystemClock.elapsedRealtime()<wakeUntil)){realtime.start();realtime.kick();}}
+    /** Owner report 2026-09-12 (slow/absent notifications): a network switch used to leave the long-poll
+     *  stuck until its 30 s timeout plus backoff. Reconnect at once when the default network changes. */
+    private void watchNetwork(){
+        try{
+            android.net.ConnectivityManager cm=(android.net.ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if(cm==null)return;
+            cm.registerDefaultNetworkCallback(new android.net.ConnectivityManager.NetworkCallback(){
+                private android.net.Network last;
+                @Override public void onAvailable(android.net.Network network){
+                    boolean changed=last!=null&&!last.equals(network);last=network;
+                    worker.execute(()->{if(realtime==null||broken)return;if(changed)realtime.restart();startConnection();});
+                }
+                @Override public void onLost(android.net.Network network){if(network.equals(last))last=null;}
+            });
+        }catch(RuntimeException ignored){/* Without the callback the loop still recovers by timeout/backoff. */}
+    }
     public void background(boolean enabled){worker.execute(()->{backgroundEnabled=enabled;if(enabled)startConnection();else if(listener==null&&!callActive&&!callDraining&&realtime!=null){stopConnection();}publish(enabled?"Фоновое подключение включено":"Фоновое подключение выключено");});}
     private interface Task {void run() throws Exception;}
     private void submit(Task task) {
