@@ -106,7 +106,7 @@ done | grep -oE '[0-9]{4}' | sort -u | tail -1
 
 When two branches reach the same number anyway, the branch that is merged
 later renumbers and records the correction here in one sentence, as done for
-RFC-0016 and RFC-0020. Numbers are never silently reused or swapped.
+RFC-0016 and RFC-0021. Numbers are never silently reused or swapped.
 
 ## Required use
 
@@ -129,13 +129,17 @@ deployment authority remain separate gates.
 
 ## iOS client candidate
 
-[RFC-0020: Native iOS client on the shared Rust core](0020-ios-client.md)
+[RFC-0021: Native iOS client on the shared Rust core](0021-ios-client.md)
 (draft) proposes a SwiftUI shell over the unchanged `clients/core` through a
 thin C-ABI bridge, the same wire contracts and pin as Android v15, Keychain
 plus Data Protection storage with an install marker, and the pinned WebRTC
 iOS dependency; [draft ADR-0014](../decisions/0014-ios-client.md). Its
 decision deadline is a placeholder until the client pull request is opened.
-No build, phone result, hosted account or architecture acceptance is implied. This candidate first carried the number RFC-0019; that number had already
-been allocated on the unmerged `feat/video-calls-v16` branch, so the iOS
-candidate was moved to RFC-0020 before it was proposed, as a transparent
-numbering correction. RFC-0019 stays with the video-call work.
+No build, phone result, hosted account or architecture acceptance is implied.
+This candidate has been renumbered twice while still a draft, both times
+transparently and before it was proposed: RFC-0019 was already allocated on
+the unmerged `feat/video-calls-v16` branch, and RFC-0020 was then allocated
+on the published `feat/push-fcm-gateway` branch. RFC-0019 stays with the
+video-call work, RFC-0020 with the push wake gateway, and the iOS candidate
+is RFC-0021. Both moves follow the naming rule below: an unpublished draft
+yields.

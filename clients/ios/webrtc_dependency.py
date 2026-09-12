@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Exact WebRTC 150.7871.01 xcframework extraction for the manual iOS build (RFC-0020).
+"""Exact WebRTC 150.7871.01 xcframework extraction for the manual iOS build (RFC-0021).
 
 webrtc-sdk/Specs publishes one zip carrying eight Apple slices. Validate the
 whole pinned archive and every selected slice binary before writing anything,

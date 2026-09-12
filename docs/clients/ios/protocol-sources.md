@@ -6,12 +6,12 @@ last_reviewed: 2026-09-11
 
 # iOS client behaviour: rule to source table
 
-Skeleton for [RFC-0020](../../rfcs/0020-ios-client.md). Every iOS behaviour is
+Skeleton for [RFC-0021](../../rfcs/0021-ios-client.md). Every iOS behaviour is
 written from the protocol document and the shared core or server code; the
 Java client is a cross-check only. Line numbers refer to `main` at `fe9c26c`
 (Android v15). The `Discrepancy` column names the numbered doc-to-code
 findings reported to the owner ("Findings from iOS-client preparation", section
-A); those documents are not corrected here (RFC-0020 question 10). The table
+A); those documents are not corrected here (RFC-0021 question 10). The table
 grows as the client is written; rows without a discrepancy say `none`.
 
 ## Core bridge
@@ -33,7 +33,7 @@ Rules of the Swift adapter over the C-ABI bridge
 | Proof transcript `LP("paranoid-proof-v2", id, nonce, epoch, expires, realm, pin, account, device, credential, purpose, method, path, body)` and `Authorization: ParanoidV2 <id>.<signature>`; challenge context must equal the saved credential | `docs/protocol/self-service-v2.md:35-45` | `key-protocol/src/proof_v2.rs:20-22`; `clients/core/src/self_service.rs:262-275` | Java only forwards the core result (`SelfServiceClient.java:125`) | none |
 | Identity is created and upgraded to core schema 3 durably before the first network request; `create_identity{realm,pin}` then `upgrade_v2` | `docs/protocol/first-contact-v1.md:131-133` | `clients/core/src/lib.rs:439-469`; `clients/core/src/clean_service.rs:754-767` | `SelfServiceClient.java:80-84,128-134` | none |
 | Registration/status response `{mode:"active",account,device,credential}` must match the local credential, otherwise `status_conflict`; then `prepare_contact_v2` publishes the fallback key | `docs/protocol/self-service-v2.md:50-51` | `clients/core/src/clean_service.rs:796-829` | `SelfServiceClient.java:131-134,186-189`; `RealtimeLoop.java:173-176` | none |
-| Server bounds: eight new accounts per 60 s, 1024 accounts, identical retries free | `docs/protocol/self-service-v2.md:68-71` | `server/src/self_service_http.rs:336-345` | not applicable | none (input to RFC-0020 question 4) |
+| Server bounds: eight new accounts per 60 s, 1024 accounts, identical retries free | `docs/protocol/self-service-v2.md:68-71` | `server/src/self_service_http.rs:336-345` | not applicable | none (input to RFC-0021 question 4) |
 | Realm is the saved HTTPS origin without path; `pin` is SHA-256 of the server leaf SPKI DER; saved trust wins over compiled defaults | `docs/protocol/key-enrollment-v1.md:41-42`; `docs/protocol/first-contact-v1.md:31,45` | `clients/core/src/lib.rs:166-169,457-460` | `KeyClient.java:9-10,17-21,37-41`; `PinnedTls.java:18-21` | A.5: documents say `SPKI`, code says `pin` / `tls_pin` / `PARANOID_KEY_PIN`; same value |
 
 ## Session
@@ -47,6 +47,15 @@ Rules of the Swift adapter over the C-ABI bridge
 | Capability discovery: `GET /health` advertises `realtime: "signed-long-poll-v1"`; 404/401 on session routes triggers pinned rediscovery, never looser trust | `docs/protocol/realtime-v1.md:159-165,172-178` | `server/src/self_service_http.rs:102-106` | `RealtimeLoop.java:177-183,190-194,205-209` | none |
 | A first 401 on a signed-session request is retried once with a fresh nonce; a second 401 or `session_exhausted` drops the session | `docs/protocol/realtime-v1.md:71-78`; `docs/protocol/voice-v1.md:118-123` | replay ledger `server/src/self_service_http.rs:33-38` | `RealtimeLoop.java:202-210` | none |
 | At most two live sessions per account, 64 globally; 429 `session_capacity` waits, it does not fall back | `docs/protocol/realtime-v1.md:35-36,167-169` | `server/src/self_service_http.rs:380-387` | `RealtimeLoop.java:192` (5 s legacy window) | none |
+
+## Send
+
+| Rule | Protocol source | Core / server | Java cross-check | Discrepancy |
+| --- | --- | --- | --- | --- |
+| The outbox is offered oldest first and every entry is sent exactly as `sign_session_v2 {operation:"send", id}` describes it (method, path and the verbatim envelope); without a session the same envelope is posted through a paced `message` proof | `docs/protocol/realtime-v1.md:64-66,127-130` | `clients/core/src/clean_service.rs:700-711,677` (the immutable outbox is the signing source) | `RealtimeLoop.java:221,226` | none |
+| A 409 or a 507 defers that envelope, leaves it in the queue and lets the rest of the batch go out; the last deferred rejection ends the pass, every other status ends it at once | `docs/protocol/self-service-v2.md:80-81` | `server/src/self_service_messages.rs:63` (507 `quota_exceeded`); `server/src/self_service_http.rs:313,334` (409 `binding_conflict`) | `RealtimeLoop.java:228,230` | none |
+| A failed pass publishes the offline flag with no debounce, backs off and asks itself for another pass; an idle lane waits for a wake instead of polling | none in `docs/protocol/` (client pacing) | not applicable | `RealtimeLoop.java:34,54,219,236-238` | none |
+| Status text for 404 on a lane failure | none in `docs/protocol/` (UI rule) | not applicable | `RealtimeLoop.java:286-294` has no 404 case (falls through to "нет подключения"); `TextEngine.java:199` calls the same status "Сервер пока не поддерживает эту версию…" | iOS publishes the `TextEngine` wording, because a 404 here is what retires the session and rediscovers the capability (`realtime-v1.md:172-177`) |
 
 ## Receive
 
@@ -83,4 +92,4 @@ Rules of the Swift adapter over the C-ABI bridge
 | Call controls enqueue only while the realtime lane is connected, at most one heartbeat outstanding, fewer than 16 pending peer envelopes; enqueue failure ends the call locally | `docs/protocol/voice-v1.md:144-153` | `clients/core/src/clean_service.rs:387-398,860-866` | `CallController.java:92,102,174` (`online` gate) | none (owner finding B.5: transient online-flag loss drops `ready`; iOS debounces from the start) |
 | Consent: microphone requested only from explicit Call/Answer intent; ringing never creates media; relay/direct metadata disclosed before consent | `docs/protocol/voice-v1.md:105-112`; `docs/protocol/voice-turn-v1.md:98-103` | not applicable | `CallController.java:89-107` | none |
 | TURN: `GET /v2/voice/turn` with empty body via `operation:"turn"`; strict six-field response, `v` 1, `ttl` 1200, two exact `turn:` URLs on the realm host, remaining lifetime 1000..1205 s; credentials volatile; `Cache-Control: no-store` | `docs/protocol/voice-turn-v1.md:22-30,52-67,84-94` | `clients/core/src/clean_service.rs:719`; `server/src/self_service_http.rs:113-125,451-456,507-538`; `server/src/voice_turn.rs:22,125-128,203-204` | `VoiceRelayConfig.java:17-18,65-70`; `RealtimeLoop.java:124-131` | none |
-| Authenticated 404 `turn_disabled` (or a legacy 404) permits the disclosed direct-ICE compatibility mode; every other failure ends the call without fallback | `docs/protocol/voice-turn-v1.md:131-139` | `server/src/self_service_http.rs:531-535` | `RealtimeLoop.java:124-131` and relay lane | RFC-0020 question 5 (parity is the default) |
+| Authenticated 404 `turn_disabled` (or a legacy 404) permits the disclosed direct-ICE compatibility mode; every other failure ends the call without fallback | `docs/protocol/voice-turn-v1.md:131-139` | `server/src/self_service_http.rs:531-535` | `RealtimeLoop.java:124-131` and relay lane | RFC-0021 question 5 (parity is the default) |

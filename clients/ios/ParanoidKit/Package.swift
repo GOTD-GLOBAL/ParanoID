@@ -1,5 +1,5 @@
 // swift-tools-version: 6.0
-// ParanoidKit: the Swift package of the ParanoID iOS client (RFC-0020,
+// ParanoidKit: the Swift package of the ParanoID iOS client (RFC-0021,
 // draft ADR-0014). Storage, TLS, transport, realtime, calls and the UI model
 // live here; the shared Rust core is reached only through the C-ABI bridge
 // (`clients/ios/bridge`) packaged as `Binaries/ParanoidCore.xcframework` by

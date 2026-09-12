@@ -11,7 +11,7 @@ git).
 ## Status
 
 This directory is a **candidate under development** proposed in
-[RFC-0020](../../docs/rfcs/0020-ios-client.md) and recorded as
+[RFC-0021](../../docs/rfcs/0021-ios-client.md) and recorded as
 [draft ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
 Nothing in it is accepted architecture; no build has been installed on a phone,
 no hosted account has been created and no TestFlight upload has happened unless
@@ -98,7 +98,7 @@ libraries without a warning.
 ## Swift package (`ParanoidKit/`)
 
 `ParanoidKit` is the SwiftPM library (iOS 17; macOS 14 only for the host
-tests) that holds everything above the bridge in the RFC-0020 design:
+tests) that holds everything above the bridge in the RFC-0021 design:
 storage, TLS, transport, realtime, calls and the UI model. `Package.swift`
 declares the `ParanoidCoreFFI` binary target at
 `Binaries/ParanoidCore.xcframework` (git-ignored, produced by `build-core.sh`,
@@ -106,7 +106,7 @@ which must run first) and the `WebRTC` binary target at
 `Binaries/WebRTC.xcframework` (git-ignored, produced by
 `webrtc_dependency.py`), and no package dependency at all; `service-bridge` is
 the host-only registration fixture described below, and the `core-bridge` and
-`tls-smoke` executables named in RFC-0020 arrive with their own pull-request
+`tls-smoke` executables named in RFC-0021 arrive with their own pull-request
 steps. The `WebRTC` target is exported as
 its own product and **no** target of the package depends on it: the
 xcframework carries no macOS slice, so keeping `ParanoidKit` itself free of it
@@ -258,6 +258,27 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   holds: it owns the two lanes and the signal, `start()`/`stop()` are the
   generation lifecycle on the owner, and `run()` drives both lanes in one task
   group until the generation they started under is superseded.
+- `LifecyclePolicy` is when the lanes run, as pure logic with no platform in
+  it: `didBecomeActive` on stopped lanes starts them and mints a generation,
+  which is what makes the first cycle ask for `messages` rather than wait on
+  `events`; `didBecomeActive` on running lanes does nothing at all, so a
+  `willResignActive` that is not followed by `didEnterBackground` — a system
+  permission alert, the Control Center, the app switcher — costs neither a
+  generation nor a round trip; `didEnterBackground` stops them, **unless** a
+  call is live, because a call is signalled over these very lanes
+  (`CallActivity.isActive` is Android's `callActive`,
+  `TextEngine.java:86,90,158-161`) and the `audio` background mode exists to
+  keep it alive. A call that has ended keeps them for ten more seconds so that
+  the last control and its receipt leave the device (`callTeardown`,
+  Android's `callDraining`, `TextEngine.java:81-83`), and when that window
+  elapses in the background the lanes stop. `LifecycleRunner` holds the policy,
+  applies what it decides to a `LifecycleTarget` (`RealtimeLoop`), owns the
+  task the lanes run in and takes the platform's posts through one ordered
+  queue, because two tasks over an actor could apply a background and a
+  foreground in the wrong order. Nothing else starts a lane: there is no
+  background-task scheduling, no background app refresh and no VoIP push
+  registration in this client, and `LifecycleTests` scans both the package and
+  the application sources to keep it that way.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests
@@ -306,6 +327,11 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   `@loader_path/Frameworks`) for the dynamic `WebRTC.framework` Xcode embeds
   in the test bundle. Run `build-core.sh` and `webrtc_dependency.py` first so
   that both xcframeworks exist.
+- `ParanoID/AppLifecycle.swift` is the only place where UIKit meets the
+  realtime lanes: three `NotificationCenter` subscriptions
+  (`didBecomeActive`, `willResignActive`, `didEnterBackground`) handed to
+  `LifecycleRunner.post(_:)`, and one task draining that queue. It holds no
+  rule of its own; every decision is `LifecyclePolicy`'s, in the package.
 - `ParanoIDTests/BridgeSmokeTests.swift` runs `create_identity` ->
   `upgrade_v2` inside the application process on the simulator and prints
   one `state.version=3` line (never the snapshot), which proves that the
@@ -458,6 +484,7 @@ swift test --package-path clients/ios/ParanoidKit --filter ProofFlowTests    # c
 swift test --package-path clients/ios/ParanoidKit --filter StateOwnerTests   # owner executor, generations, session ownership, backoff
 swift test --package-path clients/ios/ParanoidKit --filter ReceiveLaneTests  # messages first, page limit, cursor recheck, persist before publish
 swift test --package-path clients/ios/ParanoidKit --filter RealtimeLoopTests # outbox order, 401 once, deferred 409/507, renewal, legacy window
+swift test --package-path clients/ios/ParanoidKit --filter LifecycleTests   # foreground rule: an alert is not a pause, a call keeps the lanes
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App-signed \

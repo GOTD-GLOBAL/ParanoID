@@ -8,7 +8,7 @@ review_mode: closed-alpha-ai
 last_reviewed: 2026-09-11
 ---
 
-# RFC-0020: Native iOS client on the shared Rust core (track A)
+# RFC-0021: Native iOS client on the shared Rust core (track A)
 
 This proposal is a **draft**. It describes a candidate second client for
 [REQ-CLIENT-001](../product/requirements.md); nothing in it is accepted

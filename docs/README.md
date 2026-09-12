@@ -135,7 +135,7 @@ runtime/review gates. No relay deployment has occurred.
 
 ## iOS client candidate
 
-[RFC-0020](rfcs/0020-ios-client.md) and [draft ADR-0014](decisions/0014-ios-client.md)
+[RFC-0021](rfcs/0021-ios-client.md) and [draft ADR-0014](decisions/0014-ios-client.md)
 propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
 The [iOS component documentation](clients/ios/README.md) records the intended
 differences from Android, the [requirement-to-test mapping](clients/ios/verification.md)

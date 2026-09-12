@@ -1,5 +1,5 @@
 // Application identity and platform pins of the ParanoID iOS client
-// (RFC-0020, draft ADR-0014). Attached to the project-level configurations
+// (RFC-0021, draft ADR-0014). Attached to the project-level configurations
 // of ParanoID.xcodeproj; the two test bundles override the bundle identifier
 // with a `.tests` / `.uitests` suffix in project.pbxproj.
 

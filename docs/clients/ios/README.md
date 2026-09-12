@@ -4,10 +4,10 @@ owner: ios
 last_reviewed: 2026-09-11
 ---
 
-# iOS client documentation (candidate, RFC-0020)
+# iOS client documentation (candidate, RFC-0021)
 
 Component documentation for the native iOS client proposed in
-[RFC-0020](../../rfcs/0020-ios-client.md) and recorded as
+[RFC-0021](../../rfcs/0021-ios-client.md) and recorded as
 [draft ADR-0014](../../decisions/0014-ios-client.md) for
 [REQ-CLIENT-001](../../product/requirements.md). Everything here describes a
 **candidate**: no iOS build, simulator result, phone result, hosted account or
@@ -44,12 +44,12 @@ the shared [core contract](../core/self-service.md) and
   not an owner-approved change to the fail-closed rule.
 - Voice relay: `/v2/voice/turn` is used when the server issues credentials;
   the `404 turn_disabled` behaviour follows Android parity unless the owner
-  decides otherwise (RFC-0020 question 5).
+  decides otherwise (RFC-0021 question 5).
 
 ## Documents in this directory
 
 - [verification.md](verification.md): requirement-to-test mapping with honest
-  `NOT RUN` status; the validation plan referenced by RFC-0020.
+  `NOT RUN` status; the validation plan referenced by RFC-0021.
 - [protocol-sources.md](protocol-sources.md): each behaviour rule mapped to
   its `docs/protocol` line, the core/server line, the Java cross-check and any
   discrepancy. Filled in as the client is written.
