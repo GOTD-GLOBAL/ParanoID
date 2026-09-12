@@ -20,6 +20,16 @@ public contract is declared.
   netns functional reproduction (old: truncated, new: full) in
   `docs/operations/voice-single-host.md`.
 
+### v15 review follow-up — 2026-09-11
+
+- Corrected the threat model to describe opt-in `START_STICKY` and the inexact
+  watchdog, including platform restrictions and unverified physical lifecycle.
+- Fixed the standalone APK verifier: require a same-package older APK, include
+  WebRTC in fresh Java/DEX compilation, use fresh artifact-policy classes and
+  report the actual version rather than a historical constant. Current v14-to-v15
+  verification passes; old-package v13 is explicitly rejected. No app runtime,
+  signer, phone state or live publication changes are included.
+
 ### Dense contact-QR scan fix — 2026-09-11
 
 - Fixed real-phone "add contact via QR does nothing": the in-app scanner
