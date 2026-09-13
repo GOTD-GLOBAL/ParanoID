@@ -757,7 +757,7 @@ and `sync`.
 
 ```sh
 python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text
-# PASS: 13 screenshots, 6 stored envelopes, 0 plaintext rows, one bubble per tap
+# PASS: 15 screenshots, 6 stored envelopes, 0 plaintext rows, one bubble per tap
 # text: PASS
 # reinstall: PASS
 jq '.scenarios,.reinstall,.server_state' \
