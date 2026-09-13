@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### v26 bridge APK published — 2026-09-13
+
+- Published `0.0.26-update` through the existing in-app feed with the retained
+  signer, within the old clients' size ceiling. It removes the client's fixed
+  ceiling and preserves the v25 cold-push call-owner and Firebase-only R8 fixes.
+- Canonical build and independent artifact review pass; actual old-v25 updater
+  downloads the new feed APK over pinned TLS. Phone acceptance is still pending.
+- Server rollout was stopped at coordinator identity drift. No server update or
+  bypass is implied by APK publication. See the
+  [release evidence](docs/clients/android/v26-bridge-release.md).
+
 ### Android client: remove fixed APK ceiling — 2026-09-13
 
 - Local client candidate no longer rejects updates/provider files merely because

@@ -6,6 +6,15 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## Android v26 bridge published — 2026-09-13
+
+[The v26 release record](../clients/android/v26-bridge-release.md) records the real
+signed bridge, preservation of released v25 call/R8 fixes, canonical build and
+independent artifact checks. Live feed advertises version26; the old v25 updater
+successfully downloaded and hashed it over pinned TLS. No physical-phone result
+is claimed. Server rollout remains blocked by original coordinator identity drift;
+no server code/config/TLS/DB change or journal bypass was performed.
+
 ## APK ceiling removal — local Android candidate (2026-09-13)
 
 Sergey requested removal of the arbitrary APK cap on both components, while
