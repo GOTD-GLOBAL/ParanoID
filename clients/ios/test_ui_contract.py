@@ -19,6 +19,11 @@ it answers four questions about the working tree:
 * **The two guards on a tap.** The composer is captured and cleared, and
   «Создать ID» is disabled, synchronously — before the first ``await`` — so a
   second tap in the same run loop turn does nothing.
+* **The local contact name.** A name typed on this phone stands wherever the
+  contact does — the dialogs list, the contacts list, the chat title, the
+  details sheet — no screen derives a title from the account any more, the
+  rename sits where Android puts it, and the name reaches no core, no
+  snapshot and no request (`ContactNames`, Android v22).
 * **The Info.plist.** Camera and microphone are declared with a reason,
   ``UIBackgroundModes`` is exactly ``[audio]``, and nothing claims a delivery
   path this client does not have: no ``voip`` mode, no push environment, no
@@ -43,6 +48,8 @@ MODEL = 'App/ParanoID/AppModel.swift'
 ENTRY = 'App/ParanoID/ParanoIDApp.swift'
 FIXTURE = 'App/ParanoID/DebugFixture.swift'
 SNAPSHOT = 'ParanoidKit/Sources/ParanoidKit/Service/Snapshot.swift'
+NAMES = 'ParanoidKit/Sources/ParanoidKit/Presentation/ContactNames.swift'
+DETAILS = 'App/ParanoID/Screens/ContactDetails.swift'
 
 # Where a caption may claim to come from. 'ios' is a screen Android does not
 # have, or the foreground rule of this client.
@@ -268,6 +275,58 @@ class UiContract(unittest.TestCase):
         self.present('static let noticeDuration = Duration.seconds(3)', model, MODEL)
         self.present('try? await Task.sleep(for: AppModel.noticeDuration)', model, MODEL)
         self.present('.accessibilityIdentifier("notice")', banner, 'Screens/NoticeBanner.swift')
+
+    def test_the_local_contact_name_stands_wherever_the_contact_does(self):
+        # The iOS half of `clients/android/test_ui_contract.py:98-109`: every
+        # title site goes through the local table, «Переименовать» is where
+        # Android puts it, and the name is stored outside everything that
+        # leaves the phone. The behaviour — an empty value restores the
+        # default, a stored name is local to this installation — is measured
+        # by `ParanoidKitTests/ContactNamesTests`.
+        names = self.sources[NAMES]
+        model = self.sources[MODEL]
+        details = self.sources[DETAILS]
+        app = self.sources[ENTRY]
+        application = {name: text for name, text in self.sources.items()
+                       if not name.startswith('ParanoidKit/')}
+
+        # 1. No screen names a contact by its account any more. The four sites
+        #    are the dialogs list, the contacts list, the chat title and the
+        #    details sheet, and each of them asks the model.
+        for name, text in application.items():
+            self.absent('MessagePresentation.title(', text, name)
+        self.assertEqual(sum(text.count('model.title(for: ') for text in application.values()), 4,
+                         'the title sites are dialogs, contacts, chat and details')
+        self.present('func title(for account: String) -> String {\n'
+                     '        contactNames.title(for: account)', model, MODEL)
+        self.present('private(set) var contactNames = ContactNames()', model, MODEL)
+
+        # 2. The way in is Android's positive button, above «Проверить QR»,
+        #    and it opens the field with the current name in it.
+        self.present('Text(Strings.Details.rename)', details, DETAILS)
+        self.assertLess(details.index('details-rename'), details.index('details-verify'),
+                        '«Переименовать» stands after «Проверить QR»')
+        self.present('.alert(Strings.Rename.title, isPresented: $renaming)', details, DETAILS)
+        self.present('TextField(Strings.Rename.title, text: $draftName)', details, DETAILS)
+        self.present('Button(Strings.Rename.save) { onRename(draftName) }', details, DETAILS)
+        self.present('Text(Strings.Rename.body)', details, DETAILS)
+        self.present('onRename: { model.rename(account: account, to: $0) }', app, ENTRY)
+
+        # 3. An empty value clears the name rather than storing a blank one.
+        self.present('if clean.isEmpty {\n            names.removeValue(forKey: account)',
+                     names, NAMES)
+
+        # 4. It is local: app-private defaults under one versioned key, and
+        #    nothing of the state, the core or the network is reachable from
+        #    the type or from the action.
+        self.present('"paranoid.contact-names.v1"', names, NAMES)
+        for token in ('SnapshotStore', 'SnapshotCodec', 'Keychain', 'CoreBridge',
+                      'SelfServiceClient', 'StateOwner', 'URLSession', 'RealtimeTransport'):
+            self.absent(token, names, NAMES)
+        rename = model[model.index('    func rename(account: String, to name: String) {'):
+                       model.index('    /// «Копировать контакт»')]
+        for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus'):
+            self.absent(forbidden, rename, 'AppModel.rename(account:to:)')
 
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()

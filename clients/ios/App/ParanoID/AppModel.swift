@@ -108,6 +108,12 @@ final class AppModel {
     private(set) var pendingContact: PendingContact?
     /// The bottom banner, or `nil`.
     private(set) var notice: String?
+    /// The names typed for contacts **on this phone**
+    /// (`ContactNames`, Android v22). It is a stored property so that a rename
+    /// is published to the screens the same way every other change is; the
+    /// table itself is read from and written to the application's own
+    /// defaults, and it never reaches the snapshot, the core or the network.
+    private(set) var contactNames = ContactNames()
 
     /// The selected tab.
     var tab: Tab = .dialogs
@@ -293,6 +299,19 @@ final class AppModel {
         return view.dialog(chatAccount)
     }
 
+    /// What every screen calls this contact: the name typed on this phone if
+    /// there is one, and the default label derived from the account if there
+    /// is not (`ContactNames.title`, `MainActivity.java:278,566,639`).
+    func title(for account: String) -> String {
+        contactNames.title(for: account)
+    }
+
+    /// The local name alone, empty for a contact that has none. It is what the
+    /// rename field starts from (`MainActivity.java:577`).
+    func name(for account: String) -> String {
+        contactNames.name(for: account)
+    }
+
     /// Whether the composer may send right now (`DialogPolicy.canReply`).
     var canSend: Bool {
         DialogPolicy.canReply(chat, active: view.isActive, broken: isBroken,
@@ -462,6 +481,17 @@ final class AppModel {
             }
             await reloadNow()
         }
+    }
+
+    /// «Сохранить» in «Имя контакта» (`MainActivity.java:581`).
+    ///
+    /// It is the one action of this client that reaches no core, no snapshot
+    /// and no connection: the name is written to this application's own
+    /// defaults and the screens re-read it from there. An empty or blank name
+    /// clears it, and the default label comes back — «Оставьте пустым, чтобы
+    /// вернуть имя по умолчанию.»
+    func rename(account: String, to name: String) {
+        contactNames.rename(name, for: account)
     }
 
     /// «Копировать контакт» (`MainActivity.java:177,521`).

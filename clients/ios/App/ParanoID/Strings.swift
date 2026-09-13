@@ -196,15 +196,20 @@ enum Strings {
         static let confirm = "Отпечаток совпадает"
     }
 
-    // MARK: - contact details (`MainActivity.java:505-516`)
+    // MARK: - contact details (`MainActivity.java:563-575`)
 
     enum Details {
         static let trust = "Доверие"
         static let account = "Account"
         static let encryption = "Шифрование"
-        static let encryptionBody = "Сообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат."
+        /// `MainActivity.java:567`, including the sentence Android's v22 added
+        /// beside the local name: the name is this phone's, not the contact's.
+        static let encryptionBody = "Сообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат. Имя контакта хранится только на этом телефоне."
         static let receipts = "Отметки доставки"
         static let receiptsBody = "✓ Сохранено сервером\n✓✓ Доставлено, не прочитано"
+        /// The way into «Имя контакта» — Android's positive button, so it
+        /// stands above «Проверить QR» here too (`MainActivity.java:568`).
+        static let rename = "Переименовать"
         static let verifyQr = "Проверить QR"
         static let block = "Заблокировать контакт"
         static let unblock = "Разблокировать контакт"
@@ -212,6 +217,20 @@ enum Strings {
         static let blockTitle = "Заблокировать контакт?"
         static let blockBody = "Новые сообщения и подтверждения доставки для этого контакта будут отключены. История останется на телефоне."
         static let blockConfirm = "Заблокировать"
+        static let cancel = "Отмена"
+    }
+
+    // MARK: - the local contact name (`MainActivity.renameContact()`,
+    // `MainActivity.java:576-583`)
+
+    /// «Имя контакта»: the one name this client writes anywhere, and it is
+    /// written only on this phone (`ContactNames`).
+    enum Rename {
+        /// The dialog's title and the field's placeholder, as Android uses the
+        /// same words for both (`MainActivity.java:577,580`).
+        static let title = "Имя контакта"
+        static let body = "Отображается только на этом телефоне. Оставьте пустым, чтобы вернуть имя по умолчанию."
+        static let save = "Сохранить"
         static let cancel = "Отмена"
     }
 

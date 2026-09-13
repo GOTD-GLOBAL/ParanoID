@@ -4,12 +4,13 @@ import SwiftUI
 /// The `dialogs` screen: «Чаты», the list Android renders in
 /// `renderLists()` (`MainActivity.java:545-575`).
 ///
-/// A row is a conversation, and the three things on it are the three things
-/// the core published: the first six characters of the account as a name, the
-/// last message as a preview — prefixed «Вы: » when this device wrote it — and
-/// either a badge («Проверен», «Блок») or the delivery tick of the last own
-/// message. Nothing on this screen is a name a peer chose, and nothing is a
-/// time the core does not keep.
+/// A row is a conversation, and the three things on it come from the core and
+/// from this phone alone: the contact's name — the one typed here through
+/// «Переименовать», or else the first six characters of the account — the last
+/// message as a preview, prefixed «Вы: » when this device wrote it, and either
+/// a badge («Проверен», «Блок») or the delivery tick of the last own message.
+/// Nothing on this screen is a name a peer chose, and nothing is a time the
+/// core does not keep.
 ///
 /// Under the status line stands the one line Android does not have: this
 /// client has no background delivery, so «Входящие приходят, пока приложение
@@ -37,6 +38,7 @@ struct DialogsScreen: View {
                     .padding(.bottom, 8)
                     ForEach(model.view.dialogs) { dialog in
                         ConversationRow(dialog: dialog,
+                                        title: model.title(for: dialog.account),
                                         subtitle: Self.preview(dialog),
                                         trailing: Self.trailing(dialog))
                         .contentShape(Rectangle())
@@ -80,6 +82,9 @@ struct ConversationRow: View {
     }
 
     let dialog: Dialog
+    /// What this contact is called here: the local name if one was typed, and
+    /// otherwise the default label (`AppModel.title(for:)`).
+    let title: String
     let subtitle: String
     let trailing: Trailing
 
@@ -92,7 +97,7 @@ struct ConversationRow: View {
                 .background(Color.accentColor.opacity(0.15), in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(MessagePresentation.title(dialog.account))
+                Text(title)
                     .font(.system(size: 17, weight: .semibold))
                     .lineLimit(1)
                 Text(subtitle)

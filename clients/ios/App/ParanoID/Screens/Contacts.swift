@@ -42,6 +42,7 @@ struct ContactsScreen: View {
                 } else {
                     ForEach(model.view.dialogs) { dialog in
                         ConversationRow(dialog: dialog,
+                                        title: model.title(for: dialog.account),
                                         subtitle: DialogPolicy.trustLabel(dialog),
                                         trailing: DialogsScreen.trailing(dialog))
                         .contentShape(Rectangle())

@@ -473,6 +473,8 @@ CHECKS = {
         'acknowledged it',
         'a double tap on «Отправить» draws one bubble, reaches the peer once and carries one ✓✓',
         '«Заблокировать контакт» disables the composer and «Разблокировать контакт» restores it',
+        '«Переименовать» names the contact on this phone only: the local name replaces the '
+        'default label and an empty field restores it',
     ],
     'reinstall': [
         'xcrun simctl uninstall leaves the Keychain item and takes the container: the next launch '

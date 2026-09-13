@@ -403,6 +403,22 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   The reference is a path relative to the project, not a copy in the source
   tree, so the generated file is never committed and a build that runs before
   the packager fails on a missing input.
+- The name a contact is shown under is this phone's own
+  (`ParanoidKit/Presentation/ContactNames.swift`, the port of Android v22's
+  `ContactNames.java`). «Переименовать» in the contact details opens «Имя
+  контакта», whose sentence says what it is — «Отображается только на этом
+  телефоне. Оставьте пустым, чтобы вернуть имя по умолчанию.» — and the four
+  places a contact is named (the dialogs list, the contacts list, the chat
+  title, the details sheet) ask `AppModel.title(for:)` rather than deriving a
+  label from the account. The table lives under one versioned key,
+  `paranoid.contact-names.v1`, in the application's own user defaults: it is
+  not in the encrypted state file, it is never sent to the peer or the server,
+  and it dies with the container, exactly as the install marker does. A name
+  is normalized the way Java normalizes it — one line, Unicode separators
+  collapsed, ISO controls and `Cf` characters dropped, 40 code points — and an
+  empty or blank one clears it. `ContactNamesTests` measures the reset and the
+  locality; `test_ui_contract.py` measures that no screen names a contact any
+  other way.
 - `ParanoID/AppLifecycle.swift` is the only place where UIKit meets the
   realtime lanes: three `NotificationCenter` subscriptions
   (`didBecomeActive`, `willResignActive`, `didEnterBackground`) handed to
@@ -733,7 +749,9 @@ Two scenarios run, in this order:
     «Отправить» → `✓` → the peer answers → its bubble and `✓✓` → a **double**
     tap on «Отправить» → one bubble, one envelope at the peer and one `✓✓` →
     «Заблокировать контакт», which disables the composer, and
-    «Разблокировать контакт», which restores it.
+    «Разблокировать контакт», which restores it → «Переименовать», after which
+    the chat is titled by the name typed on this phone, and an empty field
+    puts «Контакт …» back.
 
 `reinstall`
     Uninstall again and launch again. The container is gone and the
@@ -757,7 +775,7 @@ and `sync`.
 
 ```sh
 python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text
-# PASS: 15 screenshots, 6 stored envelopes, 0 plaintext rows, one bubble per tap
+# PASS: 17 screenshots, 6 stored envelopes, 0 plaintext rows, one bubble per tap
 # text: PASS
 # reinstall: PASS
 jq '.scenarios,.reinstall,.server_state' \
@@ -942,6 +960,8 @@ swift test --package-path clients/ios/ParanoidKit --filter StateOwnerTests   # o
 swift test --package-path clients/ios/ParanoidKit --filter ReceiveLaneTests  # messages first, page limit, cursor recheck, persist before publish
 swift test --package-path clients/ios/ParanoidKit --filter RealtimeLoopTests # outbox order, 401 once, deferred 409/507, renewal, legacy window
 swift test --package-path clients/ios/ParanoidKit --filter LifecycleTests   # foreground rule: an alert is not a pause, a call keeps the lanes
+swift test --package-path clients/ios/ParanoidKit --filter ContactNamesTests # local contact name: the empty value resets it, the name stays on this phone
+python3 clients/ios/test_ui_contract.py         # captions, the stand guard, the two tap guards, the contact name, the Info.plist
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \

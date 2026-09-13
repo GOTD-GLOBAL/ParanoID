@@ -38,7 +38,7 @@ struct ChatScreen: View {
         // already is: the screen keeps its name and the controls keep theirs.
         // Every screen whose root is a stack does the same.
         .accessibilityElement(children: .contain)
-        .navigationTitle(MessagePresentation.title(model.chatAccount ?? ""))
+        .navigationTitle(model.title(for: model.chatAccount ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

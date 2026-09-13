@@ -14,6 +14,10 @@ Component documentation for the native iOS client proposed in
 TestFlight upload exists at the time of writing, and no architecture is
 accepted. The source entry point is [`clients/ios/README.md`](../../../clients/ios/README.md).
 
+- [Export compliance](export-compliance.md): what cryptography the client
+  contains, what the bundle declares, and the gate that stays closed until the
+  owner records a classification.
+
 ## What the candidate is
 
 A native SwiftUI shell over the unchanged shared Rust core (`clients/core`),

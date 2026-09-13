@@ -280,21 +280,26 @@ live tests, both on a real iPhone, both after an explicit owner "go".
 
 ## Open questions
 
-| # | Question | Owner | Proposed deadline |
-| --- | --- | --- | --- |
-| 3 | Keychain class for the wrapping key: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (needed so a locked screen during a call does not turn a heartbeat commit into a terminal freeze). Confirm. | martadvix-web | 2026-09-18 |
-| 4 | Hosted account budget: exactly one new account for the contributor's iPhone, no reserve; a reinstall on the phone means a new registration and a new authorization; simulators never register on the host. Confirm and name who registers. | martadvix-web | 2026-10-01 |
-| 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE mode with Android parity (`voice-turn-v1.md:131-135`) or refuse the call? Default is parity. | martadvix-web | 2026-09-25 |
-| 6 | Paid macOS CI runner for the iOS build: yes or no? Default no: Ubuntu checks plus local `build.sh` and an evidence directory. | martadvix-web | 2026-10-01 |
-| 7 | Pin/certificate rotation before 2026-12-07 is a separate deploy-trust RFC; who opens it and when, tied to the TestFlight build date so the first build already carries both pins. | martadvix-web | 2026-10-15 |
-| 8 | Apple export compliance (`ITSAppUsesNonExemptEncryption`, E2EE/Olm) and the legal entity filing the self-classification report; decided before the first upload. | martadvix-web | 2026-10-15 |
-| 10 | Which of the twelve doc-to-code discrepancies may be fixed in a docs-only pull request and which are waived until the client pull request; without one of the two answers the client pull request cannot merge. | martadvix-web | 2026-10-01 |
-| 11 | JDK 21 on the build Mac (Homebrew, tests only) for Java cross-checks; without it those cross-tests stay `NOT RUN` locally. | martadvix-web | 2026-09-18 |
+Answers recorded on 2026-09-13 come from the contributor (Yaroslav) acting under
+the owner's delegation; the delegation itself is still to be recorded on GitHub,
+and until that permalink exists these answers are working decisions, not the
+governance acceptance required by
+[the documentation policy](../governance/documentation-policy.md).
 
-Questions 1, 2 and 9 are closed by owner decision (bundle id
-`global.paranoid.messenger`, reinstall is a clean install, Android v15 at
-`fe9c26c` is the reference). Deadlines are proposals to be confirmed with the
-client pull request.
+| # | Question | Status |
+| --- | --- | --- |
+| 3 | Keychain class for the wrapping key: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, so a locked screen during a call cannot turn a heartbeat commit into a terminal freeze. | Answered 2026-09-13: confirmed. |
+| 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. |
+| 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE mode or refuse the call? | Answered 2026-09-12 by the owner's agents in issue #27: a valid authenticated 404 from the pinned origin permits the pre-disclosed direct-ICE mode; a TLS failure, a timeout, a malformed 200 or a relay failure does not. |
+| 6 | Paid macOS CI runner for the iOS build. | Answered 2026-09-13: no. Ubuntu checks plus the local `build.sh` and an evidence directory. |
+| 7 | Pin and certificate rotation before 2026-12-07. | Open, and the most urgent one. The pin is not only a TLS input: `clients/core/src/intro_v2.rs:21-44` requires both sides to carry the same pin and feeds it into the first-contact channel transcript, so a key change invalidates existing contact channels, not only the transport. A same-key renewal avoids an outage; a key rotation needs its own deploy-trust RFC. Owner decision. |
+| 8 | Apple export compliance and the entity that files. | Partly answered 2026-09-13: `ITSAppUsesNonExemptEncryption = YES` is prepared in the bundle as the conservative candidate. That key is not compliance: answering yes normally also requires a code Apple issues after reviewing the documentation, and the requirement applies to TestFlight too. The classification, the regime and the filing entity stay open; the publicly-available-source route is not available while the repository is private. Inventory and gate: [export compliance](../clients/ios/export-compliance.md). |
+| 10 | Which doc-to-code findings are fixed in a docs-only pull request and which are waived. | Answered 2026-09-12 by the owner's agents in issue #27: a docs-only pull request for the factual corrections, with five items reframed rather than applied verbatim. Recorded in `docs/clients/ios/protocol-sources.md`. |
+| 11 | JDK 21 on the build Mac for the Java cross-checks. | Answered 2026-09-13: installed (21.0.12.1, tests only, pinned in `clients/ios/toolchain.json`). |
+
+Questions 1, 2 and 9 were closed earlier by owner decision: bundle id
+`global.paranoid.messenger`, a reinstall is a clean install, and the reference
+client is the Android build on `main`.
 
 ## Decision and follow-up
 

@@ -223,6 +223,9 @@ struct RootView: View {
         case .details(let account):
             ContactDetailsSheet(account: account,
                                 dialog: model.view.dialog(account),
+                                title: model.title(for: account),
+                                name: model.name(for: account),
+                                onRename: { model.rename(account: account, to: $0) },
                                 onBlock: { blocked in
                                     model.block(account: account, blocked: blocked)
                                     model.sheet = nil

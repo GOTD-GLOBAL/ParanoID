@@ -170,6 +170,22 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["compose-hint"].exists,
                        "the blocked hint outlived the block")
         try fixture.shot("13-unblocked")
+
+        // «Переименовать»: a name typed on this phone stands where the default
+        // label stood, and an empty field puts that label back
+        // (`ContactNames`, Android v22). Nothing of this reaches the peer: the
+        // only thing that changes is what this screen says.
+        let defaultTitle = "Контакт " + String(fixture.peerAccount.prefix(6))
+        XCTAssertTrue(fixture.titled(app, defaultTitle),
+                      "the conversation is not titled by the account: " + Diagnosis.of(app))
+        try fixture.rename(app, to: "Серёга")
+        XCTAssertTrue(fixture.titled(app, "Серёга"),
+                      "the chat kept the default title after «Сохранить»: " + Diagnosis.of(app))
+        try fixture.shot("14-renamed")
+        try fixture.rename(app, to: "")
+        XCTAssertTrue(fixture.titled(app, defaultTitle),
+                      "an empty name did not restore the default title: " + Diagnosis.of(app))
+        try fixture.shot("15-default-name")
         try fixture.note("flow", "complete")
     }
 
@@ -377,6 +393,51 @@ private struct Fixture {
     }
 
     // MARK: writing on the screen
+
+    /// Whether the conversation on screen is called `title`.
+    ///
+    /// An inline navigation title is a static text of the bar on some runtimes
+    /// and the bar's own identifier on others, so both are accepted; what is
+    /// being measured is the name, not which element carries it.
+    @MainActor
+    func titled(_ app: XCUIApplication, _ title: String, timeout: TimeInterval = Timeout.screen) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if app.navigationBars.staticTexts[title].exists || app.navigationBars[title].exists {
+                return true
+            }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return false
+    }
+
+    /// «Сведения о контакте» → «Переименовать» → the field → «Сохранить».
+    ///
+    /// An empty `name` is the reset: the field is cleared and saved, which is
+    /// «Оставьте пустым, чтобы вернуть имя по умолчанию.». The sheet is closed
+    /// afterwards, so the assertion that follows is about the screen behind it.
+    @MainActor
+    func rename(_ app: XCUIApplication, to name: String) throws {
+        app.buttons["contact-details"].tap()
+        let entry = app.buttons["details-rename"]
+        XCTAssertTrue(entry.waitForExistence(timeout: Timeout.screen),
+                      "the contact details did not open: " + Diagnosis.of(app))
+        entry.tap()
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: Timeout.screen),
+                      "«Имя контакта» did not open: " + Diagnosis.of(app))
+        field.tap()
+        let current = (field.value as? String) ?? ""
+        if !current.isEmpty {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        if !name.isEmpty { field.typeText(name) }
+        app.alerts.buttons["Сохранить"].tap()
+        let close = app.buttons["details-close"]
+        XCTAssertTrue(close.waitForExistence(timeout: Timeout.screen),
+                      "«Имя контакта» did not close: " + Diagnosis.of(app))
+        close.tap()
+    }
 
     /// Types `text` into the composer and leaves the keyboard where it is.
     @MainActor
