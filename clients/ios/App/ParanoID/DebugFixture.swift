@@ -55,9 +55,23 @@ enum DebugFixture {
     /// - Throws: `DebugFixtureProblem` when one of the two is given without
     ///   the other, when a value is missing, or when the pair does not pass
     ///   the checks a Release build applies to its own.
-    static func trust(arguments: [String] = ProcessInfo.processInfo.arguments) throws -> ServiceTrust? {
-        let realm = value(of: realmArgument, in: arguments)
-        let pin = value(of: pinArgument, in: arguments)
+    /// The environment variables that carry the same pair.
+    ///
+    /// `devicectl` launches a build on a physical phone without relaying launch
+    /// arguments, so on a device the only channel that reaches the process is
+    /// its environment. The names mirror the flags, the values pass the same
+    /// checks, and an argument still wins when both are present.
+    static let realmVariable = "PARANOID_REALM"
+
+    /// See ``realmVariable``.
+    static let pinVariable = "PARANOID_PIN"
+
+    static func trust(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) throws -> ServiceTrust? {
+        let realm = value(of: realmArgument, in: arguments) ?? environment[realmVariable]
+        let pin = value(of: pinArgument, in: arguments) ?? environment[pinVariable]
         switch (realm, pin) {
         case (nil, nil):
             return nil
@@ -85,7 +99,10 @@ enum DebugFixture {
         return arguments[next]
     }
     #else
-    /// A Release build takes no stand from the command line.
-    static func trust(arguments: [String] = []) throws -> ServiceTrust? { nil }
+    /// A Release build takes no stand from the command line or the environment.
+    static func trust(
+        arguments: [String] = [],
+        environment: [String: String] = [:]
+    ) throws -> ServiceTrust? { nil }
     #endif
 }
