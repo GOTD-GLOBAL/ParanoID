@@ -40,12 +40,12 @@ Exactly eight required keys, no duplicates/unknown keys, floats, nulls or coerci
 | `min_sdk` | positive signed 32-bit integer |
 | `abi` | `arm64-v8a` |
 | `apk_sha256` | exactly 64 lowercase hexadecimal characters |
-| `apk_size` | integer 1–16777216 |
+| `apk_size` | positive signed 64-bit byte count, no fixed APK size ceiling |
 
 GET `/v2/updates/android/apk/<apk_sha256>` serves only the **current manifest's**
 digest, with `application/vnd.android.package-archive` and exact content length.
 Both routes validate actual APK size and SHA-256 before returning success; the
-response uses the verified bytes, never a second pathname read. A feed switch
+response streams a verified anonymous disk snapshot, never a second pathname read. A feed switch
 between check and download can give 404: the client must check again, not follow
 an alternate URL. Metadata is not an APK signature; signer/package/version/SDK
 verification is the publisher and Android client's separate mandatory gate.
@@ -67,14 +67,26 @@ mounts are permitted; a mount/bind mount at the publication root or either file
 is rejected by kernel `RESOLVE_NO_XDEV`, including same-device bind mounts.
 Files must be regular, single-link, same-owner and not group/other writable.
 Nonblocking open prevents FIFO hangs; directories/devices are not served.
-Reads are bounded at limit+1 with pre/post fd metadata checks. A renamed/replaced
-path cannot redirect a held descriptor. Replacing a file between requests is
+Metadata reads remain bounded at 8193 bytes. APKs are copied/hashed in 64 KiB
+chunks, exactly the declared size plus a one-byte overshoot probe, with pre/post
+fd metadata checks. A renamed/replaced path cannot redirect a held descriptor.
+Before success, the verified bytes are captured in an anonymous mode-0600 inode
+on the publication filesystem (Linux O_TMPFILE, no named-file fallback). The
+response streams this snapshot with fixed buffers; later mutation of the source
+cannot alter the response. Closing the snapshot reclaims its disk space.
+APK size no longer dictates heap allocation. Snapshot disk space scales with
+artifact size: available-space preflight is advisory under concurrent writers;
+I/O failure is fail-closed. Require a disk-backed publication filesystem with
+O_TMPFILE support; tmpfs would consume memory and is not a large-APK deployment.
+The copy has a 10-second elapsed deadline between I/O operations; kernel-stalled
+I/O cannot be preempted by this check. Existing transport deadlines still apply. Replacing a file between requests is
 revalidated, and changing APK bytes invalidates both routes. Same-UID/root
 compromise is outside the isolation claim, as is hostile kernel/filesystem behavior.
 
 Reads/hash work run outside Tokio's async workers, at most two concurrent reads
 per router and no waiting queue. A cancelled request retains its permit until its
-blocking read ends. The merge is before the existing v2 ingress/body/10-second
+blocking read ends; a successful APK response retains it through body consumption
+or drop. Thus slow consumers cannot accumulate unbounded live snapshots. The merge is before the existing v2 ingress/body/10-second
 handler layers and reuses existing TLS socket/stream budgets. This is bounded
 alpha distribution, not bandwidth fairness, a CDN, TUF or a DoS guarantee.
 

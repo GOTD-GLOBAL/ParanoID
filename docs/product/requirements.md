@@ -40,6 +40,16 @@ are complete.
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |
 | REQ-SEC-001 | End-to-end encryption scope and metadata guarantees must be specified and verified before any production privacy claim. | Required discovery gate |
 
+## APK size correction (2026-09-13)
+
+Sergey Maltsev requests removal of the fixed APK size ceiling on both server and
+Android client, without unnecessary binary growth (Telegram, no permalink available).
+This refines REQ-CLIENT-003: file size alone must not reject a valid newer APK;
+streaming resource controls, exact size/hash/signature checks and installation
+consent remain required. [RFC-0013](../rfcs/0013-user-triggered-android-updates.md)
+records the candidate and old-client transition; draft ADR-0008 remains draft.
+No live update, publication or permanent architecture acceptance is claimed.
+
 ## User-triggered Android update direction (2026-09-09)
 
 Sergey requests downloading later versions by pressing Update in the app instead

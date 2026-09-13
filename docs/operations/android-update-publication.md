@@ -40,7 +40,17 @@ fields, floats, numeric strings or trailing input:
 - `min_sdk`: positive signed 32-bit integer.
 - `abi`: `arm64-v8a`.
 - `apk_sha256`: exactly 64 lowercase ASCII hex characters.
-- `apk_size`: integer 1..16777216 inclusive.
+- `apk_size`: positive signed 64-bit byte count, no fixed APK ceiling in the new
+  server. Old Android clients retain their original 16 MiB ceiling until updated.
+  First publish a retained-signer bridge client within that legacy ceiling, or
+  explicitly deliver/install the new client in place manually; only then publish
+  larger APKs. No uninstall/data reset/downgrade.
+- Publication storage must be disk-backed and support Linux O_TMPFILE. Each live
+  APK response temporarily needs another APK-sized anonymous disk snapshot, at
+  most two per router. Check disk headroom before publication; runtime preflight
+  is not a reservation against concurrent writers. Do not use tmpfs for large APKs.
+- Rolling back to the old server requires a compatible <=16 MiB feed (retire an
+  incompatible feed if necessary); never roll back the database or phone state.
 
 GET `/v2/updates/android` returns the exact validated metadata bytes as
 `application/json`. GET `/v2/updates/android/apk/<apk_sha256>` returns the exact

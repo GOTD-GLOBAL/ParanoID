@@ -110,6 +110,23 @@ Current local implementation/test status is in [current-state](../project/curren
 and the candidate evidence record. Existing historical asymmetric RED is separately
 reported; no historical hosted message recovery or live data change is performed.
 
+## Android APK ceiling removal candidate (2026-09-13)
+
+[RFC-0013's amendment](../rfcs/0013-user-triggered-android-updates.md#owner-amendment-no-fixed-apk-size-ceiling-2026-09-13)
+replaces the fixed APK cap, not transport/signer/integrity checks. Server heap is
+fixed-buffer, with anonymous disk snapshots to preserve verified-byte identity.
+Two response-lifetime permits bound snapshot concurrency; malformed metadata,
+wrong size/hash, unsafe file paths and I/O failures fail closed. Disk exhaustion
+is a remaining availability risk: snapshot storage scales with artifact size,
+space checks race unrelated writers, and tmpfs is unsuitable for large APKs.
+Metadata remains 8192-byte bounded. Copy deadline cannot preempt stalled kernel
+I/O. Operator-controlled disk-backed publication storage and disk headroom are
+required. A compromised publisher can deny service but cannot grant installer
+trust. Client free-space checks are advisory, exact-size accounting is overflow
+safe, failures clean only dedicated update files. All signer/package/version,
+pinned TLS and native consent gates remain; app identity/history are untouched.
+Independent review precedes release; no production DoS guarantee is made.
+
 ## Security objectives
 
 RFC-0013 adds the [bounded Android publication boundary](../server/android-updates.md#filesystem-and-resource-boundary):
