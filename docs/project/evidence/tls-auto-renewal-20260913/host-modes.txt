@@ -1,0 +1,3 @@
+755 paranoid /home/paranoid/paranoid-alpha/current/alpha.py
+600 paranoid /home/paranoid/paranoid-alpha/paranoid-alpha.service
+2026-09-13T10:07:56+00:00

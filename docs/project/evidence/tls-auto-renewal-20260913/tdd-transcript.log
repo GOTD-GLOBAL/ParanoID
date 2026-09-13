@@ -1,0 +1,327 @@
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... FAIL
+
+======================================================================
+FAIL: test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 63, in test_not_due_and_check_are_read_only
+    e = self.engine(); before = self.snapshot()
+        ^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 54, in engine
+    self.assertTrue(SOURCE.exists(), 'renewal implementation missing')
+AssertionError: False is not true : renewal implementation missing
+
+----------------------------------------------------------------------
+Ran 1 test in 0.007s
+
+FAILED (failures=1)
+Invalid -W option ignored: invalid module name: 'cryptography.utils'
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... /home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py:66: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_before_utc.
+  require(c.not_valid_before <= self.now < c.not_valid_after, 'certificate outside validity')
+/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py:66: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_after_utc.
+  require(c.not_valid_before <= self.now < c.not_valid_after, 'certificate outside validity')
+/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py:76: CryptographyDeprecationWarning: Properties that return a naïve datetime object have been deprecated. Please switch to not_valid_after_utc.
+  due = c.not_valid_after - dt.timedelta(days=30)
+ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.009s
+
+OK
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... FAIL
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+======================================================================
+FAIL: test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 78, in test_due_preserves_identity_metadata_and_next_run_noop
+    self.assertEqual(e.run()['result'], 'renewed')
+AssertionError: 'due' != 'renewed'
+- due
++ renewed
+
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.010s
+
+FAILED (failures=1)
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.080s
+
+OK
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... FAIL
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+======================================================================
+FAIL: test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 102, in test_failed_readiness_rolls_back_and_persists_failure
+    self.assertEqual((self.root/'tls/server.crt').read_bytes(), self.old)
+AssertionError: b'---[26 chars]MIIBSTCB8aADAgECAhRKG5YFBOptVPBt3dtJEAyai0bR5z[435 chars]--\n' != b'---[26 chars]MIIBSjCB8aADAgECAhR0CsvJ0THFnsDmwXrjY9SyoYY/Dz[439 chars]--\n'
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.135s
+
+FAILED (failures=1)
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.174s
+
+OK
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... FAIL
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+======================================================================
+FAIL: test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 120, in test_crash_replayed_before_not_due
+    self.assertEqual(e.run(check=True)['result'], 'recovery_required')
+AssertionError: 'not_due' != 'recovery_required'
+- not_due
++ recovery_required
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.220s
+
+FAILED (failures=1)
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.318s
+
+OK
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... FAIL
+
+======================================================================
+FAIL: test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 162, in test_system_ops_stop_waits_for_job_and_health_is_bounded
+    self.assertTrue(hasattr(self.m, 'SystemOps'), 'real system operations missing')
+AssertionError: False is not true : real system operations missing
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.558s
+
+FAILED (failures=1)
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.524s
+
+OK
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ERROR
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... FAIL
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+======================================================================
+ERROR: test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 182, in test_executable_release_and_inactive_refusal
+    self.assertEqual(e.run()['result'], 'renewed')
+                     ^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py", line 246, in run
+    return self.renew(old_raw, c, key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py", line 162, in renew
+    before = self.baseline()
+             ^^^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py", line 139, in baseline
+    return {'release': str(release), 'alpha': sha(read(release/'alpha.py')),
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py", line 93, in read
+    with os.fdopen(safe_fd(path), 'rb') as stream:
+                   ^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/tls_renewal.py", line 89, in safe_fd
+    raise ValueError('unsafe file')
+ValueError: unsafe file
+
+======================================================================
+FAIL: test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 194, in test_real_ops_preflight_guard_start_and_exact_der
+    self.assertTrue(hasattr(ops, 'preflight'), 'real preflight missing')
+AssertionError: False is not true : real preflight missing
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.533s
+
+FAILED (failures=1, errors=1)
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.602s
+
+OK
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... FAIL
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... FAIL
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+======================================================================
+FAIL: test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 216, in test_cli_and_timer_contract
+    self.assertNotEqual(result.returncode, 0, 'CLI silently accepts force')
+AssertionError: 0 == 0 : CLI silently accepts force
+
+======================================================================
+FAIL: test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 236, in test_loaded_guard_excludes_transient_exec_start_metadata
+    self.assertNotIn('ExecStart', requested, 'ExecStart show includes changing pid/start_time')
+AssertionError: 'ExecStart' unexpectedly found in ['FragmentPath', 'DropInPaths', 'NeedDaemonReload', 'ExecStart', 'Environment', 'EnvironmentFiles', 'LoadCredential', 'Type', 'User'] : ExecStart show includes changing pid/start_time
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.680s
+
+FAILED (failures=2)
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... ok
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.700s
+
+OK
+test_atomic_refuses_symlink_and_preserves_mode_owner (deploy.test_tls_renewal.RenewalTests.test_atomic_refuses_symlink_and_preserves_mode_owner) ... FAIL
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... ok
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) ...
+  test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) (ca=True, days=60) ... FAIL
+  test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) (ca=False, days=500) ... FAIL
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+======================================================================
+FAIL: test_atomic_refuses_symlink_and_preserves_mode_owner (deploy.test_tls_renewal.RenewalTests.test_atomic_refuses_symlink_and_preserves_mode_owner)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 257, in test_atomic_refuses_symlink_and_preserves_mode_owner
+    with self.assertRaises(OSError): self.m.atomic(p, b'new')
+AssertionError: OSError not raised
+
+======================================================================
+FAIL: test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) (ca=True, days=60)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 251, in test_rejects_ca_and_implausible_validity_without_writes
+    with self.assertRaises(ValueError): e.run()
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) (ca=False, days=500)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/tls-auto-renewal/deploy/test_tls_renewal.py", line 251, in test_rejects_ca_and_implausible_validity_without_writes
+    with self.assertRaises(ValueError): e.run()
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.697s
+
+FAILED (failures=3)
+test_atomic_refuses_symlink_and_preserves_mode_owner (deploy.test_tls_renewal.RenewalTests.test_atomic_refuses_symlink_and_preserves_mode_owner) ... ok
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... ok
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.694s
+
+OK
+test_atomic_refuses_symlink_and_preserves_mode_owner (deploy.test_tls_renewal.RenewalTests.test_atomic_refuses_symlink_and_preserves_mode_owner) ... ok
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... ok
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.798s
+
+OK

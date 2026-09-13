@@ -1,0 +1,43 @@
+## REQUEST_CHANGES
+
+Fresh-context advisory AI review under ADR-0003—not a human security audit. **Two blocking findings:**
+
+1. **Installed mode-0755 application unit prevents every due renewal.**
+   `deploy/tls_renewal.py:51,189` reads `ROOT/paranoid-alpha.service` with the default `private=True`, requiring mode **0600**. The supplied real-host unit is **0755**. Synthetic reproduction using that mode returned `ValueError: unsafe file` before lifecycle actions. Existing tests conceal this by creating the unit as 0600.
+   **Required:** use the non-group/world-writable public-source checks for both unit reads, retaining owner/type/symlink/hardlink guards; add mode-0755 coverage through both `baseline()` and real `SystemOps.guard()`. Correct `docs/operations/tls-auto-renewal.md:17`, which incorrectly requires the existing unit to be 0600. Do not chmod the deployed unit to accommodate the bug.
+
+2. **First-install script does not enforce its no-renewal gate before starting automation.**
+   `/tmp/paranoid-auto-renew-install.py:39–48` records `--check` output but never requires `result == "not_due"`. A valid `"due"` result proceeds into the actual oneshot, permitting certificate replacement and application restart. The installer also enables the persistent timer **before** comparing the before/after certificate/config/release/PID baseline. Detection afterward cannot undo an unauthorized first-install restart.
+   **Required:** parse and require `not_due` before the oneshot; require successful oneshot and unchanged baseline **before** timer enablement. Align runbook steps 4–5 with this ordering.
+
+### Verification
+- Existing synthetic tests: **13 passed**.
+- Additional mode-0755 reproduction: **confirmed blocker 1**.
+- `systemd-analyze --user verify` completed without diagnostics.
+- Installer was **not executed**; no SSH, deployment, merge, publication, or source edits occurred.
+- Runtime source hash was identical at initial and final sampling. All other initially hashed review artifacts also remained unchanged.
+
+### Reviewed SHA-256 hashes
+
+```text
+deploy/tls_renewal.py
+fb962a83a94925eefce773435464d536e0f670a9b90f01bc270dc840ef3cb3a8
+
+deploy/test_tls_renewal.py
+88e5e21e99c27334e3ef68b9abb368fc5fadd7b36a37c20395c163a501210a34
+
+deploy/paranoid-tls-renewal.service
+a91a6e4f4a651d37f21018dd6dd7eacb6cd66f45b2b10b80040903c955e3f189
+
+deploy/paranoid-tls-renewal.timer
+2566bf98b50ae3f2d766274fbbefbb8f72582948417709b568609615eebf9093
+
+docs/rfcs/tls-same-key-automation.md
+06a4dfc45feb07e29dd4d49b1173af067c5bf13680dcdf11258375fa30647f27
+
+docs/operations/tls-auto-renewal.md
+33a35264c06c859b224894d76446846e9056821d027c54b855eecffb22278c12
+
+/tmp/paranoid-auto-renew-install.py
+83f3b30d89782d7f8f584df0817d18ea6139c0e21392293525ed89517bfc36ac
+```

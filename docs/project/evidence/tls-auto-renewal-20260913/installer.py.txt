@@ -1,0 +1,57 @@
+"""Owner-scoped first installation of reviewed TLS renewal artifacts; no certificate change."""
+import hashlib, json, os, stat, subprocess, sys
+from pathlib import Path
+
+def digest(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+def check_dir(path,private=False):
+ s=path.lstat()
+ if not stat.S_ISDIR(s.st_mode) or s.st_uid!=1003 or s.st_mode&0o022 or (private and stat.S_IMODE(s.st_mode)!=0o700):
+  raise RuntimeError('unsafe target directory')
+def write_exclusive(path,data):
+ fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+ with os.fdopen(fd,'wb') as f:f.write(data);f.flush();os.fsync(f.fileno())
+ fd=os.open(path.parent,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ try:os.fsync(fd)
+ finally:os.close(fd)
+def command(args):
+ return subprocess.check_output(args,stderr=subprocess.STDOUT,text=True,timeout=100).strip()
+
+def main():
+ if os.getuid()!=1003:raise RuntimeError('project account required')
+ payload=json.load(sys.stdin)
+ base=Path('/home/paranoid/tls-renewal');units=Path('/home/paranoid/.config/systemd/user')
+ root=Path('/home/paranoid/paranoid-alpha')
+ check_dir(base.parent);check_dir(units);check_dir(root,True)
+ paths={'renew.py':base/'renew.py','paranoid-tls-renewal.service':units/'paranoid-tls-renewal.service','paranoid-tls-renewal.timer':units/'paranoid-tls-renewal.timer'}
+ if set(payload)!={'files','sha256'} or set(payload['files'])!=set(paths) or set(payload['sha256'])!=set(paths):raise RuntimeError('unexpected payload')
+ for name,path in paths.items():
+  if os.path.lexists(path):raise RuntimeError('refuse overwriting an existing artifact: '+name)
+  if hashlib.sha256(payload['files'][name].encode()).hexdigest()!=payload['sha256'][name]:raise RuntimeError('payload checksum mismatch')
+ if os.path.lexists(base):raise RuntimeError('first-install root already exists; inspect explicitly')
+ compile(payload['files']['renew.py'],'renew.py','exec')
+ before={'certificate':digest(root/'tls/server.crt'),'config':digest(root/'config.json'),'release':str((root/'current').resolve()),'alpha':command(['systemctl','--user','show','paranoid-alpha.service','-p','MainPID','-p','ExecMainStartTimestamp','-p','ActiveState'])}
+ base.mkdir(mode=0o700);(base/'state').mkdir(mode=0o700)
+ for name,path in paths.items():write_exclusive(path,payload['files'][name].encode())
+ try:
+  for name,path in paths.items():
+   if digest(path)!=payload['sha256'][name]:raise RuntimeError('installed checksum mismatch')
+  verification=command(['systemd-analyze','--user','verify',str(paths['paranoid-tls-renewal.service']),str(paths['paranoid-tls-renewal.timer'])])
+  check=command(['python3',str(base/'renew.py'),'--check'])
+  if json.loads(check).get('result')!='not_due':raise RuntimeError('first installation requires a verified not-due certificate')
+  command(['systemctl','--user','daemon-reload'])
+  command(['systemctl','--user','start','paranoid-tls-renewal.service'])
+  service=command(['systemctl','--user','show','paranoid-tls-renewal.service','-p','Result','-p','ExecMainStatus','-p','ActiveState'])
+  if 'Result=success' not in service or 'ExecMainStatus=0' not in service:raise RuntimeError('initial service failed')
+  after={'certificate':digest(root/'tls/server.crt'),'config':digest(root/'config.json'),'release':str((root/'current').resolve()),'alpha':command(['systemctl','--user','show','paranoid-alpha.service','-p','MainPID','-p','ExecMainStartTimestamp','-p','ActiveState'])}
+  if before!=after:raise RuntimeError('unexpected app/cert change during not-due installation')
+  command(['systemctl','--user','enable','--now','paranoid-tls-renewal.timer'])
+  timer=command(['systemctl','--user','show','paranoid-tls-renewal.timer','-p','ActiveState','-p','UnitFileState','-p','NextElapseUSecRealtime','-p','TimersCalendar','-p','Persistent'])
+  if 'ActiveState=active' not in timer or 'UnitFileState=enabled' not in timer:raise RuntimeError('timer not enabled/active')
+  receipt={'result':'PASS','installed_sha256':payload['sha256'],'preflight':check,'unit_verification':verification,'service':service,'timer':timer,'application_certificate_config_release_unchanged':True}
+  write_exclusive(base/'installation.json',json.dumps(receipt,indent=2).encode()+b'\n')
+  print(json.dumps(receipt,indent=2))
+ except BaseException:
+  subprocess.run(['systemctl','--user','disable','--now','paranoid-tls-renewal.timer'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=60)
+  print('INSTALLATION FAILED; timer disabled; created artifacts retained for inspection',file=sys.stderr)
+  raise
+if __name__=='__main__':main()

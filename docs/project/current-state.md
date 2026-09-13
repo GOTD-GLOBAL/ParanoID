@@ -6,6 +6,48 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK ceiling removal — local server candidate (2026-09-13)
+
+Owner direction is recorded in RFC-0013 and draft ADR-0008: no fixed APK size
+ceiling, no unnecessary binary growth. Server candidate uses fixed-memory hashing
+and anonymous disk snapshots, retaining two permits through response lifetime.
+Local update unit/integration checks pass, including above-old-cap transport and
+source mutation after verification. Android is a separate PR; installed clients
+still require a bridge within the old ceiling. No merge, deployment, feed change
+or phone acceptance is implied. Independent fallback AI review approved the final
+bounded-channel implementation after fixing cancellation/I/O permit coupling;
+Opus CLI could not authenticate, so this is not an Opus or human audit. Rollout
+and physical-phone acceptance remain gates.
+
+## Automatic same-key TLS maintenance installed — 2026-09-13
+
+The [bounded same-key automation](../rfcs/tls-same-key-automation.md) is installed
+on the existing host with a daily persistent user timer. It renews within 30 days
+for 90 days, preserves key/pin/profile, journals public certificates and recovers
+pending transactions before any not-due shortcut. Independent review is APPROVE;
+13 crypto/file/control tests, four installer gates and actual local systemd/TLS
+renewal/no-op/rollback checks pass. The [runbook and hosted receipt](../operations/tls-auto-renewal.md#observed-installation--2026-09-13)
+record successful first `not_due` execution and enabled/active timer. Current
+certificate expiry remains `2026-12-12T07:38:09Z`; renewal becomes due on
+`2026-11-12T07:38:09Z`. Installation did not restart messaging or change its
+certificate/config/package. Sergey explicitly authorized automatic **same-key**
+renewal in this task; original Telegram permalink is unavailable. No permanent
+ADR acceptance, key rotation, Telegram failure alert or phone/iOS acceptance is
+claimed. The prior one-off record below remains historical evidence.
+
+## Same-key TLS certificate renewed — 2026-09-13
+
+The hosted alpha now serves a renewed self-signed certificate, valid through
+`2026-12-12T07:38:09Z`, with the original TLS private key and SPKI unchanged.
+The [operation and evidence](../operations/tls-renewal-2026-09-13.md) record
+owner-scoped authority, independent review, synthetic rollback tests and actual
+host/external checks. Only the dedicated messaging user service was stopped and
+started; configuration, package, PostgreSQL identity and neighboring services
+were preserved. Android `PinnedTls` on the JVM accepts the actual renewed
+endpoint; physical phones and iOS were not tested. This retained 90-day renewal
+is not automation: another renewal is needed before December 12. Key rotation
+and any contact/channel migration still require a separate RFC.
+
 ## Native iOS client candidate — 2026-09-13
 
 A second client exists as a pull request: a native SwiftUI application over the

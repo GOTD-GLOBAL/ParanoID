@@ -5,9 +5,9 @@ The application is being designed as an open-source, self-hostable system with
 optional federation, crypto-native identity, mobile clients, and an extension
 platform for commercial and enterprise capabilities.
 
-> The repository contains a private-alpha native Android messenger, Rust
-> transport and project documentation. No production application architecture
-> or technology stack has been accepted yet.
+> The repository contains a private-alpha native Android messenger, a proposed
+> native iOS client, Rust transport and project documentation. No production
+> application architecture or technology stack has been accepted yet.
 
 ## Start here
 
@@ -55,6 +55,18 @@ and the [protocol](docs/protocol/first-contact-v1.md) define the mandatory signe
 account-ID channel. Historical migration/recovery is outside this candidate's
 release gate, with existing failures reported separately. Independent code review
 precedes publication/delivery; this task performs no live or phone action.
+
+## Native iOS client candidate (private alpha)
+
+A second client is proposed in [RFC-0021](docs/rfcs/0021-ios-client.md) and
+[ADR-0014](docs/decisions/0014-ios-client.md), both `proposed`: a native
+SwiftUI application over the unchanged shared Rust core through a C-ABI bridge,
+speaking the same contracts as the Android client, with call-v2 audio and
+camera video, foreground-only delivery and no push. Its results so far come
+from simulators and a local stand and are recorded as `CLAIMED`; **nothing has
+run on a physical phone, no hosted account exists and no TestFlight build was
+uploaded**. The honest row-by-row status is
+[the iOS verification table](docs/clients/ios/verification.md).
 
 ## Working principle
 

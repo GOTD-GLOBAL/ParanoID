@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "scope": "synthetic loopback, unchanged Android PinnedTls on JVM; NOT physical device or iOS",
+  "cases": [
+    {
+      "case": "old",
+      "result": "PASS",
+      "http_requests": 1
+    },
+    {
+      "case": "renewed_same_key",
+      "result": "PASS",
+      "http_requests": 1
+    },
+    {
+      "case": "rollback_old",
+      "result": "PASS",
+      "http_requests": 1
+    },
+    {
+      "case": "wrong_pin",
+      "result": "PASS",
+      "http_requests": 0
+    },
+    {
+      "case": "expired_same_key",
+      "result": "PASS",
+      "http_requests": 0
+    },
+    {
+      "case": "wrong_ip_same_key",
+      "result": "PASS",
+      "http_requests": 0
+    }
+  ],
+  "same_spki": true,
+  "same_extensions": true
+}

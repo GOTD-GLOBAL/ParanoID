@@ -2,6 +2,117 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct Fixture(std::path::PathBuf);
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    fn fixture() -> (Fixture, String) {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::path::PathBuf::from(std::env::var_os("HOME").unwrap())
+            .join(format!(".apk-stream-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir(&root).unwrap();
+        std::fs::set_permissions(&root, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let bytes = b"immutable synthetic transport fixture";
+        let hash = paranoid_key_protocol::digest(bytes);
+        std::fs::write(root.join(format!("{hash}.apk")), bytes).unwrap();
+        std::fs::write(
+            root.join("android.json"),
+            serde_json::json!({
+                "schema":1,"package":"global.paranoid.messenger","version_code":26,
+                "version_name":"size-test","min_sdk":26,"abi":"arm64-v8a",
+                "apk_sha256":hash,"apk_size":bytes.len()
+            })
+            .to_string(),
+        )
+        .unwrap();
+        (Fixture(root), hash)
+    }
+    #[tokio::test]
+    async fn verified_snapshot_survives_source_mutation_and_holds_budget_until_body_drop() {
+        let (root, hash) = fixture();
+        let reads = std::sync::Arc::new(tokio::sync::Semaphore::new(2));
+        let state = Publication {
+            root: Some(root.0.clone()),
+            reads: reads.clone(),
+        };
+        let uri: Uri = format!("/v2/updates/android/apk/{hash}").parse().unwrap();
+        let a = download(State(state.clone()), uri.clone())
+            .await
+            .ok()
+            .unwrap();
+        let b = download(State(state.clone()), uri.clone())
+            .await
+            .ok()
+            .unwrap();
+        assert_eq!(reads.available_permits(), 0);
+        assert!(download(State(state.clone()), uri.clone()).await.is_err());
+        std::fs::write(root.0.join(format!("{hash}.apk")), b"corrupt after headers").unwrap();
+        let bytes = axum::body::to_bytes(a.into_body(), 1024).await.unwrap();
+        assert_eq!(paranoid_key_protocol::digest(&bytes), hash);
+        drop(b); // cancellation releases snapshot + permit once blocking I/O ends
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while reads.available_permits() != 2 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert!(download(State(state), uri).await.is_err());
+        assert_eq!(reads.available_permits(), 2);
+        assert_eq!(std::fs::read_dir(&root.0).unwrap().count(), 2);
+    }
+    #[tokio::test]
+    async fn dropping_unconsumed_large_body_releases_backpressured_worker() {
+        let (root, _) = fixture();
+        let dir = open_root(&root.0).unwrap();
+        let raw = read_publication(&dir, "android.json", MAX_METADATA).unwrap();
+        let manifest = parse(&raw).ok().unwrap();
+        let snapshot = snapshot_apk(&dir, &manifest).unwrap();
+        // Synthetic sparse transport bytes: more chunks than the bounded channel.
+        snapshot.set_len((COPY_BUFFER * 8) as u64).unwrap();
+        let reads = std::sync::Arc::new(tokio::sync::Semaphore::new(1));
+        let body = snapshot_body(snapshot, reads.clone().try_acquire_owned().unwrap());
+        assert_eq!(reads.available_permits(), 0);
+        drop(body);
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            while reads.available_permits() != 1 {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(std::fs::read_dir(&root.0).unwrap().count(), 2);
+    }
+
+    #[test]
+    fn anonymous_snapshot_and_positive_signed_64_bit_size_contract() {
+        let (root, _) = fixture();
+        let dir = open_root(&root.0).unwrap();
+        let raw = read_publication(&dir, "android.json", MAX_METADATA).unwrap();
+        let manifest = parse(&raw).ok().unwrap();
+        let snapshot = snapshot_apk(&dir, &manifest).unwrap();
+        assert_eq!(snapshot.metadata().unwrap().nlink(), 0);
+        assert_eq!(snapshot.metadata().unwrap().mode() & 0o777, 0o600);
+        let mut value: serde_json::Value = serde_json::from_slice(&raw).unwrap();
+        for size in [16777217_i64, 2147483648, i64::MAX] {
+            value["apk_size"] = serde_json::json!(size);
+            assert_eq!(
+                parse(value.to_string().as_bytes()).ok().unwrap().apk_size,
+                size
+            );
+        }
+        for size in [
+            serde_json::json!(0),
+            serde_json::json!(-1),
+            serde_json::json!(9223372036854775808_u64),
+        ] {
+            value["apk_size"] = size;
+            assert!(parse(value.to_string().as_bytes()).is_err());
+        }
+    }
+
     #[tokio::test]
     async fn occupied_reader_budget_fails_closed_without_queueing() {
         let reads = std::sync::Arc::new(tokio::sync::Semaphore::new(2));
@@ -42,7 +153,7 @@ use axum::{
 use std::{
     ffi::CString,
     fs::File,
-    io::{self, Read},
+    io::{self, Read, Seek, Write},
     os::{
         fd::{AsRawFd, FromRawFd},
         unix::{ffi::OsStrExt, fs::MetadataExt},
@@ -145,7 +256,135 @@ fn read_publication(dir: &File, name: &str, max: usize) -> io::Result<Vec<u8>> {
     }
     Ok(bytes)
 }
-const MAX_APK: usize = 16 * 1024 * 1024;
+// APK length has only the shared signed-64-bit representation bound, no size budget.
+const COPY_BUFFER: usize = 64 * 1024;
+
+fn snapshot_apk(dir: &File, manifest: &Manifest) -> io::Result<File> {
+    use sha2::{Digest, Sha256};
+    let bad = || io::Error::from(io::ErrorKind::InvalidData);
+    let mut source = open_child(
+        dir,
+        format!("{}.apk", manifest.apk_sha256).as_bytes(),
+        false,
+        true,
+    )?;
+    let before = source.metadata()?;
+    let size = manifest.apk_size as u64;
+    if !before.is_file()
+        || before.uid() != dir.metadata()?.uid()
+        || before.nlink() != 1
+        || before.mode() & 0o022 != 0
+        || before.len() != size
+    {
+        return Err(bad());
+    }
+    // SAFETY: live directory fd and initialized writable statvfs ABI storage.
+    let mut space = std::mem::MaybeUninit::<libc::statvfs>::uninit();
+    if unsafe { libc::fstatvfs(dir.as_raw_fd(), space.as_mut_ptr()) } != 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let space = unsafe { space.assume_init() };
+    if u128::from(space.f_bavail) * u128::from(space.f_frsize) < u128::from(size) {
+        return Err(io::Error::from(io::ErrorKind::StorageFull));
+    }
+    // Anonymous inode on the held publication directory's filesystem. Never a
+    // pathname in /tmp, never linked/published; closing the last fd reclaims it.
+    // SAFETY: fixed NUL-terminated name, live directory fd, explicit mode.
+    let fd = unsafe {
+        libc::openat(
+            dir.as_raw_fd(),
+            c".".as_ptr(),
+            libc::O_TMPFILE | libc::O_RDWR | libc::O_CLOEXEC,
+            0o600,
+        )
+    };
+    if fd < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    let mut snapshot = unsafe { File::from_raw_fd(fd) };
+    let mut hash = Sha256::new();
+    let mut buffer = [0u8; COPY_BUFFER];
+    let mut remaining = size;
+    let started = std::time::Instant::now();
+    while remaining != 0 {
+        if started.elapsed() > std::time::Duration::from_secs(10) {
+            return Err(io::Error::from(io::ErrorKind::TimedOut));
+        }
+        let want = remaining.min(COPY_BUFFER as u64) as usize;
+        let n = source.read(&mut buffer[..want])?;
+        if n == 0 {
+            return Err(bad());
+        }
+        snapshot.write_all(&buffer[..n])?;
+        hash.update(&buffer[..n]);
+        remaining -= n as u64;
+    }
+    if source.read(&mut buffer[..1])? != 0 {
+        return Err(bad());
+    }
+    let after = source.metadata()?;
+    if after.len() != before.len()
+        || after.nlink() != 1
+        || after.uid() != before.uid()
+        || after.mode() != before.mode()
+        || after.mtime() != before.mtime()
+        || after.mtime_nsec() != before.mtime_nsec()
+        || after.ctime() != before.ctime()
+        || after.ctime_nsec() != before.ctime_nsec()
+        || format!("{:x}", hash.finalize()) != manifest.apk_sha256
+    {
+        return Err(bad());
+    }
+    snapshot.rewind()?;
+    Ok(snapshot)
+}
+
+struct SnapshotBody {
+    receiver: tokio::sync::mpsc::Receiver<io::Result<axum::body::Bytes>>,
+    _permit: std::sync::Arc<tokio::sync::OwnedSemaphorePermit>,
+}
+impl futures_core::Stream for SnapshotBody {
+    type Item = io::Result<axum::body::Bytes>;
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.receiver.poll_recv(cx)
+    }
+}
+fn snapshot_body(mut file: File, permit: tokio::sync::OwnedSemaphorePermit) -> axum::body::Body {
+    let permit = std::sync::Arc::new(permit);
+    let worker_permit = permit.clone();
+    let (sender, receiver) = tokio::sync::mpsc::channel(1);
+    tokio::task::spawn_blocking(move || {
+        // Keep the permit coupled to actual blocking I/O, even after the response
+        // is cancelled. The receiver also holds it through response lifetime.
+        let mut buffer = [0u8; COPY_BUFFER];
+        while !sender.is_closed() {
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(n) => {
+                    if sender
+                        .blocking_send(Ok(axum::body::Bytes::copy_from_slice(&buffer[..n])))
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let _ = sender.blocking_send(Err(e));
+                    break;
+                }
+            }
+        }
+        drop(file); // close anonymous snapshot BEFORE releasing worker's permit
+        drop(worker_permit);
+    });
+    axum::body::Body::from_stream(SnapshotBody {
+        receiver,
+        _permit: permit,
+    })
+}
 const MAX_METADATA: usize = 8192;
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -157,7 +396,7 @@ struct Manifest {
     min_sdk: i32,
     abi: String,
     apk_sha256: String,
-    apk_size: usize,
+    apk_size: i64,
 }
 fn hex(s: &str) -> bool {
     s.len() == 64
@@ -178,7 +417,7 @@ fn parse(bytes: &[u8]) -> Result<Manifest, crate::Failure> {
         || m.version_name.chars().any(char::is_control)
         || m.abi != "arm64-v8a"
         || !hex(&m.apk_sha256)
-        || !(1..=MAX_APK).contains(&m.apk_size)
+        || m.apk_size <= 0
     {
         return Err(invalid());
     }
@@ -212,14 +451,16 @@ async fn download(State(s): State<Publication>, uri: Uri) -> Result<Response, cr
 
     tokio::task::spawn_blocking(move || {
         // Keep the bound even if the outer global handler timeout cancels its wait.
-        let _permit = permit;
-
-        publication(s.root, uri)
+        publication(s.root, uri, permit)
     })
     .await
     .map_err(|_| invalid())?
 }
-fn publication(root: Option<PathBuf>, uri: Uri) -> Result<Response, crate::Failure> {
+fn publication(
+    root: Option<PathBuf>,
+    uri: Uri,
+    permit: tokio::sync::OwnedSemaphorePermit,
+) -> Result<Response, crate::Failure> {
     if uri.query().is_some() {
         return Ok(StatusCode::NOT_FOUND.into_response());
     }
@@ -248,19 +489,15 @@ fn publication(root: Option<PathBuf>, uri: Uri) -> Result<Response, crate::Failu
     if requested.is_some_and(|s| s != manifest.apk_sha256) {
         return Ok(StatusCode::NOT_FOUND.into_response());
     }
-    let apk = read_publication(&dir, &format!("{}.apk", manifest.apk_sha256), MAX_APK)
-        .map_err(|_| invalid())?;
-    if apk.len() != manifest.apk_size || paranoid_key_protocol::digest(&apk) != manifest.apk_sha256
-    {
-        return Err(invalid());
-    }
+    let apk = snapshot_apk(&dir, &manifest).map_err(|_| invalid())?;
     if uri.path() == "/v2/updates/android" {
         Ok(([("content-type", "application/json")], metadata).into_response())
     } else {
-        Ok((
-            [("content-type", "application/vnd.android.package-archive")],
-            apk,
-        )
-            .into_response())
+        let body = snapshot_body(apk, permit);
+        Response::builder()
+            .header("content-type", "application/vnd.android.package-archive")
+            .header("content-length", manifest.apk_size.to_string())
+            .body(body)
+            .map_err(|_| invalid())
     }
 }

@@ -8,6 +8,35 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android update server: remove fixed APK ceiling — 2026-09-13
+
+- Local server candidate accepts positive signed-64-bit APK lengths instead of a
+  16 MiB cap. Fixed-buffer hashing and anonymous disk snapshots preserve exact
+  verified response bytes; two permits cover complete response lifetimes.
+- Metadata, TLS/path/hash checks remain; publication needs disk headroom and
+  O_TMPFILE support. Separate Android bridge and reviewed rollout remain required.
+  No live server/feed change is claimed.
+
+### Automatic same-key TLS maintenance — 2026-09-13
+
+- Installed standalone daily persistent renewal with unchanged TLS key/pin/profile,
+  30-day threshold, certificate-only journal/recovery and bounded user-service
+  restart when due. Independent review, 13 unit/fault tests, four installer gates
+  and actual local systemd/TLS renewal/no-op/rollback pass. Hosted first run is
+  `not_due`, timer enabled/active, current application/certificate/config/package
+  unchanged. See the [runbook](docs/operations/tls-auto-renewal.md).
+  No key rotation, database change, phone/iOS or full-history acceptance claim.
+
+### Same-key TLS certificate renewal — 2026-09-13
+
+- The hosted private alpha certificate now expires on `2026-12-12T07:38:09Z`;
+  the private key, SPKI pin, SAN and server-auth profile remain unchanged.
+  Dedicated-service restart and external Android TLS/JVM checks passed, with
+  configuration, server package, PostgreSQL identity and neighbors preserved.
+  [Operation, review and rollback evidence](docs/operations/tls-renewal-2026-09-13.md)
+  distinguish actual host checks from synthetic fault tests and unrun phone/iOS
+  acceptance. That one-off operation did not implement automation or key rotation.
+
 ### Native iOS client candidate — 2026-09-13
 
 - A second client, proposed under RFC-0021 and proposed ADR-0014: a native
