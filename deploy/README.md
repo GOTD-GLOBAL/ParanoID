@@ -103,11 +103,18 @@ bundle, feed, logs or external evidence.
 The complete archive is decrypted and authenticated into an anonymous private
 temporary file before pg_restore receives any bytes. Restore targets only a new
 `verify_v2_*` DB. Exact schema and counts plus ordered SHA256 digests of every
-row in all six tables are compared, including account revocation, sequence and
+row in all six base tables and the optional RFC-0020 `ss_push_tokens` table
+(when present) are compared, including account revocation, sequence and
 registration budgets. PostgreSQL computes row digests internally; raw application
 rows never enter diagnostic output. Restored and schema-reference DBs remain
 private in this cluster; monitor disk because they are not purged automatically.
 No named plaintext dump or TLS/config copy is retained by this new backup path.
+
+The optional FCM table is checked against the exact runtime DDL in the empty
+schema-reference database only. Full schema equality is retained; extra columns,
+foreign tables or altered constraints fail. Its tokens are included in encrypted
+backup and in ordered row-digest verification without printing token values.
+See the [scoped recovery/backup correction](../docs/rfcs/apk-cap-push-backup-recovery.md).
 
 Only successful encrypted-restore comparison permits a staged-code switch.
 Copied code files and release directories are fsynced before atomic pointer

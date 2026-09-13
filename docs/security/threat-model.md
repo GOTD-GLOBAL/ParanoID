@@ -110,6 +110,29 @@ Current local implementation/test status is in [current-state](../project/curren
 and the candidate evidence record. Existing historical asymmetric RED is separately
 reported; no historical hosted message recovery or live data change is performed.
 
+## Optional push-table backup coverage (2026-09-13)
+
+[The bounded backup/recovery correction](../rfcs/apk-cap-push-backup-recovery.md)
+keeps exact complete schema comparison while recognizing the already existing
+RFC-0020 table. Exact optional DDL is applied only to an empty reference DB;
+existing token rows gain explicit ordered digest/count comparison after encrypted
+restore. Unknown schemas remain rejected, tokens never enter logs, and current
+messages are never replaced by an old backup. Completed-rollback acknowledgment
+is separately pinned to exact failed/predecessor records plus live identity and
+unchanged original guards; failed history is preserved, not relabeled success.
+
+## One-off maintenance reconciliation (2026-09-13)
+
+[The scoped reconciliation RFC](../rfcs/apk-cap-maintenance-reconciliation.md)
+addresses the risk of laundering unexpected runtime drift into a trusted baseline.
+Exact old-state and target hashes, before-config/unit/certificate comparisons,
+unchanged key/pin/PG/release, original worker/network/unit checks and two locks
+precede metadata-only adoption. Original raw records are retained as atomic0400
+before-images; annotations do not reinterpret old approval. No runtime/data files
+change and unknown/third-state inputs fail closed. Preparation/replace interruption
+is tested locally, not by injecting faults into the hosted installation. Root
+remains trusted; this is not a universal automatic maintenance-adoption mechanism.
+
 ## Android APK ceiling removal candidate (2026-09-13)
 
 [RFC-0013's amendment](../rfcs/0013-user-triggered-android-updates.md#owner-amendment-no-fixed-apk-size-ceiling-2026-09-13)

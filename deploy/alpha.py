@@ -990,6 +990,19 @@ def v2_operation_lock(root):
         yield
 
 
+# Optional RFC-0020 schema created by the enabled gateway, not a base-v2 migration.
+# Keep identical to server/src/self_service_http.rs; tests check exact schema and
+# preserved encrypted row verification. No production schema DDL is executed here.
+PUSH_TABLE_SQL = "CREATE TABLE ss_push_tokens(account TEXT PRIMARY KEY REFERENCES ss_accounts(account),device TEXT NOT NULL REFERENCES ss_devices(device),platform TEXT NOT NULL CHECK(platform='fcm'),token TEXT NOT NULL CHECK(octet_length(token) BETWEEN 1 AND 4096),updated BIGINT NOT NULL CHECK(updated>0))"
+
+
+def v2_tables(root, database='postgres'):
+    tables = dict(V2_TABLES)
+    if sql(root, "SELECT to_regclass('public.ss_push_tokens') IS NOT NULL", database).strip() == b't':
+        tables['ss_push_tokens'] = 'account'
+    return tables
+
+
 def v2_schema_check(root):
     """Initialize only a new empty reference DB, never the application database."""
     reference = 'schema_v2_' + secrets.token_hex(8)
@@ -1000,6 +1013,10 @@ def v2_schema_check(root):
                PARANOID_KEY_REALM=realm, PARANOID_KEY_PIN=pin)
     subprocess.run([str(current_release(root) / 'paranoid-server'), 'self-service-init'],
                    env=env, capture_output=True, check=True, timeout=30)
+    if 'ss_push_tokens' in v2_tables(root):
+        # Only the disposable schema-reference DB gains the exact known optional
+        # extension. Full schema comparison still rejects foreign tables/columns.
+        sql(root, PUSH_TABLE_SQL, reference)
     if schema_snapshot(root, 'postgres') != schema_snapshot(root, reference):
         raise ValueError('actual v2 schema differs from exact reviewed runtime')
 
@@ -1007,7 +1024,7 @@ def v2_schema_check(root):
 def v2_rows(root, database='postgres'):
     # Ordered digest-of-SHA256-row-digests plus counts; no application rows leave PG.
     result = {}
-    for table, order in V2_TABLES.items():
+    for table, order in v2_tables(root, database).items():
         query = ("SELECT count(*),encode(sha256(convert_to(coalesce(string_agg("
                  "encode(sha256(convert_to(row_to_json(t)::text,'UTF8')),'hex'),'' ORDER BY "
                  + order + "),''),'UTF8')),'hex') FROM " + table + " t")
@@ -1124,7 +1141,7 @@ def verify_v2_backup(root, archive):
         if (schema_snapshot(root, 'postgres') != schema_snapshot(root, restored)
                 or expected != v2_rows(root, restored)):
             raise RuntimeError('restored v2 schema or rows differ; no release switch')
-    return {**context, 'tables': list(V2_TABLES), 'row_digests': expected,
+    return {**context, 'tables': list(expected), 'row_digests': expected,
             'restore_database': restored, 'verified': True,
             'sha256': digest(archive / 'history.enc'), 'bytes': (archive / 'history.enc').stat().st_size}
 
