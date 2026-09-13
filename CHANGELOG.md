@@ -8,6 +8,67 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Native iOS client candidate — 2026-09-13
+
+- A second client, proposed under RFC-0021 and proposed ADR-0014: a native
+  SwiftUI application over the **unchanged** shared Rust core through a C-ABI
+  bridge crate beside it (`clients/ios/`). No server, core, `key-protocol`,
+  Android or deploy change; a boundary gate enforces that.
+- Storage is a Keychain-held AES-256-GCM key
+  (`AfterFirstUnlockThisDeviceOnly`) plus a Data Protection file committed with
+  `F_FULLFSYNC`, `rename(2)` and a byte-exact read-back; any failure freezes
+  the process. An install marker makes a reinstall a clean install with a new
+  identity, because a Keychain item outlives the application container on iOS —
+  the one platform difference from Android's key-and-file rule, recorded as a
+  platform note rather than a relaxation.
+- TLS is leaf-SPKI pinning evaluated on `Security.framework` with the same nine
+  checks and the same pin the Android client carries. The hosted certificate
+  was renewed **with the same key** on 2026-09-13, so the pin is unchanged and
+  the new leaf is valid to 2026-12-12.
+- Calls are call-v2: two media sections, audio then video, both `a=sendrecv`,
+  H.264 first with VP8 as the mandatory fallback, camera on/off as a track flag
+  plus an informative `media` control and never a renegotiation, and a
+  9000-byte description cap below the measured 10040-byte frame2 ceiling. This
+  client cannot call an Android build older than v16.
+- Foreground-only by design: no APNs, no PushKit, no background refresh, no
+  CallKit and no in-app updates. A call to a locked or closed iPhone ends in
+  the caller's expected 45-second `timeout`.
+- Screen capture is **not** parity with Android: `FLAG_SECURE` has no iOS
+  equivalent, so the video stage is covered while the screen is recorded,
+  mirrored or AirPlayed, and a screenshot and the app-switcher snapshot cannot
+  be refused.
+- CI gains one Ubuntu job, `.github/workflows/ios.yml` (`ios-static`): the
+  iOS-target `cargo check` of the bridge over the unchanged core, bridge
+  clippy and host tests, lock-file drift against the Android lock, the
+  toolchain and WebRTC pins, the two source-only contracts, the full
+  third-party-notices run, and the component-boundary gate on pull requests.
+  `server.yml` is untouched; `docs.yml` gains two lychee `--exclude` lines for
+  the issue-27 permalinks this branch is the first to cite, and nothing else.
+  There is no macOS runner, so no simulator, app bundle or stand result comes
+  from CI; the workflow's first execution is the pull request that carries it.
+- The Android client is the cross-check, and it is now executed rather than only
+  read: `clients/ios/test_android_compatibility.py` holds two private pipes open
+  at once — the Android facade through JNI and the iOS classes through the C ABI
+  — over one shared core, and runs identity, pairing, text with receipts, a full
+  call-v2 round, the snapshot codec both ways, a saved wrapper reopened by both
+  adapters, 21 malformed call bodies and a tampered envelope; then the two
+  **shipped** client stacks register on one local stand and carry a text to each
+  other through it, both ways. Because both sides link the same core, every
+  scenario also matches an expectation the harness computes in Python without
+  calling the core (the account, credential, contact and channel transcripts,
+  the sealed-snapshot layout, and a call-v2 validator written from the protocol
+  document), and every negative is refused by that validator first.
+  `clients/ios/test_qr_cross.py` does the same for pixels: a real 901-byte
+  contact crosses the iOS encoder and Android's ZXing in both directions
+  unchanged. Both are `CLAIMED`: two client stacks on one Mac, no phone.
+- Status: simulator, host and local-stand results only (`CLAIMED`), including
+  two simulators calling each other in both directions. **Nothing has run on a
+  physical phone, no hosted account exists and no TestFlight build was
+  uploaded**; the export-compliance gate is closed. Row-by-row status is
+  `docs/clients/ios/verification.md`, and the two joint-test scenarios in
+  `docs/project/evidence/ios-client-20260913/` are written in advance and
+  entirely `NOT RUN`.
+
 ### Push wake gateway (server) — 2026-09-12
 
 - RFC-0020 (proposed): `POST /v2/push` registers an opaque FCM token over the

@@ -8,10 +8,13 @@ last_reviewed: 2026-09-13
 
 Behaviour map for [RFC-0021](../../rfcs/0021-ios-client.md). Every iOS
 behaviour is written from the protocol document and the shared core or server
-code; the Java client is a **source-level** cross-check — at the revision this
-table was written it had been read, not executed, because the Android
-cross-test is not in the committed tree
-([verification.md](verification.md)). Line numbers refer to `main` at `fe9c26c`
+code; the Java client is a **source-level** cross-check, and the rows below are
+the reading of it. Since then the two clients have also been run against each
+other on the build Mac — `clients/ios/test_android_compatibility.py` and
+`clients/ios/test_qr_cross.py`, both `CLAIMED` in
+[verification.md](verification.md) — which checks the scenarios those scripts
+cover on the revisions they digest, and not every row of this table. Line
+numbers refer to `main` at `fe9c26c`
 (Android v15) unless a row says otherwise; a row marked `(Android v16)` cites
 the call-v2 and video code of the post-v15 Android client instead, read in the
 merged Android tree of this branch (`0.0.22-push`, versionCode 22), not at

@@ -17,6 +17,22 @@ need is generated while the test runs and deleted when it ends.
   20-byte HMAC and the same placeholder the Java smoke uses, never an issued
   credential.
 
+- [`call-v2-sdp.json`](call-v2-sdp.json) — the two
+  [call-v2](../../../../docs/protocol/call-v2.md) descriptions libwebrtc
+  `150.7871.01` produced in the simulator spike
+  (`clients/ios/App/ParanoIDTests/SdpCompatibilityTests.swift`, recorded in the
+  git-ignored `clients/ios/out/evidence/sdp-spike.json`), line for line. The
+  spike masks five kinds of per-run transport identifier out of its evidence —
+  the session and connection addresses, the candidate foundations, addresses
+  and ports, and the ICE credentials — and this file replaces each of them with
+  the synthetic value its `substitutions` member names; nothing else is
+  changed, so the section order, every `m=` line, every `a=rtpmap` and every
+  codec are what libwebrtc wrote. `spike_survey` is what the spike measured on
+  the unmasked text, which is how `test_android_compatibility.py` can see a
+  transcription that lost a line. The DTLS fingerprints are the spike's own
+  certificates — public values that authenticate nothing without the matching
+  private key, which was never here.
+
 A vector file may be committed because it is a description of the wire, not a
 secret and not a thing that expires. A certificate is neither.
 
@@ -65,6 +81,7 @@ those pins. The relay vectors need neither.
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter X509LeafTests
 swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayConfigTests
+python3 clients/ios/test_android_compatibility.py --skip-stand
 ```
 
 If a generated certificate ever has to be inspected by hand, run the script into

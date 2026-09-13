@@ -23,7 +23,7 @@
 #      tree stays read-only: nothing is written under clients/android/, and the
 #      import of that module runs with bytecode caching off so it leaves no
 #      __pycache__ behind either.
-#   5. Compiles the named Android facade classes plus the three host fixtures
+#   5. Compiles the named Android facade classes plus the four host fixtures
 #      with `javac --release 8 -Xlint:-options`, the flags of
 #      .github/workflows/server.yml:111. The other Android compilation of the
 #      same facade, clients/android/test_voice_v8_compatibility.py:128, shares
@@ -81,8 +81,10 @@ ANDROID_ONLY=(MainActivity TextEngine QrScanActivity WebRtcAudioEngine VoiceCall
 # because iOS is distributed through TestFlight and the App Store. Nothing on
 # the iOS side compares against any of the four.
 NOT_COMPARED=(PushService UpdateClient UpdateManifest UpdatePolicy)
-# Host fixtures: the Android JNI/codec pipe and the two iOS cross-check pipes.
+# Host fixtures: the Android JNI/codec pipe, the Android stand client, and the
+# two iOS cross-check pipes.
 FIXTURES=(clients/android/test/VoiceCoreBridge.java
+          clients/android/test/CleanSelfServiceBridge.java
           clients/ios/test/java/JavaCodecVector.java
           clients/ios/test/java/QrCross.java)
 

@@ -7,8 +7,8 @@
 // `swift test`). No third-party packages. The `tls-smoke` executable is the
 // host-side handshake tool of `clients/ios/check-pinned-tls.py` and
 // `service-bridge` the host-side client fixture of
-// `clients/ios/test_clean_self_service.py`; the `core-bridge` executable is
-// added with its own pull-request step.
+// `clients/ios/test_clean_self_service.py` and `core-bridge` the host-side
+// core/codec fixture of `clients/ios/test_android_compatibility.py`.
 import PackageDescription
 
 let package = Package(
@@ -22,6 +22,7 @@ let package = Package(
         .executable(name: "tls-smoke", targets: ["tls-smoke"]),
         .executable(name: "service-bridge", targets: ["service-bridge"]),
         .executable(name: "voice-lane-probe", targets: ["voice-lane-probe"]),
+        .executable(name: "core-bridge", targets: ["core-bridge"]),
     ],
     targets: [
         // `paranoid_core_command` / `paranoid_core_free` from the Rust bridge
@@ -69,6 +70,17 @@ let package = Package(
             name: "voice-lane-probe",
             dependencies: ["ParanoidKit"],
             path: "Sources/voice-lane-probe"
+        ),
+        // The stdin/stdout fixture of
+        // `clients/ios/test_android_compatibility.py`, the counterpart of
+        // `clients/android/test/VoiceCoreBridge.java`. It drives the shipped
+        // `CoreBridge`, `SnapshotCodec` and `SelfServiceClient` so that the
+        // harness can put the two clients on one shared core and compare what
+        // they answer; the application never links it.
+        .executableTarget(
+            name: "core-bridge",
+            dependencies: ["ParanoidKit"],
+            path: "Sources/core-bridge"
         ),
         .testTarget(
             name: "ParanoidKitTests",

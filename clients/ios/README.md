@@ -109,9 +109,9 @@ which must run first) and the `WebRTC` binary target at
 `Binaries/WebRTC.xcframework` (git-ignored, produced by
 `webrtc_dependency.py`), and no package dependency at all; `service-bridge` is
 the host-only registration fixture described below, `voice-lane-probe` is the
-host-only TURN-lane fixture of `test_voice_relay_lane.py`, and the
-`core-bridge` executable named in RFC-0021 arrives with its own pull-request
-step. The `WebRTC` target is exported as
+host-only TURN-lane fixture of `test_voice_relay_lane.py`, and `core-bridge`
+is the host-only cross-check fixture of `test_android_compatibility.py` and
+`test_qr_cross.py`. The `WebRTC` target is exported as
 its own product and **no** target of the package depends on it: the
 xcframework carries no macOS slice, so keeping `ParanoidKit` itself free of it
 is what lets the host `swift test` run build. `Sources/ParanoidKit/Core/` is
@@ -1233,35 +1233,43 @@ application — it scans QR with `AVCaptureMetadataOutput` and parses JSON with
 Foundation's `JSONSerialization` — so neither appears in
 `THIRD_PARTY_NOTICES.txt`.
 
-Three host fixtures are compiled beside the facade:
+Four host fixtures are compiled beside the facade:
 
 - `clients/android/test/VoiceCoreBridge.java`, Android's own JSON-line pipe
   over `CoreBridge.command` and `SnapshotCodec`;
+- `clients/android/test/CleanSelfServiceBridge.java`, the Android client
+  fixture that registers on a stand and sends texts through it, which
+  `test_android_compatibility.py` puts opposite the iOS `service-bridge`;
 - [`test/java/JavaCodecVector.java`](test/java/JavaCodecVector.java), which
   seals a snapshot for Swift's `SnapshotCodec.open` to read and opens one
   Swift's `SnapshotCodec.seal` wrote;
 - [`test/java/QrCross.java`](test/java/QrCross.java), which encodes a payload
   to a PNG through ZXing and decodes a PNG back through ZXing.
 
-All three speak one JSON object per line on stdin and answer one per line on
-stdout, and all three keep private material off argv, off disk and out of
+The last three speak one JSON object per line on stdin and answer one per line
+on stdout, and all three keep private material off argv, off disk and out of
 every error path: a failure answers `{"fixture_error":…}`,
 `{"vector_error":…}` or `{"qr_error":…}` carrying the exception class and
 nothing else. Keys, snapshots and QR payloads travel inside the line — the
 image as base64, not as a file — so no temporary copy of a contact and no
-path of this machine is left behind. The Python cross-tests that drive them
-(`test_android_compatibility.py`, `test_qr_cross.py`) land with their own
-pull-request step; this one only builds the side they will talk to.
+path of this machine is left behind. `CleanSelfServiceBridge` is the odd one
+out: it speaks the `<phone>\t<op>\t<base64>` line protocol of the stand
+harnesses and keeps its snapshot in the directory it is given, which is a
+temporary one the harness deletes. The Python cross-tests that drive all four
+are [`test_android_compatibility.py`](#iphone-and-android-on-one-wire-test_android_compatibilitypy)
+and [`test_qr_cross.py`](#qr-cross-check-test_qr_crosspy) below.
 
 The evidence is `out/evidence/java-host.json`: tool versions, the digest of
 the `cdylib` and of both jars, the SHA-256 of every compiled Java file, and
 the two left-out groups by name beside the count of sources the three groups
 account for. Each file also records how it stands against the Android v15
-reference `fe9c26c`. Fourteen of the sixteen facade classes and
-`VoiceCoreBridge` are `identical to reference`; `CallController` and
-`RealtimeLoop` are `advanced past reference`, because `main` moved on to
-call-v2 video and the push wake gateway after v15. The run compiles what is
-on this branch and says so per file rather than calling the whole set v15.
+reference `fe9c26c`. Fourteen of the sixteen facade classes,
+`VoiceCoreBridge` and `CleanSelfServiceBridge` are `identical to reference`;
+`CallController` and `RealtimeLoop` are `advanced past reference`, because
+`main` moved on to call-v2 video and the push wake gateway after v15, and the
+two fixtures under `clients/ios/test/java/` are `not in reference` because
+this branch wrote them. The run compiles what is on this branch, twenty files
+in all, and says so per file rather than calling the whole set v15.
 Every path in the file is repository-relative and the writer refuses a text
 carrying this machine's home directory, account name or a dotted quad.
 
@@ -1272,6 +1280,126 @@ printf '%s\n' '{"kind":"core","state":"","request":{"op":"create_identity","real
   | "$JAVA_HOME/bin/java" -Djava.library.path=clients/ios/out/core-target/debug \
       -cp clients/ios/out/host-java/classes:clients/ios/out/host-java/json-20240303.jar \
       VoiceCoreBridge   # one JSON line back, with a credential in it and no fixture_error
+```
+
+## iPhone and Android on one wire (`test_android_compatibility.py`)
+
+The cross-check the Java side above exists for. Two private JSON-line pipes are
+held open side by side — `VoiceCoreBridge` over the Android facade through JNI,
+and `ParanoidKit`'s `core-bridge` over the iOS classes through the C ABI — and
+one harness drives both, so the Android client and the iOS client take turns on
+the same protocol without a server, a simulator or a phone. Each party is bound
+to one pipe at construction: `Party` holds the state text and every command goes
+to the pipe it was built with, so neither side can be handed the other's
+snapshot and a green run cannot be one client talking to itself.
+
+What a green run says, in the words it is allowed to use:
+
+- **compiling the facade proves buildability in this environment, and nothing
+  more**; that is what `java_deps.sh` above delivers;
+- a live Java ↔ Swift exchange proves **compatibility of the checked scenarios
+  on the checked revisions**, with each side holding its own state and with no
+  stand-in for the core anywhere;
+- it is **not acceptance on devices**: storage, lifecycle, network and media are
+  checked separately, on hardware, and
+  [verification.md](../../docs/clients/ios/verification.md) holds those rows.
+
+Both sides run the **same** Rust core, so a fault in the core reproduces
+identically on both and a live agreement alone cannot see it. Every scenario
+therefore carries an expectation the harness computes **itself, in Python,
+without calling the core**, and every refusal is refused by that expectation
+first:
+
+| Independent expectation | Rule it re-reads |
+| --- | --- |
+| `account` | `digest(transcript(["paranoid-account-v1", root]))` (`key-protocol/src/lib.rs:50,89`) |
+| credential fingerprint | `digest(transcript(["paranoid-credential-v1", …]))` (`lib.rs:57-71`) |
+| contact fingerprint | `digest(transcript(["paranoid-contact-v2", …]))` (`clients/core/src/contact_v2.rs:14-27`) |
+| first-contact channel | `digest(transcript(["paranoid-first-contact-channel-v1", …]))` (`intro_v2.rs:20-45`) |
+| sealed snapshot | exactly `len(plaintext) + 29` bytes, leading `0x01` |
+| a call-v2 body | `predict`, a second reading of [call-v2](../../docs/protocol/call-v2.md) written in the harness |
+| an SDP survey | sections, directions, codecs, candidates and size measured from the text |
+
+The scenarios: an identity and an active enrollment on each side over a
+`server_status_v2` whose credential digest the harness computed; pairing from
+the other side's contact text, with both fingerprints and the shared channel
+recomputed first; a text each way with the peer's receipt double-checking it,
+and the relayed envelope checked for the plaintext it must not carry; a full
+call-v2 round — knock, ready, offer, answer, media, heartbeat, end — alternating
+sides, each control arriving as a `call_event` whose body is byte-identical and
+whose `video` is still a JSON boolean; the snapshot codec crossed both ways;
+both saved wrappers reopened by both adapters with no write and the same public
+view; twenty-one malformed call bodies refused by the harness and then by both
+clients with one and the same code; a tampered envelope refused in both
+directions without moving anything but the rejection counters.
+
+The SDP is not invented here. It is
+[`test/fixtures/call-v2-sdp.json`](test/fixtures/call-v2-sdp.json): the two
+descriptions libwebrtc `150.7871.01` produced in the simulator spike
+(`App/ParanoIDTests/SdpCompatibilityTests.swift`,
+`out/evidence/sdp-spike.json`), line for line, with the per-run transport
+identifiers the spike masked out of its evidence replaced by the synthetic
+values the fixture names. Its `spike_survey` is what the spike measured on the
+unmasked text, so the harness can see a transcription that lost a line.
+
+The last scenario is the only one that opens a socket and the other half of the
+same question: the two **shipped** client stacks —
+`clients/android/test/CleanSelfServiceBridge.java` and the iOS `service-bridge`
+of [`test_clean_self_service.py`](#clean-install-text-messaging-test_clean_self_servicepy) —
+register on one local stand (the unchanged `paranoid-server` binary over a
+private PostgreSQL 16 cluster on loopback) and carry a text to each other
+through it, both ways, with the receipt double-checking each message.
+`--skip-stand` leaves it out and needs no server at all. The hosted alpha is
+never contacted.
+
+Evidence is `out/checks/compat/result.json`: the source SHA-256 of both sides
+and of the shared core files, both native artefacts (one Rust source, two
+builds — a JNI `cdylib` and the macOS slice of the C ABI xcframework), the tool
+versions, the commands, the check list, the per-vector negative table and the
+`does_not_prove` list above. It is written by the strict writer of
+`test_voice_sim.py:490-504`: no account, contact, fingerprint, realm, ICE value
+or pin, no home directory, no account name of this machine and no dotted quad.
+
+```sh
+python3 clients/ios/test_android_compatibility.py --evidence-dir out/checks/compat
+# iOS/Android protocol compatibility: PASS (15 checks)
+python3 clients/ios/test_android_compatibility.py --skip-stand \
+  --evidence-dir out/checks/compat-offline   # PASS (12 checks), no server at all
+```
+
+## QR cross-check (`test_qr_cross.py`)
+
+A contact travels between two phones as a QR code, so the two clients have to
+agree on pixels and not only on text. The shipped iOS encoder
+(`QrCodec.image(for:)`, `CIQRCodeGenerator` at level `M`) is put opposite the
+ZXing 3.5.3 build the Android client ships, over a **real** 901-byte
+`paranoid-contact-v2` payload — the dense code that broke the v15 scanner at
+480p — and the code is run both ways: the iOS encoder draws it and ZXing reads
+it back, then ZXing draws it and the other side reads it back. The payload must
+come back byte for byte both times, which is the `2/2 identical` line.
+
+The text that came back is then previewed with `contact_text_v2` on the **peer's**
+core (a core refuses its own contact with `contact_binding_mismatch`), and three
+readings have to agree on one fingerprint: the core that published the contact,
+the peer's core reading it, and the transcript the harness computed in Python. A
+QR that decoded to another contact would pair the user with someone else, and
+only a fingerprint says so. Six refusals close the file: the 2048-byte payload
+bound on both encoders, the 4096-byte import bound on both cores, a contact with
+one byte of its signature changed (`invalid_signature` on both) and a PNG that is
+not a code — and no refusal echoes the payload it was given.
+
+The reverse direction is read with `Vision` inside the `core-bridge` fixture.
+The application does **not** read codes that way: it takes the string out of an
+`AVCaptureMetadataOutput` frame in a live capture session, which no command-line
+tool can drive. So step 2 says the ZXing pixels carry the payload; it does not
+exercise the shipped scanner, and it replaces no camera check. Nothing here
+confers trust: a QR carries public data and the user still compares the whole
+fingerprint on the other phone.
+
+```sh
+python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
+# QR cross-check (iOS encoder <-> ZXing 640px): 2/2 identical
+# iOS/Android QR compatibility: PASS (4 checks)
 ```
 
 ## Third-party notices (`notices.py`)
@@ -1337,10 +1465,11 @@ without `~/.cargo/bin` on `PATH` is fine.
 6. `swift test` of `ParanoidKit` (scratch path `out/spm`).
 7. `java_deps.sh` — the host Java side of the cross-test (plan step 33), a
    real run: it takes its JDK from `toolchain.json`, so `javac` need not be on
-   `PATH`. The comparison itself (plan step 34) needs
-   `test_android_compatibility.py` and `test_qr_cross.py`, which have not
-   landed, so that step prints `SKIP:` with that reason and the manifest
-   records it as `skipped`. It is never a silent pass.
+   `PATH`. Then `swift build --product core-bridge`, the iOS side, and the
+   comparison itself (plan step 34): `test_android_compatibility.py` and
+   `test_qr_cross.py`, both unconditional, so a missing file fails the build
+   instead of skipping a gate. That comparison runs both clients against each
+   other on this Mac; it is a `CLAIMED` result and not a phone one.
 8. `check-pinned-tls.py` and `test_realtime_transport.py` — the nine leaf
    checks and the eight socket rules, against real loopback servers.
 9. `notices.py --offline` and `test_notices.py` — the notices that then ship
@@ -1370,7 +1499,7 @@ without `~/.cargo/bin` on `PATH` is fine.
     `destination` is `export`, so nothing is uploaded here.
 
 The run then writes `out/evidence/build-manifest.json`: the commit, the tool
-versions, every step with its status and duration (including the skipped
+versions, every step with its status and duration (including any skipped
 one), the bundle identity and version, and the SHA-256 of the executable, of
 the embedded `WebRTC.framework`, of the notices on both sides and of both
 lock files, with `out/evidence/bridge-hashes.json` folded in.
@@ -1460,6 +1589,12 @@ python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bi
 python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text     # the application itself in the simulator, plus the reinstall scenario
 python3 clients/ios/test_voice_sim.py --evidence-dir out/evidence/voice-sim   # two of the application calling each other on the stand, direct ICE both ways
 bash clients/ios/java_deps.sh                   # host JDK, host core cdylib and the Android facade the cross-checks talk to
+swift build --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
+  --product core-bridge                         # the iOS side of the cross-checks
+python3 clients/ios/test_android_compatibility.py --evidence-dir out/checks/compat
+                                                # iPhone <-> Android: the wire, then both clients on one stand
+python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
+                                                # the contact QR through the iOS encoder and Android's ZXing, both ways
 ```
 
 ## Rules that apply to every change here

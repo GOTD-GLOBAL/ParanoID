@@ -14,11 +14,10 @@
 # What this script does NOT do, and says so out loud when it reaches that
 # place in the chain:
 #
-#   * the iOS <-> Android comparison of plan step 34 needs
-#     test_android_compatibility.py and test_qr_cross.py, which have not
-#     landed; that step prints SKIP with that reason and the manifest records
-#     it as skipped. It is never a silent pass. The Java side it will talk to
-#     (java_deps.sh, plan step 33) does run here.
+#   * the iOS <-> Android comparison of plan step 34 does run here, and it
+#     runs both clients against each other on this Mac. That is a `CLAIMED`
+#     result, not a phone one: no Android build and no iPhone takes part, and
+#     docs/clients/ios/verification.md keeps that row where it belongs.
 #   * the archive and the export are the owner's signing gate. Without
 #     PARANOID_IOS_TEAM_ID in the environment the script prints
 #     "Archive skipped: PARANOID_IOS_TEAM_ID unset" and exits 0. Nothing here
@@ -118,21 +117,20 @@ step "ParanoidCore.xcframework" bash build-core.sh
 step "ParanoidKit tests" swift test --package-path ParanoidKit --scratch-path out/spm
 
 # 9. Plan steps 33-34. java_deps.sh builds the Java side of the cross-test; it
-# reads its JDK from toolchain.json, so `javac` need not be on PATH. The two
-# Python cross-tests that drive that side land with plan step 34.
+# reads its JDK from toolchain.json, so `javac` need not be on PATH. The iOS
+# side is the core-bridge executable of the same package, which the two Python
+# cross-tests then drive against it. Both cross-tests are unconditional: a
+# missing file is a failure here, never a skip.
 if [ -f java_deps.sh ]; then
   step "Android cross-test (Java host)" bash java_deps.sh
 else
   skip "Android cross-test (Java host, plan step 33)" \
     "clients/ios/java_deps.sh has not landed, so the Java side was NOT built and this gate did NOT pass."
 fi
-if [ -f test_android_compatibility.py ] && [ -f test_qr_cross.py ]; then
-  step "iOS <-> Android protocol compatibility" python3 test_android_compatibility.py --evidence-dir out/checks/compat
-  step "QR cross-check" python3 test_qr_cross.py
-else
-  skip "iOS <-> Android cross-test (plan step 34)" \
-    "clients/ios/test_android_compatibility.py and test_qr_cross.py have not landed; the comparison itself did NOT run and did NOT pass."
-fi
+step "core-bridge (iOS side of the cross-test)" \
+  swift build --package-path ParanoidKit --scratch-path out/spm --product core-bridge
+step "iOS <-> Android protocol compatibility" python3 test_android_compatibility.py --evidence-dir out/checks/compat
+step "QR cross-check" python3 test_qr_cross.py --evidence-dir out/checks/qr-cross
 
 # 10-11. Real sockets: nine pinned-TLS fixtures and the eight transport rules.
 step "pinned TLS handshakes" python3 check-pinned-tls.py
