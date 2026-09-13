@@ -6,6 +6,101 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## Native iOS client candidate — 2026-09-13
+
+A second client exists as a pull request: a native SwiftUI application over the
+**unchanged** shared Rust core, reached through a C-ABI bridge crate beside it.
+[RFC-0021](../rfcs/0021-ios-client.md) and
+[ADR-0014](../decisions/0014-ios-client.md) are `proposed`, not accepted;
+`server/`, `clients/core/src/`, `clients/android/`, `key-protocol/` and
+`deploy/` are untouched and a boundary gate enforces it.
+
+**CLAIMED (simulator, host or local stand — the unchanged server binary against
+a private PostgreSQL 16 on the build Mac).** Registration, QR contact exchange,
+E2EE text with one-check and two-check receipts, block and unblock, the
+first-contact story for a receiver with zero contacts, a reinstall that starts
+a new identity, the injected transport and storage faults, the nine pinned-TLS
+leaf checks, the call state machine against the Android smoke scenarios
+(`94/94` labels), the TURN credential lane over a real pinned socket, and two
+simulators placing and answering calls in both directions over direct ICE with
+about 2300 RTP packets per side per call. The 242 package tests pass; the
+application test bundles and the local-stand scripts were run by the steps that
+delivered them, and their output stays under `clients/ios/out/`, which is not
+committed.
+
+**SHOWN (physical phone): nothing.** No row of
+[the verification table](../clients/ios/verification.md) is `SHOWN`.
+
+**NOT RUN, with reasons.** No signed build, no device install and no TestFlight
+upload: there is no App ID, no owner "go", and the
+[export-compliance gate](../clients/ios/export-compliance.md) is closed —
+`ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple
+applies the requirement to TestFlight too. A simulator cannot show a Data
+Protection class, a real camera, a real screen recording, a screen lock or a
+real network, so all of those are `NOT RUN`. Interoperability with the Android
+client is untested: every peer so far was another instance of this client, and
+the Java client is a source-level cross-check — at this revision the two
+comparison scripts have not landed, so `build.sh` records the iOS ↔ Android
+comparison as `skipped`, while its Java host side (`java_deps.sh`) is present
+in the working tree but not yet committed and that gate ran `ok` from an
+uncommitted file. `.github/workflows/ios.yml` lands with this pull
+request and has never executed on a runner — its first run is that pull request
+— and question 6 answered "no macOS runner", so nothing needing Xcode, a
+simulator or the local stand is in it and every check was run locally on the
+pinned build Mac. The two joint-test scenarios with the owner
+are written in advance with every result `NOT RUN`:
+[stage 1](evidence/ios-client-20260913/stage1-text.md) and
+[stage 2](evidence/ios-client-20260913/stage2-voice.md).
+
+**Hosted accounts spent: zero.** `hosted_registrations` is 0. The only contact
+this branch has had with the hosted alpha is a single TLS handshake with no
+HTTP request, which confirmed that the pin this client carries still equals the
+live SubjectPublicKeyInfo digest after the owner renewed the certificate **with
+the same key** on 2026-09-13; the renewed leaf is valid to
+2026-12-12T07:38:09Z. A same-key renewal must repeat before that date — there
+is no automatic renewal — and a key *change* needs its own deploy-trust RFC,
+because the pin feeds the first-contact channel transcript and would invalidate
+enrolled contacts, not only the transport. The server has no account-deletion
+path, so every future registration is permanent and is counted in the evidence
+directory.
+
+**Calls are call-v2, not voice v1.** RFC-0021 was drafted against voice v1;
+`main` moved to [call-v2](../protocol/call-v2.md) under RFC-0019 while the
+client was being written, and the client follows `main`: two media sections,
+audio then video, both `a=sendrecv`, H.264 first with VP8 as the mandatory
+fallback, camera on/off as a track flag plus an informative `media` control and
+never a renegotiation, and a 9000-byte description cap below the measured
+10040-byte frame2 ceiling. call-v2 rejects v1 bodies, so this client cannot
+call an Android build older than v16.
+
+**Two differences from Android are permanent, not defects.** Delivery is
+foreground-only — no APNs, no PushKit, no background refresh, no CallKit — so a
+call placed to a locked or closed iPhone ends in the caller's expected
+45-second `timeout`, and threat-model boundary 8 stays unused by this client.
+And screen capture is not parity: Android's `FLAG_SECURE` has no iOS
+equivalent, so the client covers the video stage while the screen is recorded,
+mirrored or AirPlayed, while a screenshot and the app-switcher snapshot cannot
+be refused at all. Both are written into
+[the iOS trust delta](../security/ios-client-threats.md).
+
+**Governance.** The owner delegated technical decision authority to the
+contributor and recorded it at
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919);
+the owner's agents answered RFC-0021 questions 5 and 10 in the same issue on
+2026-09-12. The delegation settles technical choices; it does not waive
+independent review, does not turn a `CLAIMED` row into evidence and is not the
+ADR acceptance the human decision owner still has to give. The twelve
+doc-to-code discrepancies found while writing this client are **not** corrected
+in the client pull request; they go to a separate docs-only change, and each is
+carried as a recorded waiver in
+[protocol-sources.md](../clients/ios/protocol-sources.md).
+
+**CI note.** The `Server transport` workflow runs on `clients/**`, so this
+branch triggers it, and its `legacy-client-history` job is **deliberately red**
+and informational (the fourteen archived failures are retained on purpose).
+That workflow being non-green is therefore not a signal about this client, and
+"all checks green" is never the right phrase for this repository.
+
 ## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
 
 The owner (Сергей Мальцев, Telegram) requested video calls and resolved the

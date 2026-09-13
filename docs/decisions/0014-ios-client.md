@@ -1,19 +1,22 @@
 ---
-status: draft
+status: proposed
 owner: ios
 decision_owner: martadvix-web
 required_reviewers: []
 review_mode: closed-alpha-ai
-last_reviewed: 2026-09-11
+last_reviewed: 2026-09-13
 ---
 
 # ADR-0014: iOS client as a native SwiftUI shell over the shared Rust core
 
-This record is a **draft**: the decision below is a candidate, not an accepted
-architecture. It cannot move to `proposed` until the closed-alpha scope has a
-permanent owner approval permalink and the open questions marked blocking are
-answered. Nothing described here is built, reviewed or deployed at the time
-of writing; [RFC-0021](../rfcs/0021-ios-client.md) carries the proposal text.
+This record is **proposed**, not accepted. The client described below is built
+and its checks run on simulators and a local stand; nothing has run on a
+physical phone, no hosted account exists, no TestFlight build was uploaded, and
+no independent human review has happened. It cannot move to `accepted` until
+the closed-alpha scope has a permanent owner approval permalink, the
+independent AI review of the exact review revision is recorded, and the
+physical-phone evidence the validation plan names exists.
+[RFC-0021](../rfcs/0021-ios-client.md) carries the proposal text.
 
 ## Required review rationale
 
@@ -104,6 +107,23 @@ only. The decisive reason is that it is the smallest boundary that keeps every
 protected domain except the four named ones untouched and keeps the core the
 single owner of protocol and cryptography.
 
+The call contract this client implements is
+[call-v2](../protocol/call-v2.md) — two media sections, audio then video, both
+`a=sendrecv`, H.264 first with VP8 as the mandatory fallback, camera on/off as
+a track flag plus an informative `media` control and never a renegotiation, and
+a 9000-byte description cap below the measured 10040-byte frame2 ceiling.
+RFC-0021 was drafted against voice v1; `main` moved to call-v2 under RFC-0019
+and proposed ADR-0013 while this client was being written, and the client
+follows `main`. call-v2 rejects v1 bodies, so this client cannot call an
+Android build older than v16.
+
+The delegation of technical decision authority to the contributor is recorded
+at
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919).
+It settles the technical open questions below. It does not waive independent
+review, does not convert a simulator result into evidence, and does not accept
+this ADR — acceptance remains the human decision owner's.
+
 ## Consequences
 
 ### Positive
@@ -119,7 +139,21 @@ single owner of protocol and cryptography.
 
 - Foreground-only delivery: no push, no background delivery, no CallKit;
   messages and calls arrive only while the application is open. This is a
-  user-visible limitation stated on the connection screen.
+  user-visible limitation stated on the connection screen, and it makes a call
+  to a locked or closed iPhone end in the caller's expected 45-second
+  `timeout` rather than in a ring.
+- Screen capture is not parity with Android: `FLAG_SECURE` has no iOS
+  equivalent, so the client covers the video stage while the screen is being
+  recorded, mirrored or AirPlayed, and a screenshot and the app-switcher
+  snapshot remain outside what it can refuse.
+- CI covers only what Ubuntu can prove: `.github/workflows/ios.yml` lands with
+  this pull request and runs the iOS-target `cargo check`, the bridge lint and
+  host tests, the lock, toolchain and WebRTC pins, the source-only contracts,
+  the full notices run and the boundary gate. It has never executed on a
+  runner — its first run is that pull request — and there is no macOS runner,
+  so no simulator, app bundle or stand result can ever come from it. Every
+  check was run locally on the pinned build Mac and the evidence directory
+  replaces a CI link.
 - Every clock-dependent rule (session renewal, call timeouts, +5 s skew) is
   provided by the platform because the core is clock-free; parity with
   `CallController.java` must be proven by cross-checks, not assumed.
@@ -149,12 +183,18 @@ single owner of protocol and cryptography.
 
 [docs/clients/ios/verification.md](../clients/ios/verification.md) maps
 REQ-CLIENT-001, REQ-ID-005/007/008, REQ-MSG-002/003/005 and REQ-CALL-002/003
-to planned checks and their status (`NOT RUN` until evidence exists);
+to the check that was actually run and its status;
 [protocol-sources.md](../clients/ios/protocol-sources.md) maps each behaviour
-to its protocol line, core/server line and Java cross-check. Simulator and
-dependency builds are `CLAIMED`; only physical-phone joint tests with the owner
-are `SHOWN`. The independent AI review of the exact review revision, the
-boundary gate output and the CI run are recorded in the client pull request.
+to its protocol line, core/server line and Java cross-check. Simulator, local
+stand and dependency results are `CLAIMED`; only physical-phone joint tests
+with the owner are `SHOWN`, and **no row is `SHOWN` today**. The two joint-test
+scenarios are written in advance with every `Result` reading `NOT RUN`:
+[stage 1](../project/evidence/ios-client-20260913/stage1-text.md) and
+[stage 2](../project/evidence/ios-client-20260913/stage2-voice.md). The
+independent AI review of the exact review revision and the boundary gate output
+are recorded in the client pull request; there is no CI run to link, because no
+iOS workflow exists. The platform trust delta is
+[docs/security/ios-client-threats.md](../security/ios-client-threats.md).
 
 ## Compatibility and migration
 
@@ -183,8 +223,15 @@ unaffected because nothing on the server changes.
 
 ## Open questions with deadlines
 
-The same table as [RFC-0021 Open questions](../rfcs/0021-ios-client.md#open-questions);
-questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
+The same table as [RFC-0021 Open questions](../rfcs/0021-ios-client.md#open-questions).
+Questions 3, 4, 5, 6, 10 and 11 are answered — 5 and 10 by the owner's agents
+in [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27) on 2026-09-12,
+the rest by the contributor under the recorded delegation. Questions 7 and 8
+stay partly open and are the two that still gate live actions: a key rotation
+needs its own deploy-trust RFC, and **no TestFlight upload may happen until the
+export-compliance gate is answered**. Acceptance of this ADR is blocked by the
+missing scope-approval permalink and by the absence of any physical-phone
+evidence, not by the table below.
 
 | # | Question | Owner | Proposed deadline |
 | --- | --- | --- | --- |
@@ -199,33 +246,51 @@ questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
 
 ## Disposition and acceptance evidence
 
-- Disposition: none (draft)
-- Disposition rationale: pending
+- Disposition: open (`proposed`)
+- Disposition rationale: the client exists and its behaviour is measured, but
+  the evidence that would justify acceptance — physical-phone joint tests, a
+  hosted registration, an independent review — does not exist yet
 - Decision owner and identity: martadvix-web (GitHub)
-- Pull request URL: pending (client pull request not yet opened)
+- Pull request URL: the client pull request this revision is opened with
 - Permanent disposition or approval evidence URL: pending
 - Withdrawal author statement URL, if applicable: not applicable
-- Delegation evidence URL, if applicable: not applicable
+- Delegation evidence URL:
+  <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
+  — technical decision authority for the contributor; it is not scope approval,
+  not acceptance of this ADR and not a substitute for independent review or
+  evidence
 - Required-review evidence URLs: independent AI review pending; recorded
   separately from human reviewers
 - Telegram message ID, sender mapping, timestamp, and exact approval text, if
   used: none recorded; the 2026-09-11 owner replies relayed by the contributor
   are not approval evidence
 - Disposition date: pending
-- Known limitations and follow-up: foreground-only delivery; no pin rotation
-  path before 2026-12-12; voice scope may narrow to text-only if the core SDP
-  validator rejects iOS SDP; twelve doc-to-code discrepancies await the
-  owner's answer to question 10
+- Known limitations and follow-up: nothing has run on a physical phone and no
+  hosted account exists (`hosted_registrations` is zero); foreground-only
+  delivery, so a call to a locked or closed iPhone ends in the caller's
+  45-second `timeout`; screen capture is not parity with Android's
+  `FLAG_SECURE`; no pin rotation path before the renewed leaf expires on
+  2026-12-12; the export-compliance gate is closed, so no TestFlight upload is
+  authorised; no iOS CI; the Android cross-test is not in the committed tree at
+  this revision and did not run;
+  twelve doc-to-code discrepancies are answered in issue #27 and are corrected
+  in a separate docs-only pull request, not in this one
 
 ## Links
 
 - Requirement: [REQ-CLIENT-001](../product/requirements.md), REQ-ID-005/007/008,
   REQ-MSG-002/003/005, [REQ-CALL-002/003](../product/voice-calls.md)
 - RFC: [RFC-0021](../rfcs/0021-ios-client.md)
-- Threat model: [threat model](../security/threat-model.md); iOS threat delta
-  `docs/security/ios-client-threats.md` is written with the client pull
-  request, not yet present
-- Experiment or benchmark: not applicable — bridge link, SDP and pinning spikes
-  are recorded in the client pull request evidence when run
+- Threat model: [threat model](../security/threat-model.md) and the
+  [iOS client trust delta](../security/ios-client-threats.md)
+- Component documentation:
+  [storage, registration, contacts and text](../clients/ios/self-service.md),
+  [calls](../clients/ios/voice-calls.md),
+  [build and TestFlight](../clients/ios/build-and-testflight.md),
+  [export compliance](../clients/ios/export-compliance.md)
+- Experiment or benchmark: the bridge link, the call-v2 SDP spike against the
+  core validator and the pinned-TLS leaf checks were run locally; their
+  summaries are in the client pull request and their raw output stays under
+  `clients/ios/out/`, which is not committed
 - Supersedes: none
 - Superseded by: none

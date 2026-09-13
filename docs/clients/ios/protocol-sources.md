@@ -1,29 +1,49 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-11
+last_reviewed: 2026-09-13
 ---
 
 # iOS client behaviour: rule to source table
 
-Skeleton for [RFC-0021](../../rfcs/0021-ios-client.md). Every iOS behaviour is
-written from the protocol document and the shared core or server code; the
-Java client is a cross-check only. Line numbers refer to `main` at `fe9c26c`
-(Android v15). The `Discrepancy` column names the numbered doc-to-code
-findings reported to the owner ("Findings from iOS-client preparation", section
-A); those documents are not corrected here (RFC-0021 question 10). The table
-grows as the client is written; rows without a discrepancy say `none`.
+Behaviour map for [RFC-0021](../../rfcs/0021-ios-client.md). Every iOS
+behaviour is written from the protocol document and the shared core or server
+code; the Java client is a **source-level** cross-check — at the revision this
+table was written it had been read, not executed, because the Android
+cross-test is not in the committed tree
+([verification.md](verification.md)). Line numbers refer to `main` at `fe9c26c`
+(Android v15) unless a row says otherwise; a row marked `(Android v16)` cites
+the call-v2 and video code of the post-v15 Android client instead, read in the
+merged Android tree of this branch (`0.0.22-push`, versionCode 22), not at
+`fe9c26c`. Line numbers of `clients/ios/**` refer to this branch.
+
+## Discrepancies are not corrected here
+
+The `Discrepancy` column names the numbered doc-to-code findings reported to
+the owner as "Findings from iOS-client preparation", section A. **This pull
+request corrects none of them.** The owner's agents answered RFC-0021 question
+10 on 2026-09-12 in
+[issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27): the factual
+corrections go into a **separate docs-only pull request**, with five items
+reframed rather than applied verbatim. Until that change lands, each row below
+carries the finding as a recorded waiver, and the owner's answer is the
+permalink above; the same permalink is in the body of this pull request. A row
+with nothing to waive says `none`.
+
+The delegation of technical decision authority under which the contributor
+answered the remaining questions is
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919);
+it settles technical choices and waives neither review nor evidence.
 
 ## Core bridge
 
 Rules of the Swift adapter over the C-ABI bridge
-(`clients/ios/ParanoidKit/Sources/ParanoidKit/Core/`); line numbers of
-`clients/ios/**` refer to the client branch itself.
+(`clients/ios/ParanoidKit/Sources/ParanoidKit/Core/`).
 
 | Rule | Protocol source | Core / server | Java cross-check | Discrepancy |
 | --- | --- | --- | --- | --- |
-| A reply carrying an `error` member rejects the operation with that code and changes nothing; a NULL or non-JSON reply is a native failure; `input_limit` (8 MiB state, 65536-byte request), `invalid_request` and `invalid_state` are decided by the core, never by the client | `docs/clients/core/self-service.md:97-100,170-171` | `clients/core/src/lib.rs:418-424`; `clients/ios/bridge/src/lib.rs:28-56` (`paranoid_core_command`) | `SelfServiceClient.java:55-61` (`nativeCall`) | none |
-| The next snapshot is the top-level `state` member of the reply; it is persisted before any network side effect, and an unchanged snapshot is not written again. iOS takes the member verbatim (`JsonSpan`) and compares it as text; Android compares after an `org.json` round trip. Equivalent because every core reply is serialised through `serde_json::Value` (sorted `BTreeMap` keys, `preserve_order` absent from `clients/ios/bridge/Cargo.lock`), so one state is always one text | `docs/clients/core/self-service.md:97-100` | `clients/core/src/lib.rs:220-227` and `clients/core/src/clean_service.rs:312-345` (`reply`) | `SelfServiceClient.java:69-76` (`apply`) | none |
+| A reply carrying an `error` member rejects the operation with that code and changes nothing; a NULL or non-JSON reply is a native failure; `input_limit` (8 MiB state, 65536-byte request), `invalid_request` and `invalid_state` are decided by the core, never by the client | none in `docs/protocol/` (the core API is a component contract, not a wire contract): `docs/clients/core/self-service.md:97-100,170-171` | `clients/core/src/lib.rs:418-424`; `clients/ios/bridge/src/lib.rs:28-56` (`paranoid_core_command`) | `SelfServiceClient.java:55-61` (`nativeCall`) | none |
+| The next snapshot is the top-level `state` member of the reply; it is persisted before any network side effect, and an unchanged snapshot is not written again. iOS takes the member verbatim (`JsonSpan`) and compares it as text; Android compares after an `org.json` round trip. Equivalent because every core reply is serialised through `serde_json::Value` (sorted `BTreeMap` keys, `preserve_order` absent from `clients/ios/bridge/Cargo.lock`), so one state is always one text | `docs/protocol/first-contact-v1.md:173-178` (persist before any side effect); `docs/clients/core/self-service.md:97-100` | `clients/core/src/lib.rs:220-227` and `clients/core/src/clean_service.rs:312-345` (`reply`) | `SelfServiceClient.java:69-76` (`apply`) | none |
 
 ## Registration
 
@@ -80,16 +100,26 @@ Rules of the Swift adapter over the C-ABI bridge
 | Scanner is in-app only: no external scanner, URI, upload or persisted camera frame; camera denial leaves identity untouched and offers paste | none in `docs/protocol/` (UI/privacy rule) | not applicable | `QrScanActivity.java:14,26-29,37,51-58` | none |
 | Block is orthogonal to trust: pins and history preserved, same channel on unblock; an unknown account cannot be blocked; at most 64 peers, 16 unverified | `docs/protocol/first-contact-v1.md:152,162-169` | `clients/core/src/clean_service.rs` block path (line to be added when the iOS flow is written) | `SelfServiceClient.java:95-97` | none |
 
-## Voice
+## Calls (call-v2)
+
+This client speaks [call-v2](../../protocol/call-v2.md), not voice v1.
+Everything of voice v1 that call-v2 does not change stays in force and is
+listed here against its voice-v1 line; the deltas are listed against call-v2.
 
 | Rule | Protocol source | Core / server | Java cross-check | Discrepancy |
 | --- | --- | --- | --- | --- |
-| Strict `CallV1` body: 14 exact fields, `v` 1, kinds `knock/ready/offer/answer/heartbeat/end`, per-kind nonce/seq/digest rules, `expires_ms - sent_ms` at most 45000, `end` reasons enumerated | `docs/protocol/voice-v1.md:39-61` | `clients/core/src/voice_v1.rs:26-83` | `CallController.java:36-37,278-295` | none |
+| Strict call body: the 14 v1 fields plus a boolean `video`, `v` **2**, kinds `knock/ready/offer/answer/media/heartbeat/end`, per-kind nonce/seq/digest rules, `expires_ms - sent_ms` at most 45000, `end` reasons enumerated. A 14-member v1 body is refused as `invalid_request`: there is no mixed v1/v2 call | `docs/protocol/call-v2.md` (version and fields) over `docs/protocol/voice-v1.md:39-61` | `clients/core/src/voice_v1.rs:26-83` with the v2 shape | `CallController.java:36-37,278-295` (v15, v1 shape; the v2 body is Android v16's) | none; the alpha break is call-v2's own, and this client cannot call an Android build older than v16 |
+| `kind: "media"` is informative: `seq >= 2`, both nonces, exact offer digest, empty SDP/ICE/reason, accepted only in `connecting`/`connected`, monotonic per sender, refreshes the heartbeat deadline. It grants, changes and revokes no media authority — a forged `media` cannot open a camera | `docs/protocol/call-v2.md` (new field and new kind) | `clients/core/src/voice_v1.rs` v2 validation | Android v16 `CallController` | none |
+| Video direction is always `sendrecv` in signaling; camera on/off is a track-enable flag plus a `media` control and **never** a renegotiation; trickle and renegotiation stay rejected | `docs/protocol/call-v2.md` (SDP) | not applicable (client rule) | Android v16 engine | none |
 | Receiver accepts no control dated more than 5 s in the future; expired first-seen controls are rejected; a clock jump ends the negotiation | `docs/protocol/voice-v1.md:90-92,130-131` | core validation is clock-free by design (`clients/core/src/voice_v1.rs:1,27-38`) | `CallController.java:33-34,282-283` (`CLOCK_SKEW=5_000`) | A.8: the document does not say which layer enforces it; iOS must repeat the wall-clock checks in Swift |
-| SDP: exactly one audio `m=` with Opus, DTLS-SRTP fingerprint (SHA-256, one), RTCP mux, one ICE context, at most 16 candidates of at most 512 bytes, at most 6144 bytes total; no video, data, trickle or renegotiation | `docs/protocol/voice-v1.md:55,62-68` | `clients/core/src/voice_v1.rs:84-194` (`validate_sdp`) | `CallController.java:290` (6144 bound before core) | none; iOS SDP must pass `validate_sdp` unchanged (stop gate if it does not) |
+| SDP: exactly one `m=audio` with Opus **followed by exactly one `m=video`**, both `UDP/TLS/RTP/SAVPF` and `a=sendrecv`, bundled on the audio section's single DTLS-SRTP fingerprint (SHA-256, one) and ICE context, RTCP mux required in audio and allowed once in video, each transport attribute repeated at most once with an identical value; video payload types only `H264/90000`, `VP8/90000` and the `rtx`/`red`/`ulpfec`/`flexfec-03` helpers, at least one of H.264 or VP8 mandatory; no data channel, no trickle, no renegotiation | `docs/protocol/call-v2.md` (SDP) over `docs/protocol/voice-v1.md:55,62-68` | `clients/core/src/voice_v1.rs:84-194` (`validate_sdp`) with the v2 sections | `CallController.java:290` (v15's 6144 bound, superseded by call-v2) | none; iOS SDP passes `validate_sdp` unchanged (`SdpCompatibilityTests`), and the client stops rather than patching the core if it ever does not |
+| SDP size: call-v2 raises the core bound to 12288 bytes, but a `call` control travels in one frame2 envelope whose **measured** ceiling is 10040 bytes, so this client caps a description at 9000 bytes before the core sees it and refuses rather than rewrites | `docs/protocol/call-v2.md` (SDP limit) and `docs/protocol/first-contact-v1.md:64-76` (frame2) | `clients/core/src/voice_v1.rs` (`MAX_SDP`); `clients/ios/ParanoidKit/Sources/ParanoidKit/Voice/SdpExtract.swift` (`maxSdpBytes`) | `TextEngine.java:138-144` (the line scan this cap is written from) | none; the 12288-byte figure in the document is not reachable through one envelope, which is a property of the transport, not a contradiction |
+| Codec order: H.264 (hardware, constrained baseline) first, VP8 as the mandatory fallback, applied through `setCodecPreferences` and never to finished SDP text; VP9 and AV1 exist in this libwebrtc build and are dropped in configuration | `docs/protocol/call-v2.md` (owner decision 2026-09-11) | not applicable (engine configuration) | `WebRtcAudioEngine.java:263-284` (Android v16) | none |
 | Readiness slots: at most 8, one per peer, 45 s monotonic expiry; knock limits 6 per peer per minute and 24 globally; at most one live call, busy otherwise; restart destroys slots | `docs/protocol/voice-v1.md:84-97` | not applicable (volatile controller) | `CallController.java:35,156-168,169-180` | none |
 | Deadlines: ring/negotiation 45 s, ICE recovery 10 s, heartbeat every 10 s, silence 30 s terminates, maximum call 15 min | `docs/protocol/voice-v1.md:114-117,132` | not applicable | `CallController.java:33-34` | none |
 | Call controls enqueue only while the realtime lane is connected, at most one heartbeat outstanding, fewer than 16 pending peer envelopes; enqueue failure ends the call locally | `docs/protocol/voice-v1.md:144-153` | `clients/core/src/clean_service.rs:387-398,860-866` | `CallController.java:92,102,174` (`online` gate) | none (owner finding B.5: transient online-flag loss drops `ready`; iOS debounces from the start) |
-| Consent: microphone requested only from explicit Call/Answer intent; ringing never creates media; relay/direct metadata disclosed before consent | `docs/protocol/voice-v1.md:105-112`; `docs/protocol/voice-turn-v1.md:98-103` | not applicable | `CallController.java:89-107` | none |
+| Consent: microphone requested only from explicit Call/Answer intent; ringing never creates media; relay/direct metadata disclosed before consent. The camera is opened only by an explicit toggle or a video-call intent, and a refusal downgrades the call to audio without changing any section's direction | `docs/protocol/voice-v1.md:105-112`; `docs/protocol/voice-turn-v1.md:98-103`; `docs/protocol/call-v2.md` (consent deltas) | not applicable | `CallController.java:89-107` | none |
+| Screen capture of a call: Android sets `FLAG_SECURE` on the call window alone, which removes it from screenshots, recordings and mirroring. iOS has no equivalent flag, so this client covers the video stage while `UIScreen.isCaptured`, leaves the controls reachable, and cannot refuse a screenshot or the app-switcher snapshot | none in `docs/protocol/` (platform rule; the protocol has no screen-capture clause) | not applicable | `MainActivity.java:478` (Android v16) | **Deliberate non-parity**, recorded as an open gap in [verification.md](verification.md) rather than claimed as equivalent |
+| Foreground-only delivery: no APNs/PushKit registration, no `aps-environment`, no background refresh, no CallKit; a call to a locked or closed iPhone ends in the caller's 45-second `timeout` | none in `docs/protocol/` (delivery is a platform capability; [realtime v1](../../protocol/realtime-v1.md) assumes only a live long poll) | not applicable | `TextEngine.java:86,90,158-161` (the Android foreground rule this is written from); the Android push wake of RFC-0020 has no iOS half | none; it is a documented user-visible limitation, and threat-model boundary 8 stays unused by this client |
 | TURN: `GET /v2/voice/turn` with empty body via `operation:"turn"`; strict six-field response, `v` 1, `ttl` 1200, two exact `turn:` URLs on the realm host, remaining lifetime 1000..1205 s; credentials volatile; `Cache-Control: no-store` | `docs/protocol/voice-turn-v1.md:22-30,52-67,84-94` | `clients/core/src/clean_service.rs:719`; `server/src/self_service_http.rs:113-125,451-456,507-538`; `server/src/voice_turn.rs:22,125-128,203-204` | `VoiceRelayConfig.java:17-18,65-70`; `RealtimeLoop.java:124-131` | none |
-| Authenticated 404 `turn_disabled` (or a legacy 404) permits the disclosed direct-ICE compatibility mode; every other failure ends the call without fallback | `docs/protocol/voice-turn-v1.md:131-139` | `server/src/self_service_http.rs:531-535` | `RealtimeLoop.java:124-131` and relay lane | RFC-0021 question 5 (parity is the default) |
+| Authenticated 404 `turn_disabled` (or a legacy 404) from the pinned origin permits the disclosed direct-ICE compatibility mode; a TLS failure, a timeout, a malformed 200 or a relay failure ends the call without fallback | `docs/protocol/voice-turn-v1.md:131-139` | `server/src/self_service_http.rs:531-535` | `RealtimeLoop.java:124-131` and relay lane | none; RFC-0021 question 5 was answered on 2026-09-12 by the owner's agents in [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27) and the client implements that answer |

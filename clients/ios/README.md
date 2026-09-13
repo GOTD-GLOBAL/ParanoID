@@ -19,9 +19,12 @@ the [verification table](../../docs/clients/ios/verification.md) says `SHOWN`
 with an evidence link. The Android v15 client (`main` `fe9c26c`) is the
 behavioural reference; the [component documentation](../../docs/clients/ios/README.md)
 lists the intended differences (no in-app updates, no background delivery,
-no CallKit, reinstall is a clean install). A directory or script named in this
-README exists only once its pull-request step has landed; the name alone is
-not a claim that the code exists or works.
+no CallKit, reinstall is a clean install). Java line numbers in this README are
+`fe9c26c`'s, except every `WebRtcAudioEngine.java` line and
+`MainActivity.java:478`: call-v2 video moved that code past v15, so those are
+read in this branch's merged Android tree (`0.0.22-push`). A directory or
+script named in this README exists only once its pull-request step has landed;
+the name alone is not a claim that the code exists or works.
 
 ## Bridge crate (`bridge/`)
 
@@ -634,18 +637,19 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   actually on. The red button is «Отклонить», «Завершить» or «Закрыть»
   depending on where the call is, and «К переписке» leaves it running behind
   the conversation. One Android behaviour has **no** iOS equivalent and is not
-  claimed to: `MainActivity.java:478` puts `FLAG_SECURE` on the call window —
-  and on no other window in that client — which takes it out of screenshots,
-  recordings and mirroring. iOS has no flag that gives a recorder different
-  pixels from the ones the user sees, so this screen does the part the
-  platform does allow: while `UIScreen.isCaptured` (a screen recording,
-  AirPlay, a wired mirror) the video stage is covered with «Видео скрыто: идёт
-  запись или трансляция экрана.» — covered rather than removed, so the
-  renderers stay attached to their tracks — and the controls are left
-  reachable, because hiding them would take the call away from the person on
-  it. A **screenshot** and the **app-switcher snapshot** remain outside what
-  this client can refuse; both are written down as gaps in
-  `docs/clients/ios/verification.md` rather than left to be discovered.
+  claimed to: `MainActivity.java:478`, in the merged Android tree of this
+  branch, puts `FLAG_SECURE` on the call window — and on no other window in
+  that client — which takes it out of screenshots, recordings and mirroring.
+  iOS has no flag that gives a recorder different pixels from the ones the
+  user sees, so this screen does the part the platform does allow: while
+  `UIScreen.isCaptured` (a screen recording, AirPlay, a wired mirror) the
+  video stage is covered with «Видео скрыто: идёт запись или трансляция
+  экрана.» — covered rather than removed, so the renderers stay attached to
+  their tracks — and the controls are left reachable, because hiding them
+  would take the call away from the person on it. A **screenshot** and the
+  **app-switcher snapshot** remain outside what this client can refuse; both
+  are written down as gaps in `docs/clients/ios/verification.md` rather than
+  left to be discovered.
 - The two intents live in `AppModel`, because they are `MainActivity`'s
   (`MainActivity.requestCall` → `requestMicrophone` → `queueCallIntent` →
   `completeCallIntent`, `:375-441`) and they are the consent boundary. One
@@ -1170,6 +1174,106 @@ quad at all is refused. The screenshots are of the screens themselves, so they
 do show this run's throw-away accounts; they are evidence for the owner, not a
 document to quote from.
 
+## Host Java side of the cross-checks (`java_deps.sh`)
+
+The iOS client is written from the protocol and the core, and the Android
+client is the cross-check. To compare them byte for byte the Java side has to
+run on this Mac, over the same shared Rust core, so `bash
+clients/ios/java_deps.sh` builds exactly that and nothing else. It installs
+nothing, contacts no phone and no server, and writes only under `out/`.
+
+It reads the JDK pin from [`toolchain.json`](toolchain.json) (`java_home`,
+`jdk`: OpenJDK 21.0.12.1, keg-only, not on `PATH`) and refuses any other
+`javac`/`java`; it builds the shared core as a host `cdylib`
+(`out/core-target/debug/libparanoid_client_core.dylib`) with Rust 1.98.1 so
+the JNI facade has something to load, leaving `clients/core/target/`
+untouched; and it compiles one named list of Android classes with
+`javac --release 8 -Xlint:-options`, the flags of
+[`.github/workflows/server.yml:111`](../../.github/workflows/server.yml). The
+other Android compilation of the same facade,
+`clients/android/test_voice_v8_compatibility.py:128`, shares the `--release 8`
+target but does not pass `-Xlint:-options`:
+
+| Group | Classes |
+| --- | --- |
+| Compiled for the host (16) | `CoreBridge`, `SelfServiceClient`, `SnapshotCodec`, `KeyClient`, `KeyTransport`, `PinnedTls`, `SyncCycle`, `QrCodec`, `StorageGuard`, `DialogPolicy`, `MessagePresentation`, `RealtimeLoop`, `RealtimeTransport`, `VoiceRelayConfig`, `VoiceRelayTransport`, `CallController` |
+| Left out, imports the Android framework (13) | `MainActivity`, `TextEngine`, `QrScanActivity`, `WebRtcAudioEngine`, `VoiceCallService`, `BackgroundConnectionService`, `ConnectionWatchdog`, `UpdateController`, `UpdateProvider`, `AndroidUpdateVerifier`, `CallTones`, `ContactNames`, `CrashLog` |
+| Left out, free of it, nothing on the iOS side to compare (4) | `PushService`, `UpdateClient`, `UpdateManifest`, `UpdatePolicy` |
+
+Those three groups are the whole of
+`clients/android/src/org/paranoid/text/` — thirty-three sources at this
+revision — and the run fails if a source there is named twice or not at all,
+so the table cannot quietly stop covering the directory as the Android client
+grows. Each group is then checked in its own right before a single file is
+compiled: a class in the first group carrying an `^import android` line fails
+the run, and so does one in the second that has stopped carrying it or one in
+the third that has started. That first check is the whole reason the compiled
+group runs on a desktop JVM at all — those classes reach the core through
+`CoreBridge`'s JNI entry point and touch no Android framework type.
+
+The third group is left out for a reason the `import android` line cannot
+express, so it is named rather than passed over: `PushService` extends
+Firebase's messaging service, a Google SDK that is not on this host classpath
+at all, and the iOS wake path is APNs (RFC-0020); `UpdateClient`,
+`UpdateManifest` and `UpdatePolicy` are the Android in-app APK update flow,
+which the iOS client does not have because iOS is distributed through
+TestFlight and the App Store. Nothing on the iOS side compares against any of
+the four, so compiling them here would prove nothing.
+
+Two Maven jars are needed, and their SHA-256 pins are imported from
+`clients/android/dependencies.py` so there is one set of pins rather than a
+copy: `json-20240303.jar` (the facade's `org.json`, which Android itself
+supplies at runtime) and `zxing-core-3.5.3.jar` (needed only by `QrCodec` and
+`QrCross`). They are verified before use and written to `out/host-java`;
+nothing is written under `clients/android/`, whose sources and output
+directory are read-only from here — the pins are imported with the
+interpreter's bytecode cache turned off, so not even a `__pycache__` is left
+beside `dependencies.py`. Neither jar is a dependency of the iOS
+application — it scans QR with `AVCaptureMetadataOutput` and parses JSON with
+Foundation's `JSONSerialization` — so neither appears in
+`THIRD_PARTY_NOTICES.txt`.
+
+Three host fixtures are compiled beside the facade:
+
+- `clients/android/test/VoiceCoreBridge.java`, Android's own JSON-line pipe
+  over `CoreBridge.command` and `SnapshotCodec`;
+- [`test/java/JavaCodecVector.java`](test/java/JavaCodecVector.java), which
+  seals a snapshot for Swift's `SnapshotCodec.open` to read and opens one
+  Swift's `SnapshotCodec.seal` wrote;
+- [`test/java/QrCross.java`](test/java/QrCross.java), which encodes a payload
+  to a PNG through ZXing and decodes a PNG back through ZXing.
+
+All three speak one JSON object per line on stdin and answer one per line on
+stdout, and all three keep private material off argv, off disk and out of
+every error path: a failure answers `{"fixture_error":…}`,
+`{"vector_error":…}` or `{"qr_error":…}` carrying the exception class and
+nothing else. Keys, snapshots and QR payloads travel inside the line — the
+image as base64, not as a file — so no temporary copy of a contact and no
+path of this machine is left behind. The Python cross-tests that drive them
+(`test_android_compatibility.py`, `test_qr_cross.py`) land with their own
+pull-request step; this one only builds the side they will talk to.
+
+The evidence is `out/evidence/java-host.json`: tool versions, the digest of
+the `cdylib` and of both jars, the SHA-256 of every compiled Java file, and
+the two left-out groups by name beside the count of sources the three groups
+account for. Each file also records how it stands against the Android v15
+reference `fe9c26c`. Fourteen of the sixteen facade classes and
+`VoiceCoreBridge` are `identical to reference`; `CallController` and
+`RealtimeLoop` are `advanced past reference`, because `main` moved on to
+call-v2 video and the push wake gateway after v15. The run compiles what is
+on this branch and says so per file rather than calling the whole set v15.
+Every path in the file is repository-relative and the writer refuses a text
+carrying this machine's home directory, account name or a dotted quad.
+
+```sh
+bash clients/ios/java_deps.sh   # JDK and Rust versions, the cdylib digest, out/evidence/java-host.json
+JAVA_HOME="$(python3 -c 'import json;print(json.load(open("clients/ios/toolchain.json"))["java_home"])')"
+printf '%s\n' '{"kind":"core","state":"","request":{"op":"create_identity","realm":"https://127.0.0.22:38443","pin":"'"$(printf 'a%.0s' $(seq 64))"'"}}' \
+  | "$JAVA_HOME/bin/java" -Djava.library.path=clients/ios/out/core-target/debug \
+      -cp clients/ios/out/host-java/classes:clients/ios/out/host-java/json-20240303.jar \
+      VoiceCoreBridge   # one JSON line back, with a credential in it and no fixture_error
+```
+
 ## Third-party notices (`notices.py`)
 
 Android's algorithm (`clients/android/notices.py`), rooted here at
@@ -1191,8 +1295,9 @@ here too.
 After the crates comes the pinned `WebRTC.xcframework`: its version, the
 archive and slice digests that `webrtc_dependency.py` enforces, the upstream
 source commit, and every file of `licenses/webrtc-150.7871.01/`. There is no
-ZXing, org.json or Firebase block — this client scans QR with Vision, parses
-JSON in Rust and has no push gateway — and no XcodeGen anywhere.
+ZXing, org.json or Firebase block — this client scans QR with
+`AVCaptureMetadataOutput`, parses JSON with Foundation and has no push
+gateway — and no XcodeGen anywhere.
 
 `--offline` forbids cargo the network (what CI uses, after `cargo check`
 has populated the registry); `--manifest-path` and `--output` exist for the
@@ -1230,10 +1335,12 @@ without `~/.cargo/bin` on `PATH` is fine.
    host, where the `rlib` and `bridge/tests/abi.rs` live.
 5. `build-core.sh` — the three release slices and `ParanoidCore.xcframework`.
 6. `swift test` of `ParanoidKit` (scratch path `out/spm`).
-7. The iOS ↔ Android cross-test of plan steps 33-34. It needs a JDK, which
-   this Mac does not have, so the step prints `SKIP:` with that reason and
-   the manifest records it as `skipped`. It is never a silent pass, and it
-   becomes a real run as soon as `java_deps.sh` lands and `javac` exists.
+7. `java_deps.sh` — the host Java side of the cross-test (plan step 33), a
+   real run: it takes its JDK from `toolchain.json`, so `javac` need not be on
+   `PATH`. The comparison itself (plan step 34) needs
+   `test_android_compatibility.py` and `test_qr_cross.py`, which have not
+   landed, so that step prints `SKIP:` with that reason and the manifest
+   records it as `skipped`. It is never a silent pass.
 8. `check-pinned-tls.py` and `test_realtime_transport.py` — the nine leaf
    checks and the eight socket rules, against real loopback servers.
 9. `notices.py --offline` and `test_notices.py` — the notices that then ship
@@ -1352,6 +1459,7 @@ python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bi
   --evidence-dir out/checks/realtime                                          # running lanes under the imported fault proxy (needs the two lo0 aliases)
 python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text     # the application itself in the simulator, plus the reinstall scenario
 python3 clients/ios/test_voice_sim.py --evidence-dir out/evidence/voice-sim   # two of the application calling each other on the stand, direct ICE both ways
+bash clients/ios/java_deps.sh                   # host JDK, host core cdylib and the Android facade the cross-checks talk to
 ```
 
 ## Rules that apply to every change here

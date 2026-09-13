@@ -1,23 +1,37 @@
 ---
-status: draft
+status: proposed
 owner: ios
 decision_owner: martadvix-web
 decision_deadline: 2026-10-15
 required_reviewers: []
 review_mode: closed-alpha-ai
-last_reviewed: 2026-09-11
+last_reviewed: 2026-09-13
 ---
 
 # RFC-0021: Native iOS client on the shared Rust core (track A)
 
-This proposal is a **draft**. It describes a candidate second client for
-[REQ-CLIENT-001](../product/requirements.md); nothing in it is accepted
-architecture, and no iOS build, phone result or hosted registration exists at
-the time of writing. The behavioural reference is the Android v15 client on
-`main` `fe9c26c` as delivered by the owner; owner decisions take precedence over
-every preference recorded here. The decision deadline in the front matter is a
-placeholder that will be re-set when the client pull request is opened
-(plan step 44, at least fourteen days after the review revision is ready).
+This proposal is **proposed**, not accepted: it is the client pull request's
+statement of intent for [REQ-CLIENT-001](../product/requirements.md), and
+nothing in it is accepted architecture. The decision deadline in the front
+matter is 2026-10-15, at least fourteen days after this revision is offered for
+review.
+
+What exists at the time of writing, and what does not, is stated once here and
+measured row by row in [verification.md](../clients/ios/verification.md):
+
+- the client **is built**, and its checks run on simulators and a local stand
+  (the unchanged server binary against a private PostgreSQL 16 on the build
+  Mac). Those results are `CLAIMED`;
+- **nothing has run on a physical phone**, so no row is `SHOWN`;
+- **no hosted account exists** — `hosted_registrations` is zero, and the only
+  contact this branch has had with the hosted server is a TLS handshake that
+  compared the live SubjectPublicKeyInfo digest with the pin this client
+  carries;
+- the calls this client speaks are **call-v2**, not the voice v1 this RFC was
+  first drafted against; see [call-v2 migration](#call-v2-migration).
+
+The behavioural reference is the Android client on `main`; owner decisions take
+precedence over every preference recorded here.
 
 ## Required review rationale
 
@@ -31,7 +45,7 @@ be run in a fresh context, separate from the implementing context, and recorded
 in the client pull request; it is not a human audit and does not appear in the
 reviewer list. Protected domains touched by this proposal are listed in
 [Proposed design](#proposed-design) and recorded in
-[draft ADR-0014](../decisions/0014-ios-client.md). Before real sensitive
+[proposed ADR-0014](../decisions/0014-ios-client.md). Before real sensitive
 communication, public release or any production claim, independent qualified
 human review of identity, cryptography, persistence and application security
 remains required (policy item 6).
@@ -41,13 +55,40 @@ remains required (policy item 6).
 Build a native SwiftUI iOS application that reuses the unchanged shared Rust
 client core (`clients/core`) through a thin C-ABI bridge crate, speaks exactly
 the wire contracts the Android client speaks (self-service v2, realtime v1,
-first-contact v1, voice v1, voice TURN v1) against the existing hosted alpha,
-and reproduces the Android screens and Russian UI strings for registration,
-QR contact exchange, E2EE text with receipts and E2EE voice calls while the
-application is open. No server change, no core change, no new key material
-format and no new trust anchor are proposed. The client is delivered as a
-pull request; merge, hosted registration and TestFlight distribution are owner
-decisions taken separately.
+first-contact v1, [call-v2](../protocol/call-v2.md) over voice v1, voice TURN
+v1) against the existing hosted alpha, and reproduces the Android screens and
+Russian UI strings for registration, QR contact exchange, E2EE text with
+receipts and E2EE calls with audio and camera video while the application is
+open. No server change, no core change, no new key material format and no new
+trust anchor are proposed. The client is delivered as a pull request; merge,
+hosted registration and TestFlight distribution are owner decisions taken
+separately.
+
+## call-v2 migration
+
+This RFC was drafted against [voice v1](../protocol/voice-v1.md) and one
+`m=audio` section. Before the client was written the owner requested video
+calls, `main` moved to [call-v2](../protocol/call-v2.md)
+([RFC-0019](0019-video-calls.md), proposed
+[ADR-0013](../decisions/0013-video-calls.md)), and this branch merged with it.
+The client implements call-v2 and not the superseded shape:
+
+- fifteen fields with a boolean `video`, `v: 2`, and the informative
+  `kind: "media"` camera-state control that grants no media authority;
+- two media sections, `m=audio` then `m=video`, both `a=sendrecv`, bundled on
+  the audio section's single fingerprint and ICE context;
+- H.264 first with VP8 as the mandatory fallback (owner decision 2026-09-11);
+  VP9 and AV1 are dropped in configuration, never in SDP text;
+- camera on and off is a track-enable flag plus a `media` control, **never** a
+  renegotiation;
+- the description is capped at **9000 bytes** before it reaches the core,
+  below the measured 10040-byte frame2 ceiling, and is refused rather than
+  rewritten when it does not fit. call-v2's own `MAX_SDP` of 12288 bytes is not
+  reachable through one envelope.
+
+call-v2 rejects v1 bodies, so this client cannot call an Android build older
+than v16. That is the owner-accepted alpha break call-v2 already declares, not
+a new decision taken here.
 
 ## Motivation
 
@@ -58,12 +99,13 @@ decisions taken separately.
   implementation. Preparing this client already surfaced twelve places where
   `docs/protocol`, `docs/clients` and code disagree; they are reported to the
   owner as findings, not silently resolved (open question 10).
-- The owner confirmed on 2026-09-11 (Telegram, relayed by the contributor; no
-  permalink retrieved, therefore not approval evidence) that the contributor
-  works as a full developer delivering pull requests only, that documentation
-  discrepancies may be corrected in a separate docs-only pull request, and that
-  test accounts on the hosted alpha are permitted within a joint test. Live
-  actions still require an explicit per-action owner "go".
+- The owner delegated technical decision authority to the contributor and
+  recorded it on GitHub:
+  [issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919).
+  That delegation lets the contributor answer the technical open questions
+  below; it does **not** waive independent review, does not turn a claim into
+  evidence, and does not accept an ADR. Live actions still require an explicit
+  per-action owner "go".
 
 ## Goals and non-goals
 
@@ -73,7 +115,8 @@ decisions taken separately.
   core decides, the platform only stores, transports and renders.
 - Registration, own-ID QR, scanning and pasting a `paranoid-contact-v2`
   contact, fingerprint confirmation, E2EE text with one/two check receipts,
-  block/unblock, and foreground voice calls with mute/speaker.
+  block/unblock, and foreground call-v2 calls with mute, speaker and the
+  camera controls.
 - Pinned TLS to the same server leaf SPKI as Android, evaluated on
   `Security.framework` with the same nine checks as `PinnedTls.java`.
 - Storage on the device only: Keychain-wrapped AES key plus a Data
@@ -99,8 +142,9 @@ decisions taken separately.
 - TLS pin or certificate rotation before the current leaf expires on
   2026-12-12 after the same-key renewal of 2026-09-13; rotating the key itself
   remains a deploy-trust decision for a separate RFC (question 7).
-- Media attachments (images, files, video, voice messages): not present on
-  Android either (REQ-MSG-001 is draft); track C.
+- Media **attachments** (images, files, recorded video, voice messages): not
+  present on Android either (REQ-MSG-001 is draft); track C. Camera video
+  inside a call is in scope — that is call-v2, not an attachment.
 - Multi-device, identity recovery, a second realm, blockchain naming, server
   selection UX, Secure Enclave wrapping of the AES key, Bluetooth device
   route callbacks, a paid macOS CI runner.
@@ -118,7 +162,8 @@ SwiftUI app (clients/ios/App)
   -> C-ABI static library clients/ios/bridge (paranoid_core_command / paranoid_core_free)
   -> paranoid-client-core (rlib, unchanged) -> paranoid-key-protocol (unchanged)
 Network: URLSession + pinned-leaf delegate -> https://<realm>:38443 (self-service v2 router)
-Voice: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP/Opus; relay only via /v2/voice/turn
+Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
+  H.264/VP8 camera video, one publication per call; relay only via /v2/voice/turn
 ```
 
 ### Protected domains touched (recorded in ADR-0014)
@@ -199,7 +244,7 @@ against its smoke test scenarios.
 
 ## Alternatives
 
-Compared in [draft ADR-0014](../decisions/0014-ios-client.md): the Kotlin
+Compared in [proposed ADR-0014](../decisions/0014-ios-client.md): the Kotlin
 Multiplatform scaffold from closed PR #1 (abandoned), UniFFI-generated
 bindings (excessive for one function), a pure-Swift reimplementation of the
 core (would duplicate a protected domain), the selected thin C-ABI bridge, and
@@ -219,8 +264,12 @@ XcodeGen for project generation (rejected: an additional unpinned binary).
 - Export compliance: the app ships non-standard E2EE (vodozemac/Olm);
   `ITSAppUsesNonExemptEncryption` and the annual self-classification report are
   an owner decision before the first upload (question 8).
-- A dedicated threat delta (`docs/security/ios-client-threats.md`) is written
-  with the client pull request, not in this skeleton.
+- Screen capture is **not** parity with Android: `FLAG_SECURE` has no iOS
+  equivalent, so the client covers the video stage while `UIScreen.isCaptured`
+  reports a recording, mirror or AirPlay, and a screenshot and the app-switcher
+  snapshot remain open gaps.
+- The dedicated threat delta is
+  [docs/security/ios-client-threats.md](../security/ios-client-threats.md).
 
 ## Compatibility and migration
 
@@ -243,10 +292,24 @@ XcodeGen for project generation (rejected: an additional unpinned binary).
   build Mac).
 - Build outputs, logs and evidence JSON live under `clients/ios/out/`
   (ignored); durable evidence goes to `docs/project/evidence/ios-client-<date>/`.
-- CI on Ubuntu covers the bridge crate, lock-file drift, dependency digests,
-  notices and the boundary gate; an iOS build in CI needs a macOS runner
-  (question 6). The existing informational-red `legacy-client-history` job is
-  unrelated and stays as it is.
+- **One Ubuntu job lands with this pull request, and has not run yet.**
+  `.github/workflows/ios.yml` adds `ios-static`: the iOS-target `cargo check`
+  of the bridge and the unchanged core, bridge clippy and host tests,
+  lock-file drift, the toolchain and WebRTC pins, the two source-only
+  contracts, the full notices run, and the boundary gate on pull requests.
+  `server.yml` is not touched, and the existing informational-red
+  `legacy-client-history` job is unrelated and stays as it is. `docs.yml`
+  gains exactly two lines: lychee `--exclude` entries for
+  `.../issues/27` and `.../issues/27#issuecomment-5651949919`, which this
+  branch is the first to cite and which lychee cannot resolve in a private
+  repository — the same treatment the surrounding list already gives issues 16
+  and 19. The workflow's first execution is the pull request that carries it,
+  so no run can be linked here; every check in it was run locally on the
+  pinned build Mac with exit 0, and the verification table records those local
+  runs. The one `run` line that is runner setup rather than a check,
+  `rustup toolchain install`, was not re-run on a Mac that already pins
+  1.98.1. An iOS *build* in CI would still need a macOS runner, which question
+  6 answers with "no".
 - The app logs no snapshot bytes, no credentials and no plaintext.
 
 ## Validation plan
@@ -255,11 +318,30 @@ The requirement-to-test mapping with honest `NOT RUN` rows is
 [docs/clients/ios/verification.md](../clients/ios/verification.md); the
 rule-to-source table used to write and review behaviour is
 [docs/clients/ios/protocol-sources.md](../clients/ios/protocol-sources.md).
-Acceptance for delivered behaviour follows policy item 4: simulator and
-dependency builds are recorded as `CLAIMED`, physical-phone results as
-`SHOWN`, and missing phone evidence stays `NOT RUN`. Two joint tests with the
-owner (text and QR both ways; voice both ways with the apps open) are the only
-live tests, both on a real iPhone, both after an explicit owner "go".
+Acceptance for delivered behaviour follows policy item 4: simulator, local
+stand and dependency results are recorded as `CLAIMED`, physical-phone results
+as `SHOWN`, and missing phone evidence stays `NOT RUN`. A simulator never
+substitutes for a phone.
+
+What has been run, in one sentence each:
+
+- two clients exchange text, receipts, QR contacts and block/unblock on a local
+  stand, including the fault scenarios and a reinstall — `CLAIMED`;
+- two simulators place and answer call-v2 calls in both directions over direct
+  ICE, about 2300 RTP packets per side per call — `CLAIMED`;
+- the pinned-TLS leaf checks, the storage commit and fault matrix, the call
+  state machine and the TURN lane run offline — `CLAIMED`;
+- the Android cross-test did not run: its host side is not in the committed
+  tree at this revision — `NOT RUN`;
+- everything that needs a device — Data Protection classes, a real camera, a
+  real network, a locked screen, a screen recording, a hosted account, a
+  TestFlight build — `NOT RUN`.
+
+Two joint tests with the owner are the only live tests, both on a real iPhone,
+both after an explicit owner "go", and both written in advance with every
+`Result` column reading `NOT RUN`:
+[stage 1, text](../project/evidence/ios-client-20260913/stage1-text.md) and
+[stage 2, calls](../project/evidence/ios-client-20260913/stage2-voice.md).
 
 ## Closed-alpha scope (policy item 1)
 
@@ -267,25 +349,30 @@ live tests, both on a real iPhone, both after an explicit owner "go".
   exchange in both directions, E2EE text with receipts, E2EE voice calls
   while both applications are open.
 - Devices: the contributor's iPhone (TestFlight internal group) and the
-  owner's Android phone running the build he chooses (recorded in evidence).
+  owner's Android phone (recorded in evidence). For stage 2 that Android build
+  must be **v16 or later**: call-v2 rejects v1 call bodies, so an older build
+  can exchange text with this client but cannot call it.
 - Data: synthetic test messages only; no real or sensitive communication.
 - Environment: the existing hosted alpha `https://157.180.49.125:38443` with
   the retained pin, and TestFlight internal testing; no other endpoint.
 - Human risk owner: `martadvix-web`.
-- Permanent owner approval of exactly this scope: **pending** (permalink to be
-  recorded here before the ADR can move to `proposed`; a blanket instruction to
-  proceed is not scope approval).
+- Permanent owner approval of exactly this scope: **pending**. The recorded
+  [delegation](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919)
+  gives the contributor technical decision authority; it is not scope approval
+  and not acceptance of this ADR, and no live action follows from it.
 - Independent AI review (policy item 2): to be run in a fresh context on the
   exact review revision; reviewer model, revision, findings and resolutions
-  will be recorded in the client pull request.
+  will be recorded in the client pull request. It is not a human audit.
 
 ## Open questions
 
-Answers recorded on 2026-09-13 come from the contributor (Yaroslav) acting under
-the owner's delegation; the delegation itself is still to be recorded on GitHub,
-and until that permalink exists these answers are working decisions, not the
-governance acceptance required by
-[the documentation policy](../governance/documentation-policy.md).
+Answers recorded on 2026-09-13 come from the contributor acting under the
+owner's delegation of technical decision authority, recorded at
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919).
+The delegation makes these technical decisions; it does not waive independent
+review, does not replace evidence, and is not the ADR acceptance
+[the documentation policy](../governance/documentation-policy.md) requires from
+the human decision owner.
 
 | # | Question | Status |
 | --- | --- | --- |
@@ -304,17 +391,24 @@ client is the Android build on `main`.
 
 ## Decision and follow-up
 
-- Disposition: open (draft); this RFC moves to `proposed` only with a
-  confirmed decision deadline, the validation plan above and the closed-alpha
-  scope approval permalink.
+- Disposition: open (`proposed`); the decision deadline is 2026-10-15. Moving
+  further requires the closed-alpha scope approval permalink, the independent
+  AI review of the exact review revision, and the phone evidence the validation
+  plan names.
 - Decision-owner approval permalink: pending.
-- Delegation evidence permalink, if applicable: not applicable.
+- Delegation evidence permalink:
+  <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
+  (technical decision authority only; not scope approval, not ADR acceptance).
 - Required-review evidence permalinks: independent AI review pending (recorded
   separately from human reviewers).
-- Resulting ADR: [draft ADR-0014](../decisions/0014-ios-client.md).
+- Resulting ADR: [proposed ADR-0014](../decisions/0014-ios-client.md).
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: not applicable.
 - Implementation issues: the findings issue "Findings from iOS-client
-  preparation" (to be opened; number recorded here once it exists); the client
-  pull request; the docs-only pull request if question 10 allows it.
+  preparation" is
+  [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27), where the
+  owner's agents answered questions 5 and 10 on 2026-09-12 and where the
+  delegation was recorded on 2026-09-13; this client pull request; and the
+  docs-only pull request question 10 allows, which is a separate change and is
+  **not** part of this one.

@@ -147,13 +147,25 @@ server transport integrity is not a production secure-update claim.
 ## Trust boundaries to define
 
 1. Recovery seed to device key derivation.
-2. Device to local secure storage and operating system services.
+2. Device to local secure storage and operating system services. The candidate
+   iOS shape of this boundary — Keychain
+   (`kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`), a Data Protection file,
+   the AES-256-GCM sealed snapshot and the install marker that replaces
+   Android's key-and-file exclusive-or — is in
+   [the iOS client delta](ios-client-threats.md#storage-boundary-threat-model-boundary-2).
 3. Client to home server.
 4. Server to federation peer.
 5. Client or service to blockchain RPC and naming contracts.
 6. Core system to plugin, bot, CRM, and AI services.
 7. Server to database, object storage, backup, update, and observability systems.
-8. Mobile client to platform push notification services.
+8. Mobile client to platform push notification services. Used by the Android
+   client through the [push wake gateway](push-wake-threats.md)
+   ([RFC-0020](../rfcs/0020-push-wake.md)); **not used by the candidate iOS
+   client (track A)**, which registers no APNs or PushKit token and declares no
+   `aps-environment`, so it introduces no new observer of delivery timing and
+   delivers only while the application is open. The consequences of that choice
+   are in
+   [the iOS client delta](ios-client-threats.md#foreground-only-delivery-threat-model-boundary-8).
 
 ## Priority discovery questions
 
@@ -206,6 +218,20 @@ volatile credentials, metadata, relay resource and peer limits, credential
 residual authority and secret/package boundaries. Offline builds pass; required
 retained-allocation expiry and ACL packet tests remain NOT RUN after a platform
 interruption. Public deployment is not authorized by local task scope.
+
+## iOS client delta — 2026-09-13
+
+[The iOS client delta](ios-client-threats.md) records the platform boundaries a
+second client adds without changing a wire contract: Keychain and Data
+Protection with the install-marker reinstall rule, leaf-SPKI evaluation on
+`Security.framework` instead of system trust, the digest-pinned WebRTC binary,
+foreground-only delivery that leaves boundary 8 unused, Apple as a TestFlight
+installation observer, and the closed export-compliance gate. It also names
+what a simulator cannot observe (Data Protection classes, a real camera, a real
+recording, a locked screen) as `NOT RUN`. Proposed under
+[RFC-0021](../rfcs/0021-ios-client.md) and
+[ADR-0014](../decisions/0014-ios-client.md); no physical-device evidence and no
+independent human review exist.
 
 ## One-host coordinator work — 2026-09-10
 

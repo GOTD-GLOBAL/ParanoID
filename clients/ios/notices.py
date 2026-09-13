@@ -14,7 +14,8 @@ filtered for aarch64-apple-ios, so it carries whatever the shared core pulls
 in (call-v2 video calls included); the WebRTC notices are the Apple
 xcframework's (licenses/webrtc-150.7871.01/, pinned by webrtc_dependency.py);
 and there is no ZXing, no org.json and no Firebase, because this client scans
-QR with Vision, parses JSON in Rust and has no push gateway. jni stays in the
+QR with AVCaptureMetadataOutput, parses JSON with Foundation and has no push
+gateway. jni stays in the
 graph: the core depends on it unconditionally, so its notices ship here too.
 
 Usage: python3 clients/ios/notices.py [--offline] [--manifest-path P]

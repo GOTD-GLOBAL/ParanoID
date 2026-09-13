@@ -1,0 +1,678 @@
+{
+  "generated": "2026-09-13T14:34Z",
+  "branch": "feat/ios-client-20260911",
+  "head": "c2fdcc05d242a50f57be72e9947dfe5edeed1249",
+  "merge_base_with_main": "2cdb850ca532fd281986e792efb164e150c0a30c",
+  "hosted_registrations": 0,
+  "committed": false,
+  "note": "The files below are the raw output of the runs this branch records. They stay under clients/ios/out/, which is git-ignored, because they carry absolute paths of the build Mac, loopback addresses and, in the screenshots, contact fingerprints and account identifiers. What travels into the repository is this catalogue: path, size, SHA-256 and the time the file was produced. Re-running the command in the README table reproduces the run, not the digest.",
+  "artifacts": [
+    {
+      "path": "clients/ios/out/evidence/build-manifest.json",
+      "group": "build",
+      "what": "build.sh manifest: every gate with status and seconds, the toolchain versions, the bundle identity and the digests of the built binaries",
+      "bytes": 8052,
+      "sha256": "40e9d377dbfcd455633bc35069829743c5e8cb6a2e09507f44f1a3451f59f7db",
+      "produced": "2026-09-13T14:31Z"
+    },
+    {
+      "path": "clients/ios/out/logs/build-steps.tsv",
+      "group": "build",
+      "what": "the same run as a tab-separated step log (name, status, seconds, command)",
+      "bytes": 2106,
+      "sha256": "6a569a5156e99cd41c86943f01ed9962ac484c403eb2ffda992e3b3a0689b32d",
+      "produced": "2026-09-13T14:31Z"
+    },
+    {
+      "path": "clients/ios/out/step47/build-sh.log",
+      "group": "build",
+      "what": "full console output of the build.sh run of step 47",
+      "bytes": 351569,
+      "sha256": "1345f2371aacd9876878fa0c3cf1653fcf4cce7412ae0906165332886cbab64e",
+      "produced": "2026-09-13T14:34Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/bridge-hashes.json",
+      "group": "build",
+      "what": "build-core.sh manifest: the three release slices, the xcframework, the header digests and the bridge lock digest",
+      "bytes": 2125,
+      "sha256": "6833e73d3cd9b989a7a02b7106fb6e2a887942caf9896d04c2e82548ea1614bb",
+      "produced": "2026-09-13T14:29Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/bridge.json",
+      "group": "build",
+      "what": "plan steps 5-6, kept as it was written: the first compile of the unchanged core and key-protocol for aarch64-apple-ios, with the red-zone stop gate not tripped",
+      "bytes": 4482,
+      "sha256": "e01ada5545552a524539645f93fb7e895be88aeb2039582826fbee902d672ca5",
+      "produced": "2026-09-11T20:24Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/toolchain.json",
+      "group": "build",
+      "what": "test_toolchain.py: pinned versus observed toolchain, with the members it could not observe listed as skipped",
+      "bytes": 1009,
+      "sha256": "96e0f9661548482c044b9032faba4111e09884dc3f5119f3d9354ad5e030703b",
+      "produced": "2026-09-13T14:29Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/app-bundle.json",
+      "group": "build",
+      "what": "test_app_bundle.py: the unsigned Release bundle taken apart (Info.plist, embedded WebRTC slice, notices, no simulator slice)",
+      "bytes": 3585,
+      "sha256": "dbda113125710f9ab83fdbf88a94a95ce297bc995cd49e04dca9a3b1a7a6b760",
+      "produced": "2026-09-13T14:31Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/pinned-tls.json",
+      "group": "harness",
+      "what": "check-pinned-tls.py: nine leaf cases against real loopback servers, what was rejected before any HTTP request, and the TLS floor",
+      "bytes": 2366,
+      "sha256": "1e0c3fb4975717bc25a321eed504c6b680bc818a8a4edd7bb5ca0c3ad49e195a",
+      "produced": "2026-09-13T14:03Z"
+    },
+    {
+      "path": "clients/ios/out/checks/transport/realtime-transport.json",
+      "group": "harness",
+      "what": "test_realtime_transport.py: the eight transport rules against the fake server, with the server-side record of connections, resets and idle closes",
+      "bytes": 22680,
+      "sha256": "6050eedc28837f88d3af851c19297b317d9063fe25327ea5b2dd1c774d94f3ae",
+      "produced": "2026-09-13T14:30Z"
+    },
+    {
+      "path": "clients/ios/out/checks/voice-lane/voice-relay-lane.json",
+      "group": "harness",
+      "what": "test_voice_relay_lane.py: seven TURN-lane scenarios over a pinned loopback socket, with nine client signatures verified by the stub",
+      "bytes": 9213,
+      "sha256": "3c46aa18e8007b6e13abd84cf843c44188a53d87b5d844e66c2ec8d323cf9d89",
+      "produced": "2026-09-13T08:38Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/qr-20260912/qr-round-trip.json",
+      "group": "harness",
+      "what": "QR round trip: the core contact through the generator and back byte-identically, with the size limits and what was not run",
+      "bytes": 1902,
+      "sha256": "5846ecff3a774f51d7b7aa363ddd76b704033509355d2b86466ef6e7ba800319",
+      "produced": "2026-09-12T19:07Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/storage-20260912/summary.json",
+      "group": "harness",
+      "what": "storage commit order and the injected-fault matrix",
+      "bytes": 3480,
+      "sha256": "939158ba3ad406eae4f987e0969b20326fc7ddef1dc292b5f2b7777fa81ea19f",
+      "produced": "2026-09-12T07:22Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/snapshot-codec-20260912/run.json",
+      "group": "harness",
+      "what": "snapshot codec run: what the state file holds and how it is read back",
+      "bytes": 1762,
+      "sha256": "646236f70904c5bb5d823e65e2d05a55c2b408fd6e83f9e2deff1c75014fab65",
+      "produced": "2026-09-12T06:59Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/swift-corebridge.json",
+      "group": "harness",
+      "what": "the Swift side of the C-ABI bridge measured against the core",
+      "bytes": 2766,
+      "sha256": "2927d3bfc97cb3fb4f8bb239dfa7baf6859b788c4b4a9b927e75b0950ed7d7e1",
+      "produced": "2026-09-11T20:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sdp-spike.json",
+      "group": "harness",
+      "what": "the libwebrtc offer/answer spike the call-v2 validator was written against",
+      "bytes": 12200,
+      "sha256": "07aa35b8cfa9419d3763efa4fd2efcf07da1e3e02af4a1ddcabd6ed5473e0923",
+      "produced": "2026-09-13T14:30Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/java-host.json",
+      "group": "harness",
+      "what": "java_deps.sh: the Java facade compiled against the shared core for the cross-check, with the Android reference commit and the classes that are Android-only",
+      "bytes": 6039,
+      "sha256": "956a9bcc24f24baebe86c352e8ea6b9c50ca66ab25953056ebb5b42411ae0896",
+      "produced": "2026-09-13T14:29Z"
+    },
+    {
+      "path": "clients/ios/out/checks/registration/registration-result.json",
+      "group": "stand",
+      "what": "registration on the local stand: create_identity, upgrade_v2, the commits before any request, enrollment.mode and the 64-digit fingerprint",
+      "bytes": 1670,
+      "sha256": "66afb28e8c5c5099c67aace412e1e753f9f5b6dead5994bde4cbb5d0d5cc9693",
+      "produced": "2026-09-12T18:19Z"
+    },
+    {
+      "path": "clients/ios/out/checks/local-text/clean-fixture-result.json",
+      "group": "stand",
+      "what": "two clients on one stand: text both ways, receipts, the exact retry of a lost answer, block/unblock and the ciphertext check of every stored row",
+      "bytes": 4556,
+      "sha256": "b91829f9a7775f6492c7f20b5af84a9af0755739b38f2d9410adcaa1e18305aa",
+      "produced": "2026-09-12T18:38Z"
+    },
+    {
+      "path": "clients/ios/out/checks/step27-longpoll-smoke/clean-fixture-result.json",
+      "group": "stand",
+      "what": "the same scenario with the 300-second long-poll across the idle, socket-lifetime and renewal bounds",
+      "bytes": 4553,
+      "sha256": "d96994a28312507b89e4efadf43035128d5f4c4f3ee1252168a8fe9e8696ad36",
+      "produced": "2026-09-12T18:40Z"
+    },
+    {
+      "path": "clients/ios/out/checks/realtime/realtime-fixture-result.json",
+      "group": "stand",
+      "what": "test_realtime.py: injected transport faults through the fault proxy, with the request counts per path and the latency samples",
+      "bytes": 4373,
+      "sha256": "311566a9a8e597e3f5b9b187b73093abf5091a80ea51e08901ca67a1c1f8c60c",
+      "produced": "2026-09-12T19:17Z"
+    },
+    {
+      "path": "clients/ios/out/checks/realtime/latency-samples.json",
+      "group": "stand",
+      "what": "the individual latency samples of that run",
+      "bytes": 2794,
+      "sha256": "e96ebba8166f70ca28fdfbbbaf66702857fb8036fe1d44aa0bc6cdf61b54bf2e",
+      "produced": "2026-09-12T19:17Z"
+    },
+    {
+      "path": "clients/ios/out/checks/realtime/network-timings.json",
+      "group": "stand",
+      "what": "the network timings of that run",
+      "bytes": 16521,
+      "sha256": "34f538d7aa4b41b3bbd90d1385daf312d71a23577c6cfa6b08af1c21a33fb42c",
+      "produced": "2026-09-12T19:17Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/sim-text-result.json",
+      "group": "simulator",
+      "what": "test_sim_text.py: the application itself on one simulator — identity, QR paste, pairing, text, receipts, block/unblock, contact names, reinstall",
+      "bytes": 2556,
+      "sha256": "971bc6f48a1dcf2a6b2b2a09ad3c0414fd7efe0768a1787c386d64cc030f0570",
+      "produced": "2026-09-13T12:12Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/voice-sim-result.json",
+      "group": "simulator",
+      "what": "test_voice_sim.py: two simulators, two call-v2 calls one each way, both sides connected over direct ICE with the RTP counters, the held time and the heartbeat envelopes; screen lock recorded NOT RUN with its reason",
+      "bytes": 5171,
+      "sha256": "0ba4005c5a24338666a7fff919a673f3b4b0d0e65eb30de9476b80cd3e072f09",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/hosted-preflight.json",
+      "group": "hosted",
+      "what": "one TLS handshake to the hosted alpha and nothing else: the live SubjectPublicKeyInfo digest equals the pin this client carries, the renewed leaf is valid to 2026-12-12, and hosted_registrations is zero",
+      "bytes": 615,
+      "sha256": "6fea521e5b880d34c7e55bcdeb4400fbb4a6848e99337701193b756398255b03",
+      "produced": "2026-09-13T08:06Z"
+    },
+    {
+      "path": "clients/ios/out/ci/step45-workflow-commands.log",
+      "group": "ci",
+      "what": "every run command of .github/workflows/ios.yml executed locally on the build Mac, in workflow order",
+      "bytes": 839,
+      "sha256": "e901781e2c2d11c104aa1eff37781d55106755ef8575cb17a8b07dadc26991f7",
+      "produced": "2026-09-13T13:39Z"
+    },
+    {
+      "path": "clients/ios/out/ci/step45-verification.log",
+      "group": "ci",
+      "what": "the verification pass of that workflow: YAML parse, action pin, path filters, no always-skipping step",
+      "bytes": 11996,
+      "sha256": "3f2c1da6580af99f6a64b48c699107a9c9ceb42463f0b12f8591b06a53f92a4e",
+      "produced": "2026-09-13T13:39Z"
+    },
+    {
+      "path": "clients/ios/out/ci/toolchain-ci.json",
+      "group": "ci",
+      "what": "test_toolchain.py --no-xcode, the form the Ubuntu job runs",
+      "bytes": 868,
+      "sha256": "362a09ff38886768d58d24a6ca97449f323ccacc70fe9983ffe66bc8e88b6077",
+      "produced": "2026-09-13T13:28Z"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-01-welcome.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 01: welcome",
+      "bytes": 191830,
+      "sha256": "d0f6458f8cd899b80ac8408c020d61ec9f28978b00a2ea95795669862f70098c",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-02-identity.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 02: identity",
+      "bytes": 198479,
+      "sha256": "ff8a1a7506cfb37fd3386cc4748c8c63cfd5aaf2044e65ff05e99eb8823ec64f",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-03-confirm.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 03: confirm",
+      "bytes": 149737,
+      "sha256": "18db2d914e34e92f09701e1b7a20b5aa3fe728c7208e6b57023cfef04ddeb98a",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-04-contacts.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 04: contacts",
+      "bytes": 164213,
+      "sha256": "c16e3e2ae20101c01333906d5a32ec00c687e5f6408188284536828118e3bd0c",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-05-online.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 05: online",
+      "bytes": 164213,
+      "sha256": "c16e3e2ae20101c01333906d5a32ec00c687e5f6408188284536828118e3bd0c",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-10-caller-prompt.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 10: caller prompt",
+      "bytes": 285367,
+      "sha256": "e1595e83960a58e5950f125f6debaa37fee16f234128b6918ba3d39e572c956e",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-11-caller-outgoing.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 11: caller outgoing",
+      "bytes": 198128,
+      "sha256": "1e6a78a323cf6b189930254c60dcaeebff75c4fbe29751c116f8aaf7618c00a9",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-12-caller-connected.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 12: caller connected",
+      "bytes": 198128,
+      "sha256": "1e6a78a323cf6b189930254c60dcaeebff75c4fbe29751c116f8aaf7618c00a9",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-13-caller-held.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 13: caller held",
+      "bytes": 198849,
+      "sha256": "43413d0cc2a6fe46489675a24ee267efdff9dc1d12497784319b018e5272beff",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-14-caller-ended.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 14: caller ended",
+      "bytes": 185769,
+      "sha256": "e8b7a269b7d18ac55ea99d95eca099cf355aebfe1ad20ea0646f7a70d4d1b2b7",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-15-mid-call.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 15: mid call",
+      "bytes": 198375,
+      "sha256": "9bbfe0668d859a9b45a129e53c5e92831e58fabee15362b51408a1466b80aa2e",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-21-callee-incoming.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 21: callee incoming",
+      "bytes": 241927,
+      "sha256": "976c7cb60ea2e7db8350b38802782982a0e6595c904c26c9a1511cc3fe10674c",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-22-callee-connected.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 22: callee connected",
+      "bytes": 197994,
+      "sha256": "24279ec715de37dd31b71bdbcc68e8f6ffefa96e2f05a94b45d00c8c9d6ad9e1",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-23-callee-held.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 23: callee held",
+      "bytes": 198103,
+      "sha256": "e79b2aa0de9882a2ffc59590bc2f424e23061f099da6d965c902ae5c80496508",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-24-callee-ended.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 24: callee ended",
+      "bytes": 185283,
+      "sha256": "5ab05e3ae59a6e2eed2a691dc0685f630268a19c0b62cc16396937a57478b37a",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/a-25-mid-call.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17 Pro, frame 25: mid call",
+      "bytes": 197994,
+      "sha256": "24279ec715de37dd31b71bdbcc68e8f6ffefa96e2f05a94b45d00c8c9d6ad9e1",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-01-welcome.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 01: welcome",
+      "bytes": 184807,
+      "sha256": "67eeb052634c71861d34eb6d01d525777cbfdb775d18cb32401faef3724677f7",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-02-identity.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 02: identity",
+      "bytes": 190537,
+      "sha256": "e0641b6b04d7c6ed161c4b63557b1c02767bdef57f18a39d913c7402fc09de4a",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-03-confirm.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 03: confirm",
+      "bytes": 139652,
+      "sha256": "0b082aa947d7fd8746e194d7ad94bd4622f2bf7aeba38ed22d8af1a4d1a52223",
+      "produced": "2026-09-13T12:13Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-04-contacts.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 04: contacts",
+      "bytes": 156044,
+      "sha256": "155b0008028b77fe38ad79ec4986f5ffb75c42b9a77aed5c0f8d6e04a759b1d9",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-05-online.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 05: online",
+      "bytes": 156044,
+      "sha256": "155b0008028b77fe38ad79ec4986f5ffb75c42b9a77aed5c0f8d6e04a759b1d9",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-11-callee-incoming.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 11: callee incoming",
+      "bytes": 234358,
+      "sha256": "0412de2377f8ac91ebd6f40363b1e8aa3029a00b651e271603d009594f27b8a5",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-12-callee-connected.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 12: callee connected",
+      "bytes": 191376,
+      "sha256": "469f89387eedf1c2c05d92f6ec8fd5149b9f8cd7b1406d70571101a7ef699efd",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-13-callee-held.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 13: callee held",
+      "bytes": 192171,
+      "sha256": "db1ec6885beae754ffc45816a68f3dec7016af73d8ce43b058cad5bb14f45ff0",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-14-callee-ended.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 14: callee ended",
+      "bytes": 177380,
+      "sha256": "15c4432d9c6aa00dace8e918d84e39296fe6696b925b0efdbd8e4ff1d0c361ac",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-15-mid-call.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 15: mid call",
+      "bytes": 191376,
+      "sha256": "469f89387eedf1c2c05d92f6ec8fd5149b9f8cd7b1406d70571101a7ef699efd",
+      "produced": "2026-09-13T12:14Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-20-caller-prompt.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 20: caller prompt",
+      "bytes": 274149,
+      "sha256": "8b2c8fd2ed48804ec407a45d458b0e6e006c1ef168051a8cdcbc33bbe085fe6e",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-21-caller-outgoing.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 21: caller outgoing",
+      "bytes": 191230,
+      "sha256": "2e699ff99557d5e2fe03fcf04dade9c663b0ac370032577570dee6fae34a32cb",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-22-caller-connected.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 22: caller connected",
+      "bytes": 191230,
+      "sha256": "2e699ff99557d5e2fe03fcf04dade9c663b0ac370032577570dee6fae34a32cb",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-23-caller-held.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 23: caller held",
+      "bytes": 192010,
+      "sha256": "085d1a0ee563b74dc48fab5c56995575c4f7b304d2166deba724633a45763f0c",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-24-caller-ended.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 24: caller ended",
+      "bytes": 177258,
+      "sha256": "18a95ab387546d53f45496ea61a7aed09ebe086729500611f91967191d51c881",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/voice-sim/b-25-mid-call.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/voice-sim",
+      "what": "step 43, two simulators on one call: side a is iPhone 17 Pro, side b is iPhone 17e — iPhone 17e, frame 25: mid call",
+      "bytes": 191479,
+      "sha256": "b7ec4e87da858c788470206c2027922b54813fce21412938e0027699d192b144",
+      "produced": "2026-09-13T12:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/01-welcome.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 01: welcome",
+      "bytes": 191850,
+      "sha256": "b8891d1ed7bceac085bb953696cf7fa68837292ea2fd872f977c5ff3b25ef3d4",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/02-identity.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 02: identity",
+      "bytes": 199176,
+      "sha256": "7e088e0f06a06bd86b8bdfcd5519884896378352a6b7caa17d3ea33a13aa8f20",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/03-add-contact.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 03: add contact",
+      "bytes": 339310,
+      "sha256": "66b672fbd47d7897329e9929fe067f73e8bf6c6017ed65b0e2191901f9222d8e",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/04-paste.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 04: paste",
+      "bytes": 271902,
+      "sha256": "219a59c487f6e5129fdd70cf2c983bbbe670c5289761ac5de8b05a5c5094a476",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/05-confirm.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 05: confirm",
+      "bytes": 150248,
+      "sha256": "e6f19e406538211d5021373a1d1c32c85f192c936cae44db9b12944dfc94617e",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/06-contacts.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 06: contacts",
+      "bytes": 165728,
+      "sha256": "4b2abfe752da9557fb5b0d7b8d8cabb21a1ded8022fb3a818f568749b67de536",
+      "produced": "2026-09-13T12:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/07-chat.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 07: chat",
+      "bytes": 162496,
+      "sha256": "0d81f59360723f8f27d06f6d70d75c08ce8114b121b2298a194993b9c2e2494c",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/08-sent.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 08: sent",
+      "bytes": 236744,
+      "sha256": "164c539e7ad4c06cd3d55e1bfc18c5eafa6152cda67f434916f41f0348f8d8d7",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/09-delivered.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 09: delivered",
+      "bytes": 243023,
+      "sha256": "4b8310e1ccefa3b3da64bbe620c8bbce18ce0464f7bb8c9cfef84fdab6e661b5",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/10-double-tap.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 10: double tap",
+      "bytes": 258403,
+      "sha256": "cceb56ebc163ae8c46b6a4bbeb7a7a2e669a27fb1007dc07abc34826502df26b",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/11-details.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 11: details",
+      "bytes": 242730,
+      "sha256": "6e0ec0525c3b891c14b8eae7559fcc9bf91a7efb53a1f0b4260c5a1813ad9429",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/12-blocked.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 12: blocked",
+      "bytes": 221819,
+      "sha256": "3a13888b1b243a7321819ab74353b67a353a743c424adb0a20959cde7edc5545",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/13-unblocked.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 13: unblocked",
+      "bytes": 258530,
+      "sha256": "58d22c878e80a2d549b1263f0348707caedb2fa70008442db8fa8bf74a3e3a97",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/14-renamed.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 14: renamed",
+      "bytes": 254892,
+      "sha256": "0164779a9e6aaa457f1af2f6e7cc9c70a78ba4c766a8e95d0386b0f954223a59",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/15-default-name.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 15: default name",
+      "bytes": 258533,
+      "sha256": "f73e444851c2c794ec68f383e7d3a256104642e9fee9cc7f111cfd55e4fdd07e",
+      "produced": "2026-09-13T12:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/20-reinstall-welcome.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 20: reinstall welcome",
+      "bytes": 191739,
+      "sha256": "06d23049ff738ff0b6806f4914429d776dcab5cd0e5e90fa3df2a592c3def348",
+      "produced": "2026-09-13T12:12Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/sim-text/21-reinstall-identity.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/sim-text",
+      "what": "step 42, the text lane on one simulator: iPhone 17 Pro — frame 21: reinstall identity",
+      "bytes": 196118,
+      "sha256": "808494b0e5e79e305e2fb6e5e9a4f5d885d46481d74ddac1d629910501b9e3cc",
+      "produced": "2026-09-13T12:12Z"
+    }
+  ]
+}

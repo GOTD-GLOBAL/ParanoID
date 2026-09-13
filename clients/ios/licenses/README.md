@@ -33,7 +33,7 @@ than a second copy here.
 filtered for `aarch64-apple-ios`, so it requires license texts only for crates
 that actually link into the app, and fails the build with `Missing license
 text: <crate> <version>` when one has none. It has no ZXing, org.json or
-Firebase block: this client scans QR with Vision, parses JSON in Rust and has
-no push gateway.
+Firebase block: this client scans QR with `AVCaptureMetadataOutput`, parses
+JSON with Foundation and has no push gateway.
 
 This records source/provenance, not independent legal approval.

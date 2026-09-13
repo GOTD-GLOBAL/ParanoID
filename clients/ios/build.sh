@@ -14,9 +14,11 @@
 # What this script does NOT do, and says so out loud when it reaches that
 # place in the chain:
 #
-#   * the Android cross-test (plan steps 33-34) needs a JDK, which this Mac
-#     does not have; the step prints SKIP with that reason and the manifest
-#     records it as skipped. It is never a silent pass.
+#   * the iOS <-> Android comparison of plan step 34 needs
+#     test_android_compatibility.py and test_qr_cross.py, which have not
+#     landed; that step prints SKIP with that reason and the manifest records
+#     it as skipped. It is never a silent pass. The Java side it will talk to
+#     (java_deps.sh, plan step 33) does run here.
 #   * the archive and the export are the owner's signing gate. Without
 #     PARANOID_IOS_TEAM_ID in the environment the script prints
 #     "Archive skipped: PARANOID_IOS_TEAM_ID unset" and exits 0. Nothing here
@@ -115,18 +117,21 @@ step "bridge ABI tests (host)" \
 step "ParanoidCore.xcframework" bash build-core.sh
 step "ParanoidKit tests" swift test --package-path ParanoidKit --scratch-path out/spm
 
-# 9. Plan steps 33-34. The Java side of the cross-test needs a JDK; when
-# java_deps.sh lands and a JDK exists, this becomes a real run.
-if [ -x java_deps.sh ] && [ -f test_android_compatibility.py ] && command -v javac >/dev/null 2>&1; then
+# 9. Plan steps 33-34. java_deps.sh builds the Java side of the cross-test; it
+# reads its JDK from toolchain.json, so `javac` need not be on PATH. The two
+# Python cross-tests that drive that side land with plan step 34.
+if [ -f java_deps.sh ]; then
   step "Android cross-test (Java host)" bash java_deps.sh
+else
+  skip "Android cross-test (Java host, plan step 33)" \
+    "clients/ios/java_deps.sh has not landed, so the Java side was NOT built and this gate did NOT pass."
+fi
+if [ -f test_android_compatibility.py ] && [ -f test_qr_cross.py ]; then
   step "iOS <-> Android protocol compatibility" python3 test_android_compatibility.py --evidence-dir out/checks/compat
   step "QR cross-check" python3 test_qr_cross.py
-elif [ -x java_deps.sh ] && [ -f test_android_compatibility.py ]; then
-  skip "iOS <-> Android cross-test (plan steps 33-34)" \
-    "no JDK on this machine: javac not found, so java_deps.sh cannot build the Android facade. Install openjdk@21 and re-run; this gate did NOT pass."
 else
-  skip "iOS <-> Android cross-test (plan steps 33-34)" \
-    "no JDK on this machine (javac not found) and clients/ios/java_deps.sh has not landed. The cross-test did NOT run and did NOT pass."
+  skip "iOS <-> Android cross-test (plan step 34)" \
+    "clients/ios/test_android_compatibility.py and test_qr_cross.py have not landed; the comparison itself did NOT run and did NOT pass."
 fi
 
 # 10-11. Real sockets: nine pinned-TLS fixtures and the eight transport rules.

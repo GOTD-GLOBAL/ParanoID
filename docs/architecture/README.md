@@ -130,6 +130,42 @@ and actual direct/isolated-relay media checks pass; remaining release gates are 
 [the local record](../operations/voice-calls-local.md). No live relay topology
 or permanent production architecture is accepted by this diagram.
 
+## Proposed iOS client boundary (RFC-0021; ADR-0014 proposed)
+
+```text
+SwiftUI app (clients/ios/App) -> ParanoidKit (storage, TLS, transport, calls, UI model)
+  -> C-ABI staticlib clients/ios/bridge -> paranoid-client-core (rlib, unchanged)
+  -> paranoid-key-protocol (unchanged)
+Keychain (AfterFirstUnlockThisDeviceOnly) + Data Protection file
+  -> AES-256-GCM sealed core snapshot -> install marker (reinstall = new ID)
+URLSession + Security.framework leaf-SPKI pin (the same pin Android carries)
+  -> pinned-IP TLS :38443 -> self-service v2 router (server unchanged)
+WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 audio + camera video
+  -> relay only through /v2/voice/turn; no STUN, no third-party discovery
+Foreground-only: no APNs/PushKit, no background refresh, no CallKit (push = track B)
+```
+
+A second client on the existing contracts: no server change, no core change, no
+new key material format and no new trust anchor. This view exists because
+[CONTRIBUTING](../../CONTRIBUTING.md) requires an RFC, an ADR, a C4 view and a
+current-state update for an architecture or foundational-dependency change. The
+boundary is enforced by a gate that rejects any committed path outside
+`clients/ios/**`, `docs/**`, `README.md`, `CHANGELOG.md` and the client
+workflow, and any path inside `server/`, `clients/core/src/`,
+`clients/android/`, `key-protocol/` or `deploy/`. The call contract is
+[call-v2](../protocol/call-v2.md), not voice v1: two media sections, audio then
+video, both `a=sendrecv`, H.264 or VP8 mandatory, no renegotiation, and a
+9000-byte client cap below the measured 10040-byte frame ceiling.
+
+[RFC-0021](../rfcs/0021-ios-client.md) and
+[ADR-0014](../decisions/0014-ios-client.md) are `proposed`, not accepted. Two
+simulators have completed calls in both directions on a local stand; nothing
+has run on a physical phone and no hosted account exists. This view is a map of
+a candidate, not accepted architecture or evidence of a delivered client — the
+honest status of every requirement is
+[the iOS verification table](../clients/ios/verification.md), and the platform
+boundaries it adds are [the iOS trust delta](../security/ios-client-threats.md).
+
 ## Rules for diagrams
 
 - State scope, audience, and abstraction level.
