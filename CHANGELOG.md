@@ -8,6 +8,18 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Server APK-cap rollout completed — 2026-09-13
+
+- Deployed the reviewed server without the fixed APK ceiling on retained data.
+  Live executable, original coordinator status and v26 feed download were verified.
+- Reconciled exact already-authorized push/TLS maintenance with immutable old
+  records, without weakening status checks. An initial update then safely rolled
+  back because backup validation omitted the known optional FCM table.
+- Fixed strict optional-schema and encrypted-restore coverage, including push
+  tokens. Fifteen packaged maintenance checks passed; the successful live update
+  restored/verified all seven tables before switching. Failed history is retained.
+  [Operation and evidence](docs/operations/apk-cap-rollout-2026-09-13.md).
+
 ### Android client: remove fixed APK ceiling — 2026-09-13
 
 - Local client candidate no longer rejects updates/provider files merely because

@@ -6,6 +6,11 @@ last_reviewed: 2026-09-13
 
 # APK-cap server rollout: blocked preflight, no deployment
 
+Historical initial observation. The subsequent owner-authorized correction,
+safe failed-attempt rollback and successful deployment are recorded in
+[the completed rollout](apk-cap-rollout-2026-09-13.md). Do not read the initial
+blocker below as the latest runtime status.
+
 ## Authority and scope
 
 Sergey Maltsev replied “Го” to updating the server and publishing a legacy-sized

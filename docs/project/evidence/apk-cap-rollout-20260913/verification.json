@@ -1,0 +1,38 @@
+{
+  "verification": "PASS",
+  "transaction": "612e99b23221727b28300c70663d7271",
+  "release": "9f37215d844b21abae3c",
+  "running_binary": [
+    {
+      "pid": 2135334,
+      "sha256": "ce2ae4ce6ac7649471b7ce40e044c50f8c7e2c7b7a9f777704c0d0f72b5d7fec"
+    }
+  ],
+  "pg_system_id": "7683525211206671315",
+  "tls_key_cert_pin_unit_unchanged": true,
+  "semantic_config_unchanged": true,
+  "push_enabled": true,
+  "voice_enabled": true,
+  "feed_version": 26,
+  "backup": "/home/paranoid/paranoid-alpha/backups/v2-20260913T175557Z-5a1ade65f513ca2e",
+  "backup_sha256": "abc8c4a5b14d02b08644eb0c087c85b6fce4b2a41544d136cb6c20bac59ccfa5",
+  "backup_restore_verified": true,
+  "restored_tables": [
+    "room_state",
+    "ss_meta",
+    "ss_accounts",
+    "ss_devices",
+    "ss_conversations",
+    "ss_messages",
+    "ss_push_tokens"
+  ],
+  "snapshot_counts": {
+    "room_state": 0,
+    "ss_meta": 1,
+    "ss_accounts": 11,
+    "ss_devices": 11,
+    "ss_conversations": 7,
+    "ss_messages": 1236,
+    "ss_push_tokens": 5
+  }
+}

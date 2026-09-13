@@ -6,6 +6,20 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK-cap server rollout completed — 2026-09-13
+
+[The actual rollout record](../operations/apk-cap-rollout-2026-09-13.md) supersedes
+the initial blocker below. Message release9f37215d844b21abae3c is active under the
+unchanged coordinator CLI; the actual process binary hash matches the tested kit.
+Original records were preserved during exact maintenance reconciliation. The first
+attempt safely rolled back on the known optional FCM schema; a strict reference
+schema/backup-coverage correction then passed fifteen packaged tests and review.
+The successful update verified encrypted restore of all seven tables, including
+push tokens, before switching. TLS key/certificate/pin, PG identity, unit and
+semantic config were preserved. Live old-v25 updater downloads the unchanged v26
+feed correctly. Phone call/push/reboot acceptance remains unrun; no permanent
+ADR acceptance or generic future drift bypass is claimed.
+
 ## APK-cap server deployment blocked — 2026-09-13
 
 The owner authorized server update and bridge publication after PRs32/33 merged.
