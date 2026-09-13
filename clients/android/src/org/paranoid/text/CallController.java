@@ -44,7 +44,9 @@ public final class CallController {
     private final Map<String,Long> terminals=new LinkedHashMap<>();
     private final Map<String,ArrayDeque<Long>> peerKnocks=new HashMap<>();
     private final ArrayDeque<Long> globalKnocks=new ArrayDeque<>();
-    private final Thread owner=Thread.currentThread();
+    /** The single thread allowed to touch call state. Always the Android main thread in the app: the engine
+     *  singleton may be created by a Firebase push thread (cold wake), and the periodic tick runs on main. */
+    private final Thread owner;
     private long generation, lastWall, lastMono, terminalOverflowUntil;
     private boolean online;
     private Call call;
@@ -71,8 +73,10 @@ public final class CallController {
             this.outgoing=outgoing;this.generation=generation;this.started=now;
         }
     }
-    public CallController(Clock clock,Port port){
-        this.clock=clock;this.port=port;lastWall=clock.wallMillis();lastMono=clock.monotonicMillis();
+    public CallController(Clock clock,Port port){this(clock,port,Thread.currentThread());}
+    public CallController(Clock clock,Port port,Thread owner){
+        if(owner==null)throw new IllegalArgumentException("owner");
+        this.clock=clock;this.port=port;this.owner=owner;lastWall=clock.wallMillis();lastMono=clock.monotonicMillis();
     }
     private void own(){if(Thread.currentThread()!=owner)throw new IllegalStateException("call owner thread");}
     public boolean active(){own();return call!=null;}

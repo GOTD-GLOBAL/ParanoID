@@ -64,6 +64,16 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
+- `0.0.25-push` (versionCode 25, 2026-09-13): **v24 crashed one second after
+  a cold push wake** (owner report: `IllegalStateException: call owner thread`
+  in `CallController.tick` on `main`). `CallController` pinned its owner to
+  the thread that constructed it; the `TextEngine` singleton is created lazily
+  by the first caller, and after a content-free FCM wake that is the Firebase
+  service thread — so the 1 s tick on `main` failed the ownership check and
+  killed the process. The owner is now passed explicitly (`Looper.getMainLooper()
+  .getThread()`); the constructor default keeps the old behaviour for tests.
+  `CallControllerSmoke` covers construction on a foreign thread with an
+  explicit owner and still rejects non-owner access.
 - `0.0.24-push` (versionCode 24, 2026-09-12): **calls crashed the caller on
   v20–v23** (owner tombstone: `SIGABRT`, `JNI DETECTED ERROR: java_class ==
   null in GetStaticMethodID` from `libjingle_peerconnection_so.so` during
