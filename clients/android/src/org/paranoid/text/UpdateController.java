@@ -34,8 +34,13 @@ public final class UpdateController {
     private void reset(String message){stage=0;manifest=null;apk=null;button.setText("Обновить — Повторить проверку");status.setText(message);}
     private void finish(){BUSY.set(false);if(alive())button.setEnabled(true);}
     private interface Job{Runnable run()throws Exception;}
-    private void background(Job job){WORK.execute(()->{
-        try{Runnable result=job.run();activity.runOnUiThread(()->{try{if(alive())result.run();}finally{finish();}});}
+    private void background(Job job){background(job,false);}
+    private void background(Job job,boolean handoff){WORK.execute(()->{
+        try{Runnable result=job.run();activity.runOnUiThread(()->{
+            boolean delivered=false;
+            try{if(alive()){result.run();delivered=true;}}
+            finally{if(!handoff || !delivered)finish();}
+        });}
         catch(Exception error){activity.runOnUiThread(()->{if(alive())reset("Обновление не прошло проверку или недоступно. Проверьте сеть и нажмите «Повторить». Текущая версия, ID и переписка не изменены.");finish();});}
     });}
     private void tap(){
@@ -74,7 +79,7 @@ public final class UpdateController {
                 if(apk==null || !ready.equals(apk))throw new IOException("no verified update");
                 UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);
                 return ()->{
-                    if(!activity.hasWindowFocus()){status.setText("Вернитесь в ParanoID и снова нажмите «Установить». В фоне установщик не открывается.");return;}
+                    if(!activity.hasWindowFocus()){status.setText("Вернитесь в ParanoID и снова нажмите «Установить». В фоне установщик не открывается.");finish();return;}
                     String intentFailure;
                     try{
                         Uri uri=Uri.parse(UpdatePolicy.URI);
@@ -87,40 +92,67 @@ public final class UpdateController {
                         if(target==null || target.activityInfo==null)throw new IOException("no activity resolves ACTION_INSTALL_PACKAGE");
                         install.setPackage(target.activityInfo.packageName);activity.startActivity(install);
                         status.setText("Открыт установщик Android — подтвердите обновление. Если отменили, можно нажать «Установить» снова. Установка ещё не подтверждена приложением.");
-                        return;
+                        finish();return;
                     }catch(Exception e){intentFailure=e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage());}
                     // Owner report 2026-09-12 (twice, OPPO/ColorOS): the intent path failed although a
                     // sibling phone installed fine. Use the PackageInstaller session API, which does not
                     // depend on an installer activity being visible/resolvable. Same verified bytes.
                     try{
-                        sessionInstall(ready);
-                        status.setText("Установщик Android открыт через сессию — подтвердите обновление. Установка ещё не подтверждена приложением.");
+                        status.setText("Подготавливаем APK для установщика в фоне…");
+                        sessionInstall(ready,intentFailure);
                     }catch(Exception e){
-                        status.setText("Установщик Android недоступен. Повторите позже; текущая версия и данные не изменены.\nДиагностика: intent — "+intentFailure+"; session — "+e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage()));
+                        status.setText("Установщик Android недоступен. Повторите позже; текущая версия и данные не изменены.\nДиагностика: intent — "+intentFailure+"; session — "+e.getClass().getSimpleName()+": "+String.valueOf(e.getMessage()));finish();
                     }
                 };
-            });
+            },true);
         }
     }
     /** PackageInstaller session with the already re-verified file. The system asks the user to confirm; nothing installs silently. */
-    private void sessionInstall(File ready)throws IOException {
-        android.content.pm.PackageInstaller installer=activity.getPackageManager().getPackageInstaller();
-        android.content.pm.PackageInstaller.SessionParams params=new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
-        params.setAppPackageName(activity.getPackageName());params.setSize(ready.length());
-        int id=installer.createSession(params);
-        android.content.pm.PackageInstaller.Session session=installer.openSession(id);
-        try{
-            try(OutputStream out=session.openWrite("verified.apk",0,ready.length());FileInputStream in=new FileInputStream(ready)){
-                byte[] buffer=new byte[65536];int n;long total=0;
-                while((n=in.read(buffer))>0){out.write(buffer,0,n);total+=n;}
-                if(total!=ready.length())throw new IOException("short copy");
-                session.fsync(out);
+    private void sessionInstall(File ready,String intentFailure){
+        // BUSY remains held from the install tap through worker copy and UI commit.
+        WORK.execute(()->{
+            android.content.pm.PackageInstaller installer=null;
+            int id=-1;android.content.pm.PackageInstaller.Session opened=null;
+            try{
+                installer=activity.getPackageManager().getPackageInstaller();
+                android.content.pm.PackageInstaller.SessionParams params=new android.content.pm.PackageInstaller.SessionParams(android.content.pm.PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                final long expected=manifest.apkSize;
+                params.setAppPackageName(activity.getPackageName());params.setSize(expected);
+                id=installer.createSession(params);opened=installer.openSession(id);
+                final android.content.pm.PackageInstaller.Session session=opened;
+                java.security.MessageDigest hash=java.security.MessageDigest.getInstance("SHA-256");
+                try(OutputStream out=session.openWrite("verified.apk",0,expected);InputStream in=java.nio.file.Files.newInputStream(ready.toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)){
+                    byte[] buffer=new byte[65536];int n;long total=0;
+                    while((n=in.read(buffer))!=-1){
+                        if(n>expected-total)throw new IOException("APK copy size");
+                        out.write(buffer,0,n);hash.update(buffer,0,n);total+=n;
+                    }
+                    StringBuilder digest=new StringBuilder();for(byte b:hash.digest())digest.append(String.format(java.util.Locale.ROOT,"%02x",b&255));
+                    if(total!=expected || !digest.toString().equals(manifest.sha256))throw new IOException("APK copy checksum/size");
+                    session.fsync(out);
+                }
+                activity.runOnUiThread(()->{
+                    try{
+                        if(!alive() || !activity.hasWindowFocus()){
+                            session.abandon();
+                            if(alive())status.setText("Вернитесь в ParanoID и снова нажмите «Установить». Подготовленная сессия отменена.");
+                            return;
+                        }
+                        Intent result=new Intent(activity,MainActivity.class).setAction(INSTALL_STATUS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        int flags=PendingIntent.FLAG_UPDATE_CURRENT|(Build.VERSION.SDK_INT>=31?PendingIntent.FLAG_MUTABLE:0);
+                        session.commit(PendingIntent.getActivity(activity,54,result,flags).getIntentSender());
+                        status.setText("APK передан установщику — подтвердите обновление. Установка ещё не подтверждена приложением.");
+                    }catch(RuntimeException failure){
+                        try{session.abandon();}catch(RuntimeException ignored){}
+                        if(alive())status.setText("Установка не началась. Повторите позже; текущая версия и данные не изменены.");
+                    }finally{try{session.close();}catch(RuntimeException ignored){}finally{finish();}}
+                });
+            }catch(Exception failure){
+                if(opened!=null){try{opened.abandon();}catch(RuntimeException ignored){}try{opened.close();}catch(RuntimeException ignored){}}
+                else if(id>=0 && installer!=null){try{installer.abandonSession(id);}catch(RuntimeException ignored){}}
+                activity.runOnUiThread(()->{try{if(alive())status.setText("Установщик Android недоступен. Данные не изменены.\nДиагностика: intent — "+intentFailure+"; session — "+failure.getClass().getSimpleName()+": "+String.valueOf(failure.getMessage()));}finally{finish();}});
             }
-            Intent result=new Intent(activity,MainActivity.class).setAction(INSTALL_STATUS).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            int flags=PendingIntent.FLAG_UPDATE_CURRENT|(Build.VERSION.SDK_INT>=31?PendingIntent.FLAG_MUTABLE:0);
-            session.commit(PendingIntent.getActivity(activity,54,result,flags).getIntentSender());
-        }catch(IOException|RuntimeException failure){try{session.abandon();}catch(RuntimeException ignored){}throw failure;}
-        finally{session.close();}
+        });
     }
     public static final String INSTALL_STATUS="global.paranoid.messenger.INSTALL_STATUS";
     /** Session callback delivered to MainActivity: launch the system confirmation when asked, otherwise show the outcome. */

@@ -31,7 +31,7 @@ public final class UpdatePolicy {
     public static File providerFile(File cache,String uri,String mode)throws IOException {
         if(!URI.equals(uri) || !"r".equals(mode))throw new IOException("update URI is read only");
         File apk=new File(directory(cache),"verified.apk");
-        if(!Files.isRegularFile(apk.toPath(),LinkOption.NOFOLLOW_LINKS) || apk.length()<1 || apk.length()>UpdateManifest.MAX_APK
+        if(!Files.isRegularFile(apk.toPath(),LinkOption.NOFOLLOW_LINKS) || apk.length()<1
             || !apk.getCanonicalFile().equals(apk))throw new IOException("verified APK unavailable");
         return apk;
     }

@@ -46,6 +46,9 @@ public final class UpdateClient {
         Files.deleteIfExists(temp.toPath());Files.deleteIfExists(ready.toPath());
         boolean promoted=false;HttpsURLConnection c=null;long start=System.nanoTime();
         try {
+            // Advisory preflight; concurrent writers may still consume space. I/O
+            // failure below removes partial/ready files without touching app data.
+            if(m.apkSize>dir.getUsableSpace())throw new IOException("insufficient update cache space");
             c=open("/v2/updates/android/apk/"+m.sha256);
             if(c.getResponseCode()!=200)throw new IOException("APK unavailable");headers(c,m.apkSize);
             if(c.getContentLengthLong()>=0 && c.getContentLengthLong()!=m.apkSize)throw new IOException("APK length header");
@@ -60,10 +63,14 @@ public final class UpdateClient {
             promoted=true;return ready;
         }finally{if(c!=null)c.disconnect();Files.deleteIfExists(temp.toPath());if(!promoted)Files.deleteIfExists(ready.toPath());}
     }
+    private static long checkedTotal(long total,int n,long limit)throws IOException {
+        if(n>limit-total)throw new IOException("download size");
+        return total+n;
+    }
     private static long copy(InputStream in,OutputStream out,long limit,MessageDigest hash,long start)throws IOException {
         long total=0;byte[] buffer=new byte[8192];int n;
         while((n=in.read(buffer))!=-1){if(System.nanoTime()-start>60000000000L || Thread.currentThread().isInterrupted())throw new IOException("update deadline");
-            total+=n;if(total>limit)throw new IOException("download size");out.write(buffer,0,n);if(hash!=null)hash.update(buffer,0,n);
+            total=checkedTotal(total,n,limit);out.write(buffer,0,n);if(hash!=null)hash.update(buffer,0,n);
         }return total;
     }
     public static void verifyBytes(File apk,UpdateManifest m)throws Exception {
