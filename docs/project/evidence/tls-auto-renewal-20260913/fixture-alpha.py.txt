@@ -1,0 +1,27 @@
+"""Synthetic loopback fixture only. No PostgreSQL or product-E2EE claim."""
+import argparse,http.server,json,ssl,urllib.request
+from pathlib import Path
+p=argparse.ArgumentParser();p.add_argument('action',choices=['run','health']);p.add_argument('--root',type=Path,required=True);a=p.parse_args()
+if a.action=='health':
+ ctx=ssl.create_default_context(cafile=str(a.root/'tls/server.crt'))
+ opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),urllib.request.HTTPSHandler(context=ctx))
+ with opener.open('https://127.0.0.1:38443/health',timeout=4) as r:
+  assert r.status==200 and json.load(r)=={'status':'ok','fixture':True}
+ # Deliberately emulate the controller's readiness token for this fixture;
+ # only TLS is actually checked here, never a database.
+ print('PASS: TLS authenticated database readiness [SYNTHETIC TOKEN; NO DATABASE]')
+ flag=a.root/'fail-new'
+ if flag.exists():
+  import hashlib
+  if hashlib.sha256((a.root/'tls/server.crt').read_bytes()).hexdigest()!=flag.read_text():
+   raise RuntimeError('synthetic candidate-health rejection after actual TLS check')
+else:
+ class Handler(http.server.BaseHTTPRequestHandler):
+  def do_GET(self):
+   if self.path!='/health':self.send_error(404);return
+   self.send_response(200);self.end_headers();self.wfile.write(b'{"status":"ok","fixture":true}')
+  def log_message(self,*args):pass
+ server=http.server.ThreadingHTTPServer(('127.0.0.1',38443),Handler)
+ ctx=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);ctx.load_cert_chain(a.root/'tls/server.crt',a.root/'tls/server.key')
+ server.socket=ctx.wrap_socket(server.socket,server_side=True)
+ server.serve_forever()

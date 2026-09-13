@@ -1,0 +1,18 @@
+test_atomic_refuses_symlink_and_preserves_mode_owner (deploy.test_tls_renewal.RenewalTests.test_atomic_refuses_symlink_and_preserves_mode_owner) ... ok
+test_cli_and_timer_contract (deploy.test_tls_renewal.RenewalTests.test_cli_and_timer_contract) ... ok
+test_crash_replayed_before_not_due (deploy.test_tls_renewal.RenewalTests.test_crash_replayed_before_not_due) ... ok
+test_due_preserves_identity_metadata_and_next_run_noop (deploy.test_tls_renewal.RenewalTests.test_due_preserves_identity_metadata_and_next_run_noop) ... ok
+test_executable_release_and_inactive_refusal (deploy.test_tls_renewal.RenewalTests.test_executable_release_and_inactive_refusal) ... ok
+test_failed_readiness_rolls_back_and_persists_failure (deploy.test_tls_renewal.RenewalTests.test_failed_readiness_rolls_back_and_persists_failure) ... ok
+test_loaded_guard_excludes_transient_exec_start_metadata (deploy.test_tls_renewal.RenewalTests.test_loaded_guard_excludes_transient_exec_start_metadata) ... ok
+test_modes_symlinks_hardlinks_and_lock_contention (deploy.test_tls_renewal.RenewalTests.test_modes_symlinks_hardlinks_and_lock_contention) ... ok
+test_not_due_and_check_are_read_only (deploy.test_tls_renewal.RenewalTests.test_not_due_and_check_are_read_only) ... ok
+test_pending_unknown_drift_refuses_overwrite (deploy.test_tls_renewal.RenewalTests.test_pending_unknown_drift_refuses_overwrite) ... ok
+test_real_ops_preflight_guard_start_and_exact_der (deploy.test_tls_renewal.RenewalTests.test_real_ops_preflight_guard_start_and_exact_der) ... ok
+test_rejects_ca_and_implausible_validity_without_writes (deploy.test_tls_renewal.RenewalTests.test_rejects_ca_and_implausible_validity_without_writes) ... ok
+test_system_ops_stop_waits_for_job_and_health_is_bounded (deploy.test_tls_renewal.RenewalTests.test_system_ops_stop_waits_for_job_and_health_is_bounded) ... ok
+
+----------------------------------------------------------------------
+Ran 13 tests in 0.794s
+
+OK

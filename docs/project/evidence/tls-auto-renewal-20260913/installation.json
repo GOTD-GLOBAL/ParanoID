@@ -1,0 +1,13 @@
+{
+  "result": "PASS",
+  "installed_sha256": {
+    "renew.py": "fb962a83a94925eefce773435464d536e0f670a9b90f01bc270dc840ef3cb3a8",
+    "paranoid-tls-renewal.service": "a91a6e4f4a651d37f21018dd6dd7eacb6cd66f45b2b10b80040903c955e3f189",
+    "paranoid-tls-renewal.timer": "2566bf98b50ae3f2d766274fbbefbb8f72582948417709b568609615eebf9093"
+  },
+  "preflight": "{\"next_due\": \"2026-11-12T07:38:09Z\", \"result\": \"not_due\"}",
+  "unit_verification": "",
+  "service": "Result=success\nExecMainStatus=0\nActiveState=inactive",
+  "timer": "TimersCalendar={ OnCalendar=*-*-* 00:00:00 ; next_elapse=Mon 2026-09-14 00:00:00 CEST }\nNextElapseUSecRealtime=Mon 2026-09-14 00:20:44 CEST\nPersistent=yes\nActiveState=active\nUnitFileState=enabled",
+  "application_certificate_config_release_unchanged": true
+}

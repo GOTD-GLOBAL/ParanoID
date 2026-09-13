@@ -1,5 +1,15 @@
 # ParanoID native private-alpha bundle
 
+## Standalone same-key TLS maintenance
+
+`tls_renewal.py` and `paranoid-tls-renewal.service` / `.timer` are installed outside
+versioned releases, not automatically by the bundle builder. See the
+[bounded proposal](../docs/rfcs/tls-same-key-automation.md) and
+[installation/recovery runbook](../docs/operations/tls-auto-renewal.md).
+Run `/usr/bin/python3 -m unittest deploy.test_tls_renewal -v` from repository root.
+Synthetic real certificates/files exercise transactions; systemd/network are
+explicitly mocked in this suite. Hosted installation remains a separate gate.
+
 ## Optional voice TURN issuer controller
 
 REQ-CALL-006/RFC-0018 adds the `self-service-v2-turn-file-v1` controller

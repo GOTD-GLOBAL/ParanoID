@@ -1,0 +1,12 @@
+{
+  "review-initial.txt": {
+    "normalization": "trailing line whitespace only",
+    "original_sha256": "19b2ea63d3df583b4b10e71baa7779a0114546fb0f6296bde0b579aa859b483f",
+    "archived_sha256": "228971d4d10fc0ba589381e830b3a049571a67da23460366634fe289bcea6017"
+  },
+  "tdd-transcript.log": {
+    "normalization": "trailing line whitespace only",
+    "original_sha256": "e4e1375e226d03e11c34d07143f85e824e4fa0aea52790465514e3bb9b898979",
+    "archived_sha256": "29996e3d7c9d6bf6cf2d41603d7d5f1b916b29f3937e4dfd4eb9179ffbf7e106"
+  }
+}

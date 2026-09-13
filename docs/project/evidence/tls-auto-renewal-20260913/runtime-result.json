@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "scope": "real local user systemd stop/start and real loopback TLS; synthetic keys, no PostgreSQL/phone/iOS",
+  "source_sha256": "fb962a83a94925eefce773435464d536e0f670a9b90f01bc270dc840ef3cb3a8",
+  "successful_due": {
+    "result": "renewed",
+    "transaction": "tx-1046715323b646c3b3021c269835d5a4"
+  },
+  "no_due": {
+    "result": "not_due",
+    "next_due": "2026-11-12T09:59:29Z"
+  },
+  "no_due_pid_unchanged": true,
+  "failed_health_rollback": "RuntimeError",
+  "rollback_real_tls_healthy": true,
+  "same_private_key_bytes": true
+}
