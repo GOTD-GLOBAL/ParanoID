@@ -492,6 +492,192 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   each, one `a=rtpmap:111 opus/48000/2` and H.264/VP8 with their helpers in
   the video section, no `a=crypto`, `a=setup:actpass`; the answer 3664 B and
   `a=setup:active`; offer, answer and `media` all accepted by the core.
+- `ParanoID/Voice/WebRtcAudioEngine.swift` is the media of one call and the
+  port of `WebRtcAudioEngine.java:51-604`: one `RTCPeerConnection` with the
+  configuration above, one `voice` audio track asked for with
+  `googEchoCancellation` / `googAutoGainControl` / `googNoiseSuppression`, one
+  `video` track that exists from the first description and stays disabled —
+  with no capture session at all — until an explicit camera toggle, and both
+  codec policies applied through `RTCRtpTransceiver.setCodecPreferences`,
+  never to finished SDP text. With a validated TURN credential the connection
+  is `iceTransportPolicy = .relay` and carries exactly the two issued URLs;
+  without one it carries no ICE server at all, because this client has no STUN
+  server and asks no third party where it lives. Every native call runs on one
+  serial queue and every libwebrtc callback hops back onto it. Three things
+  are deliberately *not* here: the audio route, the `AVAudioSession` and the
+  proximity sensor (the call coordinator owns them on iOS); a safe reason as a
+  string (every outcome is a `Failure` case, so nothing reported can carry an
+  address or a credential); and the relay credential's `usable(…)` re-check,
+  which belongs to whoever creates the engine, exactly as it does on Android
+  (`TextEngine.java:139`).
+
+  The local description is published **exactly once** per call, by
+  `PublicationGate` — the port of `maybePublishDescription` and
+  `hasUsableRelayCandidate` (`WebRtcAudioEngine.java:409-460`). Direct
+  publishes when gather-once reports `complete`; relay publishes once the
+  first *usable* relay candidate exists (component 1, UDP, `typ relay`, a
+  literal IPv4 address) after a 500 ms coalescing window, or at once if
+  gathering completes first, and publishes nothing without such a candidate
+  **even when gathering completes** — the controller's 45-second window is
+  what ends that attempt. Both lanes then require at least one `a=candidate:`
+  line (libwebrtc can report an empty `complete`), at most
+  `SdpExtract.maxSdpBytes` = 9000 bytes, and the call-v2 shape the core
+  accepts. A description that fails one of those is refused and the call ends:
+  it is a configuration bug on this side, and the SDP is never rewritten to
+  fit. There is no trickle and no renegotiation — a gathered candidate is only
+  a reason to look at that one description again. A data channel, an ICE
+  `failed` and a refused description end the call; a camera that cannot start
+  only downgrades it to audio.
+- `ParanoIDTests/SdpPublishGatingTests.swift` is that gate under a fake
+  candidate feed: synthetic call-v2 descriptions whose `a=candidate:` lines
+  are written by hand, so that "relay with no relay candidate never
+  publishes" (seven unusable candidate shapes, incomplete and complete), "the
+  500 ms window is asked for once", "direct publishes only at `complete`", "an
+  empty `complete` publishes nothing", "9000 bytes travel and 9001 are
+  refused", "a description that is not call-v2 is refused" (seven shapes) and
+  "exactly one publication per call" are decisions the test makes rather than
+  ones it waits for. Six further tests run the real engine and its
+  configuration on this platform's libwebrtc in the simulator: a direct engine
+  publishes one offer — about 3.8 kB of the 9000-byte cap with 6 candidates,
+  `audio` then `video`, measured 2026-09-13 —
+  and no second one while candidates keep arriving; a relay-only engine
+  pointed at a loopback alias nothing answers publishes nothing at all in
+  eight seconds and does not fail; a camera toggle without permission throws
+  `CallMediaError.cameraDenied` without opening anything; a camera that cannot
+  start after the toggle downgrades the call to audio and never ends it; and
+  the two configurations are the ones the protocol demands. Every address in
+  the file is RFC 5737 documentation space.
+- `ParanoID/Voice/AudioSessionController.swift` is the part of Android's
+  engine that iOS keeps outside libwebrtc: the process has exactly one
+  `AVAudioSession`, and a call needs it **running before there is any media at
+  all**, because the `audio` background mode holds nothing without one. It is
+  started from the explicit Call and Answer actions, after the microphone is
+  granted and before the first `knock` leaves the device, and from the arrival
+  of an incoming ring. It puts libwebrtc into manual audio
+  (`useManualAudio = true`, `isAudioEnabled = false`), configures
+  `.playAndRecord` / `.voiceChat` / `.allowBluetoothHFP` (the renamed
+  `.allowBluetooth`) and activates the session, and spins one silent
+  `AVAudioPlayer` — a WAVE file of zeroes built in memory, looped at volume 0
+  — until media flows. There is **no ringtone**: Android rings from a
+  background notification and this client has no background. Only `connected`
+  hands the audio unit to libwebrtc (`isAudioEnabled = true`) and stops the
+  silent loop. «Громкая связь» is `overrideOutputAudioPort(.speaker)`, and it
+  yields to a wired or Bluetooth headset that is already carrying the call;
+  the proximity sensor runs while the call is **connected**, the earpiece has
+  it and **this device's** camera is off — Android's
+  `!speaker && connected && !videoEnabled` (`WebRtcAudioEngine.java:399-401`),
+  so a ringing call never blanks the screen and a phone lying face down cannot
+  hide «Ответить»; it is local-only on Android too, because the peer's camera
+  says nothing about this device being against a face. One difference from
+  Android is deliberate: Android also releases the sensor for the length of a
+  `disconnected` transition (`:513,:515`) and this client keeps it through a
+  reconnection, because a call that is recovering is a call the phone has not
+  left the ear for. The screen, separately, stays awake while
+  **either** camera is on, which is the ordinary one-way video call
+  (`call-v2.md`, owner request 2026-09-12; `MainActivity.java:533-537` binds
+  `FLAG_KEEP_SCREEN_ON` to `localVideo || remoteVideo`). An interruption that
+  begins and a
+  media-services reset both end the call as `failed` **when there is media to
+  lose**; a call that is still ringing has none, so it is left to its own
+  forty-five-second deadline and the session the system deactivated is
+  re-activated when the interruption ends — otherwise «Ответить» after a
+  cellular call would hand libwebrtc the audio unit of a session that is no
+  longer running. A route change ends nothing — it only moves the speakerphone
+  decision.
+- `ParanoIDTests/CallAudioSessionTests.swift` is that controller on the real
+  platform, and it is where the queue rule above was measured rather than
+  assumed: five tests say that the silent loop is a WAVE file the platform
+  parses (44-byte header, half a second of zeroes, mono), that libwebrtc is in
+  manual audio with its audio unit **off** after `begin()` and gets it only at
+  `enableAudio()`, that both halves are idempotent, that the route and
+  camera controls of a ringing call never open the microphone on their own,
+  and that `isIdleTimerDisabled` follows **either** camera — the peer's alone
+  as much as this device's — and goes back with the call.
+  `AVAudioPlayer.play()` reaches the audio server and took **377 seconds** to
+  return in the simulator during the first run of this file, which blocked the
+  session queue behind it; the player therefore has a queue of its own and the
+  five tests now run in under two seconds. The tests grant no microphone — the
+  five things they measure are decided by this client and not by a permission.
+- `ParanoID/Voice/CallCoordinator.swift` is the call-shaped half of
+  `TextEngine` (`TextEngine.java:60-174`) in one place: `CallController`'s
+  three ports, `openMedia`, `createMedia` and `MediaListener`. Like
+  `CallController` it is a plain class that lives on the state owner's serial
+  queue — `precondition(owner.isOnOwner)` in every member, and one isolated
+  `StateOwner.onOwner` step as the way in from the main actor — which is
+  Android's "the call controller, the interface and the SDK callbacks share
+  one thread" with this client's thread. The send port enqueues one
+  `send_call_v1` per control and resolves its completion only when the
+  server's acceptance is durable (`acceptedListener`), with no "not
+  connected" gate: a call control is a durable enqueue and the call is bounded
+  by its own deadlines. The media port asks `VoiceRelayLane` for one TURN
+  credential, re-checks `usable(…)` immediately before creating the engine and
+  hands the verdict to `mediaAuthorized(_:authorized:)`; only a granted
+  verdict builds a `WebRtcAudioEngine`, and a second engine is never built
+  beside one that is still closing. `received` reaches the controller from
+  `callListener`, which the core invokes only after the candidate that carried
+  the control is durable. Every published call state also goes to
+  `LifecycleRunner.post(.callChanged(…))`: a call is signalled over the very
+  lanes the foreground rule stops when the application leaves the screen, and
+  `ended` is what opens the policy's ten-second teardown window
+  (`TextEngine.java:99`, `LifecyclePolicy`).
+- `ParanoID/Screens/CallScreen.swift` is `MainActivity.showCall()` /
+  `renderCall()` (`MainActivity.java:443-545`) caption for caption — but not
+  window flag for window flag, see the end of this entry — over the mock-up's
+  `call-out`, `call-in` and `call-on`. The privacy sentence and
+  «Ответить» exist only while the call is ringing and the sentence stands
+  above the button; the same sentence is the *message* of the confirmation
+  «Позвонить собеседнику?» / «Видеозвонок собеседнику?», so it is read before
+  a microphone is ever asked for and never after. «Выключить микрофон» and
+  «Громкая связь» follow media authority rather than signaling; «Включить
+  камеру» and «Сменить камеру» are Android v22's, and the video stage —
+  remote at full frame, local in the corner — appears only while a camera is
+  actually on. The red button is «Отклонить», «Завершить» or «Закрыть»
+  depending on where the call is, and «К переписке» leaves it running behind
+  the conversation. One Android behaviour has **no** iOS equivalent and is not
+  claimed to: `MainActivity.java:478` puts `FLAG_SECURE` on the call window —
+  and on no other window in that client — which takes it out of screenshots,
+  recordings and mirroring. iOS has no flag that gives a recorder different
+  pixels from the ones the user sees, so this screen does the part the
+  platform does allow: while `UIScreen.isCaptured` (a screen recording,
+  AirPlay, a wired mirror) the video stage is covered with «Видео скрыто: идёт
+  запись или трансляция экрана.» — covered rather than removed, so the
+  renderers stay attached to their tracks — and the controls are left
+  reachable, because hiding them would take the call away from the person on
+  it. A **screenshot** and the **app-switcher snapshot** remain outside what
+  this client can refuse; both are written down as gaps in
+  `docs/clients/ios/verification.md` rather than left to be discovered.
+- The two intents live in `AppModel`, because they are `MainActivity`'s
+  (`MainActivity.requestCall` → `requestMicrophone` → `queueCallIntent` →
+  `completeCallIntent`, `:375-441`) and they are the consent boundary. One
+  cancellable task does, in order: the microphone — asked for **only** here
+  and only from an explicit Call or Answer; the camera, and only for a
+  video-call intent, where a refusal merely starts the call as audio; the
+  audio session; up to **ten seconds** of waiting for a confirmed online lane,
+  polled every 100 ms, after which the session is given back and «Нет
+  подключения для звонка. Повторите после восстановления связи.» appears;
+  and only then `start` or `answer`. A new intent cancels the one before it,
+  and the cancelled task — which runs on to its own cleanup rather than
+  stopping where it was — gives the audio session back **only while no newer
+  intent owns it** (`AppModel.ownsCallAudio`, Android's
+  `intentGeneration == callIntentGeneration` re-check at
+  `MainActivity.java:427,435`): the session is process-wide, and deactivating
+  the one a second «Позвонить» is already waiting on would leave that call
+  silent for its whole life, because only `connected` hands the audio unit
+  over and nothing re-arms a session for an outgoing call. A refused
+  microphone cancels the intent,
+  tells the peer when it was an Answer for **the call the dialog was raised
+  for** (so the other phone stops ringing instead of waiting out its own 45
+  seconds, and a permission dialog that outlived its ring cannot reject the
+  next one — Android re-checks the same `call_id`, `MainActivity.java:600`)
+  and shows «Для звонка нужен
+  доступ к микрофону. Переписка доступна без него.» with «Открыть Настройки».
+  The camera is opened by «Включить камеру» and by an explicit video-call
+  intent and by nothing else — never on knock, ready, ring or Answer — and a
+  refusal never ends a call: the video section was negotiated `a=sendrecv` and
+  stays `a=sendrecv`, carrying no frames, while a `media` control tells the
+  peer what this camera is doing (`call-v2.md`). Leaving the **background**
+  stops the camera and returning restarts it; an `inactive` scene — which is
+  what a permission dialog produces — does not.
 - `ParanoIDTests/KeychainStoreTests.swift` is the half of the storage rules
   that needs a real platform: the item under `paranoid-text-state-v0` with the
   attributes it was asked for, the install-marker matrix (stale key with no
@@ -1030,6 +1216,14 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
   -only-testing:ParanoIDTests/SdpCompatibilityTests                           # libwebrtc call-v2 SDP against the core validator
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
+xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
+  -only-testing:ParanoIDTests/SdpPublishGatingTests                           # the media engine: one publication, relay gating, the 9000-byte cap
+xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
+  -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \
+  -only-testing:ParanoIDTests/CallAudioSessionTests                           # manual audio, the silent keep-alive, the audio unit only at connected
 swift test --package-path clients/ios/ParanoidKit --filter SdpExtractTests  # transport context, per-section survey, 9000-byte cap
 swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayConfigTests # TURN metadata: 6 accepted, the 49 Android negatives, the admission window
 swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayLaneTests # which status grants relay, direct or nothing; the one repeat; cancellation
@@ -1042,7 +1236,7 @@ swift test --package-path clients/ios/ParanoidKit --filter ReceiveLaneTests  # m
 swift test --package-path clients/ios/ParanoidKit --filter RealtimeLoopTests # outbox order, 401 once, deferred 409/507, renewal, legacy window
 swift test --package-path clients/ios/ParanoidKit --filter LifecycleTests   # foreground rule: an alert is not a pause, a call keeps the lanes
 swift test --package-path clients/ios/ParanoidKit --filter ContactNamesTests # local contact name: the empty value resets it, the name stays on this phone
-python3 clients/ios/test_ui_contract.py         # captions, the stand guard, the two tap guards, the contact name, the Info.plist
+python3 clients/ios/test_ui_contract.py         # captions, the stand guard, the two tap guards, the contact name, the call, the Info.plist
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.5' \
   -derivedDataPath clients/ios/out/DerivedData-App CODE_SIGNING_ALLOWED=NO \

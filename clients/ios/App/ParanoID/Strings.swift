@@ -282,18 +282,106 @@ enum Strings {
         static let callOffline = "Нет подключения для звонка. Повторите после восстановления связи."
         /// `MainActivity.java:534` — the microphone was refused.
         static let microphoneDenied = "Для звонка нужен доступ к микрофону. Переписка доступна без него."
+        /// `MainActivity.java:609` — the camera was refused during a call. It
+        /// is a downgrade, never a failure: the call continues as audio.
+        static let cameraDenied = "Без доступа к камере звонок продолжается как аудио."
     }
 
-    // MARK: - voice (the call screen arrives with its own step)
+    /// «Открыть Настройки» — the only page this client ever opens outside
+    /// itself, and the one place a refused microphone or camera can be given
+    /// back (the mock-up's `scan-denied`).
+    static let openSettings = "Открыть Настройки"
+
+    // MARK: - voice and video calls (`MainActivity.java:375-382,443-545`)
 
     /// `MainActivity.VOICE_PRIVACY` (`MainActivity.java:51`), verbatim.
     ///
-    /// It is defined here because it is a caption of this client and the
-    /// caption contract covers it; the screen that shows it — before
-    /// «Позвонить» and before «Ответить», never after — is built in the voice
-    /// step.
+    /// It stands **before** «Позвонить» in the confirmation and **before**
+    /// «Ответить» on the ringing screen, never after either: a sentence that
+    /// arrives once the call is already up explains nothing that could still
+    /// be declined.
     static let voicePrivacy = "Звук защищён сквозным шифрованием. При соединении через ретранслятор оператор ретранслятора видит ваш IP-адрес, время и объём трафика. Если сервер не поддерживает ретрансляцию, используется прямое соединение: собеседник может видеть ваш IP-адрес. В некоторых сетях прямое соединение недоступно."
+
+    /// `MainActivity.VIDEO_PRIVACY` (`MainActivity.java:56`), verbatim: the
+    /// same sentence for a call that also carries a camera, and it is the one
+    /// shown before «Видеозвонок».
+    static let videoPrivacy = "Видео и звук защищены сквозным шифрованием: сервер и ретранслятор не могут их расшифровать. Камера включается только по вашему нажатию и выключается, когда приложение свёрнуто. Оператор ретранслятора видит IP-адрес, время и объём трафика; при прямом соединении IP-адрес видит собеседник."
 
     /// The foreground rule as the call screen states it (mock-up, `call-in`).
     static let callForegroundHint = "Звонок держится, пока приложение открыто"
+
+    /// Every caption of the call screen and of the two ways into it.
+    ///
+    /// The wording is `MainActivity.showCall()` / `callLabel()` /
+    /// `renderCall()` (`MainActivity.java:443-545`) character for character,
+    /// including the words that only a camera can produce: this client shows
+    /// the same call to the same person as the phone beside it.
+    enum Call {
+        /// The heading of the screen (`MainActivity.java:450`).
+        static let title = "Звонок"
+        /// The two affordances in the chat's toolbar, by the labels Android
+        /// gives them (`MainActivity.java:143-144`).
+        static let audioAction = "Аудиозвонок"
+        static let videoAction = "Видеозвонок"
+        /// The confirmation that carries the privacy sentence
+        /// (`MainActivity.java:380-382`). The title says which call it is, the
+        /// message is the privacy sentence, and the positive button repeats
+        /// the kind.
+        static let audioPrompt = "Позвонить собеседнику?"
+        static let videoPrompt = "Видеозвонок собеседнику?"
+        static let audioConfirm = "Позвонить"
+        static let videoConfirm = "Видеозвонок"
+        static let cancel = "Отмена"
+        /// The ringing screen (`MainActivity.java:463`).
+        static let answer = "Ответить"
+        /// What the red button says in each of the three situations
+        /// (`MainActivity.java:541`).
+        static let reject = "Отклонить"
+        static let hangup = "Завершить"
+        static let close = "Закрыть"
+        /// Leaving the call on screen and going back to the conversation
+        /// (`MainActivity.java:474`).
+        static let back = "К переписке"
+        /// The two audio controls (`MainActivity.java:466-467,524-525`).
+        static let mute = "Выключить микрофон"
+        static let unmute = "Включить микрофон"
+        static let speaker = "Громкая связь"
+        static let earpiece = "Телефонный динамик"
+        /// The two camera controls (`MainActivity.java:470,529`).
+        static let cameraOn = "Включить камеру"
+        static let cameraOff = "Выключить камеру"
+        static let switchCamera = "Сменить камеру"
+
+        /// iOS has no `FLAG_SECURE` (`MainActivity.java:478` puts it on the
+        /// Android call window), so the video stage hides itself while the
+        /// screen is being recorded, mirrored or AirPlayed, and says why.
+        static let captured = "Видео скрыто: идёт запись или трансляция экрана."
+        /// The closing note under the buttons (`MainActivity.java:475`).
+        static let note = "До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием."
+
+        // `callLabel(JSONObject)` (`MainActivity.java:493-514`), branch for
+        // branch and in the same order.
+        static let reconnecting = "Восстанавливаем соединение…"
+        static let starting = "Проверяем доступность…"
+        static let authorizing = "Подготавливаем защищённое соединение…"
+        static let outgoing = "Вызываем…"
+        static let incoming = "Входящий звонок"
+        static let connecting = "Устанавливаем соединение…"
+        /// The right-hand half of a connected call's line: «Видео» as soon as
+        /// either camera is on, «Соединение установлено» otherwise.
+        static let video = "Видео"
+        static let connected = "Соединение установлено"
+        static let busy = "Собеседник занят"
+        static let rejected = "Звонок отклонён"
+        static let timeout = "Нет ответа или связь потеряна"
+        static let failed = "Не удалось установить связь"
+        static let cancelled = "Вызов отменён"
+        static let ended = "Звонок завершён"
+
+        /// `"%02d:%02d · %s"` (`MainActivity.java:504`), on the invariant
+        /// locale, so the separator and the digits are the phone's.
+        static func elapsed(seconds: Int64, kind: String) -> String {
+            String(format: "%02d:%02d · %@", seconds / 60, seconds % 60, kind)
+        }
+    }
 }

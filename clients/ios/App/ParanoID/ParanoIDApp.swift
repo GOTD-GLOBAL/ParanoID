@@ -38,12 +38,36 @@ struct RootView: View {
                 }
             }
             .animation(.default, value: model.notice)
+            // The call is over everything, including the sheets: it is the one
+            // screen whose absence would leave a microphone open with nothing
+            // saying so (`MainActivity.showCall()`).
+            .fullScreenCover(isPresented: $model.showsCall) {
+                CallScreen(model: model)
+            }
+            // «Позвонить собеседнику?» / «Видеозвонок собеседнику?»: the
+            // privacy sentence is the message, so it is read before the
+            // microphone is ever asked for (`MainActivity.java:380-382`).
+            .alert(item: $model.callPrompt) { prompt in
+                Alert(title: Text(prompt.title),
+                      message: Text(prompt.privacy),
+                      primaryButton: .default(Text(prompt.confirm)) { model.confirmCall() },
+                      secondaryButton: .cancel(Text(Strings.Call.cancel)) {
+                          model.cancelCallPrompt()
+                      })
+            }
+            // The microphone was refused. Настройки is the only place that
+            // answer can be changed (`MainActivity.java:534`).
+            .modifier(MicrophoneRefusal(model: model, overCall: false))
             .task {
                 model.start()
                 model.setForeground(scenePhase == .active)
             }
             .onChange(of: scenePhase) { _, phase in
                 model.setForeground(phase == .active)
+                // The camera follows the background and nothing else: a
+                // permission dialog only makes the scene inactive, and that is
+                // not leaving the foreground (`call-v2.md:65-67`).
+                model.setBackground(phase == .background)
             }
     }
 
@@ -268,6 +292,29 @@ private struct ContactRefusal: ViewModifier {
             Button(ContactFlowError.dismiss) { model.contactAlert = nil }
         } message: { failure in
             Text(failure.message)
+        }
+    }
+}
+
+/// «Для звонка нужен доступ к микрофону. Переписка доступна без него.» with
+/// «Открыть Настройки».
+///
+/// It is applied twice — once on the root and once inside the call screen —
+/// with a gate that makes exactly one of them the presenter. An alert attached
+/// under a full-screen cover never reaches the screen, and a microphone
+/// refused while answering an incoming call happens with that cover up.
+struct MicrophoneRefusal: ViewModifier {
+    @Bindable var model: AppModel
+    /// Whether this copy is the one inside the call screen.
+    let overCall: Bool
+
+    func body(content: Content) -> some View {
+        content.alert(Strings.Notice.microphoneDenied,
+                      isPresented: Binding(
+                          get: { model.microphoneRefused && model.showsCall == overCall },
+                          set: { shown in if !shown { model.microphoneRefused = false } })) {
+            Button(Strings.openSettings) { model.openSettings() }
+            Button(Strings.Call.cancel, role: .cancel) { model.microphoneRefused = false }
         }
     }
 }

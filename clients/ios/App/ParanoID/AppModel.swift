@@ -1,7 +1,9 @@
+import AVFoundation
 import Foundation
 import Observation
 import ParanoidKit
 import UIKit
+import WebRTC
 
 /// Everything the screens read and every action they can take.
 ///
@@ -77,6 +79,25 @@ final class AppModel {
         }
     }
 
+    /// «Позвонить собеседнику?» / «Видеозвонок собеседнику?»: the confirmation
+    /// that carries the privacy sentence, and the only way into a call
+    /// (`MainActivity.requestCall`, `MainActivity.java:375-383`).
+    ///
+    /// The sentence is the message of this alert, so it stands **before**
+    /// «Позвонить» and before «Видеозвонок» — never after, and never on a
+    /// screen the call has already reached.
+    struct CallPrompt: Identifiable, Equatable {
+        let account: String
+        let video: Bool
+
+        var id: String { "\(account)-\(video)" }
+        var title: String { video ? Strings.Call.videoPrompt : Strings.Call.audioPrompt }
+        /// `VIDEO_PRIVACY` for a call that also carries a camera,
+        /// `VOICE_PRIVACY` otherwise (`MainActivity.java:381`).
+        var privacy: String { video ? Strings.videoPrivacy : Strings.voicePrivacy }
+        var confirm: String { video ? Strings.Call.videoConfirm : Strings.Call.audioConfirm }
+    }
+
     /// A contact that has been read but not paired: the text exactly as it was
     /// scanned or pasted, and the two members `contact_text_v2` answered with.
     struct PendingContact: Equatable {
@@ -114,9 +135,23 @@ final class AppModel {
     /// table itself is read from and written to the application's own
     /// defaults, and it never reaches the snapshot, the core or the network.
     private(set) var contactNames = ContactNames()
+    /// The last published call view, or `nil` while this run has never had a
+    /// call. It carries no SDP, no ICE credential and neither nonce
+    /// (`CallPresentation`).
+    private(set) var call: CallPresentation?
 
     /// The selected tab.
     var tab: Tab = .dialogs
+    /// Whether the call screen is on top of everything (Android's
+    /// `callDialog`, `MainActivity.java:443`). An ended call keeps it until
+    /// «Закрыть», so that the reason can be read.
+    var showsCall = false
+    /// The confirmation that carries the privacy sentence, or `nil`.
+    var callPrompt: CallPrompt?
+    /// The microphone was refused. The alert says so and offers Настройки,
+    /// which is the only place the answer can be changed
+    /// (`MainActivity.java:534`).
+    var microphoneRefused = false
     /// The open conversation, or `nil` for the tabs.
     var chatAccount: String?
     /// What is presented over the screens.
@@ -134,9 +169,31 @@ final class AppModel {
     private var reloadAgain = false
     private var poll: Task<Void, Never>?
     private var noticeTimer: Task<Void, Never>?
+    /// The pending call intent: the permission, the audio session and the ten
+    /// seconds of waiting, as one cancellable piece of work
+    /// (`MainActivity.queueCallIntent` / `cancelCallIntent`,
+    /// `MainActivity.java:396-441`).
+    private var callIntent: Task<Void, Never>?
+    /// Which intent the pending work belongs to
+    /// (`MainActivity.callIntentGeneration`, `:392-441`). A cancelled task
+    /// still runs to its next `await`, and the audio session it would give
+    /// back is process-wide: without this token the cleanup of an abandoned
+    /// intent would take the session from the intent that replaced it.
+    private var callIntentGeneration: UInt64 = 0
+    /// The identifier the call screen was last raised for, so that one call
+    /// raises it once (`MainActivity.displayedCall`).
+    private var shownCall = ""
+    /// The camera was on when the application went to the background, so it
+    /// comes back on when the application does (`MainActivity.java:700`).
+    private var cameraPausedByBackground = false
 
     /// How long the bottom banner stays (the mock-up's `notice`).
     static let noticeDuration = Duration.seconds(3)
+    /// How long an intent waits for a confirmed online lane before it gives
+    /// up with «Нет подключения для звонка…» (`MainActivity.java:398,405`).
+    static let callIntentWindow = Duration.seconds(10)
+    /// How often that wait looks again (`MainActivity.java:417`).
+    static let callIntentPoll = Duration.milliseconds(100)
     /// How often the screens re-read the committed state when nothing is
     /// published: Android's `poll` runnable (`MainActivity.java:74`). Every
     /// message, receipt and delivery mark also arrives through the listener,
@@ -184,9 +241,16 @@ final class AppModel {
             let store = SnapshotStore(directory: directory, key: key)
             let saved = try store.load()
             let client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
-            runtime = try Runtime(client: client, model: self)
+            let built = try Runtime(client: client, model: self)
+            runtime = built
             stage = .running
-            resume()
+            // The call listeners are installed **before** the lanes start, so
+            // that a control inside the first committed candidate cannot
+            // arrive with nothing to hand it to.
+            Task { [weak self] in
+                await built.calls.attach()
+                self?.resume()
+            }
         } catch let problem as DebugFixtureProblem {
             stage = .noStand(problem.reason)
         } catch SelfServiceError.trustUnavailable {
@@ -472,6 +536,11 @@ final class AppModel {
     func block(account: String, blocked: Bool) {
         guard let runtime else { return }
         Task {
+            // A blocked peer loses its readiness slot and its call at once
+            // (`TextEngine.java:233`), before the commit that records the
+            // block: a call from someone the user has just blocked must not
+            // outlive the tap.
+            if blocked { await runtime.calls.block(account: account) }
             do {
                 try await runtime.owner.perform { try $0.block(account: account,
                                                                blocked: blocked) }
@@ -514,6 +583,356 @@ final class AppModel {
             try? await Task.sleep(for: AppModel.noticeDuration)
             guard !Task.isCancelled else { return }
             self?.notice = nil
+        }
+    }
+
+    // MARK: - calls (`MainActivity.java:361-441,493-545`)
+
+    /// The call machinery of this run, or `nil` before the runtime exists.
+    private var calls: CallCoordinator? { runtime?.calls }
+
+    /// Whether a call exists right now — ringing, negotiating or connected.
+    var isCallActive: Bool {
+        guard let call else { return false }
+        return call.state != .idle && call.state != .ended
+    }
+
+    /// Whether «Позвонить» and «Видеозвонок» may be tapped
+    /// (`MainActivity.buttons()`, `:366-367`). A live call keeps them enabled,
+    /// because tapping one is then the way back to the call screen.
+    var canCall: Bool {
+        isCallActive || DialogPolicy.canReply(chat, active: view.isActive, broken: isBroken,
+                                              sending: false)
+    }
+
+    /// The line under the name (`MainActivity.callLabel`, `:493-514`), branch
+    /// for branch and in the same order.
+    var callLabel: String {
+        guard let call else { return Strings.Call.ended }
+        if call.reconnecting { return Strings.Call.reconnecting }
+        switch call.state {
+        case .starting: return Strings.Call.starting
+        case .authorizing: return Strings.Call.authorizing
+        case .outgoing: return Strings.Call.outgoing
+        case .incoming: return Strings.Call.incoming
+        case .connecting: return Strings.Call.connecting
+        case .connected:
+            let kind = call.localVideo || call.remoteVideo
+                ? Strings.Call.video : Strings.Call.connected
+            return Strings.Call.elapsed(seconds: call.elapsedMillis / 1_000, kind: kind)
+        case .idle, .ended: break
+        }
+        switch call.reason {
+        case .busy: return Strings.Call.busy
+        case .reject: return Strings.Call.rejected
+        case .timeout: return Strings.Call.timeout
+        case .failed, .unavailable: return Strings.Call.failed
+        case .cancel: return Strings.Call.cancelled
+        default: return Strings.Call.ended
+        }
+    }
+
+    /// The trust line of the call screen (`MainActivity.java:522`): the peer's
+    /// own label when there is a conversation with it, «Личность не проверена»
+    /// when there is not.
+    var callTrust: String {
+        DialogPolicy.trustLabel(call.flatMap { view.dialog($0.account) })
+    }
+
+    /// «Позвонить» / «Видеозвонок» in the chat (`MainActivity.requestCall`).
+    ///
+    /// A call that already exists is shown rather than started; anything else
+    /// opens the confirmation, whose message is the privacy sentence. Nothing
+    /// is requested and nothing is sent from here.
+    func requestCall(video: Bool) {
+        guard let account = chatAccount else { return }
+        if isCallActive {
+            showsCall = true
+            return
+        }
+        guard DialogPolicy.canReply(view.dialog(account), active: view.isActive,
+                                    broken: isBroken, sending: false)
+        else { return }
+        callPrompt = CallPrompt(account: account, video: video)
+    }
+
+    /// «Позвонить» / «Видеозвонок» inside the confirmation: the point at which
+    /// the microphone may be asked for (`voice-v1.md:106-108`).
+    func confirmCall() {
+        guard let prompt = callPrompt else { return }
+        callPrompt = nil
+        beginCallIntent(account: prompt.account, answer: false, callId: "", video: prompt.video)
+    }
+
+    /// «Отмена» in the confirmation. It changes nothing at all.
+    func cancelCallPrompt() {
+        callPrompt = nil
+    }
+
+    /// «Ответить» (`MainActivity.java:463`). It is the only thing that may
+    /// create the callee's media, and it asks for the microphone first.
+    func answerCall() {
+        guard let call, call.state == .incoming else { return }
+        beginCallIntent(account: call.account, answer: true, callId: call.callId, video: false)
+    }
+
+    /// «Отклонить» while ringing, «Завершить» during a call, «Закрыть» once it
+    /// is over (`MainActivity.java:473`).
+    func endCall() {
+        cancelCallIntent()
+        guard isCallActive else {
+            showsCall = false
+            return
+        }
+        Task { await calls?.end() }
+    }
+
+    /// «К переписке»: the call keeps running behind the conversation.
+    func closeCallScreen() {
+        showsCall = false
+    }
+
+    /// «Выключить микрофон» / «Включить микрофон» (`MainActivity.java:466`).
+    func toggleMute() {
+        guard let call else { return }
+        Task { await calls?.setMuted(!call.muted) }
+    }
+
+    /// «Громкая связь» / «Телефонный динамик» (`MainActivity.java:467`).
+    func toggleSpeaker() {
+        guard let call else { return }
+        Task { await calls?.setSpeaker(!call.speaker) }
+    }
+
+    /// «Включить камеру» / «Выключить камеру» (`MainActivity.toggleVideo`,
+    /// `:385-392`).
+    ///
+    /// This is the only place the camera is ever requested: never on knock,
+    /// never on ring, never on Answer (`call-v2.md:62-64`). A refusal keeps
+    /// the call and says so; it changes no section's direction, because camera
+    /// state travels as a `media` control and not as a renegotiation.
+    func toggleCamera() {
+        guard let call, call.state == .connecting || call.state == .connected else { return }
+        let wanted = !call.localVideo
+        guard wanted else {
+            Task { await calls?.setVideo(false) }
+            return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            guard await AppModel.requestCamera() else {
+                showNotice(Strings.Notice.cameraDenied)
+                return
+            }
+            await calls?.setVideo(true)
+        }
+    }
+
+    /// «Сменить камеру» (`MainActivity.java:470`).
+    func switchCamera() {
+        Task { await calls?.switchCamera() }
+    }
+
+    /// Where a call's video is drawn.
+    ///
+    /// The renderer crosses to the media engine as an opaque reference and is
+    /// touched by libwebrtc alone; this process never sees a frame.
+    func attachCallVideo(_ renderer: any RTCVideoRenderer, local: Bool) {
+        let surface = CallCoordinator.Surface(renderer)
+        Task { [weak self] in
+            guard let calls = self?.calls else { return }
+            if local { await calls.setLocalSurface(surface) }
+            else { await calls.setRemoteSurface(surface) }
+        }
+    }
+
+    /// The call screen went away: both surfaces are detached before the views
+    /// behind them are released.
+    func detachCallVideo() {
+        Task { [weak self] in
+            guard let calls = self?.calls else { return }
+            await calls.setLocalSurface(CallCoordinator.Surface(nil))
+            await calls.setRemoteSurface(CallCoordinator.Surface(nil))
+        }
+    }
+
+    /// The application went to the background, or came back
+    /// (`MainActivity.java:700,703`, and `call-v2.md`: "The app leaving the
+    /// foreground disables the camera (audio continues) and re-enables it on
+    /// return").
+    ///
+    /// It is driven by `.background` alone and never by `.inactive`, because a
+    /// permission dialog is not leaving the foreground. The audio keeps
+    /// running either way: only the camera stops.
+    func setBackground(_ background: Bool) {
+        if background {
+            guard call?.localVideo == true else { return }
+            cameraPausedByBackground = true
+            Task { await calls?.setVideo(false) }
+            return
+        }
+        guard cameraPausedByBackground else { return }
+        cameraPausedByBackground = false
+        guard isCallActive, CallCoordinator.cameraGranted else { return }
+        Task { await calls?.setVideo(true) }
+    }
+
+    /// «Открыть Настройки» — the application's own page, where a refused
+    /// microphone or camera can be given back. Nothing else is ever opened.
+    func openSettings() {
+        microphoneRefused = false
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    /// One intent, from the tap to the first control
+    /// (`MainActivity.requestMicrophone` → `queueCallIntent` →
+    /// `completeCallIntent`, `:396-441`).
+    ///
+    /// The order is the point of this method:
+    ///
+    /// 1. the microphone, asked for only here and only from an explicit Call
+    ///    or Answer (`voice-v1.md:106-107`);
+    /// 2. the camera, and only for a video-call intent — a refusal is never a
+    ///    failure, the call simply starts as audio;
+    /// 3. the **audio session**, before any control leaves the device;
+    /// 4. up to ten seconds of waiting for a confirmed online lane, then
+    ///    «Нет подключения для звонка…»;
+    /// 5. `start` or `answer`.
+    ///
+    /// Any new intent cancels this one, and a cancelled intent sends nothing;
+    /// it gives the audio session back only while it is still the session's
+    /// owner (``ownsCallAudio(_:)``).
+    private func beginCallIntent(account: String, answer: Bool, callId: String, video: Bool) {
+        cancelCallIntent()
+        let generation = callIntentGeneration
+        callIntent = Task { [weak self] in
+            guard let self else { return }
+            guard await AppModel.requestMicrophone() else {
+                // The peer is told, so that a refused Answer does not ring on
+                // until the other side's own deadline
+                // (`CallController.answer(microphonePermission:)`), and it is
+                // told about **this** call: a permission dialog can outlive the
+                // ring it was raised for — the original expires after 45 s and
+                // the peer rings again — and a refusal that reached the newer
+                // call would reject a ring the user has not seen yet. Android
+                // re-checks the same identifier
+                // (`MainActivity.java:600`: `…optString("call_id").equals(permissionCall)`).
+                if answer, call?.callId == callId { await calls?.answer(microphone: false) }
+                if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                guard !Task.isCancelled else { return }
+                microphoneRefused = true
+                return
+            }
+            guard !Task.isCancelled else { return }
+            var camera = video
+            if camera, !CallCoordinator.cameraGranted {
+                camera = await AppModel.requestCamera()
+                guard !Task.isCancelled else { return }
+                if !camera { showNotice(Strings.Notice.cameraDenied) }
+            }
+            // Before the first `knock`, and before Answer: the `audio`
+            // background mode holds nothing without a live session.
+            calls?.prepareAudio()
+            guard await waitForCallConnection() else {
+                if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                guard !Task.isCancelled else { return }
+                showNotice(Strings.Notice.callOffline)
+                return
+            }
+            if answer {
+                guard let call, call.state == .incoming, call.callId == callId else {
+                    if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                    return
+                }
+                await calls?.answer(microphone: true)
+            } else {
+                guard !isCallActive else {
+                    if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                    return
+                }
+                await calls?.start(account: account, video: camera)
+            }
+            showsCall = true
+        }
+    }
+
+    /// Drops the pending intent, its deadline and its callback
+    /// (`MainActivity.cancelCallIntent`, `:392-395`).
+    private func cancelCallIntent() {
+        callIntent?.cancel()
+        callIntent = nil
+        callIntentGeneration &+= 1
+    }
+
+    /// Whether the audio session an intent prepared is still that intent's to
+    /// give back.
+    ///
+    /// Cancellation does not stop a task at the next line: an abandoned intent
+    /// runs on to its cleanup, and `releaseAudio()` refuses only while a call
+    /// is already **active** — which a newer intent's own ten seconds of
+    /// waiting are not. Deactivating the session there would leave the call
+    /// that follows silent for its whole life, because `enableAudio()` needs a
+    /// held session and nothing re-arms one for an outgoing call. So the
+    /// session goes back only to the intent that still owns it, which is
+    /// Android's `intentGeneration == callIntentGeneration` re-check at every
+    /// deferred step (`MainActivity.java:427,435`). An intent cancelled with
+    /// no successor — «Отклонить», the screen going away — still gives it
+    /// back: `callIntent` is `nil` then, and nobody else holds it.
+    private func ownsCallAudio(_ generation: UInt64) -> Bool {
+        callIntent == nil || generation == callIntentGeneration
+    }
+
+    /// Waits for the realtime lane to say it is connected, for at most
+    /// ``callIntentWindow`` (`MainActivity.java:405,415-418`).
+    private func waitForCallConnection() async -> Bool {
+        let deadline = ContinuousClock.now.advanced(by: AppModel.callIntentWindow)
+        while !isConnected {
+            guard !Task.isCancelled, !isBroken, ContinuousClock.now < deadline else { return false }
+            try? await Task.sleep(for: AppModel.callIntentPoll)
+        }
+        return !Task.isCancelled && !isBroken
+    }
+
+    /// The call view changed. It is published from the state owner and arrives
+    /// here, on the main actor, as one immutable value.
+    ///
+    /// It is the only member of this type `CallCoordinator` calls, which is
+    /// why it is not `fileprivate` like the lanes' own publication.
+    func callChanged(_ presentation: CallPresentation) {
+        call = presentation
+        let live = presentation.state != .idle && presentation.state != .ended
+        // One call raises the screen once; «К переписке» may then put it away
+        // without it coming back (`MainActivity.java:519`).
+        if live, presentation.callId != shownCall {
+            shownCall = presentation.callId
+            showsCall = true
+        }
+        if presentation.state == .idle { showsCall = false }
+    }
+
+    /// The microphone, asked for exactly once per answer iOS keeps
+    /// (`AVAudioApplication`, iOS 17). A refusal is permanent until Настройки.
+    static func requestMicrophone() async -> Bool {
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: return true
+        case .denied: return false
+        default:
+            return await withCheckedContinuation { continuation in
+                AVAudioApplication.requestRecordPermission { granted in
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
+
+    /// The camera, on the same terms. It is asked for only from an explicit
+    /// video action and never blocks a call.
+    static func requestCamera() async -> Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: return true
+        case .notDetermined: return await AVCaptureDevice.requestAccess(for: .video)
+        default: return false
         }
     }
 
@@ -577,6 +996,9 @@ final class AppModel {
         let runner: LifecycleRunner
         /// Retained because it holds the three `NotificationCenter` tokens.
         let lifecycle: AppLifecycle
+        /// The call machinery: the controller, the TURN lane, the media engine
+        /// and the audio session, all on the owner.
+        let calls: CallCoordinator
 
         /// - Parameters:
         ///   - client: the state adapter, handed over for good. It is
@@ -592,10 +1014,27 @@ final class AppModel {
             let owner = StateOwner(client: client, hook: signal)
             let flow = ProofFlow(owner: owner, transport: transport)
             self.owner = owner
-            loop = RealtimeLoop(owner: owner, flow: flow, transport: transport,
-                                listener: Listener(model: model), signal: signal)
-            runner = LifecycleRunner(target: loop)
-            lifecycle = AppLifecycle(runner: runner)
+            // The listener is built first and told about the calls last: the
+            // online flag it publishes is also the flag that gates the two
+            // call intents (`TextEngine.java:109`), and nothing has started a
+            // lane yet at this point.
+            let listener = Listener(model: model)
+            let lanes = RealtimeLoop(owner: owner, flow: flow, transport: transport,
+                                     listener: listener, signal: signal)
+            loop = lanes
+            // The voice lane is deliberately not one of the two text lanes: a
+            // 404 on this optional route must not discard a working text
+            // session (`voice-turn-v1.md`, `VoiceRelayLane`).
+            let relay = VoiceRelayLane(owner: owner, flow: flow, listener: listener)
+            let queue = LifecycleRunner(target: lanes)
+            runner = queue
+            // A live call keeps the lanes up: the policy has the rule and the
+            // coordinator is what tells it the call's state.
+            let coordinator = CallCoordinator(owner: owner, loop: lanes, runner: queue,
+                                              relay: relay, model: model)
+            listener.calls = coordinator
+            calls = coordinator
+            lifecycle = AppLifecycle(runner: queue)
         }
     }
 }
@@ -614,14 +1053,32 @@ private struct ClientState: Sendable {
 /// A publication happens on the state owner, so it hops to the main actor
 /// here and nowhere else. The reference is weak because the lanes outlive a
 /// scene and nothing in them should keep the screens' model alive.
-/// `authorizationLost()` is deliberately not overridden: it is always followed
-/// by a `changed(false, …)` carrying the sentence the user is shown
+///
+/// The call machinery is on the other side of it and does **not** hop: the
+/// online flag and the loss of authority are already on the owner, which is
+/// where `CallController` lives, so they are handed over synchronously —
+/// `TextEngine.java:109,111` does the same on Android's main looper. Both are
+/// still published to the screens afterwards, so a user sees what a call sees.
+/// For the text path `authorizationLost()` remains silent, because it is
+/// always followed by a `changed(false, …)` carrying the sentence
 /// (`RealtimeLoop.java:83-86,279-280`).
-private struct Listener: RealtimeListener {
+private final class Listener: RealtimeListener, @unchecked Sendable {
     weak var model: AppModel?
+    /// Written once, on the main actor, while the runtime is being built and
+    /// before any lane exists; read only on the owner afterwards.
+    var calls: CallCoordinator?
+
+    init(model: AppModel) {
+        self.model = model
+    }
 
     func changed(connected: Bool, status: String) {
+        calls?.connection(connected)
         let model = self.model
         Task { @MainActor in model?.published(connected: connected, status: status) }
+    }
+
+    func authorizationLost() {
+        calls?.authorizationLost()
     }
 }

@@ -41,6 +41,25 @@ struct ChatScreen: View {
         .navigationTitle(model.title(for: model.chatAccount ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // The two ways into a call, in Android's order — audio, then video
+            // (`MainActivity.java:143-144`). Neither opens anything: both open
+            // the confirmation that carries the privacy sentence.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { model.requestCall(video: false) } label: {
+                    Image(systemName: "phone")
+                }
+                .disabled(!model.canCall)
+                .accessibilityLabel(Strings.Call.audioAction)
+                .accessibilityIdentifier("call-audio")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { model.requestCall(video: true) } label: {
+                    Image(systemName: "video")
+                }
+                .disabled(!model.canCall)
+                .accessibilityLabel(Strings.Call.videoAction)
+                .accessibilityIdentifier("call-video")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { model.sheet = .details(model.chatAccount ?? "") } label: {
                     Image(systemName: "ellipsis.circle")

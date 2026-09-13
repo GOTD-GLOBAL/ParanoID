@@ -41,7 +41,7 @@ struct ScanDeniedView: View {
                     .multilineTextAlignment(.center)
                     .padding(.top, 20)
                 Button(action: openSettings) {
-                    Text("Открыть Настройки")
+                    Text(Strings.openSettings)
                         .font(.system(size: 17, weight: .semibold))
                         .frame(maxWidth: .infinity, minHeight: 50)
                 }

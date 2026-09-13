@@ -24,6 +24,19 @@ it answers four questions about the working tree:
   details sheet — no screen derives a title from the account any more, the
   rename sits where Android puts it, and the name reaches no core, no
   snapshot and no request (`ContactNames`, Android v22).
+* **The call.** The privacy sentence stands *before* «Позвонить» and *before*
+  «Ответить» and nowhere after them; the microphone is asked for only from an
+  explicit Call or Answer, and a refusal says so and offers Настройки; the
+  audio session is running before the first `knock` and the wait for a
+  connection is the ten seconds Android waits, after which «Нет подключения
+  для звонка…»; the camera is opened by «Включить камеру» and by an explicit
+  video-call intent and by nothing else, and a refused camera downgrades the
+  call to audio — it never ends it and it never changes a section's direction,
+  because camera state travels as a `media` control (`call-v2.md`, Android
+  v22). The proximity sensor is armed only once the call is `connected`, as on
+  Android, so a ringing phone lying face down cannot hide «Ответить»; and
+  because iOS has no `FLAG_SECURE`, the video stage covers itself while the
+  screen is being recorded or mirrored.
 * **The Info.plist.** Camera and microphone are declared with a reason,
   ``UIBackgroundModes`` is exactly ``[audio]``, and nothing claims a delivery
   path this client does not have: no ``voip`` mode, no push environment, no
@@ -50,6 +63,12 @@ FIXTURE = 'App/ParanoID/DebugFixture.swift'
 SNAPSHOT = 'ParanoidKit/Sources/ParanoidKit/Service/Snapshot.swift'
 NAMES = 'ParanoidKit/Sources/ParanoidKit/Presentation/ContactNames.swift'
 DETAILS = 'App/ParanoID/Screens/ContactDetails.swift'
+CHAT = 'App/ParanoID/Screens/Chat.swift'
+CALL = 'App/ParanoID/Screens/CallScreen.swift'
+COORDINATOR = 'App/ParanoID/Voice/CallCoordinator.swift'
+AUDIO = 'App/ParanoID/Voice/AudioSessionController.swift'
+ENGINE = 'App/ParanoID/Voice/WebRtcAudioEngine.swift'
+EXTRACT = 'ParanoidKit/Sources/ParanoidKit/Voice/SdpExtract.swift'
 
 # Where a caption may claim to come from. 'ios' is a screen Android does not
 # have, or the foreground rule of this client.
@@ -290,13 +309,14 @@ class UiContract(unittest.TestCase):
         application = {name: text for name, text in self.sources.items()
                        if not name.startswith('ParanoidKit/')}
 
-        # 1. No screen names a contact by its account any more. The four sites
-        #    are the dialogs list, the contacts list, the chat title and the
-        #    details sheet, and each of them asks the model.
+        # 1. No screen names a contact by its account any more. The five sites
+        #    are the dialogs list, the contacts list, the chat title, the
+        #    details sheet and the call screen (`MainActivity.java:521` names a
+        #    call the same way), and each of them asks the model.
         for name, text in application.items():
             self.absent('MessagePresentation.title(', text, name)
-        self.assertEqual(sum(text.count('model.title(for: ') for text in application.values()), 4,
-                         'the title sites are dialogs, contacts, chat and details')
+        self.assertEqual(sum(text.count('model.title(for: ') for text in application.values()), 5,
+                         'the title sites are dialogs, contacts, chat, details and the call')
         self.present('func title(for account: String) -> String {\n'
                      '        contactNames.title(for: account)', model, MODEL)
         self.present('private(set) var contactNames = ContactNames()', model, MODEL)
@@ -327,6 +347,358 @@ class UiContract(unittest.TestCase):
                        model.index('    /// «Копировать контакт»')]
         for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus'):
             self.absent(forbidden, rename, 'AppModel.rename(account:to:)')
+
+    # ------------------------------------------------------------------
+    # The call (`MainActivity.java:361-441,443-545`, `docs/protocol/call-v2.md`)
+
+    def before(self, first, second, text, where):
+        """`first` stands before `second` in `text`; both must be there."""
+        self.present(first, text, where)
+        self.present(second, text, where)
+        self.assertLess(text.index(first), text.index(second),
+                        f'{where}: {first!r} does not stand before {second!r}')
+
+    def test_the_privacy_sentence_stands_before_the_call_and_before_the_answer(self):
+        # `clients/android/test_ui_contract.py:57-58` and the mock-up's
+        # `call-in`: the sentence is the last thing read before a microphone is
+        # opened, so it is above the button in both places and below neither.
+        model = self.sources[MODEL]
+        app = self.sources[ENTRY]
+        screen = self.sources[CALL]
+
+        # 1. The confirmation: its message is the privacy sentence and its
+        #    positive button is «Позвонить» / «Видеозвонок».
+        self.present('var privacy: String { video ? Strings.videoPrivacy : Strings.voicePrivacy }',
+                     model, MODEL)
+        self.present('var title: String { video ? Strings.Call.videoPrompt '
+                     ': Strings.Call.audioPrompt }', model, MODEL)
+        self.present('var confirm: String { video ? Strings.Call.videoConfirm '
+                     ': Strings.Call.audioConfirm }', model, MODEL)
+        self.before('message: Text(prompt.privacy)',
+                    'primaryButton: .default(Text(prompt.confirm))', app, ENTRY)
+        # Neither call button does anything but open it.
+        self.present('callPrompt = CallPrompt(account: account, video: video)', model, MODEL)
+        for text in (self.sources[CHAT], screen):
+            self.absent('requestRecordPermission', text, 'a screen asks for the microphone')
+
+        # 2. The ringing screen: the sentence, the foreground rule, «Ответить»,
+        #    in that order and only while the call is ringing.
+        self.before('Text(Strings.voicePrivacy)', 'Text(Strings.callForegroundHint)',
+                    screen, CALL)
+        self.before('Text(Strings.callForegroundHint)', 'Text(Strings.Call.answer)',
+                    screen, CALL)
+        self.present('private var isRinging: Bool { state == .incoming }', screen, CALL)
+        self.present('if isRinging { ringing }', screen, CALL)
+        # The sentence and the button exist in that block and nowhere else, so
+        # a connected call cannot show either of them.
+        self.assertEqual(screen.count('Strings.voicePrivacy'), 1,
+                         f'{CALL}: the privacy sentence is shown twice')
+        self.assertEqual(screen.count('Strings.Call.answer'), 1,
+                         f'{CALL}: «Ответить» is shown twice')
+
+    def test_the_microphone_is_asked_for_by_the_two_intents_and_by_nothing_else(self):
+        model = self.sources[MODEL]
+        # `MainActivity.requestMicrophone` is reached from «Позвонить» and from
+        # «Ответить», and both of those go through one place here.
+        self.assertEqual(model.count('AppModel.requestMicrophone()'), 1,
+                         'the microphone is asked for in more than one place')
+        self.assertEqual(model.count('beginCallIntent('), 3,
+                         'an intent is started somewhere other than «Позвонить» and «Ответить»')
+        self.present('func confirmCall() {', model, MODEL)
+        self.present('func answerCall() {', model, MODEL)
+        # Ringing never asks: the incoming path reaches `beginCallIntent` only
+        # from «Ответить», with the call already in `incoming`.
+        answer = model[model.index('    func answerCall() {'):model.index('    /// «Отклонить»')]
+        self.present('guard let call, call.state == .incoming else { return }', answer,
+                     'AppModel.answerCall()')
+        # Nothing in the client requests the microphone outside the model.
+        for name, text in self.sources.items():
+            if name == MODEL:
+                continue
+            self.absent('requestRecordPermission', text, name)
+
+    def test_a_refused_microphone_tells_the_user_the_peer_and_nobody_else(self):
+        model = self.sources[MODEL]
+        app = self.sources[ENTRY]
+        intent = model[model.index('    private func beginCallIntent('):
+                       model.index('    /// Drops the pending intent')]
+        # The refusal: the peer is told (so a refused Answer stops ringing on
+        # the other phone), the audio session is given back, the alert is
+        # shown. Nothing is sent for an outgoing intent — there is no call yet.
+        # The refusal carries the identifier of the call it was raised for: a
+        # permission dialog can outlive its ring (the first expires at 45 s and
+        # the peer rings again), and a refusal that reached the newer call
+        # would reject a ring the user has not seen. Android re-checks it the
+        # same way (`MainActivity.java:600`).
+        self.present('if answer, call?.callId == callId { await calls?.answer(microphone: false) }',
+                     intent, 'AppModel.beginCallIntent')
+        self.before('await calls?.answer(microphone: false)', 'microphoneRefused = true',
+                    intent, 'AppModel.beginCallIntent')
+        self.present('if(permissionAnswer&&engine.calls().snapshot().optString("call_id")'
+                     '.equals(permissionCall))engine.calls().answer(false);',
+                     self.java['MainActivity.java'], 'MainActivity.java')
+        self.present('calls?.releaseAudio()', intent, 'AppModel.beginCallIntent')
+        # The alert is Android's sentence, and Настройки is the only page this
+        # client ever opens. It is attached twice — the root and the call
+        # screen — with a gate that makes one of them the presenter, because an
+        # alert under a full-screen cover never reaches the screen and a
+        # refused Answer happens with that cover up.
+        self.present('content.alert(Strings.Notice.microphoneDenied,', app, ENTRY)
+        self.present('get: { model.microphoneRefused && model.showsCall == overCall }',
+                     app, ENTRY)
+        self.present('Button(Strings.openSettings) { model.openSettings() }', app, ENTRY)
+        self.present('.modifier(MicrophoneRefusal(model: model, overCall: false))', app, ENTRY)
+        self.present('.modifier(MicrophoneRefusal(model: model, overCall: true))',
+                     self.sources[CALL], CALL)
+        self.present('URL(string: UIApplication.openSettingsURLString)', model, MODEL)
+
+    def test_the_audio_session_runs_before_the_first_knock_and_stops_with_the_call(self):
+        model = self.sources[MODEL]
+        audio = self.sources[AUDIO]
+        coordinator = self.sources[COORDINATOR]
+        intent = model[model.index('    private func beginCallIntent('):
+                       model.index('    /// Drops the pending intent')]
+        # The order of the intent: microphone, camera, **session**, the wait,
+        # and only then the first control.
+        self.before('await AppModel.requestMicrophone()', 'calls?.prepareAudio()',
+                    intent, 'AppModel.beginCallIntent')
+        self.before('calls?.prepareAudio()', 'await waitForCallConnection()',
+                    intent, 'AppModel.beginCallIntent')
+        for control in ('await calls?.answer(microphone: true)', 'await calls?.start(account:'):
+            self.assertLess(intent.index('calls?.prepareAudio()'), intent.index(control),
+                            f'{control!r} runs before the audio session')
+        # An incoming ring gets its session when it is shown.
+        self.present('if presentation.state == .incoming, previous != .incoming { audio.begin() }',
+                     coordinator, COORDINATOR)
+        # A live call keeps the lanes it is signalled over: every published
+        # call state reaches the foreground policy, including `ended`, which
+        # opens its teardown window (`LifecyclePolicy`).
+        self.present('runner.post(.callChanged(CallActivity(rawValue: '
+                     'presentation.state.rawValue) ?? .idle))', coordinator, COORDINATOR)
+        self.present('let coordinator = CallCoordinator(owner: owner, loop: lanes, runner: queue,',
+                     model, MODEL)
+        # libwebrtc is in manual audio and silent until the call is connected.
+        self.present('session.useManualAudio = true', audio, AUDIO)
+        self.present('session.isAudioEnabled = false', audio, AUDIO)
+        self.present('RTCAudioSession.sharedInstance().isAudioEnabled = true', audio, AUDIO)
+        enable = audio[audio.index('    func enableAudio() {'):audio.index('    /// «Громкая связь»')]
+        self.present('guard held, !audible else { return }', enable,
+                     'AudioSessionController.enableAudio()')
+        # `connected` is the only thing that arms the proximity sensor, so the
+        # route is re-applied from here too.
+        self.present('applyRoute()', enable, 'AudioSessionController.enableAudio()')
+        self.present('case .connected:\n            // Only here does libwebrtc get the audio unit',
+                     coordinator, COORDINATOR)
+        # The category is the one a call needs, and the silent loop holds the
+        # `audio` background mode until media flows.
+        self.present('static let category = AVAudioSession.Category.playAndRecord', audio, AUDIO)
+        self.present('static let mode = AVAudioSession.Mode.voiceChat', audio, AUDIO)
+        self.present('static let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP]',
+                     audio, AUDIO)
+        self.present('player.numberOfLoops = -1', audio, AUDIO)
+        self.present('player.volume = 0', audio, AUDIO)
+        # No ringtone: Android rings from a notification this client has not
+        # got, so there is no tone player anywhere here.
+        for name, text in self.sources.items():
+            for token in ('AVAudioPlayer(contentsOf:', 'RingtoneManager', 'CallTones',
+                          'AudioServicesPlaySystemSound'):
+                self.absent(token, text, name)
+        # An interruption or a media-services reset ends the call; a route
+        # change does not.
+        self.present('controller.mediaState(generation, .failed)', coordinator, COORDINATOR)
+        self.present('queue.async { self.applyRoute() }', audio, AUDIO)
+        # An interruption that **ends** gives the session back. A ringing call
+        # has no media to lose, so nothing ends it on `began`; without this,
+        # «Ответить» after a cellular call would hand libwebrtc the audio unit
+        # of a session the system had already deactivated.
+        self.present('case .ended: resume()', audio, AUDIO)
+        resume = audio[audio.index('    private func resume() {'):
+                       audio.index('    /// Releases the session')]
+        self.present('guard held else { return }', resume, 'AudioSessionController.resume()')
+        self.present('try session.setActive(true)', resume, 'AudioSessionController.resume()')
+        self.present('if !audible { resumeKeepAlive() }', resume,
+                     'AudioSessionController.resume()')
+        self.present('try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)',
+                     audio, AUDIO)
+        self.present('UIDevice.current.isProximityMonitoringEnabled = proximity', audio, AUDIO)
+        # The proximity sensor is local-only and **connected-only**, as on
+        # Android (`WebRtcAudioEngine.java:401`,
+        # `!speaker && connected && !videoEnabled`): a ringing call must never
+        # blank the screen, or a phone lying face down would hide «Ответить»
+        # from the person it is ringing for. (The one deliberate difference —
+        # this client keeps the sensor through a reconnection, Android releases
+        # it — is written down in `AudioSessionController.audible` and in the
+        # README.) The screen, on the other hand, is awake for
+        # **either** camera: the stage is drawn for either one, and a one-way
+        # video call must not dim halfway through (`call-v2.md`, owner request
+        # 2026-09-12; `MainActivity.java:533-537`).
+        self.present('let proximity = held && audible && !video && !speaker && !isHeadsetRoute',
+                     audio, AUDIO)
+        self.present('boolean earpiece = !speaker && connected && !videoEnabled;',
+                     (ANDROID / 'WebRtcAudioEngine.java').read_text(), 'WebRtcAudioEngine.java')
+        self.present('let awake = held && (video || remoteVideo)', audio, AUDIO)
+        self.present('UIApplication.shared.isIdleTimerDisabled = awake', audio, AUDIO)
+        self.present('audio.setRemoteVideo(presentation.remoteVideo)', coordinator, COORDINATOR)
+        self.present('boolean showStage=live&&(localVideo||remoteVideo);',
+                     self.java['MainActivity.java'], 'MainActivity.java')
+        # Cleanup hands the route back before it hands the session back.
+        end = audio[audio.index('    func end() {'):audio.index('    /// Whether a wired')]
+        self.before('try? session.overrideOutputAudioPort(.none)', 'try? session.setActive(false)',
+                    end, 'AudioSessionController.end()')
+
+    def test_ten_seconds_of_waiting_and_then_the_connection_sentence(self):
+        model = self.sources[MODEL]
+        self.present('static let callIntentWindow = Duration.seconds(10)', model, MODEL)
+        self.present('static let callIntentPoll = Duration.milliseconds(100)', model, MODEL)
+        wait = model[model.index('    private func waitForCallConnection('):
+                     model.index('    /// The call view changed')]
+        self.present('while !isConnected {', wait, 'AppModel.waitForCallConnection()')
+        self.present('ContinuousClock.now < deadline', wait, 'AppModel.waitForCallConnection()')
+        intent = model[model.index('    private func beginCallIntent('):
+                       model.index('    /// Drops the pending intent')]
+        self.present('showNotice(Strings.Notice.callOffline)', intent, 'AppModel.beginCallIntent')
+        # A missed window gives the session back and sends nothing.
+        offline = intent[intent.index('guard await waitForCallConnection() else {'):]
+        self.before('calls?.releaseAudio()', 'showNotice(Strings.Notice.callOffline)',
+                    offline, 'AppModel.beginCallIntent')
+
+    def test_a_cancelled_intent_never_takes_the_session_of_the_one_after_it(self):
+        # Cancelling a task does not stop it at the next line: an abandoned
+        # intent runs on to its cleanup, and the audio session it gives back is
+        # process-wide. Every release inside the intent therefore carries the
+        # generation token Android re-checks at each deferred step
+        # (`MainActivity.java:392-395,427,435`), or a second «Позвонить» would
+        # deactivate the session the new intent is waiting on and the call that
+        # follows would be silent for its whole life.
+        model = self.sources[MODEL]
+        intent = model[model.index('    private func beginCallIntent('):
+                       model.index('    /// Drops the pending intent')]
+        self.present('let generation = callIntentGeneration', intent, 'AppModel.beginCallIntent')
+        guarded = intent.count('if ownsCallAudio(generation) { await calls?.releaseAudio() }')
+        self.assertEqual(intent.count('calls?.releaseAudio()'), guarded,
+                         'AppModel.beginCallIntent: a release that is not the owner\'s')
+        self.assertGreaterEqual(guarded, 4,
+                                'AppModel.beginCallIntent: an exit that gives nothing back')
+        rest = model[model.index('    private func cancelCallIntent('):]
+        self.present('callIntentGeneration &+= 1', rest, 'AppModel.cancelCallIntent()')
+        owns = rest[rest.index('    private func ownsCallAudio('):]
+        self.present('callIntent == nil || generation == callIntentGeneration',
+                     owns, 'AppModel.ownsCallAudio()')
+
+    def test_the_camera_is_opened_by_an_explicit_action_and_by_nothing_else(self):
+        model = self.sources[MODEL]
+        engine = self.sources[ENGINE]
+        # `AVCaptureDevice.requestAccess` for video exists in exactly one place
+        # in the call path, and that place is reached from «Включить камеру»
+        # and from an explicit video-call intent only (`call-v2.md:62-64`).
+        self.assertEqual(model.count('AVCaptureDevice.requestAccess(for: .video)'), 1,
+                         'the camera is asked for in more than one place')
+        self.assertEqual(model.count('AppModel.requestCamera()'), 2,
+                         'the camera is asked for somewhere other than the toggle and the intent')
+        toggle = model[model.index('    func toggleCamera() {'):
+                       model.index('    /// «Сменить камеру»')]
+        self.present('guard await AppModel.requestCamera() else {', toggle,
+                     'AppModel.toggleCamera()')
+        self.present('guard let call, call.state == .connecting || call.state == .connected '
+                     'else { return }', toggle, 'AppModel.toggleCamera()')
+        # The call screen asks for nothing; it calls the model.
+        self.absent('requestCamera', self.sources[CALL], CALL)
+        self.absent('AVCaptureDevice', self.sources[CALL], CALL)
+        # In the engine the capture session is started by `applyVideo` alone,
+        # which only an explicit `setVideo(true)` reaches: creating the tracks
+        # never touches a camera device.
+        self.assertEqual(engine.count('.startCapture(with: device'), 1,
+                         f'{ENGINE}: capture starts in more than one place')
+        create = engine[engine.index('    private func create() throws {'):
+                        engine.index('    static func configuration(')]
+        for token in ('startCapture', 'RTCCameraVideoCapturer(', 'AVCaptureDevice'):
+            self.absent(token, create, 'WebRtcAudioEngine.create()')
+        # The video track exists from the first description and starts off.
+        self.present('videoTrack?.isEnabled', engine, ENGINE)
+
+    def test_a_denied_camera_downgrades_the_call_and_changes_no_section(self):
+        coordinator = self.sources[COORDINATOR]
+        engine = self.sources[ENGINE]
+        extract = self.sources[EXTRACT]
+        model = self.sources[MODEL]
+        # The port refuses before the engine is reached, with the one error
+        # the controller answers by keeping the call.
+        self.present('throw CallMediaError.cameraDenied', coordinator, COORDINATOR)
+        self.present('AVCaptureDevice.authorizationStatus(for: .video) == .authorized',
+                     coordinator, COORDINATOR)
+        # A camera that cannot run is announced and the call continues.
+        self.present('controller.videoUnavailable(generation)', coordinator, COORDINATOR)
+        self.present('announce(Strings.Notice.cameraDenied)', coordinator, COORDINATOR)
+        self.present('showNotice(Strings.Notice.cameraDenied)', model, MODEL)
+        # Nothing anywhere writes a direction other than `sendrecv`: the two
+        # sections are `a=sendrecv` from the first description to the last, and
+        # the only mention of the other three is the count that refuses them.
+        for name, text in self.sources.items():
+            if name == EXTRACT:
+                continue
+            for literal in literals({name: text}):
+                for token in ('a=recvonly', 'a=sendonly', 'a=inactive'):
+                    self.assertNotIn(token, literal, f'{name} writes {token!r}')
+        self.present('line == "a=sendonly" || line == "a=recvonly" || line == "a=inactive"',
+                     extract, EXTRACT)
+        self.present('extract.blockedDirectionCount == 0', engine, ENGINE)
+        self.present('audio.sendrecvCount == 1, video.sendrecvCount == 1', engine, ENGINE)
+        # Camera state travels as a `media` control, never as a renegotiation.
+        self.absent('RTCSdpType.rollback', engine, ENGINE)
+        self.absent('restartIce', engine, ENGINE)
+
+    def test_the_call_screen_is_androids_call_screen(self):
+        screen = self.sources[CALL]
+        model = self.sources[MODEL]
+        chat = self.sources[CHAT]
+        app = self.sources[ENTRY]
+        # The four controls of the mock-up's `call-on`, plus Android v22's two
+        # camera controls, each addressable.
+        for identifier in ('call', 'call-answer', 'call-end', 'call-mute', 'call-speaker',
+                           'call-camera', 'call-switch-camera', 'call-back', 'call-status'):
+            self.present(f'.accessibilityIdentifier("{identifier}")', screen,
+                         f'{CALL}: no {identifier}')
+        # The two ways in, from the chat, by Android's own labels.
+        for identifier, label in (('call-audio', 'Strings.Call.audioAction'),
+                                  ('call-video', 'Strings.Call.videoAction')):
+            self.present(f'.accessibilityIdentifier("{identifier}")', chat, CHAT)
+            self.present(f'.accessibilityLabel({label})', chat, CHAT)
+        self.present('.disabled(!model.canCall)', chat, CHAT)
+        # The red button says what it does in each of the three situations
+        # (`MainActivity.java:541`).
+        self.present('Text(isRinging ? Strings.Call.reject\n'
+                     '                 : model.isCallActive ? Strings.Call.hangup '
+                     ': Strings.Call.close)', screen, CALL)
+        # The two audio controls follow media authority, not signaling.
+        self.present('private var isLive: Bool { call?.mediaActive == true '
+                     '|| state == .authorizing }', screen, CALL)
+        # Every branch of Android's `callLabel` is here, in its order.
+        for caption in ('reconnecting', 'starting', 'authorizing', 'outgoing', 'incoming',
+                        'connecting', 'video', 'connected', 'busy', 'rejected', 'timeout',
+                        'failed', 'cancelled', 'ended'):
+            self.present(f'Strings.Call.{caption}', model, f'{MODEL}: callLabel')
+        # The video stage exists only while a camera is actually on.
+        self.present('isLive && (call?.localVideo == true || call?.remoteVideo == true)',
+                     screen, CALL)
+        # Android takes its call window out of screenshots, recordings and
+        # mirroring with `FLAG_SECURE`, and puts that flag on no other window
+        # (`MainActivity.java:478`). iOS has no such flag, so the stage covers
+        # itself while the screen is captured — the one part of it the platform
+        # allows. It covers rather than removes the surfaces, so a recording
+        # that starts and stops does not attach a second renderer to a track.
+        self.present('callDialog.getWindow().addFlags(android.view.WindowManager'
+                     '.LayoutParams.FLAG_SECURE);', self.java['MainActivity.java'],
+                     'MainActivity.java')
+        self.present('.overlay { if captured { curtain } }', screen, CALL)
+        self.present('UIScreen.capturedDidChangeNotification', screen, CALL)
+        self.present('captured = CallScreen.isScreenCaptured', screen, CALL)
+        self.present('.contains { $0.screen.isCaptured }', screen, CALL)
+        self.present('Text(Strings.Call.captured)', screen, CALL)
+        self.present('.accessibilityIdentifier("call-captured")', screen, CALL)
+        # The screen is over everything, and it is the only full-screen cover.
+        self.present('.fullScreenCover(isPresented: $model.showsCall)', app, ENTRY)
+        self.assertEqual(app.count('.fullScreenCover('), 1,
+                         f'{ENTRY}: a second full-screen cover')
 
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()
