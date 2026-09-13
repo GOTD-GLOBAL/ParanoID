@@ -1071,6 +1071,105 @@ worked around here:
   every message twice, which is the difference between a double-tap guard
   that holds and one that only looks as if it does.
 
+## Two simulators on one call (`test_voice_sim.py`)
+
+`test_sim_text.py` drives one application against a fixture peer. This one
+drives **two applications against each other**: `ParanoIDUITests/VoiceCallUITests`
+runs twice at once — `iPhone 17 Pro (26.5)` and `iPhone 17e (26.5)`, one
+`xcodebuild test-without-building` per simulator — and the only things between
+the two are the unchanged server on the local stand and the media they
+negotiate directly. The stand starts no TURN, so `/v2/voice/turn` answers an
+authenticated `404 turn_disabled`, which is the pre-disclosed direct-ICE
+compatibility mode ([voice TURN v1](../../docs/protocol/voice-turn-v1.md)), and
+nothing is relayed: the candidate pair that carries each call is `host` to
+`host` on both sides.
+
+Both simulators are uninstalled first — the clean install of D-004 on each
+side — and both are granted the microphone with `xcrun simctl privacy … grant
+microphone`. That does not always take — one of the two simulators has been
+seen to ask anyway, on the first intent that reaches `AVAudioApplication` — so
+the test also answers the system alert where it lives, in Springboard. Either
+way the microphone is granted from an explicit Call or Answer and from nowhere
+else, and a run in which the alert appears photographs it.
+Nothing else about either simulator is relaxed, and the application is built
+with the default simulator signature for the same reason `test_sim_text.py`
+needs it.
+
+The two test processes never see each other. They meet in this script, through
+one rendezvous directory each and one shared board: `publish`/`fetch` carry the
+three public facts each side needs about the other — its account, its contact
+fingerprint and the contact its own core wrote — and `sync` is a barrier of
+two. The contact is read off the **device's** pasteboard with `xcrun simctl
+pbpaste` after «Копировать контакт», never by the test process: an application
+that reads a pasteboard it did not write raises the system's paste alert, and a
+test runner is an application like any other.
+
+What one run states, in order, on both sides:
+
+- both phones register on the stand, pair each other by the fingerprint that
+  side's own core published, and say «Сервер подключён» before anything is
+  called — a call intent waits ten seconds for a confirmed online lane and then
+  refuses (`AppModel.waitForCallConnection`);
+- `a` taps «Позвонить», `b` sees «Входящий звонок» with the privacy sentence
+  above «Ответить» and answers;
+- **both** sides reach «Соединение установлено», which `CallController`
+  publishes from the media engine's own `connected` event and from nothing
+  weaker (`CallCoordinator.media(_:from:)`);
+- the media carried RTP **both ways**: `packetsReceived` and `packetsSent`
+  above zero on both sides;
+- the call is held for 40 seconds, which outlives the 30-second silence
+  deadline (`CallController.silenceMillis`), so it was carried over it by the
+  peer's ten-second heartbeat — and the cluster shows those heartbeats as the
+  envelopes each account stored while it went on;
+- «Завершить» ends it on both sides;
+- and then the same call in the other direction, `b` to `a`.
+
+The media summary is the Debug-only `CallDiagnostics` sink: while a call is up
+the application samples `RTCPeerConnection.statistics` once a second and writes
+packet and byte counters, the transport state and the two candidate **types**
+where this script reads them. It never writes an address, a port or an
+identifier — the statistics report carries candidate addresses, which is why
+the engine's own `statistics(_:)` calls itself a debug surface — and the whole
+file compiles to nothing in a Release build.
+
+```sh
+python3 clients/ios/test_voice_sim.py --evidence-dir out/evidence/voice-sim
+# PASS: 2 calls, 2 simulators, direct ICE, 32 screenshots
+# a->b: connected a/b, held 40 s, packets received {'a': 2299, 'b': 2324}
+# b->a: connected a/b, held 40 s, packets received {'b': 2317, 'a': 2349}
+# screen lock during dialling: NOT RUN — xcrun simctl exposes no lock verb …
+# Voice (two simulators, direct ICE): PASS
+jq -c '.calls[] | {direction, elapsed_seconds, packets_received, heartbeat_envelopes_per_side}' \
+  clients/ios/out/evidence/voice-sim/voice-sim-result.json
+jq -c '.media["a-call1"], .transport' \
+  clients/ios/out/evidence/voice-sim/voice-sim-result.json   # host to host, nothing relayed
+```
+
+One run costs about three minutes after the build: two registrations, two
+pairings, and two calls of some fifty seconds each.
+
+The screen-lock story — locking the caller's screen while it is still dialling
+— is **NOT RUN**, and the evidence says so with its reason rather than leaving
+it out: `xcrun simctl` has no lock verb (`xcrun simctl help` lists none),
+`XCUIDevice` has no lock API, and the Simulator's own ⌘L is a host-window
+action outside this harness. It is a phone scenario and it belongs to the
+device run.
+
+This fixture found one thing in the screens, fixed there rather than worked
+around here: `.alert(item:)` clears its binding as the alert is dismissed and
+runs the button's action afterwards, so the `confirmCall()` that read
+`AppModel.callPrompt` back found nothing there and «Позвонить» placed no call
+at all. The confirmation now hands in the prompt it was built from, which is
+also the stricter rule for a consent screen: the call that is placed is the
+call whose privacy sentence was on the screen.
+
+The evidence is that JSON and the screenshots beside it. The JSON names counts,
+kinds and verdicts only: no account, no fingerprint, no contact, no realm, no
+pin and no address of this machine — a run whose evidence carries a dotted
+quad at all is refused. The screenshots are of the screens themselves, so they
+do show this run's throw-away accounts; they are evidence for the owner, not a
+document to quote from.
+
 ## Third-party notices (`notices.py`)
 
 Android's algorithm (`clients/android/notices.py`), rooted here at
@@ -1252,6 +1351,7 @@ python3 clients/ios/test_clean_self_service.py --longpoll \
 python3 clients/ios/test_realtime.py --pg-bin /opt/homebrew/opt/postgresql@16/bin \
   --evidence-dir out/checks/realtime                                          # running lanes under the imported fault proxy (needs the two lo0 aliases)
 python3 clients/ios/test_sim_text.py --evidence-dir out/evidence/sim-text     # the application itself in the simulator, plus the reinstall scenario
+python3 clients/ios/test_voice_sim.py --evidence-dir out/evidence/voice-sim   # two of the application calling each other on the stand, direct ICE both ways
 ```
 
 ## Rules that apply to every change here

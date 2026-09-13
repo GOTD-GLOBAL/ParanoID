@@ -99,6 +99,12 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     private var ticker: Task<Void, Never>?
     private var lastState: CallController.State = .idle
 
+    /// The Debug-only media summary of `clients/ios/test_voice_sim.py`, or
+    /// `nil` — which is every build that was not launched with
+    /// `-paranoid-call-diagnostics` and every Release build there is
+    /// (``CallDiagnostics``).
+    private let diagnostics = CallDiagnostics.sink()
+
     /// - Parameters:
     ///   - owner: the state owner. Every member of this type runs on it.
     ///   - loop: the realtime lanes, woken after a durable enqueue.
@@ -165,9 +171,29 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(CallController.tickMillis))
                 guard let self, !Task.isCancelled else { return }
-                await owner.onOwner { self.controller.tick() }
+                await owner.onOwner {
+                    self.controller.tick()
+                    self.sample()
+                }
             }
         }
+    }
+
+    /// One reading of the media statistics for the Debug sink, taken on the
+    /// same tick the protocol's deadlines are read on.
+    ///
+    /// It is nothing at all unless this launch asked for a sink, and it never
+    /// touches the engine from anywhere but the owner: the reply arrives on
+    /// the engine's own queue, where the sink takes it from.
+    private func sample() {
+        precondition(owner.isOnOwner, "the call coordinator runs on the state owner")
+        guard let diagnostics else { return }
+        let state = lastState.rawValue
+        guard let engine else {
+            diagnostics.record(state: state)
+            return
+        }
+        engine.statistics { report in diagnostics.record(state: state, statistics: report) }
     }
 
     // MARK: - What the interface asks for

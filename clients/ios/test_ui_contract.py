@@ -404,7 +404,11 @@ class UiContract(unittest.TestCase):
                          'the microphone is asked for in more than one place')
         self.assertEqual(model.count('beginCallIntent('), 3,
                          'an intent is started somewhere other than «Позвонить» and «Ответить»')
-        self.present('func confirmCall() {', model, MODEL)
+        # The confirmation carries its own prompt: `.alert(item:)` clears the
+        # binding before the button's action runs, so a `confirmCall()` that
+        # read `callPrompt` back would place no call at all.
+        self.present('func confirmCall(_ prompt: CallPrompt) {', model, MODEL)
+        self.present('model.confirmCall(prompt)', self.sources[ENTRY], ENTRY)
         self.present('func answerCall() {', model, MODEL)
         # Ringing never asks: the incoming path reaches `beginCallIntent` only
         # from «Ответить», with the call already in `incoming`.

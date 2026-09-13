@@ -50,7 +50,7 @@ struct RootView: View {
             .alert(item: $model.callPrompt) { prompt in
                 Alert(title: Text(prompt.title),
                       message: Text(prompt.privacy),
-                      primaryButton: .default(Text(prompt.confirm)) { model.confirmCall() },
+                      primaryButton: .default(Text(prompt.confirm)) { model.confirmCall(prompt) },
                       secondaryButton: .cancel(Text(Strings.Call.cancel)) {
                           model.cancelCallPrompt()
                       })

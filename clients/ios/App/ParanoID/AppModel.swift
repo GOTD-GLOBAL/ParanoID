@@ -658,8 +658,17 @@ final class AppModel {
 
     /// «Позвонить» / «Видеозвонок» inside the confirmation: the point at which
     /// the microphone may be asked for (`voice-v1.md:106-108`).
-    func confirmCall() {
-        guard let prompt = callPrompt else { return }
+    ///
+    /// The confirmation hands in the prompt it was built from rather than
+    /// leaving this to read ``callPrompt`` back: `.alert(item:)` clears its
+    /// own binding as the alert is dismissed and runs the button's action
+    /// afterwards, so a confirmation that read the model would find nothing
+    /// there and the call would never be placed — which is what two
+    /// simulators found (`clients/ios/test_voice_sim.py`). It is also the
+    /// stricter rule for a consent screen: the call that is placed is the call
+    /// whose privacy sentence was on the screen, and not whatever the model
+    /// holds a moment later.
+    func confirmCall(_ prompt: CallPrompt) {
         callPrompt = nil
         beginCallIntent(account: prompt.account, answer: false, callId: "", video: prompt.video)
     }
