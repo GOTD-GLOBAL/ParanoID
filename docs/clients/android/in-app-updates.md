@@ -14,6 +14,47 @@ The coordinator owns RFC-0013, draft ADR-0008, global threat/current-state/chang
 integration and publication. Those draft documents are in the separate server
 worktree until integration; no historical ADR is accepted or rewritten here.
 
+## No fixed APK ceiling — local candidate (2026-09-13)
+
+Owner Sergey Maltsev requests removing the server and Android size ceilings,
+without unnecessary binary growth. This refines REQ-CLIENT-003; shared RFC-0013,
+draft ADR-0008 and global threat amendment are owned by the separate server PR.
+Those remain proposals, not permanent architecture acceptance. This branch changes
+only Android source/tests and client evidence. No APK release/version bump here.
+
+Manifest/provider checks retain positive signed-long lengths but no product-size
+ceiling. The downloader already streams to private disk with an 8192-byte buffer;
+accounting now checks remaining length before addition, avoiding signed overflow.
+Before opening the APK connection, require declared size <= available cache space.
+This is advisory under concurrent writers; write failure still removes the partial
+and unverified ready files. No app-state/key/history access is added. The provider
+retains fixed URI, read-only grants, regular/single-link/same-owner/private/no-follow
+fd checks. Actual length/hash and signer/package/version/ABI gates remain required.
+A compromised feed can consume disk up to available space or withhold updates;
+preflight is not a reservation or quota. Existing deadlines are unchanged, so
+arbitrarily large artifacts/slow links are not guaranteed to complete.
+
+The first released bridge APK must fit installed clients' legacy 16 MiB ceiling,
+or be explicitly installed manually in place, before any larger feed publication.
+The old server still needs its separate update. Do not downgrade/uninstall/reset.
+Optimization remains for useful size reduction, not to satisfy a fixed APK budget.
+
+Large-APK review also moves PackageInstaller fallback allocation/copy/fsync off the
+UI thread. BUSY spans that worker and UI handoff. Copy verifies exact declared
+size/hash again; final commit runs on the UI thread only while alive and focused.
+Lost focus, destroyed Activity, copy/hash failure and failed session open abandon
+and close the session, releasing BUSY; no silent install or state reset. The exact
+production method is exercised by `test_update_session_worker.py` with host API
+adapters (success, focus loss, destruction, bad hash, failed acquisition/open and
+close failures after success/cancellation). These are
+thread/lifecycle fixtures, not Android Binder/system-installer/device evidence.
+
+Verification: `test_updates.py` runs production parser/download/provider policy
+and isolated pinned TLS; `PARANOID_UPDATE_LARGE_TRANSPORT=1` additionally uses an
+explicitly synthetic 23,400,000-byte transport fixture, NOT a signed APK or phone
+installation. Large manifest and sparse 2 GiB provider tests cover long sizes;
+actual signature/PackageManager/installer behavior on phones remains unrun.
+
 ## Package transition and publication status — 2026-09-11
 
 v15 updates v14 in place with the retained signer. Old `org.paranoid.devtext`
@@ -58,7 +99,8 @@ install automatically. Cache files are disposable, not messaging data.
   strings/fractions/overflow, malformed escapes, trailing input and controls fail.
 - Schema 1; fixed package/ARM64; positive versionCode (signed-long representable),
   positive minSDK (int representable), nonempty versionName <=128 UTF-8 bytes and
-  no control characters; 64 lowercase hex SHA256; APK 1..16777216 bytes. The
+  no control characters; 64 lowercase hex SHA256; positive signed-64-bit APK length,
+  with no fixed size ceiling. The
   server implementation inspected uses the same 128-byte versionName bound.
 - APK path derives only from the validated digest:
   `/v2/updates/android/apk/<apk_sha256>`. No metadata URL or filename is accepted.
@@ -96,7 +138,7 @@ Its only URI is `content://global.paranoid.messenger.updates/verified.apk`. Quer
 only display name and size. Selectors, unknown columns, altered authority/path/query/
 fragment/encoding and all write modes/mutations fail. `openFile` uses O_RDONLY,
 O_NOFOLLOW, O_CLOEXEC and fstat: regular file, app UID, one link, private permissions,
-size bound. No directory listing, broad FileProvider roots, world-readable file,
+positive size. No directory listing, broad FileProvider roots, world-readable file,
 file URI or write grant. Installer resolution is restricted to a system handler.
 
 Supply-chain residuals: a compromised signing key or same-UID process remains a
