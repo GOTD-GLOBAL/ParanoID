@@ -943,6 +943,38 @@ final class CallControllerTests: XCTestCase {
         XCTAssertEqual(pair.alicePorts.offers, 0, "nothing captured on the way")
     }
 
+    // MARK: - The flag that flickers
+
+    /// The lane's online flag drops and comes back on every server-forced
+    /// reconnect (`RealtimeLoop.java:237,280`, `current-state.md:19-22`,
+    /// issue #19). A readiness answer enqueued into the middle of that flicker
+    /// is the one thing that must not be lost: it is durable, it carries its
+    /// own 45-second expiry, and losing it costs the caller the whole call.
+    func testAnOfflineFlickerNeverLosesTheReadyAnswer() throws {
+        let pair = CallPair()
+        pair.alice.start(account: CallPair.bob, microphonePermission: true)
+        let knock = try take(pair.alicePorts)
+
+        // The knock arrives exactly while the receiver's lane is down.
+        pair.bob.connection(false)
+        pair.deliver(to: pair.bob, from: CallPair.alice, knock)
+        let ready = try take(pair.bobPorts)
+        XCTAssertEqual(ready.body.kind, .ready,
+                       "the readiness answer is enqueued whatever the flag says")
+        pair.bob.connection(true)
+
+        // And the caller's own lane flickers while that answer reaches it.
+        pair.alice.connection(false)
+        pair.deliver(to: pair.alice, from: CallPair.bob, ready)
+        pair.alice.connection(true)
+        XCTAssertEqual(pair.alicePorts.offers, 1, "the caller's intent survived the flicker")
+
+        pair.alice.localDescription(pair.alice.generation, sdp: CallBodyTests.sdp)
+        pair.deliver(to: pair.bob, from: CallPair.alice, try take(pair.alicePorts))
+        XCTAssertEqual(pair.bob.currentState, .incoming,
+                       "the slot the flicker did not lose is the one that rings")
+    }
+
     // MARK: - The microphone, refused on an incoming call
 
     /// Android answers a denied microphone on a ringing call with
