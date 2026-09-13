@@ -23,7 +23,7 @@ call that connected and carried video. Those rows are `SHOWN`; evidence in
 [the device session](../../project/evidence/ios-client-20260913/README.md).
 
 Everything that needs the hosted server or the owner's Android phone is still
-`NOT RUN`. No hosted account exists (`hosted_registrations` is zero) and the
+`NOT RUN`. Two hosted accounts exist (`hosted_registrations` is 2: one from the build Mac to isolate the phone's TLS failure, one from the physical iPhone after the App Transport Security fix, which then paired the owner's Android and sent a text the server accepted) and the
 only contact this branch has had with the hosted server is one TLS handshake
 that compared the live SubjectPublicKeyInfo digest against the pin this client
 carries.

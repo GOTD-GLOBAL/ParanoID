@@ -21,7 +21,7 @@ names, in its own section, everything that was **not** run.
 
 | Counter | Value |
 | --- | --- |
-| Accounts this branch created on the hosted alpha | `hosted_registrations: 0` |
+| Accounts this branch created on the hosted alpha | `hosted_registrations: 2` — one from the build Mac through `service-bridge` while diagnosing the phone's TLS failure, and one from the physical iPhone once App Transport Security was switched off; both under the owner's answer to RFC-0021 question 4 (no fixed budget). The phone then paired the owner's Android from its QR and sent a text the hosted server accepted |
 | Contacts with the hosted server | one TLS handshake, no HTTP request, no POST, no registration |
 | Physical phones involved so far | none |
 | Simulator devices used | iPhone 17 Pro and iPhone 17e, both on iOS 26.5 |

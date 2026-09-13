@@ -204,6 +204,13 @@ extension StateOwner {
             announce(generation) { listener.authorizationLost() }
         }
         let status = RealtimeStatus.message(for: error)
+        #if DEBUG
+        // A device build has no debugger attached and the client logs nothing
+        // on purpose, so a lane failure on a phone is otherwise invisible. This
+        // names the error type and its own description; it carries no snapshot,
+        // credential, pin or body, and the Release build compiles it away.
+        print("realtime: lane failed: \(type(of: error)): \(error)")
+        #endif
         announce(generation) { listener.changed(connected: false, status: status) }
     }
 }

@@ -24,6 +24,11 @@
 	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Камера нужна для сканирования публичного QR-кода контакта ParanoID и для видеозвонков, которые включаются только по вашему нажатию. Снимки не сохраняются.</string>
 	<key>NSMicrophoneUsageDescription</key>

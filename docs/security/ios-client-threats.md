@@ -119,3 +119,23 @@ fixed in this pull request.
    behaviour of this client is proven locally or not at all.
 5. **The alpha break of call-v2**: this client cannot call an Android build
    older than v16, by design.
+
+## App Transport Security is off, and why that removes nothing
+
+`Info.plist` sets `NSAppTransportSecurity` to `NSAllowsArbitraryLoads = YES`.
+This was not a shortcut: measured on a physical iPhone against the hosted
+server, ATS refuses a self-signed leaf on a public IP address before any
+`URLSession` delegate is consulted (`NSURLErrorDomain -1200`, stream error
+`-9802`), while it lets the same profile through on a private address, which is
+why the local stand never showed it. ATS's exception and pinning lists take
+domain names only, and the server has none — `NSPinnedDomains` with the correct
+SPKI was tried and does not match an IP literal.
+
+What ATS would have contributed is a CA-chain check. This client never relies
+on one: every session is built by `PinnedSessionDelegate`, which requires the
+pinned SubjectPublicKeyInfo digest, a self-signed leaf whose signature verifies
+with its own key, a TLS 1.2 floor, no proxies, no redirects and no cookies; the
+string contract test refuses any `URLSession` created outside it. That is the
+same posture as Android, whose pinned trust manager replaces the platform
+store. The residual difference is procedural: Apple asks for a justification
+of this key at submission, and this section is it.

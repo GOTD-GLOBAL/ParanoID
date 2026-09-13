@@ -718,9 +718,27 @@ class UiContract(unittest.TestCase):
             self.assertTrue(plist.get(key, '').strip(), f'{key} must carry a reason')
         self.assertEqual(plist.get('UIBackgroundModes'), ['audio'],
                          'the only background mode is the one a live call needs')
-        for key in ('voip', 'aps-environment', 'NSAllowsArbitraryLoads',
-                    'NSAppTransportSecurity'):
+        for key in ('voip', 'aps-environment'):
             self.absent(key, raw, 'Info.plist')
+        # App Transport Security is switched off on purpose, and the reason is
+        # bound to a fact this test enforces at the same time. ATS blocks a
+        # self-signed leaf on a public IP address before any delegate is asked
+        # (measured on a device: -1200 / -9802 against the hosted server), and
+        # its exception list does not accept IP literals, so a pinned server
+        # without a domain name cannot be reached with it on. ATS would only
+        # have added a CA-chain check this client deliberately does not rely
+        # on: every session is built by PinnedSessionDelegate, which enforces
+        # the SPKI pin, the TLS 1.2 floor, no proxies and no redirects. The
+        # second half of the assertion is what makes the first half safe.
+        ats = plist.get('NSAppTransportSecurity')
+        self.assertEqual(ats, {'NSAllowsArbitraryLoads': True},
+                         'ATS is off exactly and only as documented; no per-domain exceptions')
+        unpinned = ('URLSession.shared', 'URLSession(configuration: .default',
+                    'URLSession(configuration: .ephemeral', 'URLSessionConfiguration.default')
+        for path, source in self.sources.items():
+            for needle in unpinned:
+                self.assertNotIn(needle, source,
+                                 f'{path}: a session outside PinnedSessionDelegate would rely on ATS')
         self.absent('aps-environment', (APP / 'ParanoID.entitlements').read_text(),
                     'ParanoID.entitlements')
 

@@ -143,10 +143,15 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, Sendable
                 return
             }
             completionHandler(.useCredential, URLCredential(trust: trust))
-        case .cancel:
-            // The reason is deliberately not logged here: a refusal is
-            // reported by the caller that owns the request, with no
-            // certificate bytes in it.
+        case .cancel(let failure):
+            // The reason is deliberately not logged in a Release build: a
+            // refusal is reported by the caller that owns the request, with no
+            // certificate bytes in it. A Debug build on a phone has no other
+            // way to say which rule refused, so it names the rule and nothing
+            // else — no bytes, no pin, no host beyond what the URL already is.
+            #if DEBUG
+            print("pinned-tls: refused: \(failure)")
+            #endif
             completionHandler(.cancelAuthenticationChallenge, nil)
         }
     }

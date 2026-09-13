@@ -124,6 +124,14 @@ It settles the technical open questions below. It does not waive independent
 review, does not convert a simulator result into evidence, and does not accept
 this ADR — acceptance remains the human decision owner's.
 
+**App Transport Security.** The bundle turns ATS off (`NSAllowsArbitraryLoads`).
+On a device ATS blocks a self-signed leaf on a public IP before the pinning
+delegate runs, and it offers no exception keyed by an IP literal, so a pinned
+server without a domain name is unreachable with it on. The client relies on its
+own pin, never on a CA chain, and a contract test forbids any session outside
+the pinning delegate; the threat delta records the measurement. This is a
+security-boundary detail of this decision, not a widening of it.
+
 ## Consequences
 
 ### Positive

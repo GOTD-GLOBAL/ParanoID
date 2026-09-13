@@ -94,7 +94,7 @@ Pro Max (iOS 26.6.1, team `5RPGVC566Q`) against the local stand: identity
 creation, the client's own QR, a contact read off a screen with the real
 camera, the fingerprint sheet, text in both directions with receipts, and a
 call that connected and carried video. The hosted alpha was not involved and
-holds no account for this client.
+holds two accounts: one created from the build Mac while diagnosing the phone's connection, and the physical iPhone's own, which paired the owner's Android and sent a text the server accepted.
 
 **NOT RUN, with reasons.** No signed build, no device install and no TestFlight
 upload: there is no App ID, no owner "go", and the
@@ -119,7 +119,7 @@ are written in advance with every result `NOT RUN`:
 [stage 1](evidence/ios-client-20260913/stage1-text.md) and
 [stage 2](evidence/ios-client-20260913/stage2-voice.md).
 
-**Hosted accounts spent: zero.** `hosted_registrations` is 0. The only contact
+**Hosted accounts spent: two.** `hosted_registrations` is 2: a `service-bridge` registration from the build Mac on 2026-09-13, made to prove the client stack registers on the hosted server while the phone could not, and the physical iPhone's registration once App Transport Security was switched off. The other contact
 this branch has had with the hosted alpha is a single TLS handshake with no
 HTTP request, which confirmed that the pin this client carries still equals the
 live SubjectPublicKeyInfo digest after the owner renewed the certificate **with
