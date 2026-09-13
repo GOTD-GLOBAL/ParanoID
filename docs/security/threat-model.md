@@ -18,6 +18,15 @@ change.
 
 ## Active scoped analysis
 
+The [same-key renewal proposal](../rfcs/tls-same-key-automation.md#threats-and-alternatives)
+adds unattended dedicated-user lifecycle authority, durable public-certificate
+journals and fail-closed drift recovery. No key export/generation, DB restore/reset,
+client repin or neighboring-service change is permitted. Same-owner/root compromise,
+clock correctness, power-loss durability and failure monitoring remain explicit
+risks; file guards are not a security boundary against a compromised service account.
+The [runbook](../operations/tls-auto-renewal.md) requires fresh review and runtime
+verification before installation; no public-readiness or phone acceptance claim.
+
 The [voice trust delta](voice-v1-threats.md) adds proposed authenticated call
 controls, fresh consent/nonces, WebRTC dependency and microphone/media/network
 boundaries for RFC-0017/ADR-0011. It is analysis before runtime implementation;
@@ -100,6 +109,23 @@ Human residual risk/decision owner: martadvix-web; ADR-0009 stays proposed.
 Current local implementation/test status is in [current-state](../project/current-state.md)
 and the candidate evidence record. Existing historical asymmetric RED is separately
 reported; no historical hosted message recovery or live data change is performed.
+
+## Android APK ceiling removal candidate (2026-09-13)
+
+[RFC-0013's amendment](../rfcs/0013-user-triggered-android-updates.md#owner-amendment-no-fixed-apk-size-ceiling-2026-09-13)
+replaces the fixed APK cap, not transport/signer/integrity checks. Server heap is
+fixed-buffer, with anonymous disk snapshots to preserve verified-byte identity.
+Two response-lifetime permits bound snapshot concurrency; malformed metadata,
+wrong size/hash, unsafe file paths and I/O failures fail closed. Disk exhaustion
+is a remaining availability risk: snapshot storage scales with artifact size,
+space checks race unrelated writers, and tmpfs is unsuitable for large APKs.
+Metadata remains 8192-byte bounded. Copy deadline cannot preempt stalled kernel
+I/O. Operator-controlled disk-backed publication storage and disk headroom are
+required. A compromised publisher can deny service but cannot grant installer
+trust. Client free-space checks are advisory, exact-size accounting is overflow
+safe, failures clean only dedicated update files. All signer/package/version,
+pinned TLS and native consent gates remain; app identity/history are untouched.
+Independent review precedes release; no production DoS guarantee is made.
 
 ## Security objectives
 

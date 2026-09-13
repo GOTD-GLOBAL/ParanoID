@@ -6,6 +6,67 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK ceiling removal — local Android candidate (2026-09-13)
+
+Sergey requested removal of the arbitrary APK cap on both components, while
+avoiding unnecessary binary growth. Android candidate removes parser/provider
+ceilings, keeps signed-long length and overflow-safe streaming checks, and checks
+available cache space before transfer. Local JVM/pinned-TLS tests pass with a
+23,400,000-byte synthetic transport fixture, plus unchanged integrity/trust
+rejections. This is not signed-APK installation or phone evidence. The separate
+server RFC-0013 amendment/PR owns the shared contract and server resource changes;
+the reviewed server candidate is integrated here; installed clients still enforce
+the old ceiling until updated.
+Review additionally moved fallback PackageInstaller allocation/copy/fsync off UI,
+with eight host-adapter lifecycle/fault cases and full SDK35 Java compilation
+passing. Commit remains foreground-gated and user-confirmed. Independent fallback AI review
+closed the UI-thread-copy and acquisition/close exception findings with APPROVE;
+Opus was unavailable, so no Opus or human-audit claim is made.
+A reviewed retained-signer bridge within the legacy ceiling must precede larger
+feed publication, unless manually installed in place. No release/deploy/merge.
+
+## APK ceiling removal — local server candidate (2026-09-13)
+
+Owner direction is recorded in RFC-0013 and draft ADR-0008: no fixed APK size
+ceiling, no unnecessary binary growth. Server candidate uses fixed-memory hashing
+and anonymous disk snapshots, retaining two permits through response lifetime.
+Local update unit/integration checks pass, including above-old-cap transport and
+source mutation after verification. Android is a separate PR; installed clients
+still require a bridge within the old ceiling. No merge, deployment, feed change
+or phone acceptance is implied. Independent fallback AI review approved the final
+bounded-channel implementation after fixing cancellation/I/O permit coupling;
+Opus CLI could not authenticate, so this is not an Opus or human audit. Rollout
+and physical-phone acceptance remain gates.
+
+## Automatic same-key TLS maintenance installed — 2026-09-13
+
+The [bounded same-key automation](../rfcs/tls-same-key-automation.md) is installed
+on the existing host with a daily persistent user timer. It renews within 30 days
+for 90 days, preserves key/pin/profile, journals public certificates and recovers
+pending transactions before any not-due shortcut. Independent review is APPROVE;
+13 crypto/file/control tests, four installer gates and actual local systemd/TLS
+renewal/no-op/rollback checks pass. The [runbook and hosted receipt](../operations/tls-auto-renewal.md#observed-installation--2026-09-13)
+record successful first `not_due` execution and enabled/active timer. Current
+certificate expiry remains `2026-12-12T07:38:09Z`; renewal becomes due on
+`2026-11-12T07:38:09Z`. Installation did not restart messaging or change its
+certificate/config/package. Sergey explicitly authorized automatic **same-key**
+renewal in this task; original Telegram permalink is unavailable. No permanent
+ADR acceptance, key rotation, Telegram failure alert or phone/iOS acceptance is
+claimed. The prior one-off record below remains historical evidence.
+
+## Same-key TLS certificate renewed — 2026-09-13
+
+The hosted alpha now serves a renewed self-signed certificate, valid through
+`2026-12-12T07:38:09Z`, with the original TLS private key and SPKI unchanged.
+The [operation and evidence](../operations/tls-renewal-2026-09-13.md) record
+owner-scoped authority, independent review, synthetic rollback tests and actual
+host/external checks. Only the dedicated messaging user service was stopped and
+started; configuration, package, PostgreSQL identity and neighboring services
+were preserved. Android `PinnedTls` on the JVM accepts the actual renewed
+endpoint; physical phones and iOS were not tested. This retained 90-day renewal
+is not automation: another renewal is needed before December 12. Key rotation
+and any contact/channel migration still require a separate RFC.
+
 ## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
 
 The owner (Сергей Мальцев, Telegram) requested video calls and resolved the
@@ -233,81 +294,11 @@ passes independent44-input artifact correspondence. Fresh Fable exact-source
 closure succeeded and closed VOICE-PUB-01; it requires the reviewed bytes committed
 and refreshed CI correspondence. [Current evidence](evidence/voice-relay-client-20260910/README.md)
 retains failures and separate scopes. Earlier15-second incoming failures
-remain unexplained. All supported CI gates pass on the preceding exact commits;
-the separate legacy job retains exactly14 historical failures.
-Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
-platform worker rejection; those operations were not retried. No live deployment
-is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint
-below retains its original artifact and test scope.
+remain unexplained. All supported CI ga
 
-## Voice relay foundation — 2026-09-10
+... [OUTPUT TRUNCATED - 5,132 chars omitted out of 55,060 total] ...
 
-PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit
-`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. This separate server branch starts
-from that commit under the [component policy](component-boundaries.md).
-[REQ-CALL-006](../product/voice-relay.md) now has a default-disabled authenticated
-issuer, strict local secret loader, locked binding recheck, quotas and a versioned
-offline coturn/controller package. Fourteen focused issuer tests, two quota unit
-tests, controller/package tests and native offline build checks pass. The full
-server matrix passes85 tests with one pre-existing APK-environment skip; the
-text/JNI/pinned-TLS regression passes24 warm samples, P50 102.04/P95 144.30 ms.
-[Durable evidence](evidence/voice-turn-20260910/README.md) separates these results
-from the pending final independent review.
-
-The actual direct-ICE client checkpoint is in [draft PR20](https://github.com/GOTD-GLOBAL/ParanoID/pull/20);
-its relay integration will depend on this exact foundation commit. A successful
-direct-ICE final review does not cover this extension. Required retained-allocation
-expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection.
-[The runbook](../../deploy/turn/README.md) retains the exact proposed network
-scope and rollback; no public TURN/firewall/DNS or existing-server changes were
-authorized or performed. RFC-0018/ADR-0012 remain proposed.
-
-## Voice implementation after verified PR18 merge
-
-GitHub independently reports PR18 MERGED at `2026-09-09T22:01:42Z`, merge
-commit `366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The clean feature worktree
-`feat/voice-calls-20260909` starts from that exact commit. The owner's
-[voice scope](../product/voice-calls.md) now authorizes local actual 1:1 voice
-implementation, real tests, retained-signer APK and a GitHub PR for issue19.
-[RFC-0017](../rfcs/0017-voice-calls.md) and [ADR-0011](../decisions/0011-voice-calls.md)
-remain proposed. Fresh independent design review and exact-doc closure succeeded
-before runtime implementation. Strict encrypted controls, post-commit dispatch,
-the volatile consent/lifecycle controller, Android call UI/microphone service
-and pinned WebRTC/Opus adapter are implemented. The [durable evidence](evidence/voice-calls-20260909/README.md)
-records 62 supported native tests including 14 voice tests, actual old/current
-Java/JNI compatibility and controller/adapter checks passing. Twenty simulated
-maximum calls exchange 3700 real Olm controls without consuming the text Event
-ledger; this is signaling evidence, not decoded audio.
-
-Real Android M150/aiortc direct and isolated local TURN relay media pass with
-decoded synthetic tones in both directions, mute/unmute and complete capture/route
-cleanup. Exact captured SDP also passes real native/Olm validation and binding
-substitution rejection. These are separate media and encrypted-control fixtures;
-the owned Android v8→v9 in-place update also retains identity/contact/history and
-passes new delivered text, microphone denial and incoming-without-capture checks.
-Actual TLS retry/revocation and authenticated resume RED/GREEN pass. Full app
-acceptance passes 14 steps, first microphone grant and deferred SDK mute corrections
-pass, and actual process restart preserves identity/contact/history without media
-resurrection. Final text regression passes 24 warm samples at P50 105.92 ms and
-P95 122.99 ms. The final fixture5 app run repeats all 14 steps and visually
-verifies corrected call-dialog system-bar insets. The retained-signer ARM64
-`org.paranoid.devtext` version9, `0.0.9-voice`, is now built and verified:
-SHA256 `4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f`,
-15,712,851 bytes. The [artifact/source record](evidence/voice-calls-20260909/signed-apk-artifact.json)
-retains the frozen uncommitted feature-source manifest; post-build documentation
-updates leave packaged code unchanged. Fresh independent exact-source final
-Fable review remains required before candidate handoff.
-Working v8 text/identity/pins/history remain protected. Live TURN/firewall/DNS
-or existing-server changes need separate concrete reviewed authorization. See
-[the current gates](../operations/voice-calls-local.md). Physical OPPO audio,
-Bluetooth, Doze/force-stop, public relay and production claims remain unverified.
-
-## Owner phone feedback and PR 18 merge direction
-
-After receiving v8, Sergey reports: "Работает отлично. Текст летает туда сюда".
-This is qualitative owner-observed responsive bidirectional phone messaging,
-not an instrumented latency measurement or proof of background/Doze/audio behavior.
-[The GitHub record](https://github.com/GOTD-GLOBAL/ParanoID/issues/16#issuecomment-5609070441)
+nt-5609070441)
 retains that distinction. It supersedes only the earlier absence of phone-text
 feedback, not the other NOT-RUN limits below.
 

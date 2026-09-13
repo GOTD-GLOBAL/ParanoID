@@ -22,7 +22,7 @@ public final class UpdateProvider extends ContentProvider {
             fd=Os.open(apk.getAbsolutePath(),OsConstants.O_RDONLY|OsConstants.O_NOFOLLOW|OsConstants.O_CLOEXEC,0);
             StructStat st=Os.fstat(fd);
             if(!OsConstants.S_ISREG(st.st_mode) || st.st_uid!=android.os.Process.myUid() || st.st_nlink!=1
-                || (st.st_mode&077)!=0 || st.st_size<1 || st.st_size>UpdateManifest.MAX_APK)throw new IOException("private APK required");
+                || (st.st_mode&077)!=0 || st.st_size<1)throw new IOException("private APK required");
             return ParcelFileDescriptor.dup(fd);
         }catch(Exception e){throw new FileNotFoundException("Verified update unavailable");}
         finally{if(fd!=null)try{Os.close(fd);}catch(Exception ignored){}}

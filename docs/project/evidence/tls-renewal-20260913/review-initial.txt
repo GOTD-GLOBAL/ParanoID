@@ -1,0 +1,18 @@
+**REQUEST_CHANGES** — exact SHA-256:
+`bd9be9c185084165daea9e29548301c187180e0488131a3a6ef93570a51bef59`
+
+Read-only review of the script, AGENTS, requested deployment/security/access canon and ADR-0003. **Three blockers:**
+
+- **Recovery CLI requires an already healthy service** (117–124). After interruption following certificate replacement or during restart, `rollback` can fail at `health()` before restoring anything. `apply` cannot resume when the new certificate is installed, and an existing `apply-started.json` prevents retry after automatic recovery. **Fix:** provide state-aware recovery under the same lock, accepting only the recorded old/new certificate hashes, without requiring initial health. Preserve journal evidence while allowing explicit resume/recovery; verify health and exact served certificate afterward.
+
+- **Forward and recovery writes share one exclusive temporary pathname** (52–55, 149). Failure/interruption after creating `.renewal-pending` but before rename leaves it present; the compensating write then necessarily fails with `EEXIST`. Marking `changed=True` early does not solve this. **Fix:** use distinct exclusively created temporary files for recovery, or explicitly reconcile a validated owned pending file. Exercise interruption before/after rename and directory-fsync failure.
+
+- **Restart completion is mistaken for application readiness** (130–132, 150–151). The repository unit starts a supervisor that subsequently launches PostgreSQL/server; immediate health can race startup and falsely trigger rollback, then falsely report recovery failure. A timed-out `systemctl restart` also does not cancel the manager’s queued job. **Fix:** bounded readiness polling, including exact served DER; reconcile outstanding unit jobs before compensating restart. Test delayed startup and restart timeout.
+
+**Positive findings / scope:**
+- Same-key renewal preserves SPKI, subject/issuer, exact extensions and the 90-day profile; signature, IP SAN and certificate/key compatibility checks are present. No key export/rewrite, config change, DB restore/reset or backup operation is implemented.
+- Uses the canonical `operation.lock`, not an unrelated private lock. Repository runtime uses a separate lifecycle lock, so no evident normal restart deadlock.
+- Scoped owner authorization is supplied; no additional broad approval request is needed. This is independent AI review under the bounded alpha exception, not a human security audit.
+- Inode/system-ID checks establish cluster identity, **not full row/history preservation**; do not claim the latter as tested.
+
+**Limitations:** no script execution, remote calls, secrets accessed or files modified. Active-release object `9e6549ecd92080e20fcc` was unavailable locally, so controller compatibility remains for the parent’s checks. After fixes, rehash and run synthetic success, interruption and recovery tests before live apply.

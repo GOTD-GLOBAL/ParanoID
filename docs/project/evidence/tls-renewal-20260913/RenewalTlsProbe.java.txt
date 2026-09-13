@@ -1,0 +1,16 @@
+import org.paranoid.text.PinnedTls;
+import javax.net.ssl.SSLSocket;
+import java.nio.charset.StandardCharsets;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+public final class RenewalTlsProbe {
+    public static void main(String[] args) throws Exception {
+        try (SSLSocket socket=(SSLSocket)PinnedTls.factory(args[0],args[2]).createSocket(args[0],Integer.parseInt(args[1]))) {
+            socket.setSoTimeout(10000); socket.startHandshake();
+            socket.getOutputStream().write(("GET /health HTTP/1.1\r\nHost: "+args[0]+"\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+            String status=new BufferedReader(new InputStreamReader(socket.getInputStream(),StandardCharsets.US_ASCII)).readLine();
+            if(status==null || !status.contains("200"))throw new Exception("health failed: "+status);
+            System.out.println("PASS current PinnedTls: "+status);
+        }
+    }
+}

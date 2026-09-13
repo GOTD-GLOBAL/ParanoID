@@ -47,6 +47,7 @@ python3 test_contact_names.py
 python3 test_background_contract.py
 python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
 python3 test_update_wiring.py
+python3 test_update_session_worker.py
 python3 test_update_artifact_regression.py
 cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml
 python3 notices.py
@@ -60,7 +61,7 @@ python3 -c 'from pathlib import Path; import shutil; p=Path("out/gen"); shutil.r
 "$TOOLS/aapt" package -f -m --auto-add-overlay -M AndroidManifest.xml -S res $FCM_RES -I "$PLATFORM" -J out/gen --extra-packages "$FCM_PACKAGES" -F out/unsigned.apk
 javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar:out/deps/webrtc-classes.jar:$FCM_CP" -d out/classes src/org/paranoid/text/*.java $(find out/gen -name R.java)
 # R8 shrink-only (see proguard.pro): the closure's own consumer rules (proguard.txt inside each AAR) are
-# honoured, ours forbid optimization/renaming. Keeps the APK under the 16 MiB in-app update bound.
+# honoured, ours forbid optimization/renaming. Avoid unnecessary binary growth, without a fixed APK ceiling.
 python3 -c 'from pathlib import Path; import shutil; p=Path("out/r8-rules"); shutil.rmtree(p, ignore_errors=True); p.mkdir(); import zipfile
 for aar in sorted(Path("out/deps/fcm-archives").glob("*.aar")):
     with zipfile.ZipFile(aar) as z:

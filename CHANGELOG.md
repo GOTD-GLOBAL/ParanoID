@@ -8,6 +8,46 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android client: remove fixed APK ceiling — 2026-09-13
+
+- Local client candidate no longer rejects updates/provider files merely because
+  they exceed 16 MiB. Declared-size/hash/signer/package/version/TLS checks remain.
+  Fixed-buffer download accounting is overflow-safe; insufficient cache space
+  fails before APK transfer, without touching message data or identity.
+- PackageInstaller fallback now allocates/copies/fsyncs on the worker, preserving
+  BUSY through the UI handoff; lost focus/errors abandon the session safely.
+- Dependency optimization remains, not a fixed APK budget. Server change and a
+  legacy-compatible bridge are separate release gates; no phone install claimed.
+
+### Android update server: remove fixed APK ceiling — 2026-09-13
+
+- Local server candidate accepts positive signed-64-bit APK lengths instead of a
+  16 MiB cap. Fixed-buffer hashing and anonymous disk snapshots preserve exact
+  verified response bytes; two permits cover complete response lifetimes.
+- Metadata, TLS/path/hash checks remain; publication needs disk headroom and
+  O_TMPFILE support. Separate Android bridge and reviewed rollout remain required.
+  No live server/feed change is claimed.
+
+### Automatic same-key TLS maintenance — 2026-09-13
+
+- Installed standalone daily persistent renewal with unchanged TLS key/pin/profile,
+  30-day threshold, certificate-only journal/recovery and bounded user-service
+  restart when due. Independent review, 13 unit/fault tests, four installer gates
+  and actual local systemd/TLS renewal/no-op/rollback pass. Hosted first run is
+  `not_due`, timer enabled/active, current application/certificate/config/package
+  unchanged. See the [runbook](docs/operations/tls-auto-renewal.md).
+  No key rotation, database change, phone/iOS or full-history acceptance claim.
+
+### Same-key TLS certificate renewal — 2026-09-13
+
+- The hosted private alpha certificate now expires on `2026-12-12T07:38:09Z`;
+  the private key, SPKI pin, SAN and server-auth profile remain unchanged.
+  Dedicated-service restart and external Android TLS/JVM checks passed, with
+  configuration, server package, PostgreSQL identity and neighbors preserved.
+  [Operation, review and rollback evidence](docs/operations/tls-renewal-2026-09-13.md)
+  distinguish actual host checks from synthetic fault tests and unrun phone/iOS
+  acceptance. That one-off operation did not implement automation or key rotation.
+
 ### Push wake gateway (server) — 2026-09-12
 
 - RFC-0020 (proposed): `POST /v2/push` registers an opaque FCM token over the
@@ -64,34 +104,6 @@ public contract is declared.
     30 s poll and backoff. There is still no push provider (no FCM) in this
     build; background delivery relies on the user-enabled foreground
     connection and the OEM battery exception.
-- `0.0.25-push` (versionCode 25, 2026-09-13): **v24 crashed one second after
-  a cold push wake** (owner report: `IllegalStateException: call owner thread`
-  in `CallController.tick` on `main`). `CallController` pinned its owner to
-  the thread that constructed it; the `TextEngine` singleton is created lazily
-  by the first caller, and after a content-free FCM wake that is the Firebase
-  service thread — so the 1 s tick on `main` failed the ownership check and
-  killed the process. The owner is now passed explicitly (`Looper.getMainLooper()
-  .getThread()`); the constructor default keeps the old behaviour for tests.
-  `CallControllerSmoke` covers construction on a foreign thread with an
-  explicit owner and still rejects non-owner access.
-- `0.0.24-push` (versionCode 24, 2026-09-12): **calls crashed the caller on
-  v20–v23** (owner tombstone: `SIGABRT`, `JNI DETECTED ERROR: java_class ==
-  null in GetStaticMethodID` from `libjingle_peerconnection_so.so` during
-  `PeerConnectionFactory.initialize`). Root cause: the whole-program R8 shrink
-  introduced in v20 (to fit Firebase under the 16 MiB update bound) broke
-  libjingle's JNI class lookup through `org.webrtc.WebRtcClassLoader` even
-  with `-keep class org.webrtc.** { *; }`. Reproduced on the x86_64 emulator
-  (R8 recipe: crash; d8: pass). Fix: R8 shrinks only the Firebase closure with
-  app/WebRTC/ZXing on `--classpath`; app/WebRTC/ZXing are dexed by d8 untouched;
-  d8 merges into one `classes.dex`. Emulator: `initialize` + factory PASS.
-  The v22 "wake restarts the loop" change stays (it was a real hazard) but was
-  not the cause. `test_dex_shrink.py` now asserts every WebRTC/app class of the
-  d8 dex survives in the merged dex.
-- `0.0.23-push` (versionCode 23, 2026-09-12): the v22 crash dialog only
-  captured Java exceptions; the owner's call crash left no report, which points
-  at a native (WebRTC/JNI) abort. `CrashLog` now also reads the system's own
-  `ApplicationExitInfo` (Android 11+: CRASH_NATIVE/ANR/SIGNALED with the
-  tombstone head) and shows it once on the next launch. Diagnostic only.
 - `0.0.22-push` (versionCode 22, 2026-09-12): call setup froze after a crash
   on v21 (owner report). A push wake called `RealtimeLoop.restart()`, which
   bumps the loop generation and abandons an in-flight voice-relay (TURN)

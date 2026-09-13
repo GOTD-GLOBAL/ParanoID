@@ -1,0 +1,9 @@
+test_due_rejected_before_start (__main__.Gates.test_due_rejected_before_start) ... ok
+test_not_due_and_preserved_then_enable (__main__.Gates.test_not_due_and_preserved_then_enable) ... ok
+test_pid_drift_rejected_before_enable (__main__.Gates.test_pid_drift_rejected_before_enable) ... ok
+test_recovery_required_rejected_before_start (__main__.Gates.test_recovery_required_rejected_before_start) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.080s
+
+OK
