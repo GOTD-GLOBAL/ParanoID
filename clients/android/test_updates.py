@@ -20,9 +20,13 @@ def main():
     sources += list((ROOT/'test').glob('Update*Smoke.java'))
     (ROOT/'out/update-host').mkdir(exist_ok=True,parents=True)
     subprocess.run(['javac','--release','8','-Xlint:-options','-cp',str(ROOT/'out/deps/json-20240303.jar'),'-d',str(ROOT/'out/update-host'),*map(str,sources)],check=True)
-    print(run('org.paranoid.text.UpdateSmoke').strip());print(run('org.paranoid.text.UpdatePolicySmoke').strip());print(run('org.paranoid.text.UpdateTrustSmoke').strip())
+    print(run('org.paranoid.text.UpdateCopySmoke').strip());print(run('org.paranoid.text.UpdateLargeSmoke').strip());print(run('org.paranoid.text.UpdateSmoke').strip());print(run('org.paranoid.text.UpdatePolicySmoke').strip());print(run('org.paranoid.text.UpdateTrustSmoke').strip())
     # Actual retained signed v5 fixture (or an explicitly supplied APK), not invented APK bytes.
     apk=Path(os.environ.get('PARANOID_UPDATE_FIXTURE',str(ROOT/'out/paranoid-text.apk'))).read_bytes()
+    if os.environ.get('PARANOID_UPDATE_LARGE_TRANSPORT')=='1':
+        apk=b'synthetic transport fixture, NOT an installable APK\n'*(450000)
+        assert len(apk)>16777216
+        print(f'Large synthetic transport fixture: {len(apk)} bytes (no APK signer/installer claim)')
     digest=hashlib.sha256(apk).hexdigest()
     metadata=dict(schema=1,package='global.paranoid.messenger',version_code=6,version_name='0.0.6-update',min_sdk=26,abi='arm64-v8a',apk_sha256=digest,apk_size=len(apk))
     class Handler(http.server.BaseHTTPRequestHandler):
@@ -41,6 +45,7 @@ def main():
                 elif mode=='bad-hash':body=json.dumps(dict(metadata,apk_sha256='b'*64)).encode()
                 elif mode=='size-small':body=json.dumps(dict(metadata,apk_size=len(apk)-1)).encode()
                 elif mode=='size-large':body=json.dumps(dict(metadata,apk_size=len(apk)+1)).encode()
+                elif mode=='disk-space':body=json.dumps(dict(metadata,apk_size=9223372036854775807)).encode()
             elif self.path in ('/v2/updates/android/apk/'+digest,'/v2/updates/android/apk/'+'b'*64):
                 body=apk
                 if mode=='truncated':body=apk[:-1]
@@ -77,12 +82,15 @@ def main():
                     for invalid in [realm.replace('https:','http:'),realm+'/',realm+'?file=x',realm+'#x',realm.replace('https://','https://user:secret@')]:
                         run('org.paranoid.text.UpdateNetworkSmoke',invalid,pin,'ok',success=False)
                     print('Non-origin/cleartext/credential URLs: REJECT PASS; explicit unusable JVM proxy ignored')
-                modes=['ok','chunked','absent','redirect','apk-redirect','metadata-big','metadata-invalid','metadata-utf8','bad-hash','size-small','size-large','truncated','overflow','encoding','reject-apk','wrong-pin','cookie'] if kind=='valid' else ['ok']
+                modes=['ok','chunked','absent','redirect','apk-redirect','metadata-big','metadata-invalid','metadata-utf8','bad-hash','size-small','size-large','disk-space','truncated','overflow','encoding','reject-apk','wrong-pin','cookie'] if kind=='valid' else ['ok']
                 for mode in modes:
                     server.mode=mode;server.paths.clear();success=kind=='valid' and mode in ['ok','chunked','absent']
                     out=run('org.paranoid.text.UpdateNetworkSmoke',realm,'0'*64 if mode=='wrong-pin' else pin,mode,success=success)
                     assert all(p=='/v2/updates/android' or p.startswith('/v2/updates/android/apk/') for p in server.paths)
                     if mode=='redirect':assert server.paths==['/v2/updates/android']
+                    if mode=='disk-space':
+                        assert 'insufficient update cache space' in out, out
+                        assert server.paths==['/v2/updates/android'], server.paths
                     if not success and 'AssertionError' in out:raise AssertionError(out)
                     print(f'TLS {kind}/{mode}: '+('PASS' if success else 'REJECT PASS'))
             finally:server.shutdown();server.server_close();thread.join()

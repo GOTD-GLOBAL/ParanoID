@@ -5,6 +5,19 @@ import xml.etree.ElementTree as ET
 R=Path(__file__).resolve().parent
 A='{http://schemas.android.com/apk/res/android}'
 class UpdateWiring(unittest.TestCase):
+    def test_large_session_copy_is_off_ui_and_commit_is_foreground_gated(self):
+        c=(R/'src/org/paranoid/text/UpdateController.java').read_text()
+        fallback=c[c.index('private void sessionInstall('):c.index('public static final String INSTALL_STATUS')]
+        self.assertIn('WORK.execute(',fallback)
+        self.assertLess(fallback.index('WORK.execute('),fallback.index('session.openWrite('))
+        self.assertLess(fallback.index('session.fsync('),fallback.index('activity.runOnUiThread('))
+        self.assertIn('if(!alive() || !activity.hasWindowFocus())',fallback)
+        self.assertLess(fallback.index('if(!alive() || !activity.hasWindowFocus())'),fallback.index('session.commit('))
+        self.assertIn('session.abandon()',fallback)
+        self.assertIn('session.close()',fallback)
+        self.assertIn('finish();',fallback)
+        self.assertIn('},true);',c) # caller transfers BUSY ownership to fallback
+
     def test_explicit_update_ui_and_narrow_provider(self):
         m=ET.parse(R/'AndroidManifest.xml').getroot()
         self.assertEqual(m.get(A+'versionCode'),'22')
@@ -29,7 +42,7 @@ class UpdateWiring(unittest.TestCase):
         # v19: PackageInstaller session fallback after the intent path, with the same re-verified file, user confirmation kept.
         for text in ['PackageInstaller.SessionParams.MODE_FULL_INSTALL','session.commit(','STATUS_PENDING_USER_ACTION','session.abandon()','Диагностика: intent']:
             self.assertIn(text,controller)
-        self.assertLess(controller.index('UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);'),controller.index('sessionInstall(ready);'))
+        self.assertLess(controller.index('UpdateClient.verifyBytes(ready,manifest);AndroidUpdateVerifier.verify(activity,ready,manifest);'),controller.index('sessionInstall(ready,intentFailure);'))
         self.assertIn('UpdateController.installStatus(this,intent)',ui)
         self.assertIn('UpdateController.installStatus(this,getIntent())',ui)
         self.assertIn('FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP',controller)

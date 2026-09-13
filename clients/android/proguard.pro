@@ -1,4 +1,4 @@
-# RFC-0020: shrink-only R8 pass so the Firebase Messaging closure fits the 16 MiB update bound.
+# RFC-0020: shrink-only R8 pass to avoid unnecessary Firebase dependency size, not a fixed APK ceiling.
 # No optimization, no renaming: our code, WebRTC (JNI) and ZXing stay verbatim; stack traces stay readable.
 -dontoptimize
 -dontobfuscate

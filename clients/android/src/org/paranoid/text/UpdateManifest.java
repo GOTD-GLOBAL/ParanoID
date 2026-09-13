@@ -7,7 +7,6 @@ import java.util.*;
 
 /** RFC0013's small flat JSON grammar: identical on Android and the host JVM. */
 public final class UpdateManifest {
-    public static final long MAX_APK=16777216;
     public final long versionCode, apkSize;
     public final int minSdk;
     public final String versionName, sha256;
@@ -18,7 +17,7 @@ public final class UpdateManifest {
         long sdk=number(m,"min_sdk");if(sdk>Integer.MAX_VALUE)throw new IOException("SDK range");minSdk=(int)sdk;
         versionName=string(m,"version_name");sha256=string(m,"apk_sha256");
         if(versionName.isEmpty() || versionName.getBytes(StandardCharsets.UTF_8).length>128
-            || !sha256.matches("[0-9a-f]{64}") || apkSize>MAX_APK)throw new IOException("metadata bounds");
+            || !sha256.matches("[0-9a-f]{64}"))throw new IOException("metadata bounds");
         for(int i=0;i<versionName.length();i++)if(Character.isISOControl(versionName.charAt(i)))throw new IOException("version text");
     }
     private static long number(Map<String,Object> m,String k)throws IOException {

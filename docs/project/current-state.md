@@ -6,6 +6,25 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK ceiling removal — local Android candidate (2026-09-13)
+
+Sergey requested removal of the arbitrary APK cap on both components, while
+avoiding unnecessary binary growth. Android candidate removes parser/provider
+ceilings, keeps signed-long length and overflow-safe streaming checks, and checks
+available cache space before transfer. Local JVM/pinned-TLS tests pass with a
+23,400,000-byte synthetic transport fixture, plus unchanged integrity/trust
+rejections. This is not signed-APK installation or phone evidence. The separate
+server RFC-0013 amendment/PR owns the shared contract and server resource changes;
+the reviewed server candidate is integrated here; installed clients still enforce
+the old ceiling until updated.
+Review additionally moved fallback PackageInstaller allocation/copy/fsync off UI,
+with eight host-adapter lifecycle/fault cases and full SDK35 Java compilation
+passing. Commit remains foreground-gated and user-confirmed. Independent fallback AI review
+closed the UI-thread-copy and acquisition/close exception findings with APPROVE;
+Opus was unavailable, so no Opus or human-audit claim is made.
+A reviewed retained-signer bridge within the legacy ceiling must precede larger
+feed publication, unless manually installed in place. No release/deploy/merge.
+
 ## APK ceiling removal — local server candidate (2026-09-13)
 
 Owner direction is recorded in RFC-0013 and draft ADR-0008: no fixed APK size

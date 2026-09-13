@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android client: remove fixed APK ceiling — 2026-09-13
+
+- Local client candidate no longer rejects updates/provider files merely because
+  they exceed 16 MiB. Declared-size/hash/signer/package/version/TLS checks remain.
+  Fixed-buffer download accounting is overflow-safe; insufficient cache space
+  fails before APK transfer, without touching message data or identity.
+- PackageInstaller fallback now allocates/copies/fsyncs on the worker, preserving
+  BUSY through the UI handoff; lost focus/errors abandon the session safely.
+- Dependency optimization remains, not a fixed APK budget. Server change and a
+  legacy-compatible bridge are separate release gates; no phone install claimed.
+
 ### Android update server: remove fixed APK ceiling — 2026-09-13
 
 - Local server candidate accepts positive signed-64-bit APK lengths instead of a
