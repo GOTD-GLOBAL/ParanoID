@@ -1,0 +1,19 @@
+[Unit]
+Description=ParanoID same-key TLS certificate maintenance
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/paranoid/tls-renewal/renew.py
+WorkingDirectory=/home/paranoid/tls-renewal
+TimeoutStartSec=15min
+TimeoutStopSec=15s
+UMask=0077
+NoNewPrivileges=true
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+LimitCORE=0
+Environment=PYTHONDONTWRITEBYTECODE=1
+# No PrivateNetwork/ProtectHome/PrivateUsers: user-manager and health access required.
+# No PartOf/Conflicts/BindsTo alpha: this oneshot must survive alpha stop/start.

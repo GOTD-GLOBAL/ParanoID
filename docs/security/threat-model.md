@@ -18,6 +18,15 @@ change.
 
 ## Active scoped analysis
 
+The [same-key renewal proposal](../rfcs/tls-same-key-automation.md#threats-and-alternatives)
+adds unattended dedicated-user lifecycle authority, durable public-certificate
+journals and fail-closed drift recovery. No key export/generation, DB restore/reset,
+client repin or neighboring-service change is permitted. Same-owner/root compromise,
+clock correctness, power-loss durability and failure monitoring remain explicit
+risks; file guards are not a security boundary against a compromised service account.
+The [runbook](../operations/tls-auto-renewal.md) requires fresh review and runtime
+verification before installation; no public-readiness or phone acceptance claim.
+
 The [voice trust delta](voice-v1-threats.md) adds proposed authenticated call
 controls, fresh consent/nonces, WebRTC dependency and microphone/media/network
 boundaries for RFC-0017/ADR-0011. It is analysis before runtime implementation;

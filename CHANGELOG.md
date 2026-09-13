@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Automatic same-key TLS maintenance — 2026-09-13
+
+- Installed standalone daily persistent renewal with unchanged TLS key/pin/profile,
+  30-day threshold, certificate-only journal/recovery and bounded user-service
+  restart when due. Independent review, 13 unit/fault tests, four installer gates
+  and actual local systemd/TLS renewal/no-op/rollback pass. Hosted first run is
+  `not_due`, timer enabled/active, current application/certificate/config/package
+  unchanged. See the [runbook](docs/operations/tls-auto-renewal.md).
+  No key rotation, database change, phone/iOS or full-history acceptance claim.
+
 ### Same-key TLS certificate renewal — 2026-09-13
 
 - The hosted private alpha certificate now expires on `2026-12-12T07:38:09Z`;
@@ -16,7 +26,7 @@ public contract is declared.
   configuration, server package, PostgreSQL identity and neighbors preserved.
   [Operation, review and rollback evidence](docs/operations/tls-renewal-2026-09-13.md)
   distinguish actual host checks from synthetic fault tests and unrun phone/iOS
-  acceptance. Automated renewal and key rotation are not implemented.
+  acceptance. That one-off operation did not implement automation or key rotation.
 
 ### Push wake gateway (server) — 2026-09-12
 

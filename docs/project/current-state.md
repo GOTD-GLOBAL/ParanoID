@@ -6,6 +6,22 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## Automatic same-key TLS maintenance installed — 2026-09-13
+
+The [bounded same-key automation](../rfcs/tls-same-key-automation.md) is installed
+on the existing host with a daily persistent user timer. It renews within 30 days
+for 90 days, preserves key/pin/profile, journals public certificates and recovers
+pending transactions before any not-due shortcut. Independent review is APPROVE;
+13 crypto/file/control tests, four installer gates and actual local systemd/TLS
+renewal/no-op/rollback checks pass. The [runbook and hosted receipt](../operations/tls-auto-renewal.md#observed-installation--2026-09-13)
+record successful first `not_due` execution and enabled/active timer. Current
+certificate expiry remains `2026-12-12T07:38:09Z`; renewal becomes due on
+`2026-11-12T07:38:09Z`. Installation did not restart messaging or change its
+certificate/config/package. Sergey explicitly authorized automatic **same-key**
+renewal in this task; original Telegram permalink is unavailable. No permanent
+ADR acceptance, key rotation, Telegram failure alert or phone/iOS acceptance is
+claimed. The prior one-off record below remains historical evidence.
+
 ## Same-key TLS certificate renewed — 2026-09-13
 
 The hosted alpha now serves a renewed self-signed certificate, valid through

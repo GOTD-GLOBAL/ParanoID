@@ -1,0 +1,45 @@
+"""First-install gate tests: temporary files, mocked systemd/CLI only."""
+import contextlib,hashlib,importlib.util,io,json,os,tempfile,unittest
+from pathlib import Path
+from unittest.mock import patch
+
+class Gates(unittest.TestCase):
+ def exercise(self,check_result='not_due',drift=False):
+  spec=importlib.util.spec_from_file_location('installer','/tmp/paranoid-auto-renew-install.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+  with tempfile.TemporaryDirectory() as temp:
+   home=Path(temp)/'paranoid';home.mkdir(mode=0o700)
+   root=home/'paranoid-alpha';root.mkdir(mode=0o700);(root/'tls').mkdir(mode=0o700)
+   units=home/'.config/systemd/user';units.mkdir(parents=True,mode=0o700)
+   (root/'tls/server.crt').write_bytes(b'fixture-public-certificate');(root/'config.json').write_bytes(b'fixture-config');(root/'current').symlink_to(root)
+   mapping=lambda p:home/str(p).removeprefix('/home/paranoid/') if str(p).startswith('/home/paranoid/') else home if str(p)=='/home/paranoid' else Path(p)
+   m.Path=mapping
+   files={'renew.py':'print("fixture-only")\n','paranoid-tls-renewal.service':'fixture service\n','paranoid-tls-renewal.timer':'fixture timer\n'}
+   payload={'files':files,'sha256':{n:hashlib.sha256(v.encode()).hexdigest() for n,v in files.items()}}
+   calls=[];alpha_shows=[0]
+   def command(args):
+    args=list(map(str,args));calls.append(args)
+    if args[0]=='python3':return json.dumps({'result':check_result})
+    if args[0]=='systemd-analyze':return ''
+    if 'show' in args and 'paranoid-alpha.service' in args:
+     alpha_shows[0]+=1
+     return 'MainPID='+('2' if drift and alpha_shows[0]>1 else '1')+'\nActiveState=active'
+    if 'show' in args and 'paranoid-tls-renewal.service' in args:return 'Result=success\nExecMainStatus=0\nActiveState=inactive'
+    if 'show' in args and 'paranoid-tls-renewal.timer' in args:return 'ActiveState=active\nUnitFileState=enabled'
+    if 'enable' in args:self.assertGreaterEqual(alpha_shows[0],2,'timer enabled before preservation check')
+    return ''
+   m.command=command
+   with patch.object(m.sys,'stdin',io.StringIO(json.dumps(payload))),patch.object(m.subprocess,'run'),contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+    if check_result!='not_due' or drift:
+     with self.assertRaises(RuntimeError):m.main()
+    else:m.main()
+   return calls
+ def test_due_rejected_before_start(self):
+  calls=self.exercise('due');self.assertFalse(any('start' in c or 'enable' in c for c in calls))
+ def test_recovery_required_rejected_before_start(self):
+  calls=self.exercise('recovery_required');self.assertFalse(any('start' in c or 'enable' in c for c in calls))
+ def test_pid_drift_rejected_before_enable(self):
+  calls=self.exercise(drift=True);self.assertFalse(any('enable' in c for c in calls))
+ def test_not_due_and_preserved_then_enable(self):
+  calls=self.exercise();self.assertTrue(any('enable' in c for c in calls))
+
+if __name__=='__main__':unittest.main(verbosity=2)
