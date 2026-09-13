@@ -1,0 +1,95 @@
+"""Synthetic transaction/fault tests; systemd/health are mocks, file/signature ops real."""
+import contextlib, datetime as dt, importlib.util, io, ipaddress, json, os, subprocess, tempfile, unittest
+from pathlib import Path
+from unittest.mock import patch
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes,serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.x509.oid import NameOID,ExtendedKeyUsageOID
+
+class Tests(unittest.TestCase):
+ def setUp(self):
+  spec=importlib.util.spec_from_file_location('renew','/tmp/paranoid-tls-renewal.py');self.m=importlib.util.module_from_spec(spec);spec.loader.exec_module(self.m);m=self.m
+  self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+  m.ROOT=Path(self.tmp.name)/'root';m.ROOT.mkdir(mode=0o700);(m.ROOT/'tls').mkdir(mode=0o700)
+  (m.ROOT/'current').symlink_to(m.ROOT)
+  m.STAGE=Path(self.tmp.name)/'stage';m.EXPECTED_UID=os.getuid();m.IP='127.0.0.1'
+  key=ec.generate_private_key(ec.SECP256R1());now=dt.datetime.utcnow();name=x509.Name([x509.NameAttribute(NameOID.COMMON_NAME,'Synthetic')])
+  old=(x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(now-dt.timedelta(days=5)).not_valid_after(now+dt.timedelta(days=85))
+  .add_extension(x509.BasicConstraints(ca=False,path_length=None),True).add_extension(x509.SubjectAlternativeName([x509.IPAddress('127.0.0.1') if False else x509.IPAddress(ipaddress.ip_address('127.0.0.1'))]),False)
+  .add_extension(x509.KeyUsage(True,False,False,False,False,False,False,False,False),True).add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.SERVER_AUTH]),False).sign(key,hashes.SHA256()))
+  m.PIN=m.sha(m.spki(old));self.old=old.public_bytes(serialization.Encoding.PEM)
+  self.key=key.private_bytes(serialization.Encoding.PEM,serialization.PrivateFormat.PKCS8,serialization.NoEncryption())
+  for n,b in [('tls/server.crt',self.old),('tls/server.key',self.key),('operation.lock',b'')]:m.write_new(m.ROOT/n,b)
+  self.realrun=m.run;self.actions=[];self.start_fail=False
+  def run(args):
+   if args[0]!='systemctl':return self.realrun(args)
+   action=args[2];self.actions.append(action)
+   if action=='show':return 'ActiveState=inactive\nMainPID=0\nJob=0\n'
+   if action=='start' and self.start_fail:
+    self.start_fail=False;raise subprocess.TimeoutExpired(args,65)
+   return ''
+  m.run=run;m.baseline=lambda:{'release':str(m.ROOT.resolve())};m.health=lambda:'PASS synthetic health';m.served=lambda expected:self.assertEqual(m.read(m.ROOT/'tls/server.crt'),expected)
+  m.time.sleep=lambda _:None
+  with contextlib.redirect_stdout(io.StringIO()):m.main('prepare')
+  self.new=m.read(m.STAGE/'new.crt')
+ def call(self,mode):
+  with contextlib.redirect_stdout(io.StringIO()):self.m.main(mode)
+ def intact(self):self.assertEqual(self.m.read(self.m.ROOT/'tls/server.key'),self.key)
+ def test_success_and_explicit_rollback(self):
+  self.call('apply');self.assertEqual(self.m.read(self.m.ROOT/'tls/server.crt'),self.new)
+  self.call('rollback');self.assertEqual(self.m.read(self.m.ROOT/'tls/server.crt'),self.old);self.intact()
+ def test_recovery_unhealthy_with_new_certificate(self):
+  m=self.m;m.atomic(m.ROOT/'tls/server.crt',self.new)
+  calls=[0]
+  def health():
+   calls[0]+=1
+   if 'start' not in self.actions:raise RuntimeError('not running')
+   return 'PASS recovered'
+  m.health=health;self.call('rollback');self.assertEqual(m.read(m.ROOT/'tls/server.crt'),self.old);self.intact()
+ def test_interrupted_before_rename(self):
+  m=self.m;orig=m.os.replace;calls=[0]
+  def fail(src,dst):
+   calls[0]+=1
+   if calls[0]==1:raise InterruptedError('synthetic before rename')
+   return orig(src,dst)
+  with patch.object(m.os,'replace',fail):
+   with self.assertRaises(InterruptedError):self.call('apply')
+  self.assertTrue(list((m.ROOT/'tls').glob('*.pending')))
+  self.assertEqual(m.read(m.ROOT/'tls/server.crt'),self.old)
+  self.call('apply');self.assertEqual(m.read(m.ROOT/'tls/server.crt'),self.new);self.intact()
+ def test_after_rename_directory_fsync_failure(self):
+  m=self.m;orig=m.sync;fired=[False]
+  def fail(path):
+   if path==m.ROOT/'tls' and m.read(m.ROOT/'tls/server.crt')==self.new and not fired[0]:
+    fired[0]=True;raise OSError('synthetic directory fsync failure')
+   return orig(path)
+  m.sync=fail
+  with self.assertRaises(OSError):self.call('apply')
+  self.assertEqual(m.read(m.ROOT/'tls/server.crt'),self.old);self.intact()
+ def test_start_timeout_reconciles_stop_before_recovery_start(self):
+  self.start_fail=True
+  with self.assertRaises(subprocess.TimeoutExpired):self.call('apply')
+  self.assertEqual(self.actions,['stop','show','start','stop','show','start'])
+  self.assertEqual(self.m.read(self.m.ROOT/'tls/server.crt'),self.old);self.intact()
+ def test_delayed_startup(self):
+  calls=[0]
+  def health():
+   calls[0]+=1
+   if calls[0] in (2,3):raise subprocess.CalledProcessError(1,['health'])
+   return 'PASS synthetic readiness'
+  self.m.health=health;self.call('apply');self.assertGreaterEqual(calls[0],4);self.intact()
+ def test_unknown_certificate_refused(self):
+  self.m.atomic(self.m.ROOT/'tls/server.crt',b'unknown')
+  with self.assertRaises(AssertionError):self.call('rollback')
+  self.assertEqual(self.actions,[]);self.intact()
+ def test_outstanding_job_prevents_replacement(self):
+  m=self.m;orig=m.run
+  def run(args):
+   if args[0]=='systemctl' and args[2]=='show':return 'ActiveState=deactivating\nMainPID=1\nJob=42\n'
+   return orig(args)
+  m.run=run
+  with self.assertRaises(RuntimeError):self.call('apply')
+  self.assertEqual(m.read(m.ROOT/'tls/server.crt'),self.old);self.intact()
+
+unittest.main(verbosity=2)

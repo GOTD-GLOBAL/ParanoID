@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Same-key TLS certificate renewal — 2026-09-13
+
+- The hosted private alpha certificate now expires on `2026-12-12T07:38:09Z`;
+  the private key, SPKI pin, SAN and server-auth profile remain unchanged.
+  Dedicated-service restart and external Android TLS/JVM checks passed, with
+  configuration, server package, PostgreSQL identity and neighbors preserved.
+  [Operation, review and rollback evidence](docs/operations/tls-renewal-2026-09-13.md)
+  distinguish actual host checks from synthetic fault tests and unrun phone/iOS
+  acceptance. Automated renewal and key rotation are not implemented.
+
 ### Push wake gateway (server) — 2026-09-12
 
 - RFC-0020 (proposed): `POST /v2/push` registers an opaque FCM token over the
