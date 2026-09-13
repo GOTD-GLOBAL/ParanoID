@@ -16,9 +16,15 @@ import XCTest
 /// `ParanoID` application process on the simulator, which is also the only
 /// place where the application's own Keychain access applies.
 ///
-/// They use the real account, because that account *is* the subject, and they
-/// leave nothing behind: `setUp` and `tearDown` delete the item, drop the
-/// scratch defaults suite and remove the temporary directory. The state file
+/// They use the real account, because that account *is* the subject. That makes
+/// them destructive to whatever installation shares the simulator, so they
+/// borrow rather than clear it: `setUp` lifts any existing key out of the
+/// account and `tearDown` puts the original bytes back, after which the
+/// application on that simulator opens its state exactly as before. Without
+/// that, a run here would delete the key of an installed client and leave it
+/// frozen with a state file it can no longer open — which is what happened once
+/// before this was added. They also drop the scratch defaults suite and remove
+/// the temporary directory. The state file
 /// they write goes to a temporary directory, never to the application's own
 /// `Application Support/paranoid/`. No snapshot is ever printed.
 final class KeychainStoreTests: XCTestCase {
@@ -37,9 +43,12 @@ final class KeychainStoreTests: XCTestCase {
     private var marker = InstallMarker()
     private var directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     private let fileSystem = DataProtectionFileSystem()
+    /// The key that was in the account before this run, if any.
+    private var borrowed: Data?
 
     override func setUpWithError() throws {
         try super.setUpWithError()
+        borrowed = Self.rawKey()
         try key.deleteRetained()
         suiteName = "global.paranoid.messenger.tests.storage.\(UUID().uuidString)"
         defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -52,6 +61,8 @@ final class KeychainStoreTests: XCTestCase {
 
     override func tearDownWithError() throws {
         try key.deleteRetained()
+        if let borrowed { Self.restore(borrowed) }
+        borrowed = nil
         defaults.removePersistentDomain(forName: suiteName)
         try? FileManager.default.removeItem(at: directory.deletingLastPathComponent())
         try super.tearDownWithError()
@@ -234,4 +245,33 @@ final class KeychainStoreTests: XCTestCase {
         let directoryAttributes = try FileManager.default.attributesOfItem(atPath: store.directory.path)
         XCTAssertEqual((directoryAttributes[.posixPermissions] as? NSNumber)?.int16Value, 0o700)
     }
+
+    /// The raw bytes under the account, so a pre-existing installation can be
+    /// put back exactly as it was.
+    private static func rawKey() -> Data? {
+        var item: CFTypeRef?
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: KeychainKey.account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess else { return nil }
+        return item as? Data
+    }
+
+    /// Writes borrowed bytes back under the account with the class the client
+    /// uses, so the installation that owned them opens its state again.
+    private static func restore(_ data: Data) {
+        let attributes: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: KeychainKey.account,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecAttrSynchronizable as String: false,
+        ]
+        SecItemDelete(attributes as CFDictionary)
+        SecItemAdd(attributes as CFDictionary, nil)
+    }
+
 }
