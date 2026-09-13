@@ -97,7 +97,8 @@ decisions taken separately.
   user-visible limitation (track B, separate proposal).
 - In-app updates: distribution is TestFlight only; no `/v2/updates/*` client.
 - TLS pin or certificate rotation before the current leaf expires on
-  2026-12-07; that is a deploy-trust decision for a separate RFC (question 7).
+  2026-12-12 after the same-key renewal of 2026-09-13; rotating the key itself
+  remains a deploy-trust decision for a separate RFC (question 7).
 - Media attachments (images, files, video, voice messages): not present on
   Android either (REQ-MSG-001 is draft); track C.
 - Multi-device, identity recovery, a second realm, blockchain naming, server
@@ -292,7 +293,7 @@ governance acceptance required by
 | 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE mode or refuse the call? | Answered 2026-09-12 by the owner's agents in issue #27: a valid authenticated 404 from the pinned origin permits the pre-disclosed direct-ICE mode; a TLS failure, a timeout, a malformed 200 or a relay failure does not. |
 | 6 | Paid macOS CI runner for the iOS build. | Answered 2026-09-13: no. Ubuntu checks plus the local `build.sh` and an evidence directory. |
-| 7 | Pin and certificate rotation before 2026-12-07. | Open, and the most urgent one. The pin is not only a TLS input: `clients/core/src/intro_v2.rs:21-44` requires both sides to carry the same pin and feeds it into the first-contact channel transcript, so a key change invalidates existing contact channels, not only the transport. A same-key renewal avoids an outage; a key rotation needs its own deploy-trust RFC. Owner decision. |
+| 7 | Pin and certificate rotation. | Partly answered 2026-09-13: the owner renewed the certificate with the **same key**, so the SPKI pin is unchanged and both clients keep working; the new validity ends 2026-12-12T07:38:09Z. Verified independently from this machine: the live SPKI equals the pin this client carries. A same-key renewal is therefore the safe path and must be repeated before that date, since no automatic renewal exists. Rotating the key itself stays open and needs its own deploy-trust RFC, because `clients/core/src/intro_v2.rs:21-44` feeds the pin into the first-contact channel transcript, so a new key invalidates existing contact channels and not only the transport. |
 | 8 | Apple export compliance and the entity that files. | Partly answered 2026-09-13: `ITSAppUsesNonExemptEncryption = YES` is prepared in the bundle as the conservative candidate. That key is not compliance: answering yes normally also requires a code Apple issues after reviewing the documentation, and the requirement applies to TestFlight too. The classification, the regime and the filing entity stay open; the publicly-available-source route is not available while the repository is private. Inventory and gate: [export compliance](../clients/ios/export-compliance.md). |
 | 10 | Which doc-to-code findings are fixed in a docs-only pull request and which are waived. | Answered 2026-09-12 by the owner's agents in issue #27: a docs-only pull request for the factual corrections, with five items reframed rather than applied verbatim. Recorded in `docs/clients/ios/protocol-sources.md`. |
 | 11 | JDK 21 on the build Mac for the Java cross-checks. | Answered 2026-09-13: installed (21.0.12.1, tests only, pinned in `clients/ios/toolchain.json`). |

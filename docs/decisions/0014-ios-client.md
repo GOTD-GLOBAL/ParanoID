@@ -124,7 +124,9 @@ single owner of protocol and cryptography.
   provided by the platform because the core is clock-free; parity with
   `CallController.java` must be proven by cross-checks, not assumed.
 - The TLS pin baked into a TestFlight build is immutable; the current leaf
-  expires on 2026-12-07 and there is no rotation path (question 7).
+  expires on 2026-12-12 after the same-key renewal of 2026-09-13; the pin
+  survives a same-key renewal, and only a key change would break enrolled
+  contacts (question 7).
 - iOS builds cannot run on the existing Ubuntu CI; a macOS runner is a cost
   decision (question 6).
 
@@ -190,7 +192,7 @@ questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
 | 4 | Hosted account budget: exactly one account for the contributor's iPhone, no reserve, reinstall means a new authorization; who registers. | martadvix-web | 2026-10-01 |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE parity with Android or refuse the call. | martadvix-web | 2026-09-25 |
 | 6 | Paid macOS CI runner: yes or no (default no). | martadvix-web | 2026-10-01 |
-| 7 | Pin/certificate rotation RFC before 2026-12-07: who and when, tied to the TestFlight build date. | martadvix-web | 2026-10-15 |
+| 7 | Key rotation RFC: who and when, tied to the TestFlight build date. The certificate itself was renewed with the same key on 2026-09-13 (valid to 2026-12-12), so this is no longer an outage deadline; the open part is what happens when the key changes. | martadvix-web | 2026-10-15 |
 | 8 | Apple export compliance (`ITSAppUsesNonExemptEncryption`) and the filing entity, before the first upload. | martadvix-web | 2026-10-15 |
 | 10 | Docs-only pull request versus waiver for each of the twelve doc-to-code discrepancies. | martadvix-web | 2026-10-01 |
 | 11 | JDK 21 on the build Mac for Java cross-checks (tests only). | martadvix-web | 2026-09-18 |
@@ -211,7 +213,7 @@ questions 3, 4, 5 and 8 block `proposed`, the others block specific steps.
   are not approval evidence
 - Disposition date: pending
 - Known limitations and follow-up: foreground-only delivery; no pin rotation
-  path before 2026-12-07; voice scope may narrow to text-only if the core SDP
+  path before 2026-12-12; voice scope may narrow to text-only if the core SDP
   validator rejects iOS SDP; twelve doc-to-code discrepancies await the
   owner's answer to question 10
 

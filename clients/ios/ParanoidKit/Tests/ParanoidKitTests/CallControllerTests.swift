@@ -1002,4 +1002,307 @@ final class CallControllerTests: XCTestCase {
         XCTAssertFalse(pair.alice.isActive, "and the caller stops ringing")
         XCTAssertEqual(pair.alice.presentation.reason, .reject)
     }
+
+    // MARK: - The five seconds the two clocks may disagree by
+
+    /// `CLOCK_SKEW` is the whole tolerance. Between two entries into the
+    /// controller the wall clock may have moved five seconds more, or five
+    /// seconds less, than the monotonic one and still be believed; one
+    /// millisecond beyond that is a clock this device stops trusting, and then
+    /// every readiness slot goes and a live call ends as `failed` — without a
+    /// word to the peer, because a body dated from that clock is one the peer
+    /// would refuse anyway (`voice-v1.md:92-93`, `CallController.java:351`).
+    func testFiveSecondsOfSkewIsBelievedAndOneMillisecondMoreResetsTheCall() throws {
+        // Forwards, exactly the tolerance: the negotiation survives it.
+        let ahead = CallPair()
+        ahead.ready()
+        ahead.time.moveWall(millis: CallController.clockSkewMillis)
+        ahead.alice.tick()
+        XCTAssertTrue(ahead.alice.isActive, "five seconds ahead is still the same clock")
+        ahead.alice.localDescription(ahead.alice.generation, sdp: CallBodyTests.sdp)
+        ahead.deliver(to: ahead.bob, from: CallPair.alice, try take(ahead.alicePorts))
+        XCTAssertEqual(ahead.bob.currentState, .incoming,
+                       "and the readiness slot granted before the drift still rings")
+
+        // Backwards, exactly the tolerance: the same verdict.
+        let behind = CallPair()
+        behind.connect()
+        behind.time.moveWall(millis: -CallController.clockSkewMillis)
+        behind.alice.tick()
+        XCTAssertTrue(behind.alice.isActive, "five seconds behind is still the same clock")
+
+        // One millisecond more, on a connected call: terminal, and silent.
+        let reset = CallPair()
+        reset.connect()
+        while reset.alicePorts.take() != nil {}
+        reset.time.moveWall(millis: CallController.clockSkewMillis + 1)
+        reset.alice.tick()
+        XCTAssertFalse(reset.alice.isActive, "one millisecond past the tolerance is a clock change")
+        XCTAssertEqual(reset.alice.currentState, .ended)
+        XCTAssertEqual(reset.alice.presentation.reason, .failed,
+                       "which ends the call as failed and not as a timeout")
+        XCTAssertNil(reset.alicePorts.take(),
+                     "and sends nothing from a clock this device stopped trusting")
+        XCTAssertGreaterThan(reset.alicePorts.closes, 0, "the engine is disposed all the same")
+
+        // And the readiness slots a receiver is holding go with it.
+        let dropped = CallPair()
+        dropped.alice.start(account: CallPair.bob, microphonePermission: true)
+        let knock = try take(dropped.alicePorts)
+        dropped.deliver(to: dropped.bob, from: CallPair.alice, knock)
+        let ready = try take(dropped.bobPorts)
+        dropped.time.moveWall(millis: CallController.clockSkewMillis + 1)
+        dropped.bob.tick()
+        guard let description = CallDescription(sdp: CallBodyTests.sdp) else {
+            return XCTFail("the fixture description is the one this client sends")
+        }
+        var identity = knock.body.identity
+        identity.calleeNonce = ready.body.calleeNonce
+        dropped.deliver(to: dropped.bob, from: CallPair.alice,
+                        CallBody.offer(identity, description: description,
+                                       sentMillis: dropped.time.wallMillis))
+        XCTAssertNotEqual(dropped.bob.currentState, .incoming,
+                          "a clock reset drops every readiness slot it had granted")
+    }
+
+    // MARK: - How the controls of a live call are numbered
+
+    /// `seq` 1 belongs to the offer and to the answer alone, so every control
+    /// of a call already under way starts at two: a heartbeat, the `media`
+    /// that announces a camera, and the terminal `end` all draw the next
+    /// number from the call's own counter, and no number is ever used twice —
+    /// which is what lets the peer refuse anything that does not move forward
+    /// (`voice-v1.md:105-107`, `call-v2.md:27-30`).
+    func testHeartbeatsAreNumberedFromTwoAndShareTheCallsOwnCounter() throws {
+        let pair = CallPair()
+        pair.connect()
+        var numbers: [Int64] = []
+
+        for _ in 1...2 {
+            pair.time.advance(millis: CallController.heartbeatMillis)
+            pair.alice.tick()
+            pair.bob.tick()
+            let heartbeat = try take(pair.alicePorts)
+            XCTAssertEqual(heartbeat.body.kind, .heartbeat, "ten seconds is one heartbeat")
+            numbers.append(heartbeat.body.seq)
+            pair.deliver(to: pair.bob, from: CallPair.alice, heartbeat)
+            while let fromBob = pair.bobPorts.take() {
+                pair.deliver(to: pair.alice, from: CallPair.bob, fromBob)
+            }
+        }
+
+        // The camera goes on in between, and its announcement takes the next
+        // number of the same counter rather than one of its own.
+        pair.alice.video(true)
+        let announcement = try take(pair.alicePorts)
+        XCTAssertEqual(announcement.body.kind, .media)
+        numbers.append(announcement.body.seq)
+        pair.deliver(to: pair.bob, from: CallPair.alice, announcement)
+
+        pair.time.advance(millis: CallController.heartbeatMillis)
+        pair.alice.tick()
+        let resumed = try take(pair.alicePorts)
+        XCTAssertEqual(resumed.body.kind, .heartbeat)
+        numbers.append(resumed.body.seq)
+        pair.deliver(to: pair.bob, from: CallPair.alice, resumed)
+
+        XCTAssertEqual(numbers, [2, 3, 4, 5],
+                       "the controls of a live call are numbered from two, in order")
+        XCTAssertTrue(pair.bob.isActive, "and the peer accepted every one of them")
+        XCTAssertTrue(pair.bob.presentation.remoteVideo,
+                      "including the one that said the camera went on")
+
+        pair.alice.hangup()
+        let end = try take(pair.alicePorts)
+        XCTAssertEqual(end.body.kind, .end)
+        XCTAssertEqual(end.body.seq, 6, "and the terminal control is the next number again")
+    }
+
+    // MARK: - Every terminal path, and what it tells the peer
+
+    /// One terminal path on a fresh pair: this side ends, with the reason the
+    /// protocol's table gives that path, and the peer is told by an `end`
+    /// carrying the same reason — or is not told at all, which is the whole
+    /// point on the paths where this device may no longer speak for itself or
+    /// no longer trusts the clock it would date the body from
+    /// (`voice-v1.md:108-119`, `CallController.java:109-120,294,351`).
+    ///
+    /// - Parameter path: the setup and the terminal action. It returns the
+    ///   side that ended and its ports, and it empties that outbox before the
+    ///   terminal action, so what remains is what the terminal path sent.
+    private func assertTerminal(_ reason: CallBody.EndReason,
+                                toldPeer: Bool,
+                                _ what: String,
+                                file: StaticString = #filePath,
+                                line: UInt = #line,
+                                _ path: (CallPair) throws -> (CallController, CallTestPorts))
+        rethrows {
+        let pair = CallPair()
+        let (controller, port) = try path(pair)
+        XCTAssertEqual(controller.currentState, .ended, what, file: file, line: line)
+        XCTAssertFalse(controller.isActive, what, file: file, line: line)
+        XCTAssertEqual(controller.presentation.reason, reason, what, file: file, line: line)
+        var ends: [CallBody] = []
+        while let sent = port.take() {
+            if sent.body.kind == .end { ends.append(sent.body) }
+        }
+        guard toldPeer else {
+            return XCTAssertTrue(ends.isEmpty, "the peer must not be told: \(what)",
+                                 file: file, line: line)
+        }
+        guard let end = ends.last else {
+            return XCTFail("no end reached the peer: \(what)", file: file, line: line)
+        }
+        XCTAssertEqual(end.endReason, reason, what, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(end.seq, 2, "a terminal control is never seq 1: \(what)",
+                                    file: file, line: line)
+    }
+
+    /// Empties an outbox, so that what it holds afterwards was sent by the
+    /// terminal path under test and by nothing before it.
+    private func drain(_ port: CallTestPorts) {
+        while port.take() != nil {}
+    }
+
+    /// The whole terminal table in one place: no path out of a call is silent
+    /// about why, and each one either tells the peer or deliberately does not.
+    func testEveryTerminalPathEndsWithItsOwnReason() throws {
+        // The user's own two ends, which differ only by whether the peer had
+        // answered yet (`CallController.java:116`).
+        assertTerminal(.cancel, toldPeer: true, "an outgoing call ends as cancel until it is answered") { pair in
+            pair.alice.start(account: CallPair.bob, microphonePermission: true)
+            self.drain(pair.alicePorts)
+            pair.alice.hangup()
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.hangup, toldPeer: true, "and as hangup once the answer is known") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.alice.hangup()
+            return (pair.alice, pair.alicePorts)
+        }
+
+        // The three refusals of a ringing call.
+        assertTerminal(.reject, toldPeer: true, "an explicit rejection is a reject") { pair in
+            pair.ring()
+            self.drain(pair.bobPorts)
+            pair.bob.reject()
+            return (pair.bob, pair.bobPorts)
+        }
+        assertTerminal(.reject, toldPeer: true, "and so is a microphone the callee refuses") { pair in
+            pair.ring()
+            self.drain(pair.bobPorts)
+            pair.bob.answer(microphonePermission: false)
+            return (pair.bob, pair.bobPorts)
+        }
+        assertTerminal(.unavailable, toldPeer: true, "answering with no lane is unavailable") { pair in
+            pair.ring()
+            self.drain(pair.bobPorts)
+            pair.bob.connection(false)
+            pair.bob.answer(microphonePermission: true)
+            return (pair.bob, pair.bobPorts)
+        }
+
+        // The deadlines.
+        assertTerminal(.timeout, toldPeer: true, "forty-five seconds of ringing is a timeout") { pair in
+            pair.ring()
+            self.drain(pair.bobPorts)
+            pair.time.advance(millis: CallController.ttlMillis)
+            pair.bob.tick()
+            return (pair.bob, pair.bobPorts)
+        }
+        assertTerminal(.timeout, toldPeer: true, "thirty seconds of peer silence is a timeout") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.time.advance(millis: CallController.silenceMillis)
+            pair.alice.tick()
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.failed, toldPeer: true, "ten seconds of lost ICE is a failure") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.alice.mediaState(pair.alice.generation, .disconnected)
+            pair.time.advance(millis: CallController.disconnectedMillis)
+            pair.alice.tick()
+            return (pair.alice, pair.alicePorts)
+        }
+
+        // The media engine's own verdicts.
+        assertTerminal(.failed, toldPeer: true, "an engine that reports failed is a failure") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.alice.mediaState(pair.alice.generation, .failed)
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.failed, toldPeer: true, "a description this client cannot send is a failure") { pair in
+            pair.ready()
+            self.drain(pair.alicePorts)
+            pair.alice.localDescription(pair.alice.generation,
+                                        sdp: Self.padded(toBytes: SdpExtract.maxSdpBytes + 1))
+            return (pair.alice, pair.alicePorts)
+        }
+
+        // The paths this device may not speak on.
+        assertTerminal(.unavailable, toldPeer: false, "lost authority stops without a word") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.alice.authorizationLost()
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.unavailable, toldPeer: false, "and a blocked peer is told nothing") { pair in
+            pair.connect()
+            self.drain(pair.bobPorts)
+            pair.bob.block(account: CallPair.alice)
+            return (pair.bob, pair.bobPorts)
+        }
+        assertTerminal(.failed, toldPeer: false, "a clock change ends the call silently") { pair in
+            pair.connect()
+            self.drain(pair.alicePorts)
+            pair.time.moveWall(millis: CallController.clockSkewMillis + 1)
+            pair.alice.tick()
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.failed, toldPeer: false, "a refused enqueue cannot be reported by another enqueue") { pair in
+            pair.alicePorts.deferSignals = true
+            pair.alice.start(account: CallPair.bob, microphonePermission: true)
+            self.drain(pair.alicePorts)
+            pair.alicePorts.settleLast(accepted: false)
+            return (pair.alice, pair.alicePorts)
+        }
+
+        // The peer's own reason, adopted as it stands and never echoed back.
+        try assertTerminal(.reject, toldPeer: false, "the peer's end carries the reason this side shows") { pair in
+            pair.ring()
+            pair.bob.reject()
+            let end = try self.take(pair.bobPorts)
+            self.drain(pair.alicePorts)
+            pair.deliver(to: pair.alice, from: CallPair.bob, end)
+            return (pair.alice, pair.alicePorts)
+        }
+        try assertTerminal(.busy, toldPeer: false, "a peer already in a call answers busy") { pair in
+            pair.bob.start(account: CallPair.alice, microphonePermission: true)
+            pair.alice.start(account: CallPair.bob, microphonePermission: true)
+            let knock = try self.take(pair.alicePorts)
+            pair.deliver(to: pair.bob, from: CallPair.alice, knock)
+            var busy: CallTestSent?
+            while let sent = pair.bobPorts.take() {
+                if sent.body.kind == .end { busy = sent }
+            }
+            self.drain(pair.alicePorts)
+            pair.deliver(to: pair.alice, from: CallPair.bob, try XCTUnwrap(busy))
+            return (pair.alice, pair.alicePorts)
+        }
+
+        // An intent that never became a call is terminal and visible too, and
+        // it sends nothing at all.
+        assertTerminal(.reject, toldPeer: false, "a denied microphone never starts a call") { pair in
+            pair.alice.start(account: CallPair.bob, microphonePermission: false)
+            return (pair.alice, pair.alicePorts)
+        }
+        assertTerminal(.unavailable, toldPeer: false, "and neither does a device with no lane") { pair in
+            pair.alice.connection(false)
+            pair.alice.start(account: CallPair.bob, microphonePermission: true)
+            return (pair.alice, pair.alicePorts)
+        }
+    }
 }
