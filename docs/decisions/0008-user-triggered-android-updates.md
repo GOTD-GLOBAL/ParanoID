@@ -30,6 +30,19 @@ open arbitrary browser downloads (weakens source/version binding); background or
 silent installation (unrequested and bypasses platform consent); full update
 framework/TUF (future hardening, not this bounded private-alpha implementation).
 
+## Proposed size-ceiling amendment (2026-09-13)
+
+The owner's new direction and threat/resource/migration analysis are recorded in
+[RFC-0013](../rfcs/0013-user-triggered-android-updates.md#owner-amendment-no-fixed-apk-size-ceiling-2026-09-13).
+Remove the fixed APK ceiling on both components, retaining positive signed-long
+size representation, exact length/hash/signature checks and bounded streaming
+buffers. Server snapshots move payload storage from heap to anonymous private
+disk, with two-response concurrency and space checks. Client checks available
+cache space and retains failed-download cleanup. Metadata remains bounded.
+Separate server/client PRs and a legacy-compatible bridge precede larger releases.
+This ADR remains draft: Telegram implementation direction is not permanent
+architecture approval, release/merge permission or phone acceptance.
+
 ## Consequences, review and rollback
 
 The updater adds supply-chain, untrusted metadata/APK and URI-provider boundaries.

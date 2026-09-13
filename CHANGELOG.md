@@ -19,6 +19,15 @@ public contract is declared.
 - Dependency optimization remains, not a fixed APK budget. Server change and a
   legacy-compatible bridge are separate release gates; no phone install claimed.
 
+### Android update server: remove fixed APK ceiling — 2026-09-13
+
+- Local server candidate accepts positive signed-64-bit APK lengths instead of a
+  16 MiB cap. Fixed-buffer hashing and anonymous disk snapshots preserve exact
+  verified response bytes; two permits cover complete response lifetimes.
+- Metadata, TLS/path/hash checks remain; publication needs disk headroom and
+  O_TMPFILE support. Separate Android bridge and reviewed rollout remain required.
+  No live server/feed change is claimed.
+
 ### Automatic same-key TLS maintenance — 2026-09-13
 
 - Installed standalone daily persistent renewal with unchanged TLS key/pin/profile,

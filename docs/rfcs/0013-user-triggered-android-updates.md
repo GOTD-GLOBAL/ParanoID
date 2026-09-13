@@ -30,6 +30,44 @@ uninstall or reset is authorized. This 2026-09-11 clarification supersedes the
 earlier package pin only; this RFC and ADR-0008 remain drafts. Android user confirmation and
 per-source installation permission remain mandatory; do not evade them.
 
+## Owner amendment: no fixed APK size ceiling (2026-09-13)
+
+Sergey Maltsev explicitly requested in Telegram: “Нет никакого смысла в этом
+лимите. Но и конечно раздувать файл не стоит. Давай уберем лимит и с сервера и
+с клиента”. This authorizes local implementation, not merge/deployment or permanent
+ADR acceptance. The original message permalink is unavailable in this tool context.
+
+REQ-CLIENT-003: remove the arbitrary 16 MiB APK ceiling on both components; do not
+replace it with another product-size ceiling. Retain useful dependency optimization,
+without stripping required runtime behavior. Size is a positive signed 64-bit byte
+count (numeric representation, not a chosen APK budget). Metadata remains <=8192
+bytes; actual length, SHA256, pinned origin, signer, package and installer consent
+remain mandatory. Old clients still enforce their old ceiling.
+
+Server candidate: hash/copy via fixed buffers into an anonymous private disk
+snapshot on the publication filesystem, then stream those exact verified bytes.
+No APK-sized heap allocation. Hold the existing two-reader permit for the entire
+response lifetime, including cancellation/cleanup. Require enough available disk
+for the snapshot and reject I/O failure; Linux O_TMPFILE support is required with
+no unsafe named-file fallback. Root/service-UID compromise is outside the boundary.
+Disk usage now scales with APK size (up to two concurrent snapshots), not RAM;
+free-space checks are advisory under concurrent other writers, not a disk quota.
+Normal timeouts and cancellation remain resource controls, not success guarantees
+for arbitrarily large artifacts or slow links.
+
+Client candidate: remove parser/provider ceilings; stream only the declared length
+with overflow-safe accounting and disk-space preflight, retaining error cleanup and
+all install checks. Existing network deadlines remain unchanged in this scope.
+
+Rollout: separate server and Android PRs. Publish a retained-signer bridge APK that
+still fits old clients before any larger APK, or explicitly deliver the new client
+manually in place. Do not erase data or downgrade. Server rollback is compatible
+only with a feed that the old server accepts. No live action follows from this RFC.
+
+Tests: >16 MiB server roundtrip, snapshot immutability and permit lifetime;
+large client manifest/provider/download, exact length/hash rejection, numeric
+range/overflow and unchanged trust gates. Host fixtures are not phone acceptance.
+
 ## Proposed interoperable contract
 
 Use the phone's already trusted HTTPS origin and SPKI, never an arbitrary URL or
@@ -38,7 +76,7 @@ trust-all TLS. Public update routes are read-only distribution, not signup/auth.
 - GET `/v2/updates/android`: max 8192-byte UTF-8 JSON object with exactly these keys:
   `schema` (integer 1), `package` (`global.paranoid.messenger`), `version_code` (positive
   integer), `version_name` (bounded nonempty string), `min_sdk` (positive integer),
-  `abi` (`arm64-v8a`), `apk_sha256` (64 lowercase hex), `apk_size` (1..16777216 bytes).
+  `abi` (`arm64-v8a`), `apk_sha256` (64 lowercase hex), `apk_size` (positive signed 64-bit byte count; no fixed APK ceiling).
 - APK URL is derived, NOT supplied by metadata:
   `/v2/updates/android/apk/<apk_sha256>` on that same trusted origin.
 - Metadata availability: 200 on valid configured publication; 404 if no publication.
@@ -50,7 +88,7 @@ trust-all TLS. Public update routes are read-only distribution, not signup/auth.
   outside `data`, intended `ROOT/updates`. Absent configuration/publication leaves
   routes unavailable; legacy modes do not gain update routes.
 - Files: `android.json` and `<apk_sha256>.apk`. Exact regular same-owner no-follow
-  single-link files; reject unsafe root/ancestors and oversized metadata/APK.
+  single-link files; reject unsafe root/ancestors, oversized metadata and APK length mismatches.
   Publication files are untrusted data, not instructions or executable config.
   Validate schema/fields, bounds and APK actual hash/size before serving. Use only
   fixed metadata filename and strictly validated digest-derived APK filename.
@@ -71,7 +109,7 @@ and [threat model](../security/server-v0-threats.md), not changing TLS behavior
 or accepting a new architecture decision. No pin replacement, insecure fallback
 or upgrade through HTTP. Version must be greater
 than installed versionCode; same/lower version means no update. Enforce device API
-and ABI compatibility and bounded file size before/during download. Compute SHA256
+and ABI compatibility and exact declared file size before/during download. Compute SHA256
 and exact length, then inspect the actual APK using Android PackageManager:
 package, versionCode/minSdk and signer must match metadata/installed app identity.
 No multi-signer or unsupported signing-lineage shortcuts. Reject mismatches before

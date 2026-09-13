@@ -1172,6 +1172,7 @@ dependencies = [
  "axum",
  "axum-server",
  "base64",
+ "futures-core",
  "hyper-util",
  "libc",
  "paranoid-key-protocol",
