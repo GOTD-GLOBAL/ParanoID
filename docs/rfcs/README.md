@@ -136,11 +136,15 @@ deployment authority remain separate gates.
 ## iOS client candidate
 
 [RFC-0021: Native iOS client on the shared Rust core](0021-ios-client.md)
-(draft) proposes a SwiftUI shell over the unchanged `clients/core` through a
+(proposed) describes a SwiftUI shell over the unchanged `clients/core` through a
 thin C-ABI bridge, the same wire contracts and pin as Android v15, Keychain
 plus Data Protection storage with an install marker, and the pinned WebRTC
-iOS dependency; [draft ADR-0014](../decisions/0014-ios-client.md). Its
-decision deadline is a placeholder until the client pull request is opened.
+iOS dependency; [proposed ADR-0014](../decisions/0014-ios-client.md). Its
+decision deadline is 2026-10-15. Every numbered open question has a recorded
+answer (7 and 8 partly: key rotation needs its own deploy-trust RFC, and the
+export classification and filing entity stay open). What is still missing is
+not an answer but an approval: closed-alpha scope approval, the independent AI
+review of the exact review revision, and phone evidence.
 No build, phone result, hosted account or architecture acceptance is implied.
 This candidate has been renumbered twice while still a draft, both times
 transparently and before it was proposed: RFC-0019 was already allocated on

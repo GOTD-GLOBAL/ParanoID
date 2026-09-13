@@ -271,8 +271,8 @@ evidence, not by the table below.
   45-second `timeout`; screen capture is not parity with Android's
   `FLAG_SECURE`; no pin rotation path before the renewed leaf expires on
   2026-12-12; the export-compliance gate is closed, so no TestFlight upload is
-  authorised; no iOS CI; the Android cross-test is not in the committed tree at
-  this revision and did not run;
+  authorised; the Android cross-test is a host comparison and proves agreement
+  of the checked scenarios at the checked revisions, not acceptance on devices;
   twelve doc-to-code discrepancies are answered in issue #27 and are corrected
   in a separate docs-only pull request, not in this one
 

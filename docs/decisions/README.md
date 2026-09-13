@@ -113,9 +113,11 @@ isolated packaging. Local task authorization does not constitute ADR acceptance.
 
 ## iOS client candidate
 
-[Draft ADR-0014](0014-ios-client.md): native SwiftUI iOS client over the
+[Proposed ADR-0014](0014-ios-client.md): native SwiftUI iOS client over the
 unchanged shared Rust core through a thin C-ABI bridge, Keychain/Data
 Protection storage with an install marker, `Security.framework` leaf-SPKI
 pinning to the retained pin and the pinned WebRTC iOS dependency, for the
-bounded private alpha ([RFC-0021](../rfcs/0021-ios-client.md)). Draft, not
-proposed: closed-alpha scope approval and blocking owner questions are open.
+bounded private alpha ([RFC-0021](../rfcs/0021-ios-client.md)). Proposed, not
+accepted: the RFC's numbered questions are answered, but closed-alpha scope
+approval, the independent AI review and the physical-phone evidence are not,
+and none of them is a question this client can answer for the owner.

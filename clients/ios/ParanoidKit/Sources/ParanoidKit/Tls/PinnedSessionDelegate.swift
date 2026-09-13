@@ -1,28 +1,34 @@
 import Foundation
 import Security
 
-/// The `URLSession` side of the pinned trust: the ninth check, and the only
-/// place where a server trust turns into a credential.
+/// The `URLSession` side of the pinned trust: everything numbered 9, and the
+/// only place where a server trust turns into a credential.
 ///
-/// `PinnedTrustEvaluator` owns checks 1 to 8 of `PinnedTls.java:51-70`; this
-/// type owns check 9 and the disposition. Android states check 9 twice — the
-/// socket factory enables only TLS 1.2 and 1.3 (`PinnedTls.java:76-83`) and the
-/// trust manager throws on `checkClientTrusted` (`PinnedTls.java:47`) — and
-/// both halves are here:
+/// `PinnedTrustEvaluator` owns the eight leaf checks of
+/// `PinnedTls.java:54-70`; this type owns number 9 and the disposition. On
+/// Android that number is two facts — the socket factory enables only TLS 1.2
+/// and 1.3 (`PinnedTls.java:80-83`) and the trust manager throws on
+/// `checkClientTrusted` (`PinnedTls.java:53`) — and both are here:
 ///
 /// - `configuration()` pins `tlsMinimumSupportedProtocolVersion` to
-///   `.TLSv12`, and the delegate refuses to answer a challenge that arrives on
-///   a session whose floor is lower, so the rule cannot be lost by handing the
-///   delegate to a session someone else configured;
+///   `.TLSv12`, and `decision(host:authenticationMethod:trust:floor:)` refuses
+///   a challenge that arrives with a lower floor;
 /// - a client-certificate challenge is cancelled, never answered: this client
 ///   holds no certificate and authenticates with its device key inside the
 ///   session transcript instead (`docs/protocol/realtime-v1.md:39-41`).
 ///
-/// A credential is offered only when all nine hold. Every other outcome is
-/// `.cancelAuthenticationChallenge`: never `.performDefaultHandling`, which
-/// would hand the decision to the system trust store, and never
-/// `.rejectProtectionSpace`, which would let the URL loading system retry the
-/// same space with another method.
+/// Three further refusals also answer `9`, and they have no Android
+/// counterpart: `authenticationMethod`, `host` and `missingTrust`. They exist
+/// because the URL loading system hands the decision over as a challenge
+/// object — with a method, a host and an optional trust — where Android's
+/// socket factory sees only a chain. So "check 9" is a group of five rules,
+/// not one rule, and `PinnedTrustFailure.check` says so.
+///
+/// A credential is offered only when the eight leaf checks and all five of
+/// these hold. Every other outcome is `.cancelAuthenticationChallenge`: never
+/// `.performDefaultHandling`, which would hand the decision to the system
+/// trust store, and never `.rejectProtectionSpace`, which would let the URL
+/// loading system retry the same space with another method.
 public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, Sendable {
     /// What the delegate does with one challenge.
     public enum Decision: Equatable, Sendable {
@@ -43,7 +49,7 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, Sendable
     /// The configuration a pinned session must use (check 9).
     ///
     /// TLS 1.2 is the floor and TLS 1.3 the ceiling, as the enabled-protocol
-    /// list of `PinnedTls.java:79-81`. The rest keeps the session from
+    /// list of `PinnedTls.java:80-83`. The rest keeps the session from
     /// remembering anything: an ephemeral configuration has no on-disk cache,
     /// no cookie store and no credential store, which matches "nothing is
     /// persisted or logged as a reusable credential"
@@ -88,6 +94,19 @@ public final class PinnedSessionDelegate: NSObject, URLSessionDelegate, Sendable
         // Check 9, first: a session below TLS 1.2, or one asking this client
         // to authenticate with a certificate, is refused before the
         // certificate is even looked at.
+        //
+        // The floor guard cannot fire for any session this package builds.
+        // `makeSession`, `RealtimeTransport.configuration(lane:)` and
+        // `VoiceRelayTransport.configuration()` all start from
+        // `configuration()` above and none of them lowers
+        // `tlsMinimumSupportedProtocolVersion`, so `floor` is always `.TLSv12`
+        // there. It is kept because `floor` is a parameter of this public
+        // method: the rule would otherwise be lost the moment this delegate is
+        // handed to a session configured somewhere else, and it is the only
+        // statement of the TLS floor that a caller cannot bypass by building
+        // its own `URLSessionConfiguration`. `PinnedTrustTests` reaches it
+        // through this entry point, and `check-pinned-tls.py` reaches it over
+        // a socket wherever the local OpenSSL still offers TLS 1.1.
         guard floor == .TLSv12 || floor == .TLSv13 else { return .cancel(.protocolFloor) }
         switch authenticationMethod {
         case NSURLAuthenticationMethodServerTrust:

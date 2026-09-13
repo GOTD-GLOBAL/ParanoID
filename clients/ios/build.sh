@@ -119,8 +119,11 @@ step "ParanoidKit tests" swift test --package-path ParanoidKit --scratch-path ou
 # 9. Plan steps 33-34. java_deps.sh builds the Java side of the cross-test; it
 # reads its JDK from toolchain.json, so `javac` need not be on PATH. The iOS
 # side is the core-bridge executable of the same package, which the two Python
-# cross-tests then drive against it. Both cross-tests are unconditional: a
-# missing file is a failure here, never a skip.
+# cross-tests then drive against it. The two Python cross-tests below are
+# unconditional. The Java host build is not: it is gated on java_deps.sh being
+# present, and where the file is absent the gate prints SKIP: and is recorded
+# as skipped, never as passed. The file is tracked in this repository, so in a
+# checkout the branch below is the one that runs.
 if [ -f java_deps.sh ]; then
   step "Android cross-test (Java host)" bash java_deps.sh
 else
@@ -157,6 +160,13 @@ step "simulator tests (unsigned)" \
 # 18. The same simulator, signed the way a simulator signs itself: ad hoc, no
 # team, no identity of the owner's. This is the only run where the application
 # owns a Keychain, which is what KeychainStoreTests is about.
+#
+# Measured on 2026-09-13, Xcode 26.6, iPhone 17 Pro 26.5, three runs of this
+# one command: as written here it is "Sign to Run Locally" and the eight tests
+# pass; adding DEVELOPMENT_TEAM changes neither the signing identity nor the
+# result, so no team is needed and none is asked for; adding
+# CODE_SIGNING_ALLOWED=NO — what step 17 uses — fails all eight with
+# keychain(-34018), which is why they are skipped there and run here.
 step "simulator Keychain tests (ad-hoc signature)" \
   xcodebuild test -project "$PROJECT" -scheme "$SCHEME" \
   -destination "$SIMULATOR" -derivedDataPath "$DERIVED_SIGNED" \

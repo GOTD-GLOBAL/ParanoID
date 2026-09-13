@@ -118,7 +118,10 @@ a new decision taken here.
   block/unblock, and foreground call-v2 calls with mute, speaker and the
   camera controls.
 - Pinned TLS to the same server leaf SPKI as Android, evaluated on
-  `Security.framework` with the same nine checks as `PinnedTls.java`.
+  `Security.framework`: the same eight leaf checks as
+  `PinnedTls.java:54-70`, plus a ninth group of session rules — Android's TLS
+  1.2 floor and client-certificate refusal, and three challenge rules with no
+  Android counterpart that the URL loading system makes possible.
 - Storage on the device only: Keychain-wrapped AES key plus a Data
   Protection file, atomic commit with read-back, freeze on ambiguity.
 - Reproducible manual build (`xcodebuild`, pinned Xcode 26.6 / SDK 26.5 /
@@ -331,8 +334,11 @@ What has been run, in one sentence each:
   ICE, about 2300 RTP packets per side per call — `CLAIMED`;
 - the pinned-TLS leaf checks, the storage commit and fault matrix, the call
   state machine and the TURN lane run offline — `CLAIMED`;
-- the Android cross-test did not run: its host side is not in the committed
-  tree at this revision — `NOT RUN`;
+- the Android cross-test runs: the real Android facade is compiled on this
+  machine and exchanges identities, text, call-v2 bodies, sealed snapshots and a
+  QR contact with the Swift client, with the expectations recomputed in Python
+  rather than taken from the shared core — `CLAIMED`, because it is a host
+  comparison and not a device result;
 - everything that needs a device — Data Protection classes, a real camera, a
   real network, a locked screen, a screen recording, a hosted account, a
   TestFlight build — `NOT RUN`.

@@ -63,8 +63,9 @@ private struct CaseReport: Encodable {
     /// error when the handshake failed before the challenge. Never certificate
     /// or key material.
     let reason: String?
-    /// The number of the `PinnedTls.java:51-70` check that said no, when the
-    /// refusal came from this client.
+    /// The number of the check that said no, when the refusal came from this
+    /// client: 1 to 8 for one leaf rule of `PinnedTls.java:54-70` each, 9 for
+    /// the session-level group `PinnedSessionDelegate` owns.
     let check: Int?
     /// `accepted` equals what `expect` asked for.
     let matched: Bool

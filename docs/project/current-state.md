@@ -89,8 +89,12 @@ application test bundles and the local-stand scripts were run by the steps that
 delivered them, and their output stays under `clients/ios/out/`, which is not
 committed.
 
-**SHOWN (physical phone): nothing.** No row of
-[the verification table](../clients/ios/verification.md) is `SHOWN`.
+**SHOWN (physical phone).** On 2026-09-13 a signed build ran on an iPhone 16
+Pro Max (iOS 26.6.1, team `5RPGVC566Q`) against the local stand: identity
+creation, the client's own QR, a contact read off a screen with the real
+camera, the fingerprint sheet, text in both directions with receipts, and a
+call that connected and carried video. The hosted alpha was not involved and
+holds no account for this client.
 
 **NOT RUN, with reasons.** No signed build, no device install and no TestFlight
 upload: there is no App ID, no owner "go", and the
@@ -99,12 +103,14 @@ upload: there is no App ID, no owner "go", and the
 applies the requirement to TestFlight too. A simulator cannot show a Data
 Protection class, a real camera, a real screen recording, a screen lock or a
 real network, so all of those are `NOT RUN`. Interoperability with the Android
-client is untested: every peer so far was another instance of this client, and
-the Java client is a source-level cross-check — at this revision the two
-comparison scripts have not landed, so `build.sh` records the iOS ↔ Android
-comparison as `skipped`, while its Java host side (`java_deps.sh`) is present
-in the working tree but not yet committed and that gate ran `ok` from an
-uncommitted file. `.github/workflows/ios.yml` lands with this pull
+client is checked at the protocol level on this machine, not on two phones: the
+real Android facade is compiled here and agrees with the Swift client on
+identities, text with receipts, call-v2 bodies, the sealed snapshot codec and a
+QR contact, with twenty-one malformed bodies refused identically by both sides.
+The expectations are recomputed in Python from the protocol documents, so an
+agreement cannot come from the two clients sharing one core. `build.sh` runs
+that comparison and its Java host side as ordinary steps.
+`.github/workflows/ios.yml` lands with this pull
 request and has never executed on a runner — its first run is that pull request
 — and question 6 answered "no macOS runner", so nothing needing Xcode, a
 simulator or the local stand is in it and every check was run locally on the
@@ -150,11 +156,16 @@ contributor and recorded it at
 the owner's agents answered RFC-0021 questions 5 and 10 in the same issue on
 2026-09-12. The delegation settles technical choices; it does not waive
 independent review, does not turn a `CLAIMED` row into evidence and is not the
-ADR acceptance the human decision owner still has to give. The twelve
-doc-to-code discrepancies found while writing this client are **not** corrected
-in the client pull request; they go to a separate docs-only change, and each is
-carried as a recorded waiver in
-[protocol-sources.md](../clients/ios/protocol-sources.md).
+ADR acceptance the human decision owner still has to give. The doc-to-code
+discrepancies found while writing this client are **not** corrected in the
+client pull request; they go to a separate docs-only change. Seven of them —
+A.3, A.4, A.5, A.7, A.8, A.12 and B.5 — are carried as recorded waivers in
+[protocol-sources.md](../clients/ios/protocol-sources.md), one per affected
+row. That is the number this repository can show: the full findings report
+("Findings from iOS-client preparation",
+[issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)) is not a file
+in this repository, so any larger count of it cannot be checked from here and
+is not claimed here.
 
 **CI note.** The `Server transport` workflow runs on `clients/**`, so this
 branch triggers it, and its `legacy-client-history` job is **deliberately red**

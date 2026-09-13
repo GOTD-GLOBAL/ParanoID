@@ -431,9 +431,19 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     }
 
     /// Everything this call owned, released (`TextEngine.java:81-91`).
+    ///
+    /// The relay lane is deliberately **not** cancelled here. It used to be, in
+    /// a detached task, and that was a race: the next call's `request(under:)`
+    /// is issued from its own detached task, and two unstructured tasks reach
+    /// the same actor in no guaranteed order. A hang-up whose `cancel()` landed
+    /// after the next call's request dropped that request, so the new call sat
+    /// in `authorizing` until its forty-five-second deadline ended it as a
+    /// timeout. Nothing was leaked by removing it: `request(under:)` begins
+    /// with `cancelCurrent()`, so a new call always supersedes the old request,
+    /// and a stale answer can never be delivered into a new call because the
+    /// lane's ticket and the call generation are both re-checked on delivery.
     func close() {
         precondition(owner.isOnOwner, "the call coordinator runs on the state owner")
-        Task { await relay.cancel() }
         pendingMedia = nil
         let owned = engine
         engine = nil

@@ -39,27 +39,22 @@ pins exactly the crate versions the Android build ships, and
 that failed: the toolchain pins; the WebRTC archive re-extracted and verified
 by digest; the bridge lock; the shared core's own tests and the bridge's host
 tests; the three release slices and `ParanoidCore.xcframework`; the
-`ParanoidKit` package tests; the Android cross-test; the nine pinned-TLS leaf
-checks and the transport socket rules; the notices packager and its negative
-test; the source contracts, the call-scenario parity and the boundary gate; the
-simulator test runs (unsigned, plus one signed run for the Keychain tests,
-because an unsigned application owns no Keychain); the Release build and the
-bundle gate; and finally the archive.
+`ParanoidKit` package tests; the Android cross-test; the pinned-TLS fixtures
+(six of the eight leaf checks over real sockets, the other two on parsed
+certificates in the package tests) and the transport socket rules; the notices
+packager and its negative test; the source contracts, the call-scenario parity
+and the boundary gate; the simulator test runs (unsigned, plus one signed run
+for the Keychain tests, because an unsigned application owns no Keychain); the
+Release build and the bundle gate; and finally the archive.
 
-Two of those steps report honestly rather than passing:
+One of those steps reports honestly rather than passing, and one now runs:
 
-- **The iOS ↔ Android comparison does not run.** Its scripts
-  (`test_android_compatibility.py`, `test_qr_cross.py`) have not landed, so
-  that step prints `SKIP:` with that reason and the build manifest records it
-  as `skipped`. It is not a silent pass, and it is `NOT RUN` in
-  [verification.md](verification.md). The host side of the cross-test,
-  `clients/ios/java_deps.sh`, is a separate step: the script gates it on the
-  file being present, so where the file is in the tree the Java host builds and
-  that gate is recorded `ok`, and where it is absent that gate prints `SKIP:`
-  too. Either way the comparison itself does not run, so the Java client is a
-  **source-level** cross-check in
-  [protocol-sources.md](protocol-sources.md), not an executed one. When the
-  comparison lands, that row carries its result and this paragraph goes away.
+- **The iOS ↔ Android comparison runs.** `test_android_compatibility.py` and
+  `test_qr_cross.py` are ordinary steps of the chain, and its Java host side
+  `clients/ios/java_deps.sh` is the step before them. What they prove is
+  bounded, and [verification.md](verification.md) says so: the Android facade
+  builds on this machine and the checked scenarios agree at the checked
+  revisions, which is not acceptance on a pair of phones.
 - **The archive is skipped without a team.** With `PARANOID_IOS_TEAM_ID` unset
   the script prints `Archive skipped: PARANOID_IOS_TEAM_ID unset` and exits 0.
   Signing is the owner's gate, not the build's.
@@ -163,6 +158,63 @@ Credentials reach the build only through the environment —
 passed as a process argument. `App/ExportOptions.plist` is a template with no
 `teamID`; the resolved copy is written to the git-ignored `out/`, and
 `destination` is `export`, so nothing is uploaded by the build.
+
+## The local stand runs a prebuilt server binary
+
+`clients/ios/local_stand.py` normally builds the **unchanged** server from the
+working tree and starts it against a private PostgreSQL 16 cluster. That build
+no longer succeeds on macOS, and the reason is in the server, not in this
+client: since `main` `547099f` (2026-09-13),
+`server/src/android_updates.rs:297` opens the update staging file with
+`libc::O_TMPFILE`, a flag the `libc` crate defines only on Linux, so the pinned
+command
+
+```sh
+cargo +1.98.1 build --locked --release --manifest-path server/Cargo.toml \
+  --target-dir clients/ios/out/server-target
+```
+
+stops with `error[E0425]: cannot find value O_TMPFILE in crate libc`.
+
+`server/` is a red zone and this branch does not change it. The stand is
+therefore started from a server binary built before that commit, passed with
+`--server-binary PATH`, which `local_stand.py`, `test_clean_self_service.py`,
+`test_realtime.py`, `test_sim_text.py`, `test_voice_sim.py` and
+`test_android_compatibility.py` all accept and which skips the build:
+
+```sh
+python3 clients/ios/local_stand.py \
+  --server-binary clients/ios/out/server-target/release/paranoid-server
+```
+
+This is an environment limitation to state, not a result to work around: every
+stand result file records the SHA-256 of the server binary it ran against, so
+the binary that answered a run is identifiable, and a Linux host (or a server
+fix outside this branch) restores the from-source path unchanged.
+
+## Naming a stand in a Debug build
+
+A Debug build takes the local stand's HTTPS origin and TLS pin from either of
+two channels. Both are read by `App/ParanoID/DebugFixture.swift`, and both are
+inside `#if DEBUG`:
+
+| Channel | Names | Reaches |
+| --- | --- | --- |
+| Launch arguments | `-paranoid-realm <url>`, `-paranoid-pin <hex>` | a simulator run started by Xcode or `xcodebuild test` |
+| Environment variables | `PARANOID_REALM`, `PARANOID_PIN` | a build started on a physical phone by `devicectl` |
+
+The second channel exists because `devicectl` installs and launches a build
+without relaying launch arguments to the process, so on a device the
+environment is the only channel that carries the pair. The values are the same
+either way, both go through `ServiceTrust(realm:pin:)` — the `checkedRealm` and
+`checkedPin` a Release build applies to its own — and an argument wins when a
+launch offers both.
+
+**Neither channel is read in a Release build.** There,
+`DebugFixture.trust(arguments:environment:)` compiles to a body that answers
+`nil` without looking at the command line or the environment, so a shipped or
+TestFlight build cannot be pointed at a stand: it starts from the compiled
+hosted default and from nothing else.
 
 ## Export compliance is a closed gate
 

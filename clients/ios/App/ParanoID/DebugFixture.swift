@@ -14,10 +14,24 @@ struct DebugFixtureProblem: Error, Equatable {
 /// The local stand a Debug build is launched against.
 ///
 /// `python3 clients/ios/local_stand.py --print-descriptor` prints the pair
-/// this reads — `-paranoid-realm <https origin>` and `-paranoid-pin <64 hex>`
-/// — and they are the **only** two launch arguments this client understands.
-/// Everything else on the command line belongs to the system, to Xcode or to
-/// XCTest and is ignored.
+/// this reads — an HTTPS origin and a 64-hexadecimal-digit pin. It arrives on
+/// one of two channels, because no single channel reaches both of the places
+/// a Debug build is started from:
+///
+/// - **launch arguments**, `-paranoid-realm <https origin>` and
+///   `-paranoid-pin <64 hex>`, which is what Xcode and `xcodebuild test` hand
+///   to a simulator run;
+/// - **environment variables**, `PARANOID_REALM` and `PARANOID_PIN`, because
+///   `devicectl` starts a build on a physical phone without relaying launch
+///   arguments, so on a device the environment is the only channel that
+///   reaches the process.
+///
+/// Both carry the same two values and both go through the same checks; an
+/// argument wins when a launch offers both. `-paranoid-allow-hosted` is the
+/// one further argument this client reads, and it is owned by
+/// `ServiceTrust.hostedDefault()` rather than by this type. Everything else on
+/// the command line or in the environment belongs to the system, to Xcode or
+/// to XCTest and is ignored.
 ///
 /// Three rules hold here, and each of them is one line of code:
 ///
@@ -27,16 +41,17 @@ struct DebugFixtureProblem: Error, Equatable {
 ///   `PinnedTls.java:18-21`. A fixture is not a relaxed path: a realm that is
 ///   not a bare HTTPS origin and a pin that is not 64 lowercase hexadecimal
 ///   digits are refused here exactly as they would be in a shipped build.
-/// - **Saved trust wins.** This type only reads the arguments;
-///   `SelfServiceClient` compares them with what the snapshot already names
+/// - **Saved trust wins.** This type only reads the pair;
+///   `SelfServiceClient` compares it with what the snapshot already names
 ///   and refuses the launch with `savedTrustWins` if they disagree
 ///   (`KeyClient.java:17-20`). A stand can never be pointed at an identity
 ///   that was registered somewhere else.
 /// - **Debug only.** The whole file compiles to nothing in a Release build:
-///   `trust(arguments:)` answers `nil` there without looking at the command
-///   line, so a shipped application starts from the compiled hosted default
-///   (`ServiceTrust.hostedDefault()`, `KeyClient.java:9-10`) and from nothing
-///   else.
+///   `trust(arguments:environment:)` answers `nil` there without reading
+///   either channel, so neither the command line nor the environment can name
+///   a stand in a shipped application — it starts from the compiled hosted
+///   default (`ServiceTrust.hostedDefault()`, `KeyClient.java:9-10`) and from
+///   nothing else.
 ///
 /// A Debug build with neither this pair nor `-paranoid-allow-hosted` has no
 /// realm at all: `ServiceTrust.hostedDefault()` answers `nil`, the application
@@ -50,11 +65,6 @@ enum DebugFixture {
     /// digits.
     static let pinArgument = "-paranoid-pin"
 
-    /// Reads the pair, or answers `nil` when this launch names no stand.
-    ///
-    /// - Throws: `DebugFixtureProblem` when one of the two is given without
-    ///   the other, when a value is missing, or when the pair does not pass
-    ///   the checks a Release build applies to its own.
     /// The environment variables that carry the same pair.
     ///
     /// `devicectl` launches a build on a physical phone without relaying launch
@@ -66,6 +76,12 @@ enum DebugFixture {
     /// See ``realmVariable``.
     static let pinVariable = "PARANOID_PIN"
 
+    /// Reads the pair from either channel, or answers `nil` when this launch
+    /// names no stand.
+    ///
+    /// - Throws: `DebugFixtureProblem` when one of the two is given without
+    ///   the other, when a value is missing, or when the pair does not pass
+    ///   the checks a Release build applies to its own.
     static func trust(
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment

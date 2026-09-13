@@ -10,7 +10,7 @@ import Foundation
 /// | Rule (`RealtimeTransport.java`)          | Here                                              |
 /// |------------------------------------------|---------------------------------------------------|
 /// | `Proxy.NO_PROXY` (`:33`)                 | `connectionProxyDictionary = [:]`                 |
-/// | pinned socket factory (`:35`)            | `PinnedSessionDelegate` (nine checks)             |
+/// | pinned socket factory (`:35`)            | `PinnedSessionDelegate` (8 leaf + session rules)  |
 /// | `setInstanceFollowRedirects(false)` (`:35`) | `willPerformHTTPRedirection` answers `nil`     |
 /// | connect 8 s, read 30 s / 8 s (`:36`)     | `timeoutIntervalForRequest` and `timeoutInterval` |
 /// | `Semaphore(2)` (`:18`, `:30`)            | `Gate` + `httpMaximumConnectionsPerHost = 2`      |

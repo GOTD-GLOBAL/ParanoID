@@ -14,7 +14,7 @@ import Foundation
 /// This type only reads. It applies no policy: an expired certificate, a CA
 /// certificate and a certificate for the wrong address all parse. Deciding
 /// which of them a pinned connection may use is `PinnedTrustEvaluator`'s job
-/// (the nine checks of `PinnedTls.java:51-70`).
+/// (the eight leaf checks of `PinnedTls.java:54-70`).
 ///
 /// Every failure is a thrown `DERError`; nothing here traps, so a truncated or
 /// hostile certificate from the network ends as a rejected handshake.

@@ -241,8 +241,15 @@ class UiContract(unittest.TestCase):
         for argument in ('"-paranoid-realm"', '"-paranoid-pin"'):
             self.present(argument, debug, f'{FIXTURE} #if DEBUG')
             self.absent(argument, release, f'{FIXTURE} #else')
-        self.present('static func trust(arguments: [String] = []) throws -> ServiceTrust? { nil }',
-                     release, f'{FIXTURE} #else')
+        # Release answers `nil` from both channels without reading either.
+        self.present('arguments: [String] = []', release, f'{FIXTURE} #else')
+        self.present('environment: [String: String] = [:]', release, f'{FIXTURE} #else')
+        self.present('throws -> ServiceTrust? { nil }', release, f'{FIXTURE} #else')
+        # The environment is the second channel, and only DEBUG reads its names:
+        # `devicectl` relays no launch argument to a build on a phone.
+        for variable in ('"PARANOID_REALM"', '"PARANOID_PIN"'):
+            self.present(variable, debug, f'{FIXTURE} #if DEBUG')
+            self.absent(variable, release, f'{FIXTURE} #else')
         # A fixture is validated exactly as a shipped build validates its own.
         self.present('try ServiceTrust(realm: realm, pin: pin)', debug, FIXTURE)
         # The hosted opt-in is the kit's, not a third argument of the app.

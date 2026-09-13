@@ -1,8 +1,8 @@
 {
-  "generated": "2026-09-13T14:34Z",
+  "generated": "2026-09-13T19:53Z",
   "branch": "feat/ios-client-20260911",
-  "head": "c2fdcc05d242a50f57be72e9947dfe5edeed1249",
-  "merge_base_with_main": "2cdb850ca532fd281986e792efb164e150c0a30c",
+  "head": "bcb40463120419ffb9e86824078c220db50dbceb",
+  "merge_base_with_main": "2d91bd4dba79bd35f563e51850f2e18796a3c9ba",
   "hosted_registrations": 0,
   "committed": false,
   "note": "The files below are the raw output of the runs this branch records. They stay under clients/ios/out/, which is git-ignored, because they carry absolute paths of the build Mac, loopback addresses and, in the screenshots, contact fingerprints and account identifiers. What travels into the repository is this catalogue: path, size, SHA-256 and the time the file was produced. Re-running the command in the README table reproduces the run, not the digest.",
@@ -12,21 +12,21 @@
       "group": "build",
       "what": "build.sh manifest: every gate with status and seconds, the toolchain versions, the bundle identity and the digests of the built binaries",
       "bytes": 8052,
-      "sha256": "40e9d377dbfcd455633bc35069829743c5e8cb6a2e09507f44f1a3451f59f7db",
-      "produced": "2026-09-13T14:31Z"
+      "sha256": "cf46cb6dc780e85554d78868f79438ff9006e5f60dd264f7682d64490ff601bc",
+      "produced": "2026-09-13T14:40Z"
     },
     {
       "path": "clients/ios/out/logs/build-steps.tsv",
       "group": "build",
       "what": "the same run as a tab-separated step log (name, status, seconds, command)",
       "bytes": 2106,
-      "sha256": "6a569a5156e99cd41c86943f01ed9962ac484c403eb2ffda992e3b3a0689b32d",
-      "produced": "2026-09-13T14:31Z"
+      "sha256": "534a43b5dbab0367f12ae99754cd6fbb43528dd25f5acb666f7ab72799a9d9c9",
+      "produced": "2026-09-13T14:40Z"
     },
     {
       "path": "clients/ios/out/step47/build-sh.log",
       "group": "build",
-      "what": "full console output of the build.sh run of step 47",
+      "what": "full console output of a build.sh run of step 47, finished 14:34Z - one run older than build-manifest.json, which a later run overwrote; both runs show the same 22 gates with the same statuses",
       "bytes": 351569,
       "sha256": "1345f2371aacd9876878fa0c3cf1653fcf4cce7412ae0906165332886cbab64e",
       "produced": "2026-09-13T14:34Z"
@@ -36,8 +36,8 @@
       "group": "build",
       "what": "build-core.sh manifest: the three release slices, the xcframework, the header digests and the bridge lock digest",
       "bytes": 2125,
-      "sha256": "6833e73d3cd9b989a7a02b7106fb6e2a887942caf9896d04c2e82548ea1614bb",
-      "produced": "2026-09-13T14:29Z"
+      "sha256": "060b0578cda0b288dab1f520bdccb5c2a73961ae8e78c6cfe97b8c25724ca685",
+      "produced": "2026-09-13T14:38Z"
     },
     {
       "path": "clients/ios/out/evidence/bridge.json",
@@ -50,18 +50,26 @@
     {
       "path": "clients/ios/out/evidence/toolchain.json",
       "group": "build",
-      "what": "test_toolchain.py: pinned versus observed toolchain, with the members it could not observe listed as skipped",
-      "bytes": 1009,
-      "sha256": "96e0f9661548482c044b9032faba4111e09884dc3f5119f3d9354ad5e030703b",
-      "produced": "2026-09-13T14:29Z"
+      "what": "test_toolchain.py: pinned versus observed toolchain, with the members it could not observe listed as skipped. The file now on disk is a later run whose skipped list is xcode, ios_sdk, swift, pg_bin, so it observes rustc, the three Apple targets and OpenSSL only; the Xcode, SDK, Swift and PostgreSQL readings of gate 1 are preserved in build-manifest.json and build-sh.log",
+      "bytes": 868,
+      "sha256": "9e91b4960408a862581baf204b59365293b58a85ce01ab363ea049b8f9127f7a",
+      "produced": "2026-09-13T19:23Z"
     },
     {
       "path": "clients/ios/out/evidence/app-bundle.json",
       "group": "build",
       "what": "test_app_bundle.py: the unsigned Release bundle taken apart (Info.plist, embedded WebRTC slice, notices, no simulator slice)",
       "bytes": 3585,
-      "sha256": "dbda113125710f9ab83fdbf88a94a95ce297bc995cd49e04dca9a3b1a7a6b760",
-      "produced": "2026-09-13T14:31Z"
+      "sha256": "17bcc1748f14d00a245e7589558acd8cb9ee0c84e9af4e4e5cdbd9fdaf193667",
+      "produced": "2026-09-13T14:40Z"
+    },
+    {
+      "path": "clients/ios/out/logs/keychain-signed.log",
+      "group": "build",
+      "what": "the Keychain gate run with a development team (DEVELOPMENT_TEAM=5RPGVC566Q): Executed 8 tests, with 0 failures, ** TEST SUCCEEDED **",
+      "bytes": 180812,
+      "sha256": "279edb7cdbbf6d3b7a6e2c5448c179f508ee90f264217a824fc5bee0c6ed3f47",
+      "produced": "2026-09-13T19:34Z"
     },
     {
       "path": "clients/ios/out/evidence/pinned-tls.json",
@@ -69,23 +77,23 @@
       "what": "check-pinned-tls.py: nine leaf cases against real loopback servers, what was rejected before any HTTP request, and the TLS floor",
       "bytes": 2366,
       "sha256": "1e0c3fb4975717bc25a321eed504c6b680bc818a8a4edd7bb5ca0c3ad49e195a",
-      "produced": "2026-09-13T14:03Z"
+      "produced": "2026-09-13T19:25Z"
     },
     {
       "path": "clients/ios/out/checks/transport/realtime-transport.json",
       "group": "harness",
       "what": "test_realtime_transport.py: the eight transport rules against the fake server, with the server-side record of connections, resets and idle closes",
-      "bytes": 22680,
-      "sha256": "6050eedc28837f88d3af851c19297b317d9063fe25327ea5b2dd1c774d94f3ae",
-      "produced": "2026-09-13T14:30Z"
+      "bytes": 22682,
+      "sha256": "3c2f900937790657d50dd33211d750160b25e89ce0a35d45c3ef2dc601ecdcd0",
+      "produced": "2026-09-13T19:24Z"
     },
     {
       "path": "clients/ios/out/checks/voice-lane/voice-relay-lane.json",
       "group": "harness",
       "what": "test_voice_relay_lane.py: seven TURN-lane scenarios over a pinned loopback socket, with nine client signatures verified by the stub",
       "bytes": 9213,
-      "sha256": "3c46aa18e8007b6e13abd84cf843c44188a53d87b5d844e66c2ec8d323cf9d89",
-      "produced": "2026-09-13T08:38Z"
+      "sha256": "52ec22e259281ed55442c103c6bde012064d07b095bc404dbd34da5d7f954fa2",
+      "produced": "2026-09-13T19:24Z"
     },
     {
       "path": "clients/ios/out/evidence/qr-20260912/qr-round-trip.json",
@@ -123,17 +131,41 @@
       "path": "clients/ios/out/evidence/sdp-spike.json",
       "group": "harness",
       "what": "the libwebrtc offer/answer spike the call-v2 validator was written against",
-      "bytes": 12200,
-      "sha256": "07aa35b8cfa9419d3763efa4fd2efcf07da1e3e02af4a1ddcabd6ed5473e0923",
-      "produced": "2026-09-13T14:30Z"
+      "bytes": 12191,
+      "sha256": "80f76c5327a6a8ee63686e0f2487f0e4e79ea492509d9e579d5d641ce323b8cb",
+      "produced": "2026-09-13T14:40Z"
     },
     {
       "path": "clients/ios/out/evidence/java-host.json",
       "group": "harness",
       "what": "java_deps.sh: the Java facade compiled against the shared core for the cross-check, with the Android reference commit and the classes that are Android-only",
-      "bytes": 6039,
-      "sha256": "956a9bcc24f24baebe86c352e8ea6b9c50ca66ab25953056ebb5b42411ae0896",
-      "produced": "2026-09-13T14:29Z"
+      "bytes": 6255,
+      "sha256": "94abb30fa8a2c03ef599f69553af6550e4f02ccfdf160d1eb1d44cf9623bba28",
+      "produced": "2026-09-13T15:10Z"
+    },
+    {
+      "path": "clients/ios/out/checks/compat/result.json",
+      "group": "cross-test",
+      "what": "test_android_compatibility.py at head bcb4046: 15 checks, PASS, the source digests of both sides, the expectations this harness computes in Python, and the local-stand leg with the SHA-256 of the server binary that answered it",
+      "bytes": 16616,
+      "sha256": "548624db8a98d950e1577439c8a86c6e75b8b5d2e9859a4609ff7f32f572889b",
+      "produced": "2026-09-13T19:34Z"
+    },
+    {
+      "path": "clients/ios/out/checks/compat-offline/result.json",
+      "group": "cross-test",
+      "what": "the same script with --skip-stand: 12 checks, PASS, no server and no socket; written at commit 674ec31",
+      "bytes": 15274,
+      "sha256": "aa15acdd57a316c7fcc2564eff06f07bacb7a27a0024b403a4fcd1fea120c65f",
+      "produced": "2026-09-13T15:14Z"
+    },
+    {
+      "path": "clients/ios/out/checks/qr-cross/result.json",
+      "group": "cross-test",
+      "what": "test_qr_cross.py: the contact QR through both encoders, 2/2 identical, 4 checks and 6 refusals; written at commit 674ec31",
+      "bytes": 4096,
+      "sha256": "bb0d6395e577a6a8e8fb23e1213498929265800ea3a879df6705cec10a44e376",
+      "produced": "2026-09-13T15:24Z"
     },
     {
       "path": "clients/ios/out/checks/registration/registration-result.json",

@@ -4,10 +4,18 @@ import Security
 
 /// Why a pinned handshake was refused, one case per rule that can say no.
 ///
-/// The numbered cases are the nine checks of `PinnedTls.java:51-70`; `check`
-/// maps a failure back to its number so a log line or a test can name the rule
-/// without matching on the message. Nothing here carries certificate bytes or
-/// key material: the strings are OIDs, counts and short reasons.
+/// Numbers 1 to 8 are the eight leaf rules of `checkServerTrusted`
+/// (`PinnedTls.java:54-70`), one number per rule. Number 9 is not one rule: it
+/// is the group of session-level refusals, and five cases here carry it — two
+/// with an Android counterpart (`protocolFloor` for the enabled-protocol list,
+/// `clientAuthentication` for the `checkClientTrusted` throw) and three that
+/// exist only because the URL loading system hands this client a challenge
+/// object Android's socket factory never sees (`authenticationMethod`, `host`,
+/// `missingTrust`).
+///
+/// `check` maps a failure back to its number so a log line or a test can name
+/// the rule without matching on the message. Nothing here carries certificate
+/// bytes or key material: the strings are OIDs, counts and short reasons.
 public enum PinnedTrustFailure: Error, Equatable, Sendable, CustomStringConvertible {
     /// The pin is not 64 hexadecimal digits (`PinnedTls.java:18-21`).
     case pinFormat
@@ -46,20 +54,26 @@ public enum PinnedTrustFailure: Error, Equatable, Sendable, CustomStringConverti
     /// `Security.framework` would not build a usable public key out of the
     /// leaf.
     case unusableKey(String)
-    /// The session offers a TLS floor below 1.2 (check 9).
+    /// The session offers a TLS floor below 1.2 (check 9; the counterpart of
+    /// the enabled-protocol list of `PinnedTls.java:80-83`).
     case protocolFloor
     /// The server asked for a client certificate; this client has none
-    /// (`PinnedTls.java:47`, check 9).
+    /// (`PinnedTls.java:53`, check 9).
     case clientAuthentication
-    /// An authentication method other than server trust or client certificate.
+    /// An authentication method other than server trust or client certificate
+    /// (check 9, no Android counterpart).
     case authenticationMethod(String)
-    /// The challenge is for a host other than the pinned one.
+    /// The challenge is for a host other than the pinned one (check 9, no
+    /// Android counterpart).
     case host(String)
-    /// A server-trust challenge arrived without a trust object.
+    /// A server-trust challenge arrived without a trust object (check 9, no
+    /// Android counterpart).
     case missingTrust
 
-    /// The number of the `PinnedTls.java:51-70` check this failure belongs to,
-    /// `nil` for the two constructor rules and the two decoding failures.
+    /// The number this failure belongs to: 1 to 8 name one leaf rule of
+    /// `PinnedTls.java:54-70` each, and 9 is the session-level group described
+    /// above rather than a single rule. `nil` for the two constructor rules
+    /// and the two decoding failures.
     public var check: Int? {
         switch self {
         case .pinFormat, .realmFormat, .unreadableCertificate, .unusableKey: return nil
@@ -104,7 +118,7 @@ public enum PinnedTrustFailure: Error, Equatable, Sendable, CustomStringConverti
     }
 }
 
-/// The nine leaf checks of `PinnedTls.java:51-70`, on `Security.framework`.
+/// The eight leaf checks of `PinnedTls.java:54-70`, on `Security.framework`.
 ///
 /// One server, one pinned key, no certificate authority anywhere: the pin is
 /// `SHA-256` of the leaf's `subjectPublicKeyInfo` DER, exactly the value
@@ -126,9 +140,30 @@ public enum PinnedTrustFailure: Error, Equatable, Sendable, CustomStringConverti
 ///    the realm holds an IP literal, otherwise a `dNSName` compared without
 ///    case; never a common name, never a wildcard.
 ///
-/// The ninth is the TLS floor and the refusal of client certificates, which
-/// belong to the session rather than the certificate: `PinnedSessionDelegate`
-/// enforces it.
+/// A ninth number covers what belongs to the session rather than to the
+/// certificate — the TLS floor, the refusal of client certificates, and the
+/// three challenge rules that have no Android counterpart. That group is
+/// `PinnedSessionDelegate`'s, not this type's.
+///
+/// ## What a live handshake proves, and what only a parsed certificate does
+///
+/// `clients/ios/check-pinned-tls.py` dials real loopback servers through this
+/// type and `PinnedSessionDelegate`, and its fixtures break checks **1, 2, 3,
+/// 6, 7 and 8** — one server per broken rule, each refused before any HTTP
+/// request reached it. A seventh fixture breaks check 9 by capping a server at
+/// TLS 1.1, and it only runs where the local OpenSSL still offers TLS 1.1;
+/// otherwise that line prints `SKIPPED`.
+///
+/// Checks **4 and 5** have no socket fixture. They are proven on parsed
+/// certificates instead, by `PinnedTrustTests`: a leaf OpenSSL issues with an
+/// unknown critical extension and one with `CA:TRUE` for check 4, and the
+/// stand's own leaf with one bit of `signatureValue` flipped for check 5 —
+/// the case `SecTrustEvaluateWithError` with the leaf as its own anchor would
+/// accept. The corrupted leaf also goes through `PinnedSessionDelegate` on a
+/// real `SecTrust`, so what those two checks never see is a socket, not the
+/// shipped code path: `evaluate(leaf:at:)` is what the `SecTrust` overload
+/// calls. A claim that all eight are proven by a live handshake would be
+/// wrong, and this paragraph is what keeps it from being made.
 ///
 /// ## Why the self-signature is verified by hand
 ///
@@ -137,7 +172,7 @@ public enum PinnedTrustFailure: Error, Equatable, Sendable, CustomStringConverti
 /// the system stops the path at it and never verifies its self-signature, so a
 /// certificate carrying a valid `subjectPublicKeyInfo` and arbitrary garbage in
 /// `signatureValue` would evaluate as trusted. Android's `leaf.verify(...)`
-/// (`PinnedTls.java:58`) does check it, so this client checks it too, with
+/// (`PinnedTls.java:63`) does check it, so this client checks it too, with
 /// `SecKeyVerifySignature` over the `tbsCertificate` octets `X509Leaf` slices
 /// out. No `SecTrustEvaluate*` call exists in this file; `SecTrust` is used
 /// only as the container the URL loading system hands over the chain in.
@@ -171,7 +206,7 @@ public struct PinnedTrustEvaluator: Sendable {
     ///   - host: the address the leaf must name, without brackets or port.
     ///   - pin: 64 hexadecimal digits, either case.
     /// - Throws: `PinnedTrustFailure.pinFormat` for anything else, and
-    ///   `.realmFormat` for an empty host (`PinnedTls.java:45`).
+    ///   `.realmFormat` for an empty host (`PinnedTls.java:48`).
     public init(host: String, pin: String) throws {
         guard !host.isEmpty else { throw PinnedTrustFailure.realmFormat }
         let normalized = try Self.checkedPin(pin)
@@ -365,7 +400,7 @@ public struct PinnedTrustEvaluator: Sendable {
     // MARK: - Check 7
 
     /// EC at 256 bits or more, RSA at 2048 or more, nothing else — the two
-    /// `instanceof` arms of `PinnedTls.java:66-68`, read off the key instead of
+    /// `instanceof` arms of `PinnedTls.java:66-67`, read off the key instead of
     /// off the certificate.
     private func checkStrength(of key: SecKey) throws {
         guard let attributes = SecKeyCopyAttributes(key) as? [String: Any],
@@ -385,7 +420,7 @@ public struct PinnedTrustEvaluator: Sendable {
     /// against nothing else; every other host is matched against `dNSName`
     /// entries without regard to case. There is no common-name fallback and no
     /// wildcard rule, so `*.example.org` names no host at all — `matchesSan`
-    /// of `PinnedTls.java:32-45`, unchanged.
+    /// of `PinnedTls.java:33-46`, unchanged.
     private func matchesSubjectAlternativeName(_ leaf: X509Leaf) throws -> Bool {
         guard let names = try leaf.subjectAlternativeNames() else { return false }
         if let address = Self.literalAddress(host) {
@@ -396,7 +431,7 @@ public struct PinnedTrustEvaluator: Sendable {
     }
 
     /// The octets of an IP literal, or `nil` when the text is a name rather
-    /// than an address (`literalIp`, `PinnedTls.java:22-31`).
+    /// than an address (`literalIp`, `PinnedTls.java:22-32`).
     ///
     /// IPv4 is read by hand so that a leading zero — `127.0.0.01`, which some
     /// resolvers read as octal — is a name, not an address, and can therefore
@@ -449,7 +484,7 @@ public struct PinnedTrustEvaluator: Sendable {
     ///
     /// The loop reads both buffers to the end and accumulates the difference,
     /// so a near-miss pin and a wholly wrong one take the same path
-    /// (`MessageDigest.isEqual`, `PinnedTls.java:56`).
+    /// (`MessageDigest.isEqual`, `PinnedTls.java:59`).
     static func constantTimeEqual(_ left: [UInt8], _ right: [UInt8]) -> Bool {
         guard left.count == right.count else { return false }
         var difference: UInt8 = 0

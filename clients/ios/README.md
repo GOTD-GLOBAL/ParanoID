@@ -12,7 +12,7 @@ git).
 
 This directory is a **candidate under development** proposed in
 [RFC-0021](../../docs/rfcs/0021-ios-client.md) and recorded as
-[draft ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
+[proposed ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
 Nothing in it is accepted architecture; no build has been installed on a phone,
 no hosted account has been created and no TestFlight upload has happened unless
 the [verification table](../../docs/clients/ios/verification.md) says `SHOWN`
@@ -20,9 +20,12 @@ with an evidence link. The Android v15 client (`main` `fe9c26c`) is the
 behavioural reference; the [component documentation](../../docs/clients/ios/README.md)
 lists the intended differences (no in-app updates, no background delivery,
 no CallKit, reinstall is a clean install). Java line numbers in this README are
-`fe9c26c`'s, except every `WebRtcAudioEngine.java` line and
-`MainActivity.java:478`: call-v2 video moved that code past v15, so those are
-read in this branch's merged Android tree (`0.0.22-push`). A directory or
+`fe9c26c`'s, except every `WebRtcAudioEngine.java` line and exactly three
+`MainActivity.java` references — `:444-542`, `:478` and `:533-537` — which are
+the call window and its render pass: call-v2 video moved that code past v15, so
+those four are read in this branch's merged Android tree (`0.0.22-push`) and
+say so where they appear. Every other reference resolves at `fe9c26c`; if one
+does not, the reference is wrong and not the base. A directory or
 script named in this README exists only once its pull-request step has landed;
 the name alone is not a claim that the code exists or works.
 
@@ -434,7 +437,7 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   guard, `MainActivity.java:613`) and carries the two ways to hand it over as
   text: the share sheet (`UIActivityViewController` with the string itself,
   `MainActivity.java:175`) and the clipboard (`UIPasteboard`, local to this
-  device, with Android's confirmation wording, `MainActivity.java:181,521`).
+  device, with Android's confirmation wording, `MainActivity.java:177,521`).
   `QrScannerView` is the port of `QrScanActivity.java`: it asks for the camera
   when the answer is not known yet, runs one `AVCaptureSession` with a single
   `AVCaptureMetadataOutput` restricted to `.qr` (set after `addOutput`) at
@@ -577,8 +580,9 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   reconnection, because a call that is recovering is a call the phone has not
   left the ear for. The screen, separately, stays awake while
   **either** camera is on, which is the ordinary one-way video call
-  (`call-v2.md`, owner request 2026-09-12; `MainActivity.java:533-537` binds
-  `FLAG_KEEP_SCREEN_ON` to `localVideo || remoteVideo`). An interruption that
+  (`call-v2.md`, owner request 2026-09-12; `MainActivity.java:533-537`, in the
+  merged Android tree of this branch, binds `FLAG_KEEP_SCREEN_ON` to
+  `localVideo || remoteVideo`). An interruption that
   begins and a
   media-services reset both end the call as `failed` **when there is media to
   lose**; a call that is still ringing has none, so it is left to its own
@@ -624,7 +628,8 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   `ended` is what opens the policy's ten-second teardown window
   (`TextEngine.java:99`, `LifecyclePolicy`).
 - `ParanoID/Screens/CallScreen.swift` is `MainActivity.showCall()` /
-  `renderCall()` (`MainActivity.java:443-545`) caption for caption — but not
+  `renderCall()` (`MainActivity.java:444-542`, the merged Android tree of this
+  branch, because the video captions are v16's) caption for caption — but not
   window flag for window flag, see the end of this entry — over the mock-up's
   `call-out`, `call-in` and `call-on`. The privacy sentence and
   «Ответить» exist only while the call is ringing and the sentence stands
@@ -664,7 +669,7 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   stopping where it was — gives the audio session back **only while no newer
   intent owns it** (`AppModel.ownsCallAudio`, Android's
   `intentGeneration == callIntentGeneration` re-check at
-  `MainActivity.java:427,435`): the session is process-wide, and deactivating
+  `MainActivity.java:402,407`): the session is process-wide, and deactivating
   the one a second «Позвонить» is already waiting on would leave that call
   silent for its whole life, because only `connected` hands the audio unit
   over and nothing re-arms a session for an outgoing call. A refused
@@ -672,7 +677,7 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   tells the peer when it was an Answer for **the call the dialog was raised
   for** (so the other phone stops ringing instead of waiting out its own 45
   seconds, and a permission dialog that outlived its ring cannot reject the
-  next one — Android re-checks the same `call_id`, `MainActivity.java:600`)
+  next one — Android re-checks the same `call_id`, `MainActivity.java:533`)
   and shows «Для звонка нужен
   доступ к микрофону. Переписка доступна без него.» with «Открыть Настройки».
   The camera is opened by «Включить камеру» and by an explicit video-call
@@ -730,6 +735,26 @@ direct ICE. Everything is stopped and removed on exit; the log stays in
 `clients/ios/out/logs/`. The stand never contacts the hosted server or an
 existing PostgreSQL cluster.
 
+**The server no longer builds on macOS, which is a property of the server, not
+of this client.** Since `main` `547099f` (2026-09-13),
+`server/src/android_updates.rs:297` opens the update staging file with
+`libc::O_TMPFILE`, which the `libc` crate defines only on Linux; on this Mac
+the same pinned command fails with
+`error[E0425]: cannot find value O_TMPFILE in crate libc` before anything is
+linked. `server/` is a red zone and this branch does not touch it, so the
+stand is started from a server binary built before that commit:
+
+```sh
+python3 clients/ios/local_stand.py \
+  --server-binary clients/ios/out/server-target/release/paranoid-server
+```
+
+Every stand-backed script takes the same `--server-binary PATH` and skips the
+build when it is given; without it, `local_stand.py` builds from the working
+tree and fails on macOS with the error above. Each stand result file records
+the SHA-256 of the server binary that answered it, so which server ran is
+checkable even though the source it was built from no longer compiles here.
+
 ```sh
 python3 clients/ios/local_stand.py --run 'curl -s --cacert $TLS_CRT $URL/health'
 # {"protocol":"paranoid-self-service-v2","realtime":"signed-long-poll-v1","status":"ok"}
@@ -748,6 +773,28 @@ so for a non-loopback `--bind` the server listens on `127.0.0.1:<port>` and
 the script relays TCP from `<bind>:<port>`; TLS stays end to end (the
 certificate names the LAN address), the same front/back split
 `clients/android/test_realtime.py` uses.
+
+### The two channels that name a stand
+
+`DebugFixture` reads the same pair from either of two channels, and it reads
+them **only in a Debug build**:
+
+| Channel | Names | Used by |
+| --- | --- | --- |
+| Launch arguments | `-paranoid-realm <url>`, `-paranoid-pin <hex>` | Xcode and `xcodebuild test` on a simulator |
+| Environment variables | `PARANOID_REALM`, `PARANOID_PIN` | `devicectl` on a physical phone |
+
+The second channel exists because `devicectl` starts an installed build
+without relaying launch arguments to the process, so on a device the
+environment is the only way a stand can be named. Both channels carry the same
+two values, both go through `ServiceTrust(realm:pin:)` — the same
+`checkedRealm` / `checkedPin` a Release build applies — and an argument wins
+when a launch offers both.
+
+In a Release build `DebugFixture.trust(arguments:environment:)` compiles to a
+body that answers `nil` without reading either channel, so neither the command
+line nor the environment can point a shipped application at a stand: it starts
+from the compiled hosted default and from nothing else.
 
 ## Clean-install text messaging (`test_clean_self_service.py`)
 
@@ -1470,8 +1517,11 @@ without `~/.cargo/bin` on `PATH` is fine.
    `test_qr_cross.py`, both unconditional, so a missing file fails the build
    instead of skipping a gate. That comparison runs both clients against each
    other on this Mac; it is a `CLAIMED` result and not a phone one.
-8. `check-pinned-tls.py` and `test_realtime_transport.py` — the nine leaf
-   checks and the eight socket rules, against real loopback servers.
+8. `check-pinned-tls.py` and `test_realtime_transport.py` — against real
+   loopback servers. The pinned-TLS fixtures break checks 1, 2, 3, 6, 7 and 8
+   over a socket, and check 9 too where the local OpenSSL still offers TLS
+   1.1 (`SKIPPED` otherwise); checks 4 and 5 have no socket fixture and are
+   proven on parsed certificates by `PinnedTrustTests`.
 9. `notices.py --offline` and `test_notices.py` — the notices that then ship
    inside the bundle.
 10. `test_ui_contract.py`, `test_call_controller_parity.py` and
@@ -1626,19 +1676,28 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   Raw core snapshots hold private keys and plaintext: never log them.
 - **Trust.** Same server pin as Android
   (`8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba`) and the
-  same nine leaf checks, evaluated on `Security.framework`. Saved trust wins
-  over compiled defaults; no second pin, no rotation path (separate RFC).
+  same eight leaf checks of `PinnedTls.java:54-70`, evaluated on
+  `Security.framework`, plus the session rules numbered 9 — the TLS 1.2 floor
+  and the refusal of a client certificate, which Android states in its socket
+  factory and its trust manager, and three challenge rules with no Android
+  counterpart (unexpected authentication method, wrong host, missing trust).
+  Saved trust wins over compiled defaults; no second pin, no rotation path
+  (separate RFC).
 - **Secrets and outputs.** Signing identities, `.p8`, `.p12`,
   `.mobileprovision`, keystores and `.env` never enter git; App Store Connect
   credentials come only from `PARANOID_ASC_KEY_PATH`, `PARANOID_ASC_KEY_ID`,
   `PARANOID_ASC_ISSUER_ID` and `PARANOID_IOS_TEAM_ID`. Build outputs, logs and
   evidence JSON go under `out/`.
 - **Live actions need an owner "go".** Installing through the company Apple
-  account, registering on the hosted alpha (`https://157.180.49.125:38443`,
-  exactly one account, no reserve) and uploading to TestFlight happen only
-  after an explicit owner authorization whose permalink is recorded in
-  evidence. Simulators use only the local stand (unchanged server binary plus
-  local PostgreSQL 16); they never contact the hosted server.
+  account, registering on the hosted alpha (`https://157.180.49.125:38443`) and
+  uploading to TestFlight happen only after an explicit owner authorization
+  whose permalink is recorded in evidence. The account budget is RFC-0021
+  question 4, answered on 2026-09-13: **as many as the tests need, no fixed
+  budget** — and every registration is still counted in the evidence
+  directory, because the server has no account-deletion path, so each one is
+  permanent. A budget is not an authorization: each live registration still
+  needs its own "go". Simulators use only the local stand (unchanged server
+  binary plus local PostgreSQL 16); they never contact the hosted server.
 - **Language.** English in this README, under `docs/` and in evidence;
   Russian only inside quoted UI strings.
 

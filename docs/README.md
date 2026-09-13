@@ -135,10 +135,12 @@ runtime/review gates. No relay deployment has occurred.
 
 ## iOS client candidate
 
-[RFC-0021](rfcs/0021-ios-client.md) and [draft ADR-0014](decisions/0014-ios-client.md)
+[RFC-0021](rfcs/0021-ios-client.md) and [proposed ADR-0014](decisions/0014-ios-client.md)
 propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
 The [iOS component documentation](clients/ios/README.md) records the intended
 differences from Android, the [requirement-to-test mapping](clients/ios/verification.md)
-(every row `NOT RUN`) and the [rule-to-source table](clients/ios/protocol-sources.md)
-used to write behaviour from the protocol documents and the core. No build,
-phone result, hosted account or architecture acceptance is implied.
+(24 rows `CLAIMED` on simulators, the host or the local stand, REQ-CLIENT-001
+itself `NOT RUN`, and **no row `SHOWN`**) and the
+[rule-to-source table](clients/ios/protocol-sources.md)
+used to write behaviour from the protocol documents and the core. No phone
+result, hosted account, TestFlight build or architecture acceptance is implied.

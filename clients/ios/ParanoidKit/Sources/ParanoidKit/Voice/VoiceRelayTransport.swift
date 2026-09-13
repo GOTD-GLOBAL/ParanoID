@@ -39,7 +39,7 @@ public protocol VoiceRelayEndpoint: Sendable {
 /// | Rule (`VoiceRelayTransport.java`)         | Here                                            |
 /// |-------------------------------------------|-------------------------------------------------|
 /// | one fixed endpoint, built once (`:22`)    | `endpoint`, from the retained origin            |
-/// | pinned socket factory (`:23`, `:34`)      | `PinnedSessionDelegate` (the nine leaf checks)  |
+/// | pinned socket factory (`:23`, `:34`)      | `PinnedSessionDelegate` (8 leaf + session rules) |
 /// | `Proxy.NO_PROXY` (`:28`)                  | `connectionProxyDictionary = [:]`               |
 /// | `setInstanceFollowRedirects(false)` (`:34`) | `willPerformHTTPRedirection` answers `nil`    |
 /// | `setUseCaches(false)` (`:35`)             | no `URLCache`, `reloadIgnoringLocalAndRemoteCacheData` |

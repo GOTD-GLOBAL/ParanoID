@@ -3,7 +3,8 @@ import Security
 import XCTest
 @testable import ParanoidKit
 
-/// The nine checks of `PinnedTls.java:51-70`, one refusal at a time.
+/// The eight leaf checks of `PinnedTls.java:54-70` and the session-level
+/// group numbered 9, one refusal at a time.
 ///
 /// Nothing here touches the network, and no certificate is committed: every
 /// fixture is generated while the test runs into a private temporary directory
