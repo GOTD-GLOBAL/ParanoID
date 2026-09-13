@@ -1,0 +1,14 @@
+test_after_rename_directory_fsync_failure (__main__.Tests.test_after_rename_directory_fsync_failure) ... ok
+test_delayed_startup (__main__.Tests.test_delayed_startup) ... ok
+test_interrupted_before_rename (__main__.Tests.test_interrupted_before_rename) ... ok
+test_outstanding_job_prevents_replacement (__main__.Tests.test_outstanding_job_prevents_replacement) ... RECOVERY FAILED: operator must inspect retained certificates
+ok
+test_recovery_unhealthy_with_new_certificate (__main__.Tests.test_recovery_unhealthy_with_new_certificate) ... ok
+test_start_timeout_reconciles_stop_before_recovery_start (__main__.Tests.test_start_timeout_reconciles_stop_before_recovery_start) ... ok
+test_success_and_explicit_rollback (__main__.Tests.test_success_and_explicit_rollback) ... ok
+test_unknown_certificate_refused (__main__.Tests.test_unknown_certificate_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 0.753s
+
+OK

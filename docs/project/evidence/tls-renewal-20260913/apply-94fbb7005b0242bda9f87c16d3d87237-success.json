@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-13T07:44:21.615647+00:00",
+  "result": "PASS",
+  "certificate_sha256": "bdf0a677a2bef2c1b7a2f8ede654dd0edc87b89501ab627ab25890c7fbfb40d4",
+  "pin": "8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba",
+  "key_bytes_unchanged": true,
+  "config_release_pg_identity_neighbors_unchanged": true,
+  "health": "PASS: TLS authenticated database readiness"
+}

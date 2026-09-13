@@ -6,6 +6,19 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## Same-key TLS certificate renewed — 2026-09-13
+
+The hosted alpha now serves a renewed self-signed certificate, valid through
+`2026-12-12T07:38:09Z`, with the original TLS private key and SPKI unchanged.
+The [operation and evidence](../operations/tls-renewal-2026-09-13.md) record
+owner-scoped authority, independent review, synthetic rollback tests and actual
+host/external checks. Only the dedicated messaging user service was stopped and
+started; configuration, package, PostgreSQL identity and neighboring services
+were preserved. Android `PinnedTls` on the JVM accepts the actual renewed
+endpoint; physical phones and iOS were not tested. This retained 90-day renewal
+is not automation: another renewal is needed before December 12. Key rotation
+and any contact/channel migration still require a separate RFC.
+
 ## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
 
 The owner (Сергей Мальцев, Telegram) requested video calls and resolved the

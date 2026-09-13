@@ -1,0 +1,9 @@
+{
+  "exact_renewed_der": true,
+  "current_android_tls_jvm_exit": 0,
+  "current_android_tls_jvm_output": "PASS current PinnedTls: HTTP/1.1 200 OK",
+  "certificate_pem_sha256": "bdf0a677a2bef2c1b7a2f8ede654dd0edc87b89501ab627ab25890c7fbfb40d4",
+  "pin": "8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba",
+  "not_after_utc": "2026-12-12 07:38:09",
+  "physical_phone_and_ios": "NOT RUN"
+}

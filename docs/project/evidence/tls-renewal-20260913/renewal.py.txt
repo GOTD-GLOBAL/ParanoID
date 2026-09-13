@@ -1,0 +1,196 @@
+"""One-host, owner-authorized same-key certificate maintenance. Not key rotation."""
+import datetime as dt
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import ssl
+import stat
+import subprocess
+import sys
+import time
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+
+EXPECTED_UID = 1003
+ROOT = Path('/home/paranoid/paranoid-alpha')
+STAGE = Path('/home/paranoid/tls-renewal-20260913')
+PIN = '8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba'
+IP = '157.180.49.125'
+UNIT = 'paranoid-alpha.service'
+NEIGHBORS = ['paranoid-turn.service', 'nginx.service', 'docker.service', 'postgresql.service']
+
+def run(args):
+    return subprocess.check_output(list(map(str,args)), stderr=subprocess.PIPE, timeout=65).decode()
+
+def secure_dir(path):
+    s=path.lstat()
+    assert stat.S_ISDIR(s.st_mode) and s.st_uid==os.getuid() and stat.S_IMODE(s.st_mode)==0o700
+
+def read(path):
+    fd=os.open(path,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        s=os.fstat(fd)
+        assert stat.S_ISREG(s.st_mode) and s.st_nlink==1 and s.st_uid==os.getuid() and stat.S_IMODE(s.st_mode)==0o600
+        with os.fdopen(os.dup(fd),'rb') as f: return f.read()
+    finally: os.close(fd)
+
+def sha(b): return hashlib.sha256(b).hexdigest()
+def spki(cert): return cert.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)
+def cert(raw): return x509.load_pem_x509_certificate(raw)
+def write_new(path,data):
+    fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+    with os.fdopen(fd,'wb') as f:
+        f.write(data);f.flush();os.fsync(f.fileno())
+    sync(path.parent)
+def sync(path):
+    fd=os.open(path,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+    try:os.fsync(fd)
+    finally:os.close(fd)
+def atomic(path,data):
+    import uuid
+    # An interrupted forward write cannot obstruct a later recovery write.
+    pending=path.with_name(path.name+'.renewal-'+uuid.uuid4().hex+'.pending')
+    write_new(pending,data)
+    os.replace(pending,path);sync(path.parent)
+def neighbors():
+    return {name:run(['systemctl','show',name,'-p','ActiveState','-p','MainPID','-p','ExecMainStartTimestamp']) for name in NEIGHBORS}
+def baseline():
+    return {'config_sha256':sha(read(ROOT/'config.json')), 'release':str((ROOT/'current').resolve(strict=True)),
+            'unit_sha256':sha(read(ROOT/UNIT)), 'data_inode':(ROOT/'data').stat().st_ino,
+            'pg_system_id':run(['/usr/lib/postgresql/16/bin/pg_controldata',ROOT/'data']).split('Database system identifier:')[1].splitlines()[0].strip(),
+            'neighbors':neighbors()}
+def health():
+    return run(['python3',ROOT/'current/alpha.py','health','--root',ROOT]).strip()
+def wait_health():
+    # systemd Type=simple start completion is not application readiness.
+    for attempt in range(10):
+        try:
+            verdict=health()
+            if 'PASS' in verdict:return verdict
+        except (subprocess.SubprocessError, OSError):
+            pass
+        time.sleep(1)
+    raise RuntimeError('bounded post-restart readiness failed')
+def stop_unit():
+    # A new stop job replaces any timed-out outstanding start/restart job.
+    # Do not replace files until actual stopped state and no manager job are observed.
+    try:run(['systemctl','--user','stop',UNIT])
+    except subprocess.TimeoutExpired:pass
+    for attempt in range(20):
+        state=run(['systemctl','--user','show',UNIT,'-p','ActiveState','-p','Job','-p','MainPID'])
+        fields=dict(line.split('=',1) for line in state.splitlines() if '=' in line)
+        if fields.get('ActiveState') in ('inactive','failed') and fields.get('MainPID')=='0' and fields.get('Job') in ('','0'):
+            return
+        time.sleep(1)
+    raise RuntimeError('dedicated unit still running or has an outstanding job')
+def served(expected):
+    ctx=ssl.create_default_context(cafile=str(ROOT/'tls/server.crt'))
+    import socket
+    with socket.create_connection((IP,38443),timeout=12) as raw:
+        with ctx.wrap_socket(raw,server_hostname=IP) as tls:
+            assert tls.getpeercert(binary_form=True)==cert(expected).public_bytes(serialization.Encoding.DER)
+def transition(target):
+    stop_unit()
+    atomic(ROOT/'tls/server.crt',target)
+    run(['systemctl','--user','start',UNIT])
+    verdict=wait_health()
+    served(target)
+    return verdict
+def validate(old,new,key):
+    assert spki(old)==spki(new) and sha(spki(new))==PIN
+    assert new.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)==key.public_key().public_bytes(serialization.Encoding.DER,serialization.PublicFormat.SubjectPublicKeyInfo)
+    assert old.subject==new.subject==new.issuer==old.issuer
+    assert list(old.extensions)==list(new.extensions)
+    assert new.serial_number!=old.serial_number
+    assert new.signature_hash_algorithm.name==old.signature_hash_algorithm.name=='sha256'
+    new.public_key().verify(new.signature,new.tbs_certificate_bytes,ec.ECDSA(new.signature_hash_algorithm))
+    assert new.not_valid_before < dt.datetime.utcnow() < new.not_valid_after
+    assert new.not_valid_after > old.not_valid_after
+    assert new.not_valid_after-new.not_valid_before == dt.timedelta(days=90)
+    san=new.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+    import ipaddress
+    assert san.get_values_for_type(x509.IPAddress)==[ipaddress.ip_address(IP)]
+
+def main(mode):
+    assert os.getuid()==EXPECTED_UID
+    secure_dir(ROOT);secure_dir(ROOT/'tls')
+    # The same operator lock used by v2 release maintenance; never unlink it.
+    fd=os.open(ROOT/'operation.lock',os.O_RDWR|os.O_NOFOLLOW|os.O_NONBLOCK)
+    try:
+        s=os.fstat(fd)
+        assert stat.S_ISREG(s.st_mode) and s.st_uid==os.getuid() and s.st_nlink==1 and stat.S_IMODE(s.st_mode)==0o600
+        fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB)
+        if mode=='prepare':
+            assert not STAGE.exists()
+            before=baseline();assert 'PASS' in health()
+            old_raw=read(ROOT/'tls/server.crt');key_raw=read(ROOT/'tls/server.key')
+            old=cert(old_raw); key=serialization.load_pem_private_key(key_raw,password=None)
+            assert isinstance(key,ec.EllipticCurvePrivateKey) and key.curve.name=='secp256r1'
+            now=dt.datetime.utcnow().replace(microsecond=0)-dt.timedelta(minutes=5)
+            builder=x509.CertificateBuilder().subject_name(old.subject).issuer_name(old.issuer).public_key(key.public_key()).serial_number(x509.random_serial_number()).not_valid_before(now).not_valid_after(now+dt.timedelta(days=90))
+            for ext in old.extensions:builder=builder.add_extension(ext.value,ext.critical)
+            new=builder.sign(key,hashes.SHA256());validate(old,new,key)
+            STAGE.mkdir(mode=0o700);sync(STAGE.parent)
+            write_new(STAGE/'old.crt',old_raw)
+            write_new(STAGE/'new.crt',new.public_bytes(serialization.Encoding.PEM))
+            # Restore-test the exact saved public old cert against the unchanged key.
+            context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(STAGE/'old.crt',ROOT/'tls/server.key')
+            context.load_cert_chain(STAGE/'new.crt',ROOT/'tls/server.key')
+            for name in ['old.crt','new.crt']:
+                run(['openssl','verify','-CAfile',STAGE/name,'-verify_ip',IP,'-purpose','sslserver',STAGE/name])
+            assert read(STAGE/'old.crt')==old_raw and read(ROOT/'tls/server.key')==key_raw and baseline()==before
+            record={'before':before,'old_sha256':sha(old_raw),'new_sha256':sha(read(STAGE/'new.crt')),'pin':PIN,'old_not_after':old.not_valid_after.isoformat()+'Z','new_not_before':new.not_valid_before.isoformat()+'Z','new_not_after':new.not_valid_after.isoformat()+'Z','old_certificate_restore_checked':True,'key_unchanged':True}
+            write_new(STAGE/'prepared.json',json.dumps(record,indent=2).encode()+b'\n')
+            print(json.dumps(record,indent=2))
+        elif mode in ['apply','rollback']:
+            secure_dir(STAGE)
+            record=json.loads(read(STAGE/'prepared.json'))
+            old_raw=read(STAGE/'old.crt');new_raw=read(STAGE/'new.crt')
+            assert sha(old_raw)==record['old_sha256'] and sha(new_raw)==record['new_sha256']
+            assert baseline()==record['before'], 'configuration/release/neighbors changed since preparation'
+            key_raw=read(ROOT/'tls/server.key');key=serialization.load_pem_private_key(key_raw,password=None)
+            validate(cert(old_raw),cert(new_raw),key)
+            current=read(ROOT/'tls/server.crt')
+            assert current in (old_raw,new_raw),'unknown current certificate'
+            if mode=='apply':
+                assert current==old_raw,'already changed; use explicit rollback for recovery'
+                assert 'PASS' in health()
+            # Recovery accepts unhealthy/stopped service and either known certificate.
+            expected=current
+            target=new_raw if mode=='apply' else old_raw
+            import uuid
+            attempt=mode+'-'+uuid.uuid4().hex
+            write_new(STAGE/(attempt+'-started.json'),json.dumps({'utc':dt.datetime.now(dt.timezone.utc).isoformat(),'expected':sha(expected),'target':sha(target)}).encode())
+            changed=False
+            try:
+                changed=True
+                verdict=transition(target)
+                assert read(ROOT/'tls/server.key')==key_raw
+                assert baseline()==record['before']
+                write_new(STAGE/(attempt+'-success.json'),json.dumps({'utc':dt.datetime.now(dt.timezone.utc).isoformat(),'result':'PASS','certificate_sha256':sha(target),'pin':PIN,'key_bytes_unchanged':True,'config_release_pg_identity_neighbors_unchanged':True,'health':verdict},indent=2).encode()+b'\n')
+                print(read(STAGE/(attempt+'-success.json')).decode())
+            except BaseException:
+                if changed:
+                    try:
+                        current=read(ROOT/'tls/server.crt')
+                        assert current in (expected,target),'unknown cert drift; refuse blind rollback'
+                        # No release/config rollback: this operation owns only the certificate.
+                        assert str((ROOT/'current').resolve())==record['before']['release']
+                        transition(old_raw)
+                        assert read(ROOT/'tls/server.key')==key_raw
+                        write_new(STAGE/(attempt+'-recovered.json'),b'{"result":"FAILED_OPERATION_OLD_CERT_RESTORED"}\n')
+                    except BaseException:
+                        print('RECOVERY FAILED: operator must inspect retained certificates',file=sys.stderr)
+                raise
+        else:raise ValueError('mode required')
+    finally:os.close(fd)
+
+if __name__=='__main__':
+    def interrupted(signum,frame):raise InterruptedError('maintenance interrupted')
+    signal.signal(signal.SIGTERM,interrupted)
+    main(sys.argv[1])
