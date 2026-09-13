@@ -21,6 +21,7 @@ let package = Package(
         // Host-only checking tools, never linked into the application.
         .executable(name: "tls-smoke", targets: ["tls-smoke"]),
         .executable(name: "service-bridge", targets: ["service-bridge"]),
+        .executable(name: "voice-lane-probe", targets: ["voice-lane-probe"]),
     ],
     targets: [
         // `paranoid_core_command` / `paranoid_core_free` from the Rust bridge
@@ -58,6 +59,16 @@ let package = Package(
             name: "service-bridge",
             dependencies: ["ParanoidKit"],
             path: "Sources/service-bridge"
+        ),
+        // The stdin/stdout client of `clients/ios/test_voice_relay_lane.py`,
+        // the counterpart of `clients/android/test/VoiceRelayLaneSmoke.java`.
+        // It drives the shipped `VoiceRelayLane` and `VoiceRelayTransport`
+        // over the real pinned TLS stack against the signature-verifying stub
+        // of `clients/ios/test/turn_stub.py`; the application never links it.
+        .executableTarget(
+            name: "voice-lane-probe",
+            dependencies: ["ParanoidKit"],
+            path: "Sources/voice-lane-probe"
         ),
         .testTarget(
             name: "ParanoidKitTests",

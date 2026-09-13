@@ -105,9 +105,10 @@ declares the `ParanoidCoreFFI` binary target at
 which must run first) and the `WebRTC` binary target at
 `Binaries/WebRTC.xcframework` (git-ignored, produced by
 `webrtc_dependency.py`), and no package dependency at all; `service-bridge` is
-the host-only registration fixture described below, and the `core-bridge` and
-`tls-smoke` executables named in RFC-0021 arrive with their own pull-request
-steps. The `WebRTC` target is exported as
+the host-only registration fixture described below, `voice-lane-probe` is the
+host-only TURN-lane fixture of `test_voice_relay_lane.py`, and the
+`core-bridge` executable named in RFC-0021 arrives with its own pull-request
+step. The `WebRTC` target is exported as
 its own product and **no** target of the package depends on it: the
 xcframework carries no macOS slice, so keeping `ParanoidKit` itself free of it
 is what lets the host `swift test` run build. `Sources/ParanoidKit/Core/` is
@@ -720,6 +721,84 @@ The evidence is counts, digests and verdicts, plus the proxy's own
 `latency-samples.json`: no account, no fingerprint, no realm, no pin, no
 message text and no snapshot bytes. One run costs about twenty seconds.
 
+## TURN credentials (`test_voice_relay_lane.py`)
+
+The third lane. `VoiceRelayLane` asks the issuer for one relay credential
+before media is created, and what it decides is a protocol rule rather than a
+convenience: a validated document grants relay authority, a valid
+authenticated **404 from the pinned origin** permits the pre-disclosed
+direct-ICE compatibility mode, and *nothing else does* — a TLS mismatch, a
+timeout, a redirect, a 429, a 5xx, a second 401 and a 200 that is not this
+document all grant nothing ([voice TURN
+v1](../../docs/protocol/voice-turn-v1.md), "Consent, transport and
+compatibility"). It also needs a **live session**: a capable server that has
+none right now is a failure, while a server that never advertised the
+capability is the disclosed compatibility mode, which is the difference
+between "busy" and "old" (`RealtimeLoop.java:140-143`).
+
+Three properties keep this lane apart from the two text lanes, and all three
+are checked:
+
+- it never touches the text session. A 401 or a 404 here drops no session and
+  forces no `/health` rediscovery, because "a 404 for this optional route does
+  not discard an otherwise valid text session"; that is why it signs its own
+  requests instead of going through `SessionCall`;
+- it opens its own one-shot connection. `VoiceRelayTransport` is the port of
+  `VoiceRelayTransport.java`: one pinned `URLSession` per call, invalidated
+  when the call returns (which is how `Connection: close` is expressed on
+  iOS), `Accept: application/json`, `Cache-Control: no-store`, 8 s connect and
+  read, a 200 body capped at 2048 bytes and an error body at 4096;
+- the credentials are volatile. They are never written to the snapshot, never
+  logged and never printed; `VoiceRelayConfig.description` is
+  `VoiceRelayConfig[redacted]`, and both the unit test and the harness read
+  the durable file back to say so.
+
+`clients/ios/test/turn_stub.py` is the server, and it is not a mock of what
+the client hopes for: it rebuilds the whole `paranoid-session-request-v1`
+transcript from the public session context and the device's public Ed25519 key
+and **verifies the signature itself** before answering
+(`key-protocol/src/session_v2.rs:45-59`), so a client that signed a different
+method, path, body digest or session is refused rather than served. It is the
+only thing in this repository that needs a third-party Python package
+(`cryptography`, pinned in [`requirements-test.txt`](requirements-test.txt)),
+and it runs in the git-ignored virtualenv `out/venv-turn` that the harness
+creates on its first run. The system interpreter is never modified.
+
+The client is `voice-lane-probe`, the shipped classes end to end: the real
+core signs, `StateOwner` owns the state, `ProofFlow` brings the session up and
+`VoiceRelayTransport` carries the bytes over the real `URLSession` stack and
+the real pinned trust. The identity, the enrollment and the session context
+are synthetic exactly as `clients/android/test/VoiceRelayLaneSmoke.java:70-86`
+makes them synthetic; no PostgreSQL issuer, no TURN server and no media are
+involved, and the local stand cannot stand in because it starts no TURN and
+answers `404 turn_disabled`.
+
+Each of the seven stories is decided twice — by what the client reported and
+by what the stub saw, down to how many signed attempts it took and whether
+each one carried a fresh nonce over a valid signature:
+
+| Scenario | The rule | Attempts |
+| --- | --- | --- |
+| `relay` | a valid document grants relay authority | 1 |
+| `retry` | the first ambiguous 401 is signed again once, and only once | 2 |
+| `unauthorized` | a second 401 grants nothing and never becomes direct mode | 2 |
+| `not_found` | a valid authenticated 404 permits the disclosed direct mode | 1 |
+| `busy` | 429 fails; capacity is not capability | 1 |
+| `unavailable` | 503 fails; a broken issuer is not an absent one | 1 |
+| `malformed` | a 200 that is not this document fails on the schema | 1 |
+
+```sh
+python3 clients/ios/test_voice_relay_lane.py --evidence-dir out/checks/voice-lane
+# 7/7 PASS, signature verified (9/9 requests)
+jq -c '.signed_requests,.signatures_verified,[.checks[].passed]' \
+  clients/ios/out/checks/voice-lane/voice-relay-lane.json        # 9 9 [true x7]
+```
+
+The evidence is counts, statuses and verdicts: no credential, no nonce, no
+session identifier, no account and no address of this machine appear in it —
+the realm is recorded as `https://<loopback>:<ephemeral>`. One run costs about
+a second after the first, which also builds the virtualenv.
+
 ## Application in the simulator (`test_sim_text.py`)
 
 The two fixtures above drive the client's classes; this one drives the
@@ -953,6 +1032,8 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
 jq '.offer.accepted,.answer.accepted' clients/ios/out/evidence/sdp-spike.json # true true
 swift test --package-path clients/ios/ParanoidKit --filter SdpExtractTests  # transport context, per-section survey, 9000-byte cap
 swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayConfigTests # TURN metadata: 6 accepted, the 49 Android negatives, the admission window
+swift test --package-path clients/ios/ParanoidKit --filter VoiceRelayLaneTests # which status grants relay, direct or nothing; the one repeat; cancellation
+python3 clients/ios/test_voice_relay_lane.py --evidence-dir out/checks/voice-lane # the same seven stories over a real pinned socket, signatures verified by the stub
 swift test --package-path clients/ios/ParanoidKit --filter SnapshotStoreTests  # commit order, injected faults, continuity
 swift test --package-path clients/ios/ParanoidKit --filter SelfServiceClientTests # v4 wrapper, opening rules, persist before adopt
 swift test --package-path clients/ios/ParanoidKit --filter ProofFlowTests    # challenge spacing, discovery, session issuance

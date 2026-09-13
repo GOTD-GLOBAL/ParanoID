@@ -437,7 +437,13 @@ public final class RealtimeTransport: @unchecked Sendable {
 /// they arrive, so an oversized 200 body is abandoned instead of being
 /// buffered whole, and an oversized error body is cut at `errorLimit` while
 /// its status survives. The object lives for exactly one attempt.
-private final class Exchange: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+///
+/// The 200 ceiling is a parameter because the two lanes do not share it:
+/// the text lane keeps 2 MiB (`RealtimeTransport.java:50`) and the
+/// negotiation-only voice lane keeps 2048 (`VoiceRelayTransport.java:45`,
+/// `docs/protocol/voice-turn-v1.md:52`). The error ceiling is 4096 in both
+/// (`VoiceRelayTransport.java:45`), so it stays the shared constant.
+final class Exchange: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     struct Outcome: Sendable {
         let status: Int
         let body: Data
@@ -446,6 +452,8 @@ private final class Exchange: NSObject, URLSessionDataDelegate, @unchecked Senda
     }
 
     private let pinned: PinnedSessionDelegate
+    /// How much of a 200 body this exchange keeps before it abandons the call.
+    private let successLimit: Int
     private let lock = NSLock()
     private var continuation: CheckedContinuation<Outcome, Error>?
     private var task: URLSessionTask?
@@ -456,8 +464,10 @@ private final class Exchange: NSObject, URLSessionDataDelegate, @unchecked Senda
     private var truncated = false
     private var overflow = false
 
-    init(pinned: PinnedSessionDelegate) {
+    init(pinned: PinnedSessionDelegate,
+         successLimit: Int = RealtimeTransport.responseLimit) {
         self.pinned = pinned
+        self.successLimit = successLimit
         super.init()
     }
 
@@ -541,7 +551,7 @@ private final class Exchange: NSObject, URLSessionDataDelegate, @unchecked Senda
 
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         lock.lock()
-        let limit = status == 200 ? RealtimeTransport.responseLimit : RealtimeTransport.errorLimit
+        let limit = status == 200 ? successLimit : RealtimeTransport.errorLimit
         guard body.count + data.count > limit else {
             body.append(data)
             lock.unlock()
