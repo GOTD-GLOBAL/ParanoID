@@ -6,6 +6,19 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK ceiling removal — local server candidate (2026-09-13)
+
+Owner direction is recorded in RFC-0013 and draft ADR-0008: no fixed APK size
+ceiling, no unnecessary binary growth. Server candidate uses fixed-memory hashing
+and anonymous disk snapshots, retaining two permits through response lifetime.
+Local update unit/integration checks pass, including above-old-cap transport and
+source mutation after verification. Android is a separate PR; installed clients
+still require a bridge within the old ceiling. No merge, deployment, feed change
+or phone acceptance is implied. Independent fallback AI review approved the final
+bounded-channel implementation after fixing cancellation/I/O permit coupling;
+Opus CLI could not authenticate, so this is not an Opus or human audit. Rollout
+and physical-phone acceptance remain gates.
+
 ## Automatic same-key TLS maintenance installed — 2026-09-13
 
 The [bounded same-key automation](../rfcs/tls-same-key-automation.md) is installed

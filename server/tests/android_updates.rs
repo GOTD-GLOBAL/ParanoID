@@ -221,9 +221,9 @@ async fn rejects_symlink_hardlink_directory_fifo_and_unsafe_root_substitution() 
     assert_eq!(status(Some(data), "/v2/updates/android").await.0, 503);
 }
 #[tokio::test]
-async fn exact_size_boundaries_are_served_and_mutation_after_check_is_rejected() {
+async fn above_old_size_ceiling_is_served_and_mutation_after_check_is_rejected() {
     let mut f = Feed::new();
-    f.bytes = vec![0xa5; 16777216];
+    f.bytes = vec![0xa5; 16777217];
     f.publish();
     let mut metadata = f.manifest().to_string();
     metadata.extend(std::iter::repeat_n(' ', 8192 - metadata.len()));
@@ -248,7 +248,7 @@ async fn actual_build_apk_snapshot_roundtrips_exact_bytes_and_digest() {
     let mut f = Feed::new();
     // Read the moving build output ONCE; all subsequent checks use this snapshot.
     f.bytes = fs::read(std::env::var_os("PARANOID_TEST_APK").expect("APK path required")).unwrap();
-    assert!(!f.bytes.is_empty() && f.bytes.len() <= 16777216);
+    assert!(!f.bytes.is_empty());
     f.publish();
     let route = format!("/v2/updates/android/apk/{}", digest(&f.bytes));
     let (code, raw) = status(Some(f.root.clone()), &route).await;

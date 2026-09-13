@@ -24,5 +24,7 @@ uuid = { version = "=1.18.1", features = ["v4"] }
 # Push gateway (RFC-0020): outbound HTTPS to Google only; rustls with the pinned ring provider.
 reqwest = { version = "=0.12.24", default-features = false, features = ["json", "rustls-tls-webpki-roots"] }
 
+futures-core = "=0.3.34"
+
 [dev-dependencies]
 vodozemac = "=0.10.0"
