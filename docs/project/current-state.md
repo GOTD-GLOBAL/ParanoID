@@ -6,6 +6,16 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## APK-cap server deployment blocked — 2026-09-13
+
+The owner authorized server update and bridge publication after PRs32/33 merged.
+The locked native server candidate was built, but original coordinator status
+refused config/certificate/unit identity drift before deployment. Read-only worker
+inspection confirmed unchanged release, PG identifier, TLS key and pin. No drift
+adoption or code switch was attempted. [The blocked-rollout record](../operations/apk-cap-rollout-blocked-2026-09-13.md)
+retains evidence and required reviewed reconciliation. Android delivery is a
+separate operation; it does not prove the server was updated.
+
 ## APK ceiling removal — local Android candidate (2026-09-13)
 
 Sergey requested removal of the arbitrary APK cap on both components, while
