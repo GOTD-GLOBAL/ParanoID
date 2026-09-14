@@ -28,16 +28,30 @@ measured row by row in [verification.md](../clients/ios/verification.md):
   own QR, read a contact off the build Mac's screen with the real camera,
   confirmed the fingerprint sheet, exchanged text with receipts in both
   directions and placed one call to a simulator that connected with video
-  from the phone. Those rows are `SHOWN`; the two joint tests with the owner
-  are still `NOT RUN`, and no archive, `.ipa` export or TestFlight build
-  exists;
+  from the phone. Those rows are `SHOWN`; no archive, `.ipa` export or
+  TestFlight build exists;
+- **the two joint tests with the owner are partly run.** In an unscheduled
+  session on the hosted alpha on 2026-09-14 the iPhone scanned the owner's QR
+  and paired his Android, text went both ways — the first time this client has
+  seen the second check, which is the acknowledgement from a real Android
+  client — and the owner called the iPhone from his Android: the call
+  connected, both sides spoke and both turned their cameras on, the first call
+  this client has carried against the Android client rather than a simulator
+  and the first picture it has received from a real camera. The contributor is
+  the only participant that record has, so those rows read
+  `SHOWN (joint, reported)` — his report given immediately afterwards, not a
+  capture — and no owner "go" permalink exists for the session, because it was
+  not planned. Every row the report does not cover stays `NOT RUN`. After the
+  session the iPhone stopped connecting and has not recovered;
 - **two hosted accounts exist** — `hosted_registrations` is 2: one
   `service-bridge` registration from the build Mac while diagnosing the
   phone's TLS failure, and one from the physical iPhone once App Transport
   Security was switched off, both under the owner's answer to question 4 (no
   fixed budget). The iPhone then paired the owner's Android from his QR image
   and sent one text the hosted server accepted (one check); delivery to his
-  phone was still pending. Before that, the only contact with the hosted
+  phone was still pending then, and happened in the joint session of
+  2026-09-14, which used that same account and consumed no further
+  registration. Before that, the only contact with the hosted
   server was a TLS handshake that compared the live SubjectPublicKeyInfo
   digest with the pin this client carries;
 - the calls this client speaks are **call-v2**, not the voice v1 this RFC was
@@ -368,9 +382,8 @@ What has been run, in one sentence each:
   machine and exchanges identities, text, call-v2 bodies, sealed snapshots and a
   QR contact with the Swift client, with the expectations recomputed in Python
   rather than taken from the shared core — `CLAIMED`, because it is a host
-  comparison and not a device result; the only contact with the owner's
-  Android on its own hardware so far is the pairing from his QR image and one
-  text the hosted server accepted, not yet delivered or answered;
+  comparison and not a device result; contact with the owner's Android on its
+  own hardware is the joint session of 2026-09-14, recorded below;
 - a signed Debug build on the contributor's iPhone 16 Pro Max (iOS 26.6.1)
   against the local stand reached over the Mac's LAN address: identity, own
   QR, a contact read off the Mac's screen with the real camera, the
@@ -381,24 +394,57 @@ What has been run, in one sentence each:
   the owner's Android paired from his QR image, one text accepted by the
   server with one check — a solo pre-run of stage 1, not the joint test;
   delivery to the owner's phone and his reply had not yet happened;
+- the joint session of 2026-09-14 on the hosted alpha, from that same Release
+  build: the owner's QR scanned with the iPhone camera and his contact paired,
+  text delivered both ways with both checks on the iPhone, and a call he
+  placed from his Android that connected with audio in both directions and
+  video from both cameras — `SHOWN (joint, reported)`, the contributor's
+  report given immediately afterwards and not a capture, with no owner "go"
+  permalink because the session was unscheduled. His Android is therefore v16
+  or later, since call-v2 rejects v1 bodies; the exact version was not asked
+  for;
 - what still needs a device or the owner — the Data Protection class of the
   state file, screen lock during dialling, a real screen recording over the
   call stage, a relayed call, an archive, an `.ipa` export, a TestFlight build
-  and both joint tests — `NOT RUN`. One open item from 2026-09-13: after a
-  network drop the phone stayed at «Нет подключения» while the server
-  answered and the pinned key was unchanged; the cause is under investigation
-  on the branch and device logs were not collected.
+  and the parts of the two joint tests that session did not reach (stage 1
+  steps 7-15, and stage 2 steps 1-3, 5-7 and 10-17, among them an outgoing
+  call from this client to an Android on real phones) — `NOT RUN`. One open
+  item from 2026-09-13: after a network drop the phone stayed at «Нет
+  подключения» while the server answered and the pinned key was unchanged; the
+  cause is under investigation on the branch and no device log was collected for
+  that drop. A second and different failure followed the joint session, at
+  07:06 (Europe/Moscow) on 2026-09-14, measured and posted to
+  [pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864):
+  the iPhone shows «Нет подключения» and does not recover, and a Debug build
+  on the same device with its console attached — the first direct read of this
+  client's failure — logged `realtime: lane failed: NSURLError Code=-1001 "The
+  request timed out."` four times in 45 s for
+  `/v2/messages?after=1259&limit=20`. The pinned handshake did not fail and
+  the route is alive (the same URL unsigned answers 401 from the build Mac in
+  0.19 s and `/health` in 0.2 s with the pin unchanged), so what hangs is the
+  signed read that opens a generation, before the lane ever reaches the long
+  poll; relaunching the application does not clear it. The 8 s read timeout
+  for that route is shared with Android
+  (`clients/android/src/org/paranoid/text/RealtimeTransport.java:36`) and is
+  not an iOS divergence.
 
 Two joint tests with the owner are the only live tests, both on a real iPhone,
-both after an explicit owner "go", and both written in advance with every
-`Result` column reading `NOT RUN`:
+both written in advance with every `Result` column reading `NOT RUN`:
 [stage 1, text](../project/evidence/ios-client-20260913/stage1-text.md) and
 [stage 2, calls](../project/evidence/ios-client-20260913/stage2-voice.md).
-Neither has run as a joint session. On 2026-09-13 the contributor alone
-exercised stage 1 steps 1, 2, 4 and the first half of 5 (one check, no reply
-yet) against the hosted server with the owner's QR image; that is a pre-run,
-not the joint test, and the iPhone's hosted registration was consumed before
-the stage.
+Both are now **partly run**. A live test requires an explicit owner "go"; the
+session of 2026-09-14 was unscheduled, so no such permalink exists for it and
+none is claimed here. That session covered stage 1 steps 4, 5 and 6 and stage
+2 steps 4, 8 and 9, each recorded as `SHOWN (joint, reported)` — the
+contributor is the only participant those files have, and the result is his
+report rather than an observation or a recording. Every other row keeps
+`NOT RUN` with its reason, including the whole Android side of the pairing
+(the owner did not scan this client's QR) and the fingerprint compared aloud.
+On 2026-09-13 the contributor alone exercised stage 1 steps 1, 2, 4 and the
+first half of 5 (one check, no reply yet) against the hosted server with the
+owner's QR image; that is a pre-run, not the joint test, and the iPhone's
+hosted registration was consumed before the stage, with the session of
+2026-09-14 consuming none.
 
 ## Closed-alpha scope (policy item 1)
 

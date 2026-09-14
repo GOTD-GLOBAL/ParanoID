@@ -110,10 +110,11 @@ public contract is declared.
   document), and every negative is refused by that validator first.
   `clients/ios/test_qr_cross.py` does the same for pixels: a real 901-byte
   contact crosses the iOS encoder and Android's ZXing in both directions
-  unchanged. Both are `CLAIMED`: two client stacks on one Mac. The only contact
-  with the owner's Android on its own phone so far is the pairing the iPhone
-  made from his QR image on 2026-09-13 and one text the hosted server accepted,
-  not yet delivered to his phone or answered.
+  unchanged. Both are `CLAIMED`: two client stacks on one Mac. Contact with the
+  owner's Android on its own phone is no longer confined to the pairing the
+  iPhone made from his QR image on 2026-09-13 and one text the hosted server
+  accepted: the unscheduled joint session of 2026-09-14 recorded in the status
+  below carried text both ways and one call between the two clients.
 - Status: `CLAIMED` on simulators (iPhone 17 Pro and iPhone 17e, iOS 26.5),
   host and local stand, including two simulators calling each other in both
   directions. On 2026-09-13 a signed build (Apple team on the `xcodebuild`
@@ -128,23 +129,53 @@ public contract is declared.
   phone (the simulator has no camera). Against the hosted server, after the
   ATS fix, a Release build registered, paired the owner's Android from his QR
   image and sent one text the server accepted (one check); delivery to his
-  phone was still pending. `hosted_registrations` is 2: the iPhone's own and a
-  `service-bridge` registration from the build Mac made while diagnosing the
-  phone's TLS failure, both under the owner's answer to RFC-0021 question 4
-  (no fixed budget). The device smoke also found an empty entitlements file
-  (the simulator's Keychain answered `errSecMissingEntitlement`; fixed by
-  declaring `keychain-access-groups`, device behaviour unchanged) and a
-  memory-only fixture peer (replaced by a persistent one; harness, not
-  product). Still `NOT RUN`: archive, `.ipa` export and TestFlight upload
-  (the export-compliance gate is closed), a relayed call, a screen recording
-  over the call stage, the Data Protection class on the device, and both
-  joint tests with the owner in `docs/project/evidence/ios-client-20260913/`;
-  the contributor alone pre-ran stage 1 steps 1, 2, 4 and the first half of 5
-  against the hosted server, which is not the joint test. Open since
-  2026-09-13/14: after a network drop the phone stayed at «Нет подключения»
-  while the server answered from the Mac and the pinned key was unchanged;
-  under investigation, device logs not collected. Row-by-row status is
-  `docs/clients/ios/verification.md`.
+  phone was still pending. On 2026-09-14 an unscheduled joint session on the
+  hosted alpha, from that same signed Release build (branch head `adb56be`),
+  put this client against the owner's Android on its own hardware: the iPhone
+  scanned his QR and the contact was paired, a text reached him and **both**
+  checks appeared on the iPhone — the acknowledgement from a real Android
+  client, which this client had never seen — his reply arrived, and he then
+  called the iPhone from his Android, they spoke, and both sides turned their
+  cameras on. That is the first call this client has carried against the
+  Android client rather than a simulator and the first picture it has received
+  from a real camera over call-v2, so his build is v16 or later, because
+  call-v2 rejects v1 bodies; the exact version was not asked for. Every result
+  of that session is the contributor's report given immediately afterwards,
+  not an observation by whoever writes this file and not a recording, which is
+  why the evidence rows read `SHOWN (joint, reported)` rather than `SHOWN`;
+  the session was not planned, so no owner "go" permalink exists for it, and
+  the owner did not scan the iPhone's QR, so the Android side of the pairing
+  and the fingerprint compared aloud stay untested. `hosted_registrations` is
+  2, and that session consumed none of it: the iPhone's own, registered on
+  2026-09-13 and reused, and a `service-bridge` registration from the build
+  Mac made while diagnosing the phone's TLS failure, both under the owner's
+  answer to RFC-0021 question 4 (no fixed budget). The device smoke also found
+  an empty entitlements file (the simulator's Keychain answered
+  `errSecMissingEntitlement`; fixed by declaring `keychain-access-groups`,
+  device behaviour unchanged) and a memory-only fixture peer (replaced by a
+  persistent one; harness, not product). Still `NOT RUN`: archive, `.ipa`
+  export and TestFlight upload (the export-compliance gate is closed), a
+  relayed call, a screen recording over the call stage, the Data Protection
+  class on the device, and the
+  remainder of the two joint tests with the owner in
+  `docs/project/evidence/ios-client-20260913/`, which the session of
+  2026-09-14 leaves `PARTLY RUN`: stage 1 steps 7-15 (closed-application
+  delivery, screen lock, Wi-Fi to LTE, blocking, renaming, ten-minute idle)
+  and stage 2 steps 1-3, 5-7 and 10-17 (the outgoing call from this client,
+  the two-minute hold, hang-up behaviour, mute, speaker, screen recording,
+  lock during dialling and during a call, background and closed-application
+  calls, LTE and busy). Open since 2026-09-13/14: after a network drop the
+  phone stayed at «Нет подключения» while the server answered from the Mac
+  and the pinned key was unchanged; and after the joint session of 2026-09-14
+  the phone stopped connecting again and has not recovered. The second is a
+  different failure, and the first failure of this client to be read directly:
+  a Debug build on the same device, launched with its console attached, shows
+  the lane's signed `GET /v2/messages` timing out four times in 45 seconds
+  (`NSURLError -1001`) on the first cycle of a generation, while the same
+  route unsigned answers 401 in 0.19 s and `/health` in 0.2 s with the pin
+  unchanged — so the pinned handshake did not fail and the route was alive.
+  Measured at 07:06 Europe/Moscow and posted to the draft pull request #36.
+  Row-by-row status is `docs/clients/ios/verification.md`.
 
 ### Push wake gateway (server) — 2026-09-12
 

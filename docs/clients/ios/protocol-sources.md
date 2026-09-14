@@ -13,12 +13,17 @@ the reading of it. Since then the two clients have also been run against each
 other on the build Mac — `clients/ios/test_android_compatibility.py` and
 `clients/ios/test_qr_cross.py`, both `CLAIMED` in
 [verification.md](verification.md) — which checks the scenarios those scripts
-cover on the revisions they digest, and not every row of this table. The only
-contact with the owner's Android on its own hardware so far is from
-2026-09-13: a signed build on a physical iPhone paired it from the owner's QR
-image and sent one text the hosted server accepted, still undelivered and
-unanswered — no row here is confirmed by an Android client on a phone. Line
-numbers refer to `main` at `fe9c26c`
+cover on the revisions they digest, and not every row of this table. Contact
+with the owner's Android on its own hardware is from 2026-09-13 — a signed
+build on a physical iPhone paired it from the owner's QR image and sent one
+text the hosted server accepted — and from the unscheduled joint session of
+2026-09-14, which carried text both ways and one call he placed to the
+iPhone, both sides' cameras on. That session is the contributor's report,
+`SHOWN (joint, reported)` in
+[stage1-text.md](../../project/evidence/ios-client-20260913/stage1-text.md)
+and [stage2-voice.md](../../project/evidence/ios-client-20260913/stage2-voice.md);
+it confirms no individual row of this table, because it was not read row by
+row. Line numbers refer to `main` at `fe9c26c`
 (Android v15) unless a row says otherwise; a row marked `(Android v16)` cites
 the call-v2 and video code of the post-v15 Android client instead, read in the
 merged Android tree of this branch (`0.0.22-push`, versionCode 22), not at

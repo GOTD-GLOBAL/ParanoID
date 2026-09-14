@@ -17,10 +17,21 @@ Nothing in it is accepted architecture. A signed build has run on one physical
 iPhone (2026-09-13: an iPhone 16 Pro Max on iOS 26.6.1) and two hosted
 accounts exist — one from the build Mac's `service-bridge` while diagnosing
 the phone's TLS failure, one from the phone itself — but no TestFlight upload
-has happened, the two joint tests with the owner have not been run, and
+has happened, the two joint tests with the owner are only partly run, and
 nothing counts as `SHOWN` unless the
 [verification table](../../docs/clients/ios/verification.md) says so with an
-evidence link. The Android v15 client (`main` `fe9c26c`) is the
+evidence link. The joint session of 2026-09-14 was unscheduled and has no
+owner "go" permalink: on the hosted alpha this iPhone and the owner's Android
+exchanged text both ways and carried one call on which both sides turned their
+cameras on, and every row of
+[stage 1](../../docs/project/evidence/ios-client-20260913/stage1-text.md) and
+[stage 2](../../docs/project/evidence/ios-client-20260913/stage2-voice.md) that
+session did not cover stays `NOT RUN`. The contributor was the only participant
+those two records have, so what they carry is his report, given immediately
+afterwards, and each such row reads `SHOWN (joint, reported)` rather than
+`SHOWN`. After that session the iPhone stopped connecting to the hosted server
+and has not recovered; that failure is measured in pull request #36 and is a
+result of neither stage. The Android v15 client (`main` `fe9c26c`) is the
 behavioural reference; the [component documentation](../../docs/clients/ios/README.md)
 lists the intended differences (no in-app updates, no background delivery,
 no CallKit, reinstall is a clean install). Java line numbers in this README are
@@ -1546,10 +1557,17 @@ without `~/.cargo/bin` on `PATH` is fine.
    comparison itself (plan step 34): `test_android_compatibility.py` and
    `test_qr_cross.py`, both unconditional, so a missing file fails the build
    instead of skipping a gate. That comparison runs both clients against each
-   other on this Mac; it is a `CLAIMED` result and not a phone one. The only
-   contact with the owner's Android on its own hardware so far is the
-   2026-09-13 pairing from his QR image and one text the hosted server
-   accepted, not yet delivered to it or answered.
+   other on this Mac; it is a `CLAIMED` result and not a phone one. Contact
+   with the owner's Android on its own hardware is the 2026-09-13 pairing from
+   his QR image and one text the hosted server accepted, and then the
+   unscheduled joint session of 2026-09-14: text both ways, with both checks
+   appearing on the iPhone for the first time — the second of them being his
+   client's acknowledgement — and one call, placed from his Android, that
+   carried audio both ways and a picture from each camera. That is the
+   contributor's report, recorded as `SHOWN (joint, reported)` in
+   [stage 1](../../docs/project/evidence/ios-client-20260913/stage1-text.md) and
+   [stage 2](../../docs/project/evidence/ios-client-20260913/stage2-voice.md);
+   a call placed from this client to an Android stays `NOT RUN`.
 8. `check-pinned-tls.py` and `test_realtime_transport.py` — against real
    loopback servers. The pinned-TLS fixtures break checks 1, 2, 3, 6, 7 and 8
    over a socket, and check 9 too where the local OpenSSL still offers TLS

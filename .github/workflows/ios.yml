@@ -58,6 +58,7 @@ jobs:
           python3 clients/ios/test_webrtc_dependency.py --offline
           python3 clients/ios/test_ui_contract.py
           python3 clients/ios/test_call_controller_parity.py
+          python3 clients/ios/test_docs_consistency.py
       - name: Third-party notices for the whole locked iOS graph
         # The full run: the graph is walked and every licence text is read and
         # written. A linked crate with no packaged licence text and no pinned

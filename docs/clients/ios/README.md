@@ -19,16 +19,24 @@ checks run on simulators and a local stand, which makes those results
 (iOS 26.6.1) against the local stand — identity created, own QR shown, a
 contact read off a screen with the real camera, the fingerprint sheet
 confirmed, text with receipts in both directions and one call that connected
-with video — so those rows are `SHOWN (phone, local stand)`, not yet in a
-joint test with the owner. **Two hosted accounts exist**
-(`hosted_registrations: 2`: one from the build Mac while diagnosing the
-phone's TLS failure, one from the iPhone; both under the owner's answer to
-RFC-0021 question 4, no fixed budget); the iPhone then paired the owner's
-Android from his QR image and sent one text the hosted server accepted,
-delivery to his phone still pending. No archive, no `.ipa` export and no
-TestFlight build exist. One open item: after a network drop the phone stayed
+with video — so those rows are `SHOWN (phone, local stand)`. **Two hosted
+accounts exist** (`hosted_registrations: 2`: one from the build Mac while
+diagnosing the phone's TLS failure, one from the iPhone; both under the
+owner's answer to RFC-0021 question 4, no fixed budget); the iPhone paired the
+owner's Android from his QR image and sent one text the hosted server
+accepted, delivery to his phone still pending at that point. On 2026-09-14 an
+unscheduled session with the owner on the hosted alpha, using that same
+account, carried text both ways with his Android — both checks on the iPhone
+for the first time — and one call he placed to it, on which both sides turned
+their cameras on; the contributor is the only participant that record has, so
+those rows read `SHOWN (joint, reported)` and no owner "go" permalink exists
+for the session. **Both joint tests are only partly run**, and everything
+neither covered stays `NOT RUN`. No archive, no `.ipa` export and no
+TestFlight build exist. Two open items: after a network drop the phone stayed
 at «Нет подключения» while the server answered and the pinned key was
-unchanged; the cause is under investigation on the branch.
+unchanged, the cause under investigation on the branch; and after the session
+of 2026-09-14 the phone stopped connecting altogether and has not recovered —
+a separate failure, measured in pull request #36 and tracked as issue #38.
 [verification.md](verification.md) says it row by row.
 
 ## What the candidate is
@@ -94,9 +102,11 @@ the shared [core contract](../core/self-service.md) and
   owner records a classification.
 - The platform trust delta is
   [docs/security/ios-client-threats.md](../../security/ios-client-threats.md);
-  the two joint-test scenarios, written in advance and not yet run as joint
-  sessions (the contributor pre-ran part of stage 1 alone against the hosted
-  server on 2026-09-13; every `Result` cell still reads `NOT RUN`), are in
+  the two joint-test scenarios, written in advance and now partly run (the
+  contributor pre-ran part of stage 1 alone against the hosted server on
+  2026-09-13, which fills no `Result` cell; the unscheduled session of
+  2026-09-14 filled stage 1 steps 4, 5 and 6 and stage 2 steps 4, 8 and 9 with
+  `SHOWN (joint, reported)`, and every other cell still reads `NOT RUN`), are in
   [docs/project/evidence/ios-client-20260913/](../../project/evidence/ios-client-20260913/README.md),
   together with the evidence catalogue of that directory: every command with
   what it printed, the digest of every artifact and screenshot it wrote, the

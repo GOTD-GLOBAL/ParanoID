@@ -14,17 +14,17 @@ names, in its own section, everything that was **not** run.
 | --- | --- |
 | `README.md` (this file) | the catalogue: commands, results, versions, digests, what was not run, the owner's decisions |
 | [artifacts.json](artifacts.json) | the same catalogue for machines: 33 artifacts and 56 screenshots, each with path, bytes, SHA-256 and the time it was produced |
-| [stage1-text.md](stage1-text.md) | joint test 1 (text and QR on real phones), written in advance, every `Result` cell `NOT RUN`; steps 1, 2, 4 and the first half of 5 were pre-run by the contributor alone on 2026-09-13, which is not the joint test |
-| [stage2-voice.md](stage2-voice.md) | joint test 2 (calls on real phones), written in advance, every `Result` cell `NOT RUN` |
+| [stage1-text.md](stage1-text.md) | joint test 1 (text and QR on real phones), written in advance, **partly run** in the unscheduled session of 2026-09-14: steps 4, 5 and 6 read `SHOWN (joint, reported)` — the contributor's report, not a capture — and every other `Result` cell stays `NOT RUN`; steps 1, 2, 4 and the first half of 5 had been pre-run by the contributor alone on 2026-09-13, which is not the joint test |
+| [stage2-voice.md](stage2-voice.md) | joint test 2 (calls on real phones), written in advance, **partly run** in the same session of 2026-09-14: steps 4, 8 and 9 read `SHOWN (joint, reported)` — one call the owner placed to the iPhone, answered and spoken on, with both cameras turned on — and every other `Result` cell stays `NOT RUN` |
 | [independent-review.md](independent-review.md) | the independent AI reviews of policy item 2: reviewer, model, revision, every finding and what became of it |
 
 ## Counters
 
 | Counter | Value |
 | --- | --- |
-| Accounts this branch created on the hosted alpha | `hosted_registrations: 2` — one from the build Mac through `service-bridge` while diagnosing the phone's TLS failure, and one from the physical iPhone once App Transport Security was switched off; both under the owner's answer to RFC-0021 question 4 (no fixed budget). The phone then paired the owner's Android from its QR and sent a text the hosted server accepted |
-| Contacts with the hosted server | one TLS handshake from the build Mac with no HTTP request (2026-09-13T08:06Z); then the build Mac's `service-bridge` registration, made while diagnosing the phone's TLS failure; then, after the App Transport Security fix of `adb56be`, the iPhone's registration, the pairing of the owner's Android from his QR image on the iPhone, and one text the hosted server accepted (one check) — its delivery to the owner's Android was still pending because his phone had not polled |
-| Physical phones involved so far | one: the contributor's iPhone 16 Pro Max (iOS 26.6.1, Developer Mode enabled) — a Debug build against the local stand and, later the same day, a Release build against the hosted server, both installed on 2026-09-13 with team `5RPGVC566Q`. The owner's Android took part only as the source of a QR image and the addressee of one text not yet delivered |
+| Accounts this branch created on the hosted alpha | `hosted_registrations: 2` — one from the build Mac through `service-bridge` while diagnosing the phone's TLS failure, and one from the physical iPhone once App Transport Security was switched off; both under the owner's answer to RFC-0021 question 4 (no fixed budget). The phone then paired the owner's Android from its QR and sent a text the hosted server accepted. The joint session of 2026-09-14 ran on that same iPhone account and registered nothing, so the counter is unchanged by it |
+| Contacts with the hosted server | one TLS handshake from the build Mac with no HTTP request (2026-09-13T08:06Z); then the build Mac's `service-bridge` registration, made while diagnosing the phone's TLS failure; then, after the App Transport Security fix of `adb56be`, the iPhone's registration, the pairing of the owner's Android from his QR image on the iPhone, and one text the hosted server accepted (one check) — its delivery to the owner's Android was still pending because his phone had not polled; then, on 2026-09-14, the unscheduled joint session on that same account, which registered nothing: text both ways with the owner's Android and one call it placed to the iPhone |
+| Physical phones involved so far | two: the contributor's iPhone 16 Pro Max (iOS 26.6.1, Developer Mode enabled) — a Debug build against the local stand and, later the same day, a Release build against the hosted server, both installed on 2026-09-13 with team `5RPGVC566Q` — and the owner's Android, which until 2026-09-13 had taken part only as the source of a QR image and the addressee of one text not yet delivered, and which on 2026-09-14 exchanged text with the iPhone and called it |
 | Simulator devices used | iPhone 17 Pro and iPhone 17e, both on iOS 26.5 |
 
 RFC-0021 question 4 was answered on 2026-09-13 — **as many accounts as the
@@ -227,6 +227,7 @@ is kept in `out/logs/keychain-signed.log` (`** TEST SUCCEEDED **`,
 | Simulators | iPhone 17 Pro, iPhone 17e, iOS 26.5 | `voice-sim-result.json` |
 | Physical device | iPhone 16 Pro Max, iOS 26.6.1, Developer Mode enabled; Debug and Release builds of `global.paranoid.messenger` signed with team `5RPGVC566Q` | `device-smoke-result.json` |
 | Android reference for the source cross-check | `fe9c26cb4824…` (v15 plus the two classes that moved past it on `main`: call-v2 video and the push wake gateway) | `java-host.json` |
+| Owner's Android build in the joint session of 2026-09-14 | not recorded — call-v2 rejects v1 call bodies, so the build that called this client was v16 or later; the exact version was not asked for | nowhere: the session left no file, and this is the contributor's report |
 | Markdown linter | `markdownlint-cli2@0.18.1`, the version CI pins | `docs.yml` |
 
 ## Artifacts
@@ -301,8 +302,12 @@ way; none of them was taken on the iPhone.
 ## Shown on a physical iPhone
 
 Rows that this catalogue listed as `NOT RUN` until 2026-09-13 and that the
-device smoke above has shown; the recording rules at the end of this file are
-what make them `SHOWN` rather than `CLAIMED`.
+device smoke above has shown, and one row the joint session of 2026-09-14
+showed; the recording rules at the end of this file are what make them `SHOWN`
+rather than `CLAIMED`. A row that carries `SHOWN (joint, reported)` has a status
+of its own: the contributor was the only participant this record has, so it is
+his report given immediately afterwards, not an observation by whoever writes
+this file and not a recording.
 
 | Shown | Where |
 | --- | --- |
@@ -310,7 +315,30 @@ what make them `SHOWN` rather than `CLAIMED`.
 | A QR code read off a real camera | scanned off the Mac screen on the local stand, and off the owner's QR image — sent as an image, scanned off a screen — for the hosted pairing |
 | Identity, own QR, the fingerprint sheet, text both ways with receipts, on a phone | the local-stand leg of the device smoke |
 | A call from a phone that connected and carried video | device→simulator on the local stand; video from the iPhone was visible, the simulator has no camera, and audio actually heard is not recorded |
-| A registration, a pairing and one accepted text on the hosted alpha from a phone | the hosted leg; delivery to the owner's Android and his reply are still pending |
+| A registration, a pairing and one accepted text on the hosted alpha from a phone | the hosted leg of 2026-09-13; what became of that particular envelope is not reported |
+| `SHOWN (joint, reported)` — text both ways with the owner's Android, both checks on the iPhone, and a call from that Android answered on this phone with both cameras on | the unscheduled joint session of 2026-09-14 on the hosted alpha, reported by the contributor: he scanned the owner's QR with the iPhone camera and the contact paired; his message reached the owner and **both** checks appeared on the iPhone — the first acknowledgement this client has had from a real Android client — and the owner replied; the owner then called the iPhone, the contributor answered and they spoke, so audio carried both ways, and each side turned its camera on and saw the other. That is the first call this client has carried against the Android client rather than a simulator, and the first picture it has received from a real camera over call-v2. Recorded step by step in [stage1-text.md](stage1-text.md) and [stage2-voice.md](stage2-voice.md); the session was unplanned, so no owner "go" permalink exists for it |
+
+**After that session the iPhone stopped connecting**, and has not recovered. It
+shows «Нет подключения»; a Debug build installed on the same device and launched
+with its console attached — the first direct read of this client's failure,
+since device logs otherwise need root on the build Mac — logged, on 2026-09-14
+at 07:06 (Europe/Moscow), four times in 45 seconds: `realtime: lane failed:
+NSURLError Code=-1001 "The request timed out."` for the signed
+`/v2/messages` read. The pinned handshake did not fail —
+`PinnedSessionDelegate` logged no refusal and the connection was established —
+App Transport Security is not involved (that was `adb56be`), and the route is
+alive: the same URL unsigned answers `401` from the build Mac in 0.19 s and
+`/health` in 0.2 s with the pin unchanged. What hangs is the signed read for
+that account, on the first cycle of a generation, which asks for `messages`
+rather than `events`, so the lane never reaches the long poll and never
+publishes a connected state; relaunching the application does not clear it. The
+measurement is posted to the pull request
+(<https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864>).
+The 8-second budget that request is given is not an iOS divergence:
+`clients/android/src/org/paranoid/text/RealtimeTransport.java:36` sets exactly
+the same `path.startsWith("/v2/events?") ? 30000 : 8000`, and this branch does
+not change it. It is also a **different** failure from the network-drop open
+item below, which leaves a lane parked after a connectivity change.
 
 ## NOT RUN
 
@@ -321,19 +349,19 @@ reviewer should hold the pull request to.
 
 | Not run | Why |
 | --- | --- |
-| Anything on a physical iPhone beyond the device smoke | A signed build ran on the contributor's iPhone on 2026-09-13 (the section above); the rows below say, one by one, what that run did not cover. The export-compliance gate is still closed, so no TestFlight build exists |
-| The two joint tests with the owner | [stage1-text.md](stage1-text.md) and [stage2-voice.md](stage2-voice.md) are written in advance and every `Result` cell reads `NOT RUN`. Stage 1 steps 1, 2, 4 and the first half of 5 (one check, no reply yet) were pre-run by the contributor alone on 2026-09-13 against the hosted server with the owner's QR image — a pre-run, not the joint test, and it fills no `Result` cell |
-| Delivery of the hosted text to the owner's Android, and his reply | The one text the iPhone sent on 2026-09-13 was accepted by the hosted server (one check); the owner's phone had not polled, so delivery, the second check and any reply are pending. The two registrations are counted above; the server cannot delete an account |
-| Interoperability with the Android client **on its own hardware** | The protocol comparison did run, and it is `CLAIMED`, not `SHOWN`: both stacks were processes on this Mac (gates 11 and 12). The only contact with the owner's Android so far is the pairing from his QR image and one text the hosted server accepted, not yet delivered or answered; no Android build on a phone has sent anything to this client. Stage 2 of the joint tests is where a call happens |
+| Anything on a physical iPhone beyond the device smoke and the joint session | A signed build ran on the contributor's iPhone on 2026-09-13, and the session of 2026-09-14 used it again (both in the section above); the rows below say, one by one, what those two did not cover. The export-compliance gate is still closed, so no TestFlight build exists |
+| The rest of the two joint tests with the owner | [stage1-text.md](stage1-text.md) and [stage2-voice.md](stage2-voice.md) are partly run: the session of 2026-09-14 filled stage 1 steps 4, 5 and 6 and stage 2 steps 4, 8 and 9, each `SHOWN (joint, reported)`. Everything else keeps `NOT RUN` with its reason — stage 1 step 3, where the owner would scan this client's QR and compare the fingerprint aloud, and steps 7 to 15 (closed-application delivery, screen lock, Wi-Fi to LTE, blocking, renaming, ten-minute idle) and stage 2 steps 1 to 3, 5 to 7 and 10 to 17 (the outgoing call, the two-minute hold, hang-up behaviour, mute, speaker, screen recording, lock while dialling and during a call, background and closed-application calls, LTE, busy). Stage 1 steps 1, 2, 4 and the first half of 5 had also been pre-run by the contributor alone on 2026-09-13, which fills no `Result` cell |
+| What became of the one hosted text of 2026-09-13 | It was accepted by the hosted server (one check) and the owner's phone had not polled. The next day's session exchanged text both ways with both checks on the iPhone, but the report does not say whether that earlier envelope was among what his phone finally polled. The two registrations are counted above; the server cannot delete an account |
+| Interoperability with the Android client **on its own hardware**, beyond what one session showed | Text both ways and one incoming call are now `SHOWN (joint, reported)` — the row in the section above. What that session did not exercise stays untested: the owner never scanned this client's QR, so the Android side of the pairing and the fingerprint compared aloud are `NOT RUN` (stage 1 step 3), and no call has gone out from this client to an Android — stage 2 step 1 has run iPhone to simulator only. The protocol comparison of gates 11 and 12 stays `CLAIMED`, not `SHOWN`: both stacks were processes on this Mac |
 | The unpaired first-contact story with an Android peer | `test_android_compatibility.py` pairs both sides before the first text, so REQ-MSG-005 across the two clients is untested; between two instances of this client it is covered by `test_clean_self_service.py` |
 | The Data Protection class of the state file | A simulator has no Data Protection and reports no protection class, and the device smoke did not measure it either |
 | A real screen recording, AirPlay or a wired mirror over the call stage | No simulator can start one and none was started on the iPhone; the cover is verified source-only |
 | Screen lock during dialling or during a call | `xcrun simctl` exposes no lock verb and `XCUIDevice` has no lock API; recorded with that reason inside `voice-sim-result.json`. Not run on the iPhone either: `device-smoke-result.json` moves it to the joint test |
-| Any relayed call, and a call between two phones | The simulator calls were on one Mac over loopback; the device call went from the iPhone to a simulator on the build Mac over the LAN stand. The stand starts no TURN, so `/v2/voice/turn` answered `404 turn_disabled` and every simulator pair that carried a call was `host` to `host`; no relayed call has been placed |
-| Audio actually heard | Not recorded in `device-smoke-result.json`, and on the simulators nothing was decoded to a speaker — the measurement is RTP packet counters. Video from the iPhone's camera was visible during the device call; the simulator has no camera, so no image came back |
+| Any relayed call, and the route the call of 2026-09-14 took | The simulator calls were on one Mac over loopback; the device call of 2026-09-13 went from the iPhone to a simulator on the build Mac over the LAN stand. The stand starts no TURN, so `/v2/voice/turn` answered `404 turn_disabled` and every simulator pair that carried a call was `host` to `host`; no relayed call has been placed. The call between the two phones on 2026-09-14 did happen, but whether its media was relayed or direct, and what `/v2/voice/turn` answered for it, were not reported |
+| Audio actually heard, or a camera image actually seen, outside the joint session | On the simulators nothing was decoded to a speaker — the measurement is RTP packet counters — and `device-smoke-result.json` records no audio for the device call of 2026-09-13, where video from the iPhone's camera was visible but the simulator has no camera, so no image came back. Both did happen in the session of 2026-09-14, against the owner's Android: `SHOWN (joint, reported)`, the contributor's report and not a recording |
 | An archive and an `.ipa` export | The device installs were signed from the `xcodebuild` command line with team `5RPGVC566Q`; `build.sh`'s archive gate was not re-run and no archive or export exists |
 | A TestFlight build, internal or otherwise | The [export-compliance gate](../../../clients/ios/export-compliance.md) is closed: `ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple applies the requirement to TestFlight too |
-| Recovery after a network drop on the phone — open item, 2026-09-13/14 | After a network drop the application stayed at «Нет подключения» while the server answered from the Mac and the pinned key was unchanged; the cause is under investigation on the branch and device logs were not collected |
+| Recovery after a network drop on the phone — open item, 2026-09-13/14 | After a network drop the application stayed at «Нет подключения» while the server answered from the Mac and the pinned key was unchanged; the cause is under investigation on the branch and no device log was collected for that drop; the console read of 2026-09-14 above belongs to the other failure |
 | Independent **human** review of identity, cryptography, persistence and application security | Not available to the contributor. The closed-alpha exception permits an independent AI review in a fresh context, recorded separately (plan step 46) |
 
 ## The owner's decisions, by permalink
@@ -356,6 +384,10 @@ answer, with no separate permalink beside them.
 
 ## Before either joint test may run
 
+Both stages are now **partly run**: the session of 2026-09-14 was unscheduled
+and went ahead without the "go" of item 1, and no permalink exists for it. The
+conditions below govern the steps that remain.
+
 1. An explicit owner "go" for that specific live action, with a permalink
    recorded in the evidence file beside the result.
 2. A signed build installed on the contributor's iPhone — done on 2026-09-13:
@@ -370,13 +402,16 @@ answer, with no separate permalink beside them.
    before the stage: the counter reads 2 in total, 1 for the phone.
 4. For stage 2, an Android build of **v16 or later** on the owner's phone:
    call-v2 rejects v1 call bodies, so an older build can exchange text with
-   this client but cannot call it.
+   this client but cannot call it. The build that called the iPhone on
+   2026-09-14 therefore was v16 or later; the exact version was not asked for.
 
 **Pre-run, 2026-09-13.** Stage 1 steps 1, 2, 4 and the first half of 5 (one
 check, no reply yet) were exercised by the contributor alone against the
 hosted server, with the owner's QR image in place of his screen. That is not
-the joint test: no `Result` cell of `stage1-text.md` changes because of it,
-and step 3, the second half of 5 and everything from 6 on wait for the owner.
+the joint test and no `Result` cell of `stage1-text.md` changes because of it;
+what filled those cells is the joint session of the next day, and step 3 —
+the owner scanning this client's QR and comparing the fingerprint aloud —
+still waits for him.
 
 ## Recording rules
 
@@ -387,6 +422,10 @@ and step 3, the second half of 5 and everything from 6 on wait for the owner.
   directory. Simulator and local-stand runs are `CLAIMED` in
   [verification.md](../../../clients/ios/verification.md); only a phone makes a
   row `SHOWN`.
+- A result the contributor reports afterwards, with no file and no capture
+  behind it, is written `SHOWN (joint, reported)` and never plain `SHOWN`, so a
+  reader can tell a reported result from a captured one. Nothing the report does
+  not cover is inferred from what it does.
 - Screenshots are taken on both phones for any row whose result is visual, and
   are named by the step number.
 - No account identifier, contact fingerprint, realm, pin, credential or

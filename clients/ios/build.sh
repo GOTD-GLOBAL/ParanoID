@@ -148,6 +148,7 @@ step "notices rules" python3 test_notices.py
 # touched by a committed change).
 step "UI contract" python3 test_ui_contract.py
 step "call scenario parity" python3 test_call_controller_parity.py
+step "documents against the evidence" python3 test_docs_consistency.py
 step "component boundary" python3 test_component_boundary.py
 
 # 17. The simulator, unsigned. KeychainStoreTests is excluded here on purpose:

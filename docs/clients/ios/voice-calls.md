@@ -177,7 +177,8 @@ Two gaps remain, recorded here rather than left to be discovered:
 Neither is parity with Android, and neither is claimed as such. That a cover
 actually appears when a real recording starts is owner evidence for
 `stage2-voice.md`; no simulator can start a screen recording, and none was
-started on the physical iPhone of 2026-09-13 either.
+started on the physical iPhone of 2026-09-13 or in the joint session of
+2026-09-14 either.
 
 ## Dependency
 
@@ -202,7 +203,27 @@ iPhone; the simulator has no camera, so video went one way only. Whether audio
 was actually heard is not recorded in that evidence and is not claimed here.
 That is one phone against the contributor's stand, not the joint test: screen
 lock during dialling, a real screen recording over the call stage and any
-relayed call were not run on the device either. REQ-CALL-002/003 still need the
-joint test on physical phones, which is
+relayed call were not run on the device either.
+
+On 2026-09-14 the owner called this client from his Android on the hosted
+alpha and the contributor answered on the signed Release build of `adb56be`
+(iPhone 16 Pro Max, iOS 26.6.1): they spoke, so audio carried both ways, and
+both sides then turned their cameras on and each saw the other. That is the
+first call this client has carried against the Android client rather than a
+simulator, and the first picture it has received from a real camera over
+call-v2; the Android build was therefore v16 or later, because call-v2 refuses
+a v1 body, though the exact version was not asked for.
+
+The session was unscheduled, so no owner "go" permalink exists for it, and the
+contributor is the only participant this record has: those results are
+`SHOWN (joint, reported)` — his report given immediately afterwards, not an
+observation by whoever writes this file and not a recording. Everything the
+report does not cover stays `NOT RUN`, and that is most of the stage: the
+outgoing direction, this client dialling an Android, has been exercised only
+against a simulator on the local stand, and no duration, hang-up, mute,
+speaker, screen recording, lock during dialling or during a call, background
+or closed-application call, call over LTE or busy peer was reported.
+REQ-CALL-002/003 therefore still need the rest of the joint test on physical
+phones, which is
 [stage2-voice.md](../../project/evidence/ios-client-20260913/stage2-voice.md)
-and is `NOT RUN`.
+and is `PARTLY RUN`.

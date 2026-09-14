@@ -13,12 +13,16 @@ This record is **proposed**, not accepted. The client described below is built
 and its checks run on simulators and a local stand; on 2026-09-13 a signed
 build was installed on one physical iPhone (iPhone 16 Pro Max, iOS 26.6.1),
 ran the smoke on the local stand, registered on the hosted alpha and sent one
-text the server accepted. Two hosted accounts exist, no TestFlight build was
-uploaded, the two joint tests with the owner have not run, and no independent
-human review has happened. It cannot move to `accepted` until the closed-alpha
-scope has a permanent owner approval permalink, the independent AI review of
-the exact review revision is recorded, and the physical-phone joint-test
-evidence the validation plan names exists.
+text the server accepted. On 2026-09-14 an unscheduled joint session with the
+owner on the hosted alpha exchanged text both ways and carried one call with
+both cameras on against his Android; that is the contributor's report,
+recorded as `SHOWN (joint, reported)` in the two stage files, and most of both
+scenarios stays `NOT RUN`. Two hosted accounts exist, no TestFlight build was
+uploaded, neither joint test is complete, and no independent human review has
+happened. It cannot move to `accepted` until the closed-alpha scope has a
+permanent owner approval permalink, the independent AI review of the exact
+review revision is recorded, and the physical-phone joint-test evidence the
+validation plan names exists.
 [RFC-0021](../rfcs/0021-ios-client.md) carries the proposal text.
 
 ## Required review rationale
@@ -203,9 +207,14 @@ stand and dependency results are `CLAIMED`; only physical-phone results are
 iPhone did against the local stand (identity, a QR read off a real camera,
 text with receipts, one call with video) and against the hosted alpha (one
 registration, the owner's Android paired from his QR image, one text the
-server accepted); the joint tests with the owner remain `NOT RUN`. The two
-joint-test scenarios are written in advance with every `Result` reading
-`NOT RUN`:
+server accepted). The two joint-test scenarios were written in advance and are
+now **partly run**: an unscheduled session with the owner on 2026-09-14
+exercised stage 1 steps 4, 5 and 6 and stage 2 steps 4, 8 and 9, which read
+`SHOWN (joint, reported)` — the contributor was the only participant this
+record has, so each of those is his report given immediately afterwards, not
+an observation by whoever writes the file and not a recording. Every other
+`Result` stays `NOT RUN`, and no owner "go" permalink exists for that session,
+because it was not planned:
 [stage 1](../project/evidence/ios-client-20260913/stage1-text.md) and
 [stage 2](../project/evidence/ios-client-20260913/stage2-voice.md); stage 1
 carries a note that its steps 1, 2, 4 and the first half of 5 were pre-run
@@ -255,9 +264,11 @@ the rest by the contributor under the recorded delegation. Questions 7 and 8
 stay partly open and are the two that still gate live actions: a key rotation
 needs its own deploy-trust RFC, and **no TestFlight upload may happen until the
 export-compliance gate is answered**. Acceptance of this ADR is blocked by the
-missing scope-approval permalink and by the joint tests with the owner not
-having run — the only physical-phone evidence so far is the contributor's solo
-device smoke and pre-run of 2026-09-13 — not by the table below.
+missing scope-approval permalink and by the joint tests with the owner being
+only partly run — the physical-phone evidence so far is the contributor's solo
+device smoke and pre-run of 2026-09-13 plus his report of the unscheduled
+session of 2026-09-14, which no owner permalink authorised and which left most
+of both scenarios `NOT RUN` — not by the table below.
 
 | # | Question | Owner | Proposed deadline |
 | --- | --- | --- | --- |
@@ -273,11 +284,13 @@ device smoke and pre-run of 2026-09-13 — not by the table below.
 ## Disposition and acceptance evidence
 
 - Disposition: open (`proposed`)
-- Disposition rationale: the client exists, its behaviour is measured and one
+- Disposition rationale: the client exists, its behaviour is measured, one
   physical iPhone has run it against the local stand and registered on the
-  hosted alpha, but the evidence that would justify acceptance — the
-  physical-phone joint tests with the owner and an independent review — does
-  not exist yet
+  hosted alpha, and an unscheduled joint session with the owner on 2026-09-14
+  carried text both ways and one call against his Android as the contributor
+  reports it, but the evidence that would justify acceptance — the
+  physical-phone joint tests completed, under an owner approval, and an
+  independent review — does not exist yet
 - Decision owner and identity: martadvix-web (GitHub)
 - Pull request URL: <https://github.com/GOTD-GLOBAL/ParanoID/pull/36> (draft,
   opened 2026-09-14)
@@ -297,24 +310,34 @@ device smoke and pre-run of 2026-09-13 — not by the table below.
 - Disposition date: pending
 - Known limitations and follow-up: one physical iPhone has run the client
   (local-stand smoke and one hosted registration with one accepted text on
-  2026-09-13), but the joint tests with the owner have not run and
-  `hosted_registrations` is 2, both accounts permanent; open since
+  2026-09-13, then the unscheduled joint session of 2026-09-14), but the joint
+  tests with the owner are only partly run and `hosted_registrations` is 2,
+  both accounts permanent, that session consuming none of them; open since
   2026-09-13/14: after a network drop on the phone the application stayed at
   «Нет подключения» while the server answered from the Mac and the pinned key
-  was unchanged — under investigation on the branch, device logs not
-  collected; the Data Protection class on the device, a real screen recording
-  over the call stage, a relayed call and TestFlight are `NOT RUN`;
+  was unchanged — under investigation on the branch, no device log collected
+  for that drop; separately, after the session of 2026-09-14 the phone stopped
+  connecting and has not recovered, and a Debug build on the same device
+  logged the signed read of `/v2/messages` timing out four times in 45 seconds
+  while the pinned handshake stood and the route answered from the build Mac —
+  measured in the pull request, and no relaunch clears it; the Data Protection
+  class on the device, a real screen recording over the call stage, a relayed
+  call and TestFlight are `NOT RUN`;
   foreground-only delivery, so a call to a locked or closed iPhone ends in the
   caller's 45-second `timeout`; screen capture is not parity with Android's
   `FLAG_SECURE`; no pin rotation path before the renewed leaf expires on
   2026-12-12; the export-compliance gate is closed, so no TestFlight upload is
   authorised; the Android cross-test is a host comparison (both stacks as
   processes on the Mac) and proves agreement of the checked scenarios at the
-  checked revisions, not acceptance on devices — the only contact with the
-  owner's Android so far is the pairing from his QR image and one text the
-  server accepted but has not yet delivered or had answered; twelve
-  doc-to-code discrepancies are answered in issue #27 and are corrected in a
-  separate docs-only pull request, not in this one
+  checked revisions, not acceptance on devices — contact with the owner's
+  Android on its own hardware is the reported session of 2026-09-14: his QR
+  scanned with the iPhone camera, text carried both ways with both checks seen
+  on this client for the first time, and one call in which both cameras were
+  on, so his build is v16 or later because call-v2 rejects v1 bodies, though
+  the exact version was not asked for; he did not scan the iPhone's QR, so the
+  Android side of the pairing and the fingerprint compared aloud stay
+  untested; twelve doc-to-code discrepancies are answered in issue #27 and are
+  corrected in a separate docs-only pull request, not in this one
 
 ## Links
 

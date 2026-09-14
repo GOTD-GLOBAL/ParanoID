@@ -106,9 +106,31 @@ team reached the hosted alpha, once App Transport Security was switched off:
 the iPhone registered, paired the owner's Android from his QR image (scanned
 off a screen) and sent one text the hosted server accepted — one check.
 Delivery to the owner's Android was still pending because his phone had not
-polled, and no reply exists. That pairing and that one accepted text are the
-only contact with the owner's Android so far; the Android interoperability
-comparison below is still Mac-only and `CLAIMED`.
+polled, and no reply exists. That pairing and that one accepted text were the
+only contact with the owner's Android until the joint session below.
+
+**SHOWN (joint, reported) — the owner's Android on the hosted alpha,
+2026-09-14.** Yaroslav (contributor, iPhone 16 Pro Max on iOS 26.6.1, the
+signed Release build of branch head `adb56be`) and Sergey (owner, Android)
+held an **unscheduled** session on the hosted alpha at `157.180.49.125:38443`.
+Yaroslav scanned Sergey's QR with the iPhone camera and the contact was
+paired. Text went both ways: Yaroslav's message reached Sergey and **both**
+checks appeared on the iPhone — the first time this client has seen the second
+check, which is the acknowledgement from a real Android client — and Sergey's
+reply appeared on the iPhone. Sergey then called the iPhone from his Android,
+Yaroslav answered and they spoke, so audio carried both ways, and both sides
+turned their cameras on and each saw the other. That call is the first this
+client has carried against the Android client rather than a simulator, and the
+first picture it has received from a real camera over call-v2. The contributor
+is the only participant this record has: every result of that session is **his
+report**, given immediately afterwards, not an observation by whoever writes
+this file and not a recording, which is why the stage files mark those rows
+`SHOWN (joint, reported)` rather than `SHOWN`. No owner "go" permalink exists
+for it, because the session was not planned. Sergey did not scan Yaroslav's
+QR, so the Android side of the pairing and the fingerprint compared aloud stay
+`NOT RUN`, and so does the outgoing direction — this client dialling an
+Android — which has been exercised only against a simulator on the local
+stand.
 
 **NOT RUN, with reasons.** No archive, no `.ipa` export and no TestFlight
 upload: the device installs above were direct `xcodebuild` installs,
@@ -122,12 +144,14 @@ a screen lock during dialling moves to the joint test, and no relayed call was
 placed, so all of those stay `NOT RUN`. Open since 2026-09-13/14: after a
 network drop on the phone the application stayed at «Нет подключения» while
 the server answered from the Mac and the pinned key was unchanged; the cause
-is under investigation on the branch and device logs were not collected.
-Interoperability with the Android client on its own hardware is not shown:
-the protocol comparison ran with both stacks as processes on the build Mac,
-where the real Android facade is compiled and agrees with the Swift client on
-identities, text with receipts, call-v2 bodies, the sealed snapshot codec and a
-QR contact, with twenty-one malformed bodies refused identically by both sides.
+is under investigation on the branch and no device log was collected for that
+drop. Interoperability with the Android client on its own hardware is shown
+only as far as the reported joint session above reaches; everything beyond it
+rests on the protocol comparison, which ran with both stacks as processes on
+the build Mac, where the real Android facade is compiled and agrees with the
+Swift client on identities, text with receipts, call-v2 bodies, the sealed
+snapshot codec and a QR contact, with twenty-one malformed bodies refused
+identically by both sides.
 The expectations are recomputed in Python from the protocol documents, so an
 agreement cannot come from the two clients sharing one core. `build.sh` runs
 that comparison and its Java host side as ordinary steps.
@@ -139,21 +163,60 @@ Question 6 answered "no macOS runner", so nothing needing Xcode, a simulator,
 a phone or the local stand is in it, and every such check was run locally on
 the pinned build Mac. The two joint-test scenarios with the owner,
 [stage 1](evidence/ios-client-20260913/stage1-text.md) and
-[stage 2](evidence/ios-client-20260913/stage2-voice.md), have not been run as
-joint sessions and keep every `Result` cell `NOT RUN`; stage 1 steps 1, 2, 4
-and the first half of 5 were exercised solo on 2026-09-13 against the hosted
-server with the owner's QR image, and stage 1 records that as a pre-run, not
-as the test.
+[stage 2](evidence/ios-client-20260913/stage2-voice.md), are **partly run**:
+the session of 2026-09-14 turned stage 1 steps 4, 5 and 6 and stage 2 steps 4,
+8 and 9 into `SHOWN (joint, reported)`. Every other `Result` cell stays
+`NOT RUN` with its reason — stage 1 step 3 (Sergey scanning Yaroslav's QR and
+the fingerprint compared aloud) and steps 7-15 (closed-application delivery,
+screen lock, Wi-Fi to LTE, blocking, renaming, ten-minute idle), and stage 2
+steps 1-3, 5-7 and 10-17 (the outgoing call, the two-minute hold, hang-up
+behaviour, mute, speaker, screen recording, lock while dialling and during a
+call, background and closed-application calls, LTE, busy). Stage 1 steps 1, 2,
+4 and the first half of 5 were also exercised solo on 2026-09-13 against the
+hosted server with the owner's QR image, and stage 1 records that as a pre-run,
+not as the test.
+
+**Open since the joint session: the iPhone does not connect.** Measured on
+2026-09-14 at 07:06 (Europe/Moscow) and posted to
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864):
+after that session the phone shows «Нет подключения» and has not recovered;
+relaunching the application does not clear it. A Debug build was installed on
+the same device and launched with its console attached — the first direct read
+of this client's failure, since device logs otherwise need root on the build
+Mac — and the log says, four times in 45 seconds:
+`realtime: lane failed: NSURLError Code=-1001 "The request timed out." URL: https://157.180.49.125:38443/v2/messages?after=1259&limit=20`.
+The pinned handshake did **not** fail (`PinnedSessionDelegate` logged no
+refusal and the connection was established) and App Transport Security is not
+involved (that was `adb56be`); the route is alive — the same URL unsigned
+answers `401` from the build Mac in 0.19 s and `/health` in 0.2 s with the pin
+unchanged, which is also why Safari on the phone reaches `/health`, a route
+that needs neither a signature nor the database. What hangs is the **signed**
+read for that account, on the first cycle of a generation, which asks for
+`messages` rather than `events` (`ReceiveLane`, mirroring
+`RealtimeLoop.java:254`), so the lane never reaches the long poll and never
+publishes a connected state. The client gives that request 8 s
+(`RealtimeTransport.readTimeout`) while the server's own budget for a
+non-`/v2/events` route is 10 s before it answers `408 request_timeout`; that is
+**not** an iOS divergence, because
+`clients/android/src/org/paranoid/text/RealtimeTransport.java:36` sets exactly
+`path.startsWith("/v2/events?") ? 30000 : 8000` for both clients, and this
+branch does not change it. This is a **different** failure from the
+connectivity-change parity gap above, whose fix is being written on this branch
+now and is **not** finished: that gap leaves a lane parked after a network
+change, while this symptom was a signed read that did not return while the
+server was otherwise healthy, which no client-side restart fixes.
 
 **Hosted accounts spent: two.** `hosted_registrations` is 2: a
 `service-bridge` registration from the build Mac on 2026-09-13, made while
 diagnosing the phone's TLS failure to prove the client stack registers on the
 hosted server while the phone could not, and the physical iPhone's registration
 once App Transport Security was switched off — both under the owner's answer to
-RFC-0021 question 4 (no fixed budget). The phone's failure was a defect that
-only the hosted server could show: ATS refused the self-signed leaf on a
-public IP before the pinning delegate ran (`NSURLErrorDomain -1200`), which a
-LAN stand never shows and `NSPinnedDomains` cannot exempt for an IP literal.
+RFC-0021 question 4 (no fixed budget). The joint session of 2026-09-14
+consumed none: it used the account the iPhone registered on 2026-09-13. The
+phone's failure was a defect that only the hosted server could show: ATS
+refused the self-signed leaf on a public IP before the pinning delegate ran
+(`NSURLErrorDomain -1200`), which a LAN stand never shows and
+`NSPinnedDomains` cannot exempt for an IP literal.
 `adb56be` sets `NSAllowsArbitraryLoads = YES`, `test_ui_contract.py` holds the
 contract "exactly that key and no `URLSession` outside `PinnedSessionDelegate`",
 and [the trust delta](../security/ios-client-threats.md) and ADR-0014 record
@@ -177,7 +240,9 @@ audio then video, both `a=sendrecv`, H.264 first with VP8 as the mandatory
 fallback, camera on/off as a track flag plus an informative `media` control and
 never a renegotiation, and a 9000-byte description cap below the measured
 10040-byte frame2 ceiling. call-v2 rejects v1 bodies, so this client cannot
-call an Android build older than v16.
+call an Android build older than v16 — and the call carried on 2026-09-14
+therefore places the owner's Android at v16 or later; the exact version was
+not asked for and is not recorded.
 
 **Two differences from Android are permanent, not defects.** Delivery is
 foreground-only — no APNs, no PushKit, no background refresh, no CallKit — so a

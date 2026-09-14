@@ -118,11 +118,23 @@ fixed in this pull request.
    build Mac through `service-bridge` while diagnosing the phone's TLS
    failure, one from the physical iPhone (Release build, 2026-09-13, after the
    ATS fix below); both under the owner's answer to RFC-0021 question 4 (no
-   fixed budget). The phone then paired the owner's Android from his QR and
-   sent one text the hosted server accepted; delivery to his Android was still
-   pending and nothing has come back. The protocol comparison with Android
-   remains a Mac-only `CLAIMED` check — no Android build on a phone has yet
-   answered this client.
+   fixed budget). On 2026-09-14 an unscheduled joint session on that server
+   exchanged text both ways with the owner's Android — both checks appeared —
+   and carried one call, dialled by the owner, with video in both directions.
+   Those results are the contributor's report, marked
+   `SHOWN (joint, reported)` in
+   [stage1-text.md](../project/evidence/ios-client-20260913/stage1-text.md) and
+   [stage2-voice.md](../project/evidence/ios-client-20260913/stage2-voice.md),
+   and no owner "go" permalink exists for the session. What remains untested is
+   named there: the owner never scanned this client's QR, no fingerprint was
+   compared aloud, and this client has never dialled an Android from a phone.
+   The line-by-line protocol comparison is still a Mac-only `CLAIMED` check.
+   **After that session the phone stopped connecting and has not recovered**:
+   its signed read of `/v2/messages` times out while `/health` answers in
+   0.2 s with the pin unchanged, and no client restart clears it. Measured in
+   pull request #36 and tracked as issue #38, which records it as a
+   server-side condition; the pinned handshake did not fail, so it is not a
+   trust finding.
 4. **iOS CI has run once.** `.github/workflows/ios.yml` ran on pull request
    #36 (draft, 2026-09-14): `ios-static` passed, as did the docs workflow and
    the server workflow's `client-core-and-tls` and `native-package` jobs.

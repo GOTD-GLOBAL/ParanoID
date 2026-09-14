@@ -163,10 +163,14 @@ simulators have completed calls in both directions on a local stand; on
 2026-09-13 a signed build on a physical iPhone registered, paired by camera,
 exchanged text and placed a call on that stand, and one registration from the
 phone on the hosted alpha paired the owner's Android and sent a text the
-server accepted. App Transport Security is off (`NSAllowsArbitraryLoads`)
+server accepted; on 2026-09-14 an unscheduled session with the owner carried
+text both ways with his Android and one call he placed to the iPhone, with
+both cameras on. App Transport Security is off (`NSAllowsArbitraryLoads`)
 because it refused the self-signed leaf on a public IP before the pinning
 delegate ran; the pin above stays the only trust decision. The joint tests
-with the owner have not run. This view is a map of
+with the owner are only partly run, and what that session covered is the
+contributor's report, `SHOWN (joint, reported)` rather than a capture, with no
+owner "go" permalink because it was unscheduled. This view is a map of
 a candidate, not accepted architecture or evidence of a delivered client — the
 honest status of every requirement is
 [the iOS verification table](../clients/ios/verification.md), and the platform

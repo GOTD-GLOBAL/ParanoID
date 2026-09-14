@@ -66,9 +66,12 @@ camera video, foreground-only delivery and no push. Its results come from
 simulators and a local stand (`CLAIMED`) and, since 2026-09-13, from a signed
 build on a physical iPhone against the local stand (`SHOWN`); one registration
 from that phone on the hosted alpha paired the owner's Android and sent one
-text the server accepted, not yet delivered. **The joint tests with the owner
-have not been run and no TestFlight build was uploaded.** The honest
-row-by-row status is
+text the server accepted. On 2026-09-14 an unscheduled session with the owner
+on the hosted alpha carried text both ways and one call he placed to the
+iPhone, with both cameras on — the contributor's report, recorded as
+`SHOWN (joint, reported)` and not a capture. **Both joint tests with the owner
+are only partly run, no owner "go" permalink exists for that session, and no
+TestFlight build was uploaded.** The honest row-by-row status is
 [the iOS verification table](docs/clients/ios/verification.md).
 
 ## Working principle

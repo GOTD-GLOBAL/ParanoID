@@ -240,6 +240,10 @@ from the build Mac through `service-bridge` while diagnosing the phone's TLS
 failure, one from the iPhone after the ATS fix, both under the owner's answer
 to RFC-0021 question 4, no fixed budget); the iPhone then paired the owner's
 Android from his QR image and sent one text the hosted server accepted (one
-check), not yet delivered to his phone. The joint tests with the owner have
-not been run, and no archive, TestFlight upload, relayed call or Data
-Protection class measurement has.
+check), not yet delivered to his phone at that point. On 2026-09-14 an
+unscheduled session with the owner on that same account carried text both
+ways and one call he placed to the iPhone; those rows are the contributor's
+report, `SHOWN (joint, reported)` and not a capture, with no owner "go"
+permalink. The joint tests with the owner are only partly run, and no
+archive, TestFlight upload, relayed call or Data Protection class measurement
+has happened.
