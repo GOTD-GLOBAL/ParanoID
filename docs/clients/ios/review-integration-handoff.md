@@ -24,7 +24,28 @@ Requirements: REQ-CLIENT-001, REQ-ID-005/008, REQ-MSG-002 and REQ-CALL-002/003.
 and decision status. No server, shared core, Android, key protocol or deployment
 code changes. Human risk/decision owner remains `martadvix-web`.
 
-## Mac receipt for e642907 and follow-up gate
+## Final contributor Mac result and integration
+
+Yaroslav's [complete aab9e5d receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr41-aab9e5d.md)
+records successful package compilation, full package **293/0**, lazy-key **14/0**,
+storage **25/0** and signed-simulator app **64/0**. It supersedes the pending
+Mac gate below, not the historical failure record. The coordinator did not run
+Swift/Xcode; these remain contributor-reported Mac results.
+
+PR41 was integrated as `cb523306c186e91a6d65e4050bd0b65eb9c7ab77`, a merge commit
+with tree equality to `aab9e5dee8fe75c5a3170faac5f12e80819cdb12`, and e642907 plus
+aab9e5d preserved as ancestors. Five named CI checks passed on cb52330;
+informational legacy remains failed. The receipt applies to the identical
+source tree; recording it in docs does not require rerunning unchanged runtime,
+tests or workflows. PR36 main merge and all permanent decision/device/live
+gates remain separate. The [full cb52330 review](../../project/evidence/ios-client-20260913/pr36-review-cb52330.md)
+subsequently identified unbound End/Reject and mute/speaker actions (C1), outside
+the now-closed Answer correction. It remains a code gate before main recommendation.
+Historical commands and unrun physical-device,
+media-stop timing, real-container upgrade, power-loss and export checks below
+retain their scope.
+
+## Historical Mac receipt for e642907 and follow-up gate
 
 Yaroslav supplied the full [Mac receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
 for exact `e6429070772bed303db109fb42d2ce41064b888b`, run 2026-09-14
