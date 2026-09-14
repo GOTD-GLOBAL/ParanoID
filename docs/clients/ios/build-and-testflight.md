@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client: build, signing and the TestFlight gates
@@ -74,7 +74,16 @@ bundle, and it is where the foreground-only promise becomes checkable:
 - `UIBackgroundModes` exactly `[audio]` — no `voip`;
 - **no `aps-environment`** in the plist or in the signed entitlements, so the
   build cannot register for push even by accident;
-- no `NSAppTransportSecurity` and no `NSAllowsArbitraryLoads`;
+- no `NSAppTransportSecurity` and no `NSAllowsArbitraryLoads` — a rule the
+  branch has since overtaken. `adb56be` (2026-09-13) sets
+  `NSAllowsArbitraryLoads = YES`, because on a physical iPhone ATS refused the
+  self-signed leaf on the hosted server's public address before the pinning
+  delegate ran (`NSURLErrorDomain -1200`; measured and recorded in
+  [the threat delta](../../security/ios-client-threats.md) and ADR-0014; a LAN
+  stand never shows it), and `test_ui_contract.py` now requires exactly that
+  key and no `URLSession` outside `PinnedSessionDelegate`. `test_app_bundle.py`
+  has not been changed to match and has not read a bundle built after that
+  commit; its last run predates the change;
 - one arm64 executable and exactly one embedded framework, whose binary is the
   pinned WebRTC slice;
 - `THIRD_PARTY_NOTICES.txt` identical to what the packager wrote, naming the
@@ -87,10 +96,13 @@ the bundle root is tolerated and reported, and the WebRTC digest is `SKIPPED`
 because Xcode re-signs an embedded framework (the pin is enforced at
 extraction). A signed bundle must report its Team ID; an unsigned one — all
 this repository can make without the owner's gate — says `SKIPPED`, never `OK`.
+The gate has read one signed bundle so far: on 2026-09-13, before the ATS
+change above, a Release build signed with team `5RPGVC566Q` passed with the
+Team ID reported and the framework digest `SKIPPED`.
 
 ## Continuous integration
 
-`.github/workflows/ios.yml` lands with this pull request. It is one Ubuntu job,
+`.github/workflows/ios.yml` landed with pull request #36. It is one Ubuntu job,
 `ios-static`, triggered by a pull request and by a push to `main` when
 `clients/ios/**`, `clients/core/**`, `key-protocol/**` or the workflow itself
 changes. It runs, in order:
@@ -115,15 +127,19 @@ changes. It runs, in order:
   `fetch-depth: 0` because the gate needs that base commit and a merge base
   with it, and exits 2 instead of passing vacuously when it cannot have them.
 
-The workflow **has never executed on a runner**: it lands with the pull request
-that first triggers it, so at the revision this document describes there is no
-run to link to. Every check in it was run locally on the pinned build Mac with
-exit 0 — twelve of its thirteen `run` commands. The thirteenth,
+The workflow **first executed on a runner for pull request #36**
+(<https://github.com/GOTD-GLOBAL/ParanoID/pull/36>, opened 2026-09-14 as a
+draft): `ios-static` passed. On the same pull request the docs workflow
+(`markdown`) passed, as did the server workflow's `client-core-and-tls` and
+`native-package` jobs; its `Legacy client history` job is informational and
+fails on `main` too. Before that run, every check in the workflow was run
+locally on the pinned build Mac with exit 0 — twelve of its thirteen `run`
+commands. The thirteenth,
 `rustup toolchain install 1.98.1 --profile minimal --component clippy`, is
 runner setup rather than a check and was not re-run on a Mac that already pins
-1.98.1, so it is first executed by that pull request like the workflow around
-it. Those local runs, and not a CI badge, are what
-[verification.md](verification.md) records.
+1.98.1, so the pull request was its first execution. Those local runs, and not
+a CI badge, are what [verification.md](verification.md) records; the runner
+repeated the same checks on Ubuntu and proves nothing wider.
 
 What the job deliberately cannot prove is everything this page is otherwise
 about: no Xcode, no `xcodebuild`, no simulator, no local stand, no
@@ -142,15 +158,20 @@ as forbidden rather than merely as unexpected.
 
 ## Signing, distribution and what the owner supplies
 
-None of the following has happened. Each is a live action that needs an
-explicit owner "go" whose permalink is recorded in the evidence directory.
+The first three of the following happened on 2026-09-13; the fourth has not.
+Each is a live action that needs an explicit owner "go" whose permalink is
+recorded in the evidence directory.
 
 | Step | State | What it needs |
 | --- | --- | --- |
-| App ID without the push capability | not created | who creates it, owner or contributor |
-| Signed install on the contributor's iPhone | `NOT RUN` | the Apple team, the contributor's Apple ID in Xcode Accounts, an owner "go" |
-| Hosted registration for that phone | `NOT RUN` | an owner "go"; the server has no account-deletion path |
+| App ID without the push capability | exists for `global.paranoid.messenger` on team `5RPGVC566Q` since the signed install below, which went through `xcodebuild -allowProvisioningUpdates` with the team on the command line; the signed entitlements carry no `aps-environment` (bundle gate, 2026-09-13) | — |
+| Signed install on the contributor's iPhone | done 2026-09-13: iPhone 16 Pro Max, iOS 26.6.1, Developer Mode on; a Debug build for the local stand, then a Release build (`adb56be`) for the hosted server, both signed with that team and installed with `xcodebuild` (`DEVELOPMENT_TEAM` on the command line) and `xcrun devicectl`, not through `build.sh` | the Apple team, the contributor's Apple ID in Xcode Accounts, an owner "go" |
+| Hosted registration for that phone | done 2026-09-13 with the Release build; `hosted_registrations` is 2 — one from the build Mac through `service-bridge` while diagnosing the phone's TLS failure, one from the iPhone — both under the owner's answer to RFC-0021 question 4 (no fixed budget) | an owner "go"; the server has no account-deletion path, so both are permanent |
 | TestFlight internal build | `NOT RUN` | an internal group containing the owner, and the export-compliance gate below |
+
+A direct developer install is not an upload: no archive, no `.ipa` export and
+no TestFlight upload were produced, and the signed-archive gate of `build.sh`
+did not run. All three stay `NOT RUN` behind the export-compliance gate.
 
 Credentials reach the build only through the environment —
 `PARANOID_IOS_TEAM_ID`, `PARANOID_ASC_KEY_PATH`, `PARANOID_ASC_KEY_ID`,
@@ -205,7 +226,9 @@ inside `#if DEBUG`:
 
 The second channel exists because `devicectl` installs and launches a build
 without relaying launch arguments to the process, so on a device the
-environment is the only channel that carries the pair. The values are the same
+environment is the only channel that carries the pair; it was added for, and
+used by, the 2026-09-13 device smoke, with the stand bound to the Mac's LAN
+address so the phone could reach it. The values are the same
 either way, both go through `ServiceTrust(realm:pin:)` — the `checkedRealm` and
 `checkedPin` a Release build applies to its own — and an argument wins when a
 launch offers both.

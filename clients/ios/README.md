@@ -13,10 +13,14 @@ git).
 This directory is a **candidate under development** proposed in
 [RFC-0021](../../docs/rfcs/0021-ios-client.md) and recorded as
 [proposed ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
-Nothing in it is accepted architecture; no build has been installed on a phone,
-no hosted account has been created and no TestFlight upload has happened unless
-the [verification table](../../docs/clients/ios/verification.md) says `SHOWN`
-with an evidence link. The Android v15 client (`main` `fe9c26c`) is the
+Nothing in it is accepted architecture. A signed build has run on one physical
+iPhone (2026-09-13: an iPhone 16 Pro Max on iOS 26.6.1) and two hosted
+accounts exist — one from the build Mac's `service-bridge` while diagnosing
+the phone's TLS failure, one from the phone itself — but no TestFlight upload
+has happened, the two joint tests with the owner have not been run, and
+nothing counts as `SHOWN` unless the
+[verification table](../../docs/clients/ios/verification.md) says so with an
+evidence link. The Android v15 client (`main` `fe9c26c`) is the
 behavioural reference; the [component documentation](../../docs/clients/ios/README.md)
 lists the intended differences (no in-app updates, no background delivery,
 no CallKit, reinstall is a clean install). Java line numbers in this README are
@@ -389,12 +393,25 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   repository, and `EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64` because the
   xcframework's simulator slice is arm64-only.
 - `ParanoID/Info.plist` is explicit (`GENERATE_INFOPLIST_FILE = NO`): bundle
-  identity from the build settings, portrait, iPhone only, no
-  `NSAppTransportSecurity` / `NSAllowsArbitraryLoads`, and one purpose string
+  identity from the build settings, portrait, iPhone only,
+  `NSAppTransportSecurity` set to `NSAllowsArbitraryLoads = YES` (since
+  `adb56be`, defect 4: on a physical iPhone ATS refused the hosted server's
+  self-signed leaf on a public IP before the pinning delegate ran —
+  `NSURLErrorDomain -1200`, stream error `-9802` — a LAN stand never shows it,
+  and `NSPinnedDomains` does not match an IP literal; `test_ui_contract.py`
+  holds the contract to exactly that key and to no `URLSession` outside
+  `PinnedSessionDelegate`, so the pin, not a CA chain, is still what admits a
+  server), and two purpose strings
   — `NSCameraUsageDescription`, which says what the camera is for and that no
-  picture is kept.
-  `ParanoID/ParanoID.entitlements` is empty: no `aps-environment`, because
-  there is no push (see the component documentation).
+  picture is kept, and `NSMicrophoneUsageDescription`, which says the
+  microphone serves calls only, by the user's tap, and nothing is recorded.
+  `ParanoID/ParanoID.entitlements` declares one `keychain-access-groups`
+  entry, the application's own group, and no `aps-environment`, because there
+  is no push (see the component documentation). It was empty until `bcb4046`:
+  with no entitlement the simulator's Keychain answered
+  `errSecMissingEntitlement` (-34018) and the launch froze; a device build
+  inherits the same group from its profile, so the phone's behaviour did not
+  change.
 - The application and `ParanoIDTests` depend on the local package
   `../ParanoidKit` (`XCLocalSwiftPackageReference`) and nothing else. Both
   link that package's `WebRTC` product and carry `LD_RUNPATH_SEARCH_PATHS`
@@ -466,8 +483,9 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   have taken them; and a text with a non-ASCII member or a duplicated member
   reaches the core unchanged and is refused there as `invalid_contact`, which
   is the rule of `key-enrollment-v1.md:91-92`. Scanning a code off a real
-  camera is a device action and stays `NOT RUN`
-  ([verification](../../docs/clients/ios/verification.md), REQ-ID-007).
+  camera is a device action; it was done on 2026-09-13 on a physical iPhone,
+  off the build Mac's screen and off the owner's QR image, and the row is
+  `SHOWN` ([verification](../../docs/clients/ios/verification.md), REQ-ID-007).
 - `ParanoIDTests/BridgeSmokeTests.swift` runs `create_identity` ->
   `upgrade_v2` inside the application process on the simulator and prints
   one `state.version=3` line (never the snapshot), which proves that the
@@ -702,8 +720,8 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   and deletes both in `setUp` and `tearDown`; its state file goes to a
   temporary directory, never to the application's own `Application Support`.
   The simulator has no Data Protection and reports no protection class, so the
-  class the write asks for can only be observed on a device, which is a live
-  action.
+  class the write asks for can only be observed on a device; the 2026-09-13
+  device session did not measure it, so that row stays `NOT RUN`.
 
 ```sh
 xcodebuild -project clients/ios/App/ParanoID.xcodeproj -list      # Targets: ParanoID, ParanoIDTests, ParanoIDUITests
@@ -717,7 +735,14 @@ xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
 identity; an unsigned device build (`xcodebuild build -configuration Release
 -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`) links the
 `ios-arm64` slice the same way. Signed installs and TestFlight uploads are
-live actions and wait for the owner's "go". `-derivedDataPath` keeps build
+live actions behind the owner's "go". Two signed installs have happened, on
+2026-09-13, on the contributor's iPhone 16 Pro Max (iOS 26.6.1, Developer
+Mode on, team `5RPGVC566Q`): a Debug build for the local stand and, later, a
+Release build (`adb56be`) for the hosted server, both through `xcodebuild`
+(`-allowProvisioningUpdates`, `DEVELOPMENT_TEAM` on the command line) and
+`xcrun devicectl`, not through `build.sh`. No archive, no `.ipa` export and
+no TestFlight upload exist: those stay `NOT RUN` behind the export-compliance
+gate. `-derivedDataPath` keeps build
 products under `out/`; Xcode's per-user state (`xcuserdata/`) is git-ignored.
 
 ## Local stand (`local_stand.py`)
@@ -824,7 +849,11 @@ fixture's own, because a command-line tool has neither: the AES-256 wrapping
 key lives **in memory** instead of the Keychain
 (`StorageGuard.requireContinuity` is still evaluated against it, so a state
 file whose key died with the process freezes) and the state file lives under
-the directory given as the first argument. The compiled hosted default is
+the directory given as the first argument. That in-memory key is also why the
+fixture cannot be a peer across two processes: the 2026-09-13 device smoke
+found that a peer registered in one run could not be read by the next (a
+harness defect, not a product one) and used a persistent peer instead. The
+compiled hosted default is
 passed as `nil`, so the tool can dial only the realm and pin on its own
 command line.
 
@@ -1203,8 +1232,9 @@ The screen-lock story — locking the caller's screen while it is still dialling
 — is **NOT RUN**, and the evidence says so with its reason rather than leaving
 it out: `xcrun simctl` has no lock verb (`xcrun simctl help` lists none),
 `XCUIDevice` has no lock API, and the Simulator's own ⌘L is a host-window
-action outside this harness. It is a phone scenario and it belongs to the
-device run.
+action outside this harness. It is a phone scenario; the 2026-09-13 device
+session did not run it either, and it moves to the joint test with the owner
+([stage 2](../../docs/project/evidence/ios-client-20260913/stage2-voice.md)).
 
 This fixture found one thing in the screens, fixed there rather than worked
 around here: `.alert(item:)` clears its binding as the alert is dismissed and
@@ -1516,7 +1546,10 @@ without `~/.cargo/bin` on `PATH` is fine.
    comparison itself (plan step 34): `test_android_compatibility.py` and
    `test_qr_cross.py`, both unconditional, so a missing file fails the build
    instead of skipping a gate. That comparison runs both clients against each
-   other on this Mac; it is a `CLAIMED` result and not a phone one.
+   other on this Mac; it is a `CLAIMED` result and not a phone one. The only
+   contact with the owner's Android on its own hardware so far is the
+   2026-09-13 pairing from his QR image and one text the hosted server
+   accepted, not yet delivered to it or answered.
 8. `check-pinned-tls.py` and `test_realtime_transport.py` — against real
    loopback servers. The pinned-TLS fixtures break checks 1, 2, 3, 6, 7 and 8
    over a socket, and check 9 too where the local OpenSSL still offers TLS
@@ -1560,8 +1593,10 @@ identifier `global.paranoid.messenger`, the pinned
 `CFBundleShortVersionString` / `CFBundleVersion` pair and the
 `ios_deployment_target` of `toolchain.json`; `UIBackgroundModes` exactly
 `[audio]` with no `voip`, no `aps-environment` in the plist or in the signed
-entitlements and no `NSAppTransportSecurity` / `NSAllowsArbitraryLoads`; one
-arm64 executable and exactly one embedded framework, whose binary is the
+entitlements, and `NSAppTransportSecurity` equal to exactly
+`{NSAllowsArbitraryLoads: true}` — the one ATS key `adb56be` introduced and
+the only value the pinning contract allows; one arm64 executable
+and exactly one embedded framework, whose binary is the
 pinned slice; `THIRD_PARTY_NOTICES.txt` identical to what `notices.py` wrote,
 naming the crates that link and none of the Android-only components; and no
 `.p12`, `.p8`, `.env` or `.mobileprovision` anywhere inside. Two rules bend
@@ -1696,7 +1731,10 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   budget** — and every registration is still counted in the evidence
   directory, because the server has no account-deletion path, so each one is
   permanent. A budget is not an authorization: each live registration still
-  needs its own "go". Simulators use only the local stand (unchanged server
+  needs its own "go". Two have been spent so far, both on 2026-09-13 and both
+  under that answer: a `service-bridge` registration from the build Mac while
+  diagnosing the phone's TLS failure (defect 4) and the physical iPhone's own.
+  Simulators use only the local stand (unchanged server
   binary plus local PostgreSQL 16); they never contact the hosted server.
 - **Language.** English in this README, under `docs/` and in evidence;
   Russian only inside quoted UI strings.

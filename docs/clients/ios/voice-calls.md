@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client: calls (call-v2 audio and camera video)
@@ -176,7 +176,8 @@ Two gaps remain, recorded here rather than left to be discovered:
 
 Neither is parity with Android, and neither is claimed as such. That a cover
 actually appears when a real recording starts is owner evidence for
-`stage2-voice.md`; no simulator can start a screen recording.
+`stage2-voice.md`; no simulator can start a screen recording, and none was
+started on the physical iPhone of 2026-09-13 either.
 
 ## Dependency
 
@@ -192,7 +193,16 @@ Two simulators have placed and answered calls in both directions over direct
 ICE on the local stand, with about 2300 RTP packets per side per call. That is
 `CLAIMED`, not `SHOWN`: two applications on one Mac negotiated, connected and
 carried packets to each other; no audio was decoded to a speaker, no camera saw
-a face and nothing crossed a real network. REQ-CALL-002/003 still need the
+a face and nothing crossed a real network.
+
+On 2026-09-13 a signed Debug build on a physical iPhone (iPhone 16 Pro Max,
+iOS 26.6.1) placed one call to a simulator on the same local stand, reached
+over the Mac's LAN address: the call connected, with video visible from the
+iPhone; the simulator has no camera, so video went one way only. Whether audio
+was actually heard is not recorded in that evidence and is not claimed here.
+That is one phone against the contributor's stand, not the joint test: screen
+lock during dialling, a real screen recording over the call stage and any
+relayed call were not run on the device either. REQ-CALL-002/003 still need the
 joint test on physical phones, which is
 [stage2-voice.md](../../project/evidence/ios-client-20260913/stage2-voice.md)
 and is `NOT RUN`.

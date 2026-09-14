@@ -2,7 +2,7 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client trust delta (RFC-0021, proposed ADR-0014)
@@ -37,8 +37,8 @@ Not used: APNs / PushKit / background refresh / CallKit (foreground-only)
 
 | Threat | Control in this client | How it was checked |
 | --- | --- | --- |
-| Snapshot readable from a stolen, powered-on, locked device | AES-256-GCM key in the Keychain as `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, not synchronizable; file at `.completeUntilFirstUserAuthentication` | `KeychainStoreTests` reads the stored attributes back. The **class the file write asks for cannot be observed in a simulator** — the simulator has no Data Protection and reports no protection class, so this is `NOT RUN` until a device test |
-| Snapshot or key leaves the device through backup or iCloud | Backup exclusion set on the candidate **before** the rename, because the flag lives on the inode; the Keychain item is this-device-only and not synchronizable | Storage unit tests on the commit order; device behaviour is `NOT RUN` |
+| Snapshot readable from a stolen, powered-on, locked device | AES-256-GCM key in the Keychain as `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, not synchronizable; file at `.completeUntilFirstUserAuthentication` | `KeychainStoreTests` reads the stored attributes back. The **class the file write asks for cannot be observed in a simulator** — the simulator has no Data Protection and reports no protection class, and the 2026-09-13 device smoke did not measure it either, so this stays `NOT RUN` |
+| Snapshot or key leaves the device through backup or iCloud | Backup exclusion set on the candidate **before** the rename, because the flag lives on the inode; the Keychain item is this-device-only and not synchronizable | Storage unit tests on the commit order; device behaviour is `NOT RUN` (not measured in the 2026-09-13 device smoke) |
 | Torn write or silent truncation adopts a corrupt ratchet | Five durable steps in one order — temp write, `F_FULLFSYNC`, `rename(2)`, byte-exact read-back, directory `F_FULLFSYNC` — and any failure sets `isBroken` for the rest of the process | `SnapshotStoreTests` with injected file-system faults, one step at a time |
 | A reinstall silently resurrects a stale identity, or freezes forever | Install marker (`paranoid.install.v1`): with no marker the stale Keychain key is **deleted** and a new identity is created; with the marker present, key-without-file and file-without-key both freeze | `KeychainStoreTests` marker matrix (signed simulator run) and the `reinstall` scenario of `test_sim_text.py`; both `CLAIMED` |
 | A stale key is reused to "recover" state | Never: the absent-marker path deletes rather than reuses | same |
@@ -103,22 +103,38 @@ fixed in this pull request.
 
 ## Residual risks carried into the pull request
 
-1. **No physical-device evidence at all.** Data Protection classes, the real
-   camera, a real network, a locked screen and a real recording cannot be
-   observed in a simulator. Everything about them is `NOT RUN`.
+1. **Physical-device evidence is thin.** A signed Debug build ran on one
+   iPhone (iPhone 16 Pro Max, iOS 26.6.1) on 2026-09-13 against the local
+   stand: an identity was created on the device, a QR was read with the real
+   camera, texts crossed with receipts and one call to a simulator connected
+   with video from the device. Data Protection classes, backup exclusion, a
+   locked screen during dialling, a relayed call and a real screen recording
+   cannot be observed in a simulator and were not measured on the device
+   either; everything about them is `NOT RUN`.
 2. **No independent human review** of the storage, trust and call code; the
    closed-alpha exception permits an independent AI review in a fresh context
    and does not replace item 6.
-3. **No hosted account exists** (`hosted_registrations` is zero), so nothing in
-   this client has been exercised against the live server beyond a TLS
-   handshake.
-4. **No iOS CI run yet.** `.github/workflows/ios.yml` lands with this pull
-   request and has never executed on a runner; every check was run locally on
-   the pinned build Mac. There is no macOS runner, so nothing in that workflow
-   opens a simulator, builds an app or touches a stand — the security-relevant
-   behaviour of this client is proven locally or not at all.
+3. **Two hosted accounts exist** (`hosted_registrations` is 2): one from the
+   build Mac through `service-bridge` while diagnosing the phone's TLS
+   failure, one from the physical iPhone (Release build, 2026-09-13, after the
+   ATS fix below); both under the owner's answer to RFC-0021 question 4 (no
+   fixed budget). The phone then paired the owner's Android from his QR and
+   sent one text the hosted server accepted; delivery to his Android was still
+   pending and nothing has come back. The protocol comparison with Android
+   remains a Mac-only `CLAIMED` check — no Android build on a phone has yet
+   answered this client.
+4. **iOS CI has run once.** `.github/workflows/ios.yml` ran on pull request
+   #36 (draft, 2026-09-14): `ios-static` passed, as did the docs workflow and
+   the server workflow's `client-core-and-tls` and `native-package` jobs.
+   There is no macOS runner, so nothing in that workflow opens a simulator,
+   builds an app or touches a stand — the security-relevant behaviour of this
+   client is proven locally or not at all.
 5. **The alpha break of call-v2**: this client cannot call an Android build
    older than v16, by design.
+6. **Open on the device (2026-09-13/14).** After a network drop the phone
+   stayed at «Нет подключения» while the server answered from the Mac and the
+   pinned key was unchanged; the cause is under investigation on the branch
+   and no device logs were collected.
 
 ## App Transport Security is off, and why that removes nothing
 

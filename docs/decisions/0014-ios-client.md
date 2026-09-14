@@ -4,18 +4,21 @@ owner: ios
 decision_owner: martadvix-web
 required_reviewers: []
 review_mode: closed-alpha-ai
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # ADR-0014: iOS client as a native SwiftUI shell over the shared Rust core
 
 This record is **proposed**, not accepted. The client described below is built
-and its checks run on simulators and a local stand; nothing has run on a
-physical phone, no hosted account exists, no TestFlight build was uploaded, and
-no independent human review has happened. It cannot move to `accepted` until
-the closed-alpha scope has a permanent owner approval permalink, the
-independent AI review of the exact review revision is recorded, and the
-physical-phone evidence the validation plan names exists.
+and its checks run on simulators and a local stand; on 2026-09-13 a signed
+build was installed on one physical iPhone (iPhone 16 Pro Max, iOS 26.6.1),
+ran the smoke on the local stand, registered on the hosted alpha and sent one
+text the server accepted. Two hosted accounts exist, no TestFlight build was
+uploaded, the two joint tests with the owner have not run, and no independent
+human review has happened. It cannot move to `accepted` until the closed-alpha
+scope has a permanent owner approval permalink, the independent AI review of
+the exact review revision is recorded, and the physical-phone joint-test
+evidence the validation plan names exists.
 [RFC-0021](../rfcs/0021-ios-client.md) carries the proposal text.
 
 ## Required review rationale
@@ -25,8 +28,9 @@ physical-phone evidence the validation plan names exists.
 private alpha, synthetic test data, one contributor device and the owner's
 Android phone, the existing hosted endpoint. The human decision and risk owner
 is `martadvix-web`. An independent AI review in a fresh context (policy item 2)
-is recorded separately in the client pull request and never listed as a human
-reviewer. Independent qualified human review of identity, cryptography,
+is recorded in
+[independent-review.md](../project/evidence/ios-client-20260913/independent-review.md)
+and never listed as a human reviewer. Independent qualified human review of identity, cryptography,
 persistence and application security remains required before any expansion
 beyond this scope (policy item 6).
 
@@ -157,11 +161,11 @@ security-boundary detail of this decision, not a widening of it.
 - CI covers only what Ubuntu can prove: `.github/workflows/ios.yml` lands with
   this pull request and runs the iOS-target `cargo check`, the bridge lint and
   host tests, the lock, toolchain and WebRTC pins, the source-only contracts,
-  the full notices run and the boundary gate. It has never executed on a
-  runner — its first run is that pull request — and there is no macOS runner,
-  so no simulator, app bundle or stand result can ever come from it. Every
-  check was run locally on the pinned build Mac and the evidence directory
-  replaces a CI link.
+  the full notices run and the boundary gate. Its first execution was on the
+  client pull request (#36, opened as a draft on 2026-09-14), where
+  `ios-static` passed; there is no macOS runner, so no simulator, app bundle,
+  stand or device result can ever come from it. Those checks were run locally
+  on the pinned build Mac and the evidence directory records them.
 - Every clock-dependent rule (session renewal, call timeouts, +5 s skew) is
   provided by the platform because the core is clock-free; parity with
   `CallController.java` must be proven by cross-checks, not assumed.
@@ -194,38 +198,51 @@ REQ-CLIENT-001, REQ-ID-005/007/008, REQ-MSG-002/003/005 and REQ-CALL-002/003
 to the check that was actually run and its status;
 [protocol-sources.md](../clients/ios/protocol-sources.md) maps each behaviour
 to its protocol line, core/server line and Java cross-check. Simulator, local
-stand and dependency results are `CLAIMED`; only physical-phone joint tests
-with the owner are `SHOWN`, and **no row is `SHOWN` today**. The two joint-test
-scenarios are written in advance with every `Result` reading `NOT RUN`:
+stand and dependency results are `CLAIMED`; only physical-phone results are
+`SHOWN`. Since the device smoke of 2026-09-13 the `SHOWN` rows are what one
+iPhone did against the local stand (identity, a QR read off a real camera,
+text with receipts, one call with video) and against the hosted alpha (one
+registration, the owner's Android paired from his QR image, one text the
+server accepted); the joint tests with the owner remain `NOT RUN`. The two
+joint-test scenarios are written in advance with every `Result` reading
+`NOT RUN`:
 [stage 1](../project/evidence/ios-client-20260913/stage1-text.md) and
-[stage 2](../project/evidence/ios-client-20260913/stage2-voice.md). The
+[stage 2](../project/evidence/ios-client-20260913/stage2-voice.md); stage 1
+carries a note that its steps 1, 2, 4 and the first half of 5 were pre-run
+solo by the contributor on 2026-09-13, which is not the joint test. The
 independent AI review of the exact review revision and the boundary gate output
-are recorded in the client pull request; there is no CI run to link, because no
-iOS workflow exists. The platform trust delta is
+are recorded in the client pull request, together with the `ios-static` run
+of `.github/workflows/ios.yml`. The platform trust delta is
 [docs/security/ios-client-threats.md](../security/ios-client-threats.md).
 
 ## Compatibility and migration
 
 Same wire versions as Android v15; no server or core change; no data to
 migrate. Rollback is removing the TestFlight build and the application; the
-single hosted account created for the iPhone remains on the server because
-REQ-MSG-004 provides no deletion path. Same-data rollback of the server is
-unaffected because nothing on the server changes.
+two hosted accounts this branch created (one from the build Mac, one for the
+iPhone) remain on the server because REQ-MSG-004 provides no deletion path.
+Same-data rollback of the server is unaffected because nothing on the server
+changes.
 
 ## What is needed from the owner for Apple (checklist)
 
 - App Store Connect team invitation: done (access granted 2026-09-11, relayed
   by the contributor; no permalink). Bundle id `global.paranoid.messenger` per
-  the v15 owner decision. Open: who creates the App ID (without the push
-  capability), the owner or the contributor.
+  the v15 owner decision. An App ID for it exists on the team since the signed
+  install of 2026-09-13, which went through `xcodebuild
+  -allowProvisioningUpdates` with the team on the command line; the bundle
+  gate read the signed entitlements that day and found no `aps-environment`.
 - App Store Connect API key (`.p8`, Key ID, Issuer ID) supplied only through
   the environment (`PARANOID_ASC_KEY_PATH`, `PARANOID_ASC_KEY_ID`,
   `PARANOID_ASC_ISSUER_ID`), file outside the repository, never in git or
   process arguments; Team ID through `PARANOID_IOS_TEAM_ID`.
 - An internal TestFlight group containing the owner; the export-compliance
   decision (question 8); an explicit "go" with a permalink for each live
-  action (install on the contributor's iPhone, the single hosted registration,
-  the TestFlight upload).
+  action (install on the contributor's iPhone, each hosted registration, the
+  TestFlight upload). The install on the contributor's own iPhone and two
+  hosted registrations happened on 2026-09-13, the registrations under the
+  owner's answer to question 4 (no fixed budget), with no separate permalink
+  recorded; the TestFlight upload has not.
 - One GUI step the contributor performs by hand: the contributor's Apple ID in
   Xcode Accounts.
 
@@ -238,13 +255,14 @@ the rest by the contributor under the recorded delegation. Questions 7 and 8
 stay partly open and are the two that still gate live actions: a key rotation
 needs its own deploy-trust RFC, and **no TestFlight upload may happen until the
 export-compliance gate is answered**. Acceptance of this ADR is blocked by the
-missing scope-approval permalink and by the absence of any physical-phone
-evidence, not by the table below.
+missing scope-approval permalink and by the joint tests with the owner not
+having run — the only physical-phone evidence so far is the contributor's solo
+device smoke and pre-run of 2026-09-13 — not by the table below.
 
 | # | Question | Owner | Proposed deadline |
 | --- | --- | --- | --- |
 | 3 | Keychain class `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` for the wrapping key. Confirm. | martadvix-web | 2026-09-18 |
-| 4 | Hosted account budget: exactly one account for the contributor's iPhone, no reserve, reinstall means a new authorization; who registers. | martadvix-web | 2026-10-01 |
+| 4 | Hosted account budget: exactly one account for the contributor's iPhone, no reserve, reinstall means a new authorization; who registers. Answered 2026-09-13: as many as the tests need, no fixed budget; two consumed so far (the build Mac and the iPhone), each recorded in the evidence directory because the server cannot delete an account. | martadvix-web | 2026-10-01 |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE parity with Android or refuse the call. | martadvix-web | 2026-09-25 |
 | 6 | Paid macOS CI runner: yes or no (default no). | martadvix-web | 2026-10-01 |
 | 7 | Key rotation RFC: who and when, tied to the TestFlight build date. The certificate itself was renewed with the same key on 2026-09-13 (valid to 2026-12-12), so this is no longer an outage deadline; the open part is what happens when the key changes. | martadvix-web | 2026-10-15 |
@@ -255,11 +273,14 @@ evidence, not by the table below.
 ## Disposition and acceptance evidence
 
 - Disposition: open (`proposed`)
-- Disposition rationale: the client exists and its behaviour is measured, but
-  the evidence that would justify acceptance — physical-phone joint tests, a
-  hosted registration, an independent review — does not exist yet
+- Disposition rationale: the client exists, its behaviour is measured and one
+  physical iPhone has run it against the local stand and registered on the
+  hosted alpha, but the evidence that would justify acceptance — the
+  physical-phone joint tests with the owner and an independent review — does
+  not exist yet
 - Decision owner and identity: martadvix-web (GitHub)
-- Pull request URL: the client pull request this revision is opened with
+- Pull request URL: <https://github.com/GOTD-GLOBAL/ParanoID/pull/36> (draft,
+  opened 2026-09-14)
 - Permanent disposition or approval evidence URL: pending
 - Withdrawal author statement URL, if applicable: not applicable
 - Delegation evidence URL:
@@ -267,22 +288,33 @@ evidence, not by the table below.
   — technical decision authority for the contributor; it is not scope approval,
   not acceptance of this ADR and not a substitute for independent review or
   evidence
-- Required-review evidence URLs: independent AI review pending; recorded
-  separately from human reviewers
+- Required-review evidence URLs: the independent AI review is recorded in
+  [independent-review.md](../project/evidence/ios-client-20260913/independent-review.md),
+  separately from human reviewers; no human reviewer permalink exists yet
 - Telegram message ID, sender mapping, timestamp, and exact approval text, if
   used: none recorded; the 2026-09-11 owner replies relayed by the contributor
   are not approval evidence
 - Disposition date: pending
-- Known limitations and follow-up: nothing has run on a physical phone and no
-  hosted account exists (`hosted_registrations` is zero); foreground-only
-  delivery, so a call to a locked or closed iPhone ends in the caller's
-  45-second `timeout`; screen capture is not parity with Android's
+- Known limitations and follow-up: one physical iPhone has run the client
+  (local-stand smoke and one hosted registration with one accepted text on
+  2026-09-13), but the joint tests with the owner have not run and
+  `hosted_registrations` is 2, both accounts permanent; open since
+  2026-09-13/14: after a network drop on the phone the application stayed at
+  «Нет подключения» while the server answered from the Mac and the pinned key
+  was unchanged — under investigation on the branch, device logs not
+  collected; the Data Protection class on the device, a real screen recording
+  over the call stage, a relayed call and TestFlight are `NOT RUN`;
+  foreground-only delivery, so a call to a locked or closed iPhone ends in the
+  caller's 45-second `timeout`; screen capture is not parity with Android's
   `FLAG_SECURE`; no pin rotation path before the renewed leaf expires on
   2026-12-12; the export-compliance gate is closed, so no TestFlight upload is
-  authorised; the Android cross-test is a host comparison and proves agreement
-  of the checked scenarios at the checked revisions, not acceptance on devices;
-  twelve doc-to-code discrepancies are answered in issue #27 and are corrected
-  in a separate docs-only pull request, not in this one
+  authorised; the Android cross-test is a host comparison (both stacks as
+  processes on the Mac) and proves agreement of the checked scenarios at the
+  checked revisions, not acceptance on devices — the only contact with the
+  owner's Android so far is the pairing from his QR image and one text the
+  server accepted but has not yet delivered or had answered; twelve
+  doc-to-code discrepancies are answered in issue #27 and are corrected in a
+  separate docs-only pull request, not in this one
 
 ## Links
 
@@ -297,8 +329,9 @@ evidence, not by the table below.
   [build and TestFlight](../clients/ios/build-and-testflight.md),
   [export compliance](../clients/ios/export-compliance.md)
 - Experiment or benchmark: the bridge link, the call-v2 SDP spike against the
-  core validator and the pinned-TLS leaf checks were run locally; their
-  summaries are in the client pull request and their raw output stays under
-  `clients/ios/out/`, which is not committed
+  core validator, the pinned-TLS leaf checks and the 2026-09-13 device smoke
+  were run locally; their summaries are in the client pull request and the
+  evidence catalogue, and their raw output stays under `clients/ios/out/`,
+  which is not committed
 - Supersedes: none
 - Superseded by: none

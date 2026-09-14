@@ -64,7 +64,14 @@ public contract is declared.
 - TLS is leaf-SPKI pinning evaluated on `Security.framework` with the same nine
   checks and the same pin the Android client carries. The hosted certificate
   was renewed **with the same key** on 2026-09-13, so the pin is unchanged and
-  the new leaf is valid to 2026-12-12.
+  the new leaf is valid to 2026-12-12. On a phone against the hosted server the
+  delegate never ran: App Transport Security refused the self-signed leaf on a
+  public IP first (`NSURLErrorDomain -1200`), which a LAN stand never shows and
+  `NSPinnedDomains` cannot cover for an IP literal. `adb56be` sets
+  `NSAllowsArbitraryLoads = YES` under the contract that it is the only ATS key
+  and no `URLSession` exists outside `PinnedSessionDelegate`
+  (`test_ui_contract.py`); the reasoning is in
+  `docs/security/ios-client-threats.md` and ADR-0014.
 - Calls are call-v2: two media sections, audio then video, both `a=sendrecv`,
   H.264 first with VP8 as the mandatory fallback, camera on/off as a track flag
   plus an informative `media` control and never a renegotiation, and a
@@ -85,7 +92,10 @@ public contract is declared.
   `server.yml` is untouched; `docs.yml` gains two lychee `--exclude` lines for
   the issue-27 permalinks this branch is the first to cite, and nothing else.
   There is no macOS runner, so no simulator, app bundle or stand result comes
-  from CI; the workflow's first execution is the pull request that carries it.
+  from CI. The workflow first ran on the draft pull request #36 (2026-09-14):
+  `ios-static` passed, `docs.yml` passed, and the server workflow's
+  `client-core-and-tls` and `native-package` passed; its "Legacy client
+  history" job is informational and fails on `main` too.
 - The Android client is the cross-check, and it is now executed rather than only
   read: `clients/ios/test_android_compatibility.py` holds two private pipes open
   at once — the Android facade through JNI and the iOS classes through the C ABI
@@ -100,14 +110,41 @@ public contract is declared.
   document), and every negative is refused by that validator first.
   `clients/ios/test_qr_cross.py` does the same for pixels: a real 901-byte
   contact crosses the iOS encoder and Android's ZXing in both directions
-  unchanged. Both are `CLAIMED`: two client stacks on one Mac, no phone.
-- Status: simulator, host and local-stand results only (`CLAIMED`), including
-  two simulators calling each other in both directions. **Nothing has run on a
-  physical phone, no hosted account exists and no TestFlight build was
-  uploaded**; the export-compliance gate is closed. Row-by-row status is
-  `docs/clients/ios/verification.md`, and the two joint-test scenarios in
-  `docs/project/evidence/ios-client-20260913/` are written in advance and
-  entirely `NOT RUN`.
+  unchanged. Both are `CLAIMED`: two client stacks on one Mac. The only contact
+  with the owner's Android on its own phone so far is the pairing the iPhone
+  made from his QR image on 2026-09-13 and one text the hosted server accepted,
+  not yet delivered to his phone or answered.
+- Status: `CLAIMED` on simulators (iPhone 17 Pro and iPhone 17e, iOS 26.5),
+  host and local stand, including two simulators calling each other in both
+  directions. On 2026-09-13 a signed build (Apple team on the `xcodebuild`
+  command line with `-allowProvisioningUpdates`, installed with `devicectl`)
+  ran on a physical iPhone 16 Pro Max, iOS 26.6.1. Against the local stand,
+  bound to the Mac's LAN address, a Debug build (it takes the DEBUG-only
+  `PARANOID_REALM`/`PARANOID_PIN` environment channel, added because
+  `devicectl` does not relay launch arguments) created an identity, showed its
+  own QR, scanned a contact off the Mac screen with the real camera, confirmed
+  the fingerprint sheet, sent two texts and received one with receipts, and
+  placed one call to a simulator that connected with video visible from the
+  phone (the simulator has no camera). Against the hosted server, after the
+  ATS fix, a Release build registered, paired the owner's Android from his QR
+  image and sent one text the server accepted (one check); delivery to his
+  phone was still pending. `hosted_registrations` is 2: the iPhone's own and a
+  `service-bridge` registration from the build Mac made while diagnosing the
+  phone's TLS failure, both under the owner's answer to RFC-0021 question 4
+  (no fixed budget). The device smoke also found an empty entitlements file
+  (the simulator's Keychain answered `errSecMissingEntitlement`; fixed by
+  declaring `keychain-access-groups`, device behaviour unchanged) and a
+  memory-only fixture peer (replaced by a persistent one; harness, not
+  product). Still `NOT RUN`: archive, `.ipa` export and TestFlight upload
+  (the export-compliance gate is closed), a relayed call, a screen recording
+  over the call stage, the Data Protection class on the device, and both
+  joint tests with the owner in `docs/project/evidence/ios-client-20260913/`;
+  the contributor alone pre-ran stage 1 steps 1, 2, 4 and the first half of 5
+  against the hosted server, which is not the joint test. Open since
+  2026-09-13/14: after a network drop the phone stayed at «Нет подключения»
+  while the server answered from the Mac and the pinned key was unchanged;
+  under investigation, device logs not collected. Row-by-row status is
+  `docs/clients/ios/verification.md`.
 
 ### Push wake gateway (server) — 2026-09-12
 

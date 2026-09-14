@@ -89,43 +89,82 @@ application test bundles and the local-stand scripts were run by the steps that
 delivered them, and their output stays under `clients/ios/out/`, which is not
 committed.
 
-**SHOWN (physical phone).** On 2026-09-13 a signed build ran on an iPhone 16
-Pro Max (iOS 26.6.1, team `5RPGVC566Q`) against the local stand: identity
-creation, the client's own QR, a contact read off a screen with the real
-camera, the fingerprint sheet, text in both directions with receipts, and a
-call that connected and carried video. The hosted alpha was not involved and
-holds two accounts: one created from the build Mac while diagnosing the phone's connection, and the physical iPhone's own, which paired the owner's Android and sent a text the server accepted.
+**SHOWN (physical phone).** On 2026-09-13 a signed Debug build ran on an
+iPhone 16 Pro Max (iOS 26.6.1, Developer Mode on, team `5RPGVC566Q`, bundle
+`global.paranoid.messenger`, installed with `xcodebuild` and `devicectl`)
+against the local stand, bound to the Mac's LAN address so the phone could
+reach it: identity creation on the device, the client's own QR, a contact read
+off the Mac screen with the real camera, the fingerprint sheet, two texts
+device→peer and one peer→device with receipts, and a call to a simulator that
+connected and carried video from the device (the simulator has no camera;
+whether audio was heard is not recorded). Two defects surfaced there, neither
+on the device: an empty entitlements file made the simulator's Keychain answer
+`errSecMissingEntitlement` (fixed by declaring `keychain-access-groups`), and
+the fixture peer kept its key in memory only (a persistent peer replaced it —
+harness, not product). Later that day a Release build signed with the same
+team reached the hosted alpha, once App Transport Security was switched off:
+the iPhone registered, paired the owner's Android from his QR image (scanned
+off a screen) and sent one text the hosted server accepted — one check.
+Delivery to the owner's Android was still pending because his phone had not
+polled, and no reply exists. That pairing and that one accepted text are the
+only contact with the owner's Android so far; the Android interoperability
+comparison below is still Mac-only and `CLAIMED`.
 
-**NOT RUN, with reasons.** No signed build, no device install and no TestFlight
-upload: there is no App ID, no owner "go", and the
+**NOT RUN, with reasons.** No archive, no `.ipa` export and no TestFlight
+upload: the device installs above were direct `xcodebuild` installs,
+`build.sh`'s signed-archive gate did not run, there is no owner "go" for an
+upload, and the
 [export-compliance gate](../clients/ios/export-compliance.md) is closed —
 `ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple
-applies the requirement to TestFlight too. A simulator cannot show a Data
-Protection class, a real camera, a real screen recording, a screen lock or a
-real network, so all of those are `NOT RUN`. Interoperability with the Android
-client is checked at the protocol level on this machine, not on two phones: the
-real Android facade is compiled here and agrees with the Swift client on
+applies the requirement to TestFlight too. The Data Protection class on the
+device was not measured, no real screen recording was made over the call stage,
+a screen lock during dialling moves to the joint test, and no relayed call was
+placed, so all of those stay `NOT RUN`. Open since 2026-09-13/14: after a
+network drop on the phone the application stayed at «Нет подключения» while
+the server answered from the Mac and the pinned key was unchanged; the cause
+is under investigation on the branch and device logs were not collected.
+Interoperability with the Android client on its own hardware is not shown:
+the protocol comparison ran with both stacks as processes on the build Mac,
+where the real Android facade is compiled and agrees with the Swift client on
 identities, text with receipts, call-v2 bodies, the sealed snapshot codec and a
 QR contact, with twenty-one malformed bodies refused identically by both sides.
 The expectations are recomputed in Python from the protocol documents, so an
 agreement cannot come from the two clients sharing one core. `build.sh` runs
 that comparison and its Java host side as ordinary steps.
-`.github/workflows/ios.yml` lands with this pull
-request and has never executed on a runner — its first run is that pull request
-— and question 6 answered "no macOS runner", so nothing needing Xcode, a
-simulator or the local stand is in it and every check was run locally on the
-pinned build Mac. The two joint-test scenarios with the owner
-are written in advance with every result `NOT RUN`:
+`.github/workflows/ios.yml` ran on
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36), opened
+as a draft on 2026-09-14: `ios-static` passed, the docs workflow passed, and
+the server workflow's `client-core-and-tls` and `native-package` passed.
+Question 6 answered "no macOS runner", so nothing needing Xcode, a simulator,
+a phone or the local stand is in it, and every such check was run locally on
+the pinned build Mac. The two joint-test scenarios with the owner,
 [stage 1](evidence/ios-client-20260913/stage1-text.md) and
-[stage 2](evidence/ios-client-20260913/stage2-voice.md).
+[stage 2](evidence/ios-client-20260913/stage2-voice.md), have not been run as
+joint sessions and keep every `Result` cell `NOT RUN`; stage 1 steps 1, 2, 4
+and the first half of 5 were exercised solo on 2026-09-13 against the hosted
+server with the owner's QR image, and stage 1 records that as a pre-run, not
+as the test.
 
-**Hosted accounts spent: two.** `hosted_registrations` is 2: a `service-bridge` registration from the build Mac on 2026-09-13, made to prove the client stack registers on the hosted server while the phone could not, and the physical iPhone's registration once App Transport Security was switched off. The other contact
-this branch has had with the hosted alpha is a single TLS handshake with no
-HTTP request, which confirmed that the pin this client carries still equals the
+**Hosted accounts spent: two.** `hosted_registrations` is 2: a
+`service-bridge` registration from the build Mac on 2026-09-13, made while
+diagnosing the phone's TLS failure to prove the client stack registers on the
+hosted server while the phone could not, and the physical iPhone's registration
+once App Transport Security was switched off — both under the owner's answer to
+RFC-0021 question 4 (no fixed budget). The phone's failure was a defect that
+only the hosted server could show: ATS refused the self-signed leaf on a
+public IP before the pinning delegate ran (`NSURLErrorDomain -1200`), which a
+LAN stand never shows and `NSPinnedDomains` cannot exempt for an IP literal.
+`adb56be` sets `NSAllowsArbitraryLoads = YES`, `test_ui_contract.py` holds the
+contract "exactly that key and no `URLSession` outside `PinnedSessionDelegate`",
+and [the trust delta](../security/ios-client-threats.md) and ADR-0014 record
+why that removes nothing. Before those registrations the only contact this
+branch had with the hosted alpha was a single TLS handshake with no HTTP
+request, which confirmed that the pin this client carries still equals the
 live SubjectPublicKeyInfo digest after the owner renewed the certificate **with
 the same key** on 2026-09-13; the renewed leaf is valid to
-2026-12-12T07:38:09Z. A same-key renewal must repeat before that date — there
-is no automatic renewal — and a key *change* needs its own deploy-trust RFC,
+2026-12-12T07:38:09Z. A same-key renewal must repeat before that date — the
+[same-key automation](../operations/tls-auto-renewal.md) installed on the host
+on 2026-09-13 does that — and a key *change* needs its own deploy-trust RFC,
 because the pin feeds the first-contact channel transcript and would invalidate
 enrolled contacts, not only the transport. The server has no account-deletion
 path, so every future registration is permanent and is counted in the evidence

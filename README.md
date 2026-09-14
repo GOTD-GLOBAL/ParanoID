@@ -62,10 +62,13 @@ A second client is proposed in [RFC-0021](docs/rfcs/0021-ios-client.md) and
 [ADR-0014](docs/decisions/0014-ios-client.md), both `proposed`: a native
 SwiftUI application over the unchanged shared Rust core through a C-ABI bridge,
 speaking the same contracts as the Android client, with call-v2 audio and
-camera video, foreground-only delivery and no push. Its results so far come
-from simulators and a local stand and are recorded as `CLAIMED`; **nothing has
-run on a physical phone, no hosted account exists and no TestFlight build was
-uploaded**. The honest row-by-row status is
+camera video, foreground-only delivery and no push. Its results come from
+simulators and a local stand (`CLAIMED`) and, since 2026-09-13, from a signed
+build on a physical iPhone against the local stand (`SHOWN`); one registration
+from that phone on the hosted alpha paired the owner's Android and sent one
+text the server accepted, not yet delivered. **The joint tests with the owner
+have not been run and no TestFlight build was uploaded.** The honest
+row-by-row status is
 [the iOS verification table](docs/clients/ios/verification.md).
 
 ## Working principle

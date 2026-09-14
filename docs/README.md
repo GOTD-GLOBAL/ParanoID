@@ -139,8 +139,14 @@ runtime/review gates. No relay deployment has occurred.
 propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
 The [iOS component documentation](clients/ios/README.md) records the intended
 differences from Android, the [requirement-to-test mapping](clients/ios/verification.md)
-(24 rows `CLAIMED` on simulators, the host or the local stand, REQ-CLIENT-001
-itself `NOT RUN`, and **no row `SHOWN`**) and the
+(rows `CLAIMED` on simulators, the host or the local stand; rows `SHOWN` on a
+physical iPhone against the local stand since 2026-09-13; the joint tests with
+the owner `NOT RUN`), the
 [rule-to-source table](clients/ios/protocol-sources.md)
-used to write behaviour from the protocol documents and the core. No phone
-result, hosted account, TestFlight build or architecture acceptance is implied.
+used to write behaviour from the protocol documents and the core, and the
+[device evidence](project/evidence/ios-client-20260913/README.md). A signed
+build ran on an iPhone 16 Pro Max on 2026-09-13; two hosted accounts exist
+(one from the build Mac, one from the phone, both under the owner's answer to
+RFC-0021 question 4, no fixed budget), and the phone sent one text to the
+owner's Android that the hosted server accepted. No TestFlight build, joint
+owner test or architecture acceptance is implied.

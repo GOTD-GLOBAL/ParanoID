@@ -5,7 +5,7 @@ decision_owner: martadvix-web
 decision_deadline: 2026-10-15
 required_reviewers: []
 review_mode: closed-alpha-ai
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # RFC-0021: Native iOS client on the shared Rust core (track A)
@@ -22,11 +22,24 @@ measured row by row in [verification.md](../clients/ios/verification.md):
 - the client **is built**, and its checks run on simulators and a local stand
   (the unchanged server binary against a private PostgreSQL 16 on the build
   Mac). Those results are `CLAIMED`;
-- **nothing has run on a physical phone**, so no row is `SHOWN`;
-- **no hosted account exists** — `hosted_registrations` is zero, and the only
-  contact this branch has had with the hosted server is a TLS handshake that
-  compared the live SubjectPublicKeyInfo digest with the pin this client
-  carries;
+- **a signed build ran on a physical iPhone** on 2026-09-13 (iPhone 16 Pro
+  Max, iOS 26.6.1, team `5RPGVC566Q`, installed with `xcodebuild` and
+  `devicectl`): against the local stand it created an identity, showed its
+  own QR, read a contact off the build Mac's screen with the real camera,
+  confirmed the fingerprint sheet, exchanged text with receipts in both
+  directions and placed one call to a simulator that connected with video
+  from the phone. Those rows are `SHOWN`; the two joint tests with the owner
+  are still `NOT RUN`, and no archive, `.ipa` export or TestFlight build
+  exists;
+- **two hosted accounts exist** — `hosted_registrations` is 2: one
+  `service-bridge` registration from the build Mac while diagnosing the
+  phone's TLS failure, and one from the physical iPhone once App Transport
+  Security was switched off, both under the owner's answer to question 4 (no
+  fixed budget). The iPhone then paired the owner's Android from his QR image
+  and sent one text the hosted server accepted (one check); delivery to his
+  phone was still pending. Before that, the only contact with the hosted
+  server was a TLS handshake that compared the live SubjectPublicKeyInfo
+  digest with the pin this client carries;
 - the calls this client speaks are **call-v2**, not the voice v1 this RFC was
   first drafted against; see [call-v2 migration](#call-v2-migration).
 
@@ -40,9 +53,10 @@ precedence over every preference recorded here.
 is requested for this private synthetic-data alpha (`review_mode:
 closed-alpha-ai`). No independent qualified human domain reviewer is available
 to the contributor; the human decision owner remains `martadvix-web` and is
-never replaced by AI. The independent AI review required by policy item 2 will
-be run in a fresh context, separate from the implementing context, and recorded
-in the client pull request; it is not a human audit and does not appear in the
+never replaced by AI. The independent AI review required by policy item 2 ran
+on 2026-09-13 in two fresh contexts, separate from the implementing context,
+and is recorded in
+[independent-review.md](../project/evidence/ios-client-20260913/independent-review.md); it is not a human audit and does not appear in the
 reviewer list. Protected domains touched by this proposal are listed in
 [Proposed design](#proposed-design) and recorded in
 [proposed ADR-0014](../decisions/0014-ios-client.md). Before real sensitive
@@ -219,6 +233,15 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    dNSName, no CN, no wildcard), TLS 1.2 minimum, no client certificates. The
    pin is the same value Android carries (`KeyClient.java:10`); saved trust
    wins over compiled defaults; no second pin and no rotation path are added.
+   App Transport Security is switched off in the bundle
+   (`NSAllowsArbitraryLoads = YES`, the only key under
+   `NSAppTransportSecurity`): on a physical iPhone, found 2026-09-13, ATS
+   refused the self-signed leaf on a public IP address before the pinning
+   delegate ran (`NSURLErrorDomain -1200`), a LAN stand never shows it, and
+   `NSPinnedDomains` does not match an IP literal. The source contract test
+   holds exactly that key and refuses any `URLSession` created outside
+   `PinnedSessionDelegate`; the reasoning is recorded in ADR-0014 and the
+   [threat delta](../security/ios-client-threats.md).
 4. **Protocol compatibility.** A second client on the same contracts. Every
    behaviour is written from `docs/protocol/*.md` and the core; Java is only a
    cross-check. The rule-to-source table is
@@ -282,20 +305,23 @@ XcodeGen for project generation (rejected: an additional unpinned binary).
   parity unless the owner answers question 5 differently.
 - No migration: there is no previous iOS state. Reinstall is a clean install
   (see install marker rule). Rollback is removing the TestFlight build; the
-  hosted account created for the iPhone stays on the server (REQ-MSG-004: no
-  deletion path).
+  two hosted accounts this branch created (one from the build Mac, one for
+  the iPhone) stay on the server (REQ-MSG-004: no deletion path).
 - The Android client is not modified; interoperability is proven only by the
   joint tests in the validation plan.
 
 ## Operations and observability
 
-- No server-side change, configuration or deployment. Exactly one additional
-  hosted account for the contributor's iPhone (question 4); simulators use
-  only a local stand (unchanged server binary plus local PostgreSQL 16 on the
-  build Mac).
+- No server-side change, configuration or deployment. Two additional hosted
+  accounts exist under question 4 (no fixed budget): one `service-bridge`
+  registration from the build Mac while diagnosing the phone's TLS failure
+  and one for the contributor's iPhone, both counted in the evidence
+  directory; simulators use only a local stand (unchanged server binary plus
+  local PostgreSQL 16 on the build Mac), and the phone's local-stand smoke
+  used that same stand bound to the Mac's LAN address.
 - Build outputs, logs and evidence JSON live under `clients/ios/out/`
   (ignored); durable evidence goes to `docs/project/evidence/ios-client-<date>/`.
-- **One Ubuntu job lands with this pull request, and has not run yet.**
+- **One Ubuntu job lands with this pull request, and has run on it.**
   `.github/workflows/ios.yml` adds `ios-static`: the iOS-target `cargo check`
   of the bridge and the unchanged core, bridge clippy and host tests,
   lock-file drift, the toolchain and WebRTC pins, the two source-only
@@ -306,10 +332,14 @@ XcodeGen for project generation (rejected: an additional unpinned binary).
   `.../issues/27` and `.../issues/27#issuecomment-5651949919`, which this
   branch is the first to cite and which lychee cannot resolve in a private
   repository — the same treatment the surrounding list already gives issues 16
-  and 19. The workflow's first execution is the pull request that carries it,
-  so no run can be linked here; every check in it was run locally on the
-  pinned build Mac with exit 0, and the verification table records those local
-  runs. The one `run` line that is runner setup rather than a check,
+  and 19. The workflow's first execution was the draft pull request that
+  carries it, [#36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36):
+  `ios-static` passed, as did the `markdown` job of `docs.yml` and the
+  `client-core-and-tls` and `native-package` jobs of `server.yml`; the
+  informational `legacy-client-history` job fails on `main` too. Every check
+  in `ios-static` was also run locally on the pinned build Mac with exit 0,
+  and the verification table records those local runs. The one `run` line
+  that is runner setup rather than a check,
   `rustup toolchain install`, was not re-run on a Mac that already pins
   1.98.1. An iOS *build* in CI would still need a macOS runner, which question
   6 answers with "no".
@@ -338,16 +368,37 @@ What has been run, in one sentence each:
   machine and exchanges identities, text, call-v2 bodies, sealed snapshots and a
   QR contact with the Swift client, with the expectations recomputed in Python
   rather than taken from the shared core — `CLAIMED`, because it is a host
-  comparison and not a device result;
-- everything that needs a device — Data Protection classes, a real camera, a
-  real network, a locked screen, a screen recording, a hosted account, a
-  TestFlight build — `NOT RUN`.
+  comparison and not a device result; the only contact with the owner's
+  Android on its own hardware so far is the pairing from his QR image and one
+  text the hosted server accepted, not yet delivered or answered;
+- a signed Debug build on the contributor's iPhone 16 Pro Max (iOS 26.6.1)
+  against the local stand reached over the Mac's LAN address: identity, own
+  QR, a contact read off the Mac's screen with the real camera, the
+  fingerprint sheet, two texts phone→peer and one peer→phone with receipts,
+  and one call phone→simulator that connected with video from the phone —
+  `SHOWN`;
+- a Release build on the same iPhone against the hosted alpha: registration,
+  the owner's Android paired from his QR image, one text accepted by the
+  server with one check — a solo pre-run of stage 1, not the joint test;
+  delivery to the owner's phone and his reply had not yet happened;
+- what still needs a device or the owner — the Data Protection class of the
+  state file, screen lock during dialling, a real screen recording over the
+  call stage, a relayed call, an archive, an `.ipa` export, a TestFlight build
+  and both joint tests — `NOT RUN`. One open item from 2026-09-13: after a
+  network drop the phone stayed at «Нет подключения» while the server
+  answered and the pinned key was unchanged; the cause is under investigation
+  on the branch and device logs were not collected.
 
 Two joint tests with the owner are the only live tests, both on a real iPhone,
 both after an explicit owner "go", and both written in advance with every
 `Result` column reading `NOT RUN`:
 [stage 1, text](../project/evidence/ios-client-20260913/stage1-text.md) and
 [stage 2, calls](../project/evidence/ios-client-20260913/stage2-voice.md).
+Neither has run as a joint session. On 2026-09-13 the contributor alone
+exercised stage 1 steps 1, 2, 4 and the first half of 5 (one check, no reply
+yet) against the hosted server with the owner's QR image; that is a pre-run,
+not the joint test, and the iPhone's hosted registration was consumed before
+the stage.
 
 ## Closed-alpha scope (policy item 1)
 
@@ -383,10 +434,10 @@ the human decision owner.
 | # | Question | Status |
 | --- | --- | --- |
 | 3 | Keychain class for the wrapping key: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, so a locked screen during a call cannot turn a heartbeat commit into a terminal freeze. | Answered 2026-09-13: confirmed. |
-| 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. |
+| 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. Two were consumed on 2026-09-13: one from the build Mac while diagnosing the phone's TLS failure and one for the iPhone. |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE mode or refuse the call? | Answered 2026-09-12 by the owner's agents in issue #27: a valid authenticated 404 from the pinned origin permits the pre-disclosed direct-ICE mode; a TLS failure, a timeout, a malformed 200 or a relay failure does not. |
 | 6 | Paid macOS CI runner for the iOS build. | Answered 2026-09-13: no. Ubuntu checks plus the local `build.sh` and an evidence directory. |
-| 7 | Pin and certificate rotation. | Partly answered 2026-09-13: the owner renewed the certificate with the **same key**, so the SPKI pin is unchanged and both clients keep working; the new validity ends 2026-12-12T07:38:09Z. Verified independently from this machine: the live SPKI equals the pin this client carries. A same-key renewal is therefore the safe path and must be repeated before that date, since no automatic renewal exists. Rotating the key itself stays open and needs its own deploy-trust RFC, because `clients/core/src/intro_v2.rs:21-44` feeds the pin into the first-contact channel transcript, so a new key invalidates existing contact channels and not only the transport. |
+| 7 | Pin and certificate rotation. | Partly answered 2026-09-13: the owner renewed the certificate with the **same key**, so the SPKI pin is unchanged and both clients keep working; the new validity ends 2026-12-12T07:38:09Z. Verified independently from this machine: the live SPKI equals the pin this client carries. A same-key renewal is therefore the safe path and must be repeated before that date; the [bounded same-key automation](../operations/tls-auto-renewal.md) installed on the host on 2026-09-13 does that, outside this client. Rotating the key itself stays open and needs its own deploy-trust RFC, because `clients/core/src/intro_v2.rs:21-44` feeds the pin into the first-contact channel transcript, so a new key invalidates existing contact channels and not only the transport. |
 | 8 | Apple export compliance and the entity that files. | Partly answered 2026-09-13: `ITSAppUsesNonExemptEncryption = YES` is prepared in the bundle as the conservative candidate. That key is not compliance: answering yes normally also requires a code Apple issues after reviewing the documentation, and the requirement applies to TestFlight too. The classification, the regime and the filing entity stay open; the publicly-available-source route is not available while the repository is private. Inventory and gate: [export compliance](../clients/ios/export-compliance.md). |
 | 10 | Which doc-to-code findings are fixed in a docs-only pull request and which are waived. | Answered 2026-09-12 by the owner's agents in issue #27: a docs-only pull request for the factual corrections, with five items reframed rather than applied verbatim. Recorded in `docs/clients/ios/protocol-sources.md`. |
 | 11 | JDK 21 on the build Mac for the Java cross-checks. | Answered 2026-09-13: installed (21.0.12.1, tests only, pinned in `clients/ios/toolchain.json`). |
@@ -405,8 +456,9 @@ client is the Android build on `main`.
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical decision authority only; not scope approval, not ADR acceptance).
-- Required-review evidence permalinks: independent AI review pending (recorded
-  separately from human reviewers).
+- Required-review evidence permalinks: the independent AI review is recorded
+  in [independent-review.md](../project/evidence/ios-client-20260913/independent-review.md),
+  separately from human reviewers; no human reviewer permalink exists yet.
 - Resulting ADR: [proposed ADR-0014](../decisions/0014-ios-client.md).
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
@@ -415,6 +467,7 @@ client is the Android build on `main`.
   preparation" is
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27), where the
   owner's agents answered questions 5 and 10 on 2026-09-12 and where the
-  delegation was recorded on 2026-09-13; this client pull request; and the
+  delegation was recorded on 2026-09-13; this client pull request, opened as
+  draft [#36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36); and the
   docs-only pull request question 10 allows, which is a separate change and is
   **not** part of this one.

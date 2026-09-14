@@ -9,11 +9,21 @@ REQ-CALL-002/003) against the Android client, over
 performed. Participants: **Yaroslav** (contributor, iPhone) and **Sergey**
 (owner, Android).
 
+**Pre-run (2026-09-13), not this test.** Before any joint session, one call was
+placed from the signed Debug build on the physical iPhone (iPhone 16 Pro Max,
+iOS 26.6.1) to a simulator peer on the local stand — the unchanged server
+binary and a private PostgreSQL 16 on the build Mac. The call connected, with
+video visible from the iPhone; the simulator has no camera, so no picture came
+the other way. That run did not touch the owner's Android or the hosted server,
+whether audio was actually heard was not recorded, and no screen recording,
+no lock during dialling (step 11, left for this test) and no relayed call were
+tried. Every `Result` cell below therefore stays `NOT RUN`.
+
 ## Preconditions
 
 | Precondition | State |
 | --- | --- |
-| Stage 1 completed on the same pair of phones | not run |
+| Stage 1 completed on the same pair of phones | not run — a solo pre-run of stage 1 steps 1, 2, 4 and the first half of 5 against the hosted server on 2026-09-13 is recorded in [stage 1](stage1-text.md); it is not a completion |
 | Owner "go" for this live test, permalink recorded here | missing |
 | Android build **v16 or later** — call-v2 rejects v1 call bodies, so an older build cannot call this client at all | not recorded |
 | Whether the server issues TURN credentials for this test, or answers `404 turn_disabled` (the disclosed direct-ICE mode) | not recorded |

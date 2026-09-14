@@ -157,11 +157,17 @@ def check_identity(plist, report):
 def check_delivery_path(plist, raw, report):
     modes = plist.get('UIBackgroundModes')
     report.equal('UIBackgroundModes', modes, ['audio'])
-    for key in ('aps-environment', 'NSAppTransportSecurity', 'NSAllowsArbitraryLoads'):
-        if key in plist or key in raw:
-            report.fail(f'Info.plist has no {key}', 'present in the built plist')
-        else:
-            report.ok(f'Info.plist has no {key}')
+    if 'aps-environment' in plist or 'aps-environment' in raw:
+        report.fail('Info.plist has no aps-environment', 'present in the built plist')
+    else:
+        report.ok('Info.plist has no aps-environment')
+    # App Transport Security is off, and exactly so: ATS refuses a self-signed
+    # leaf on a public IP address before any delegate runs, and its exception
+    # lists take domain names only. Trust is the pinning delegate's alone, and
+    # test_ui_contract.py forbids any URLSession outside it. Anything other
+    # than this one key with this one value is a different decision.
+    report.equal('NSAppTransportSecurity is exactly {NSAllowsArbitraryLoads: true}',
+                 plist.get('NSAppTransportSecurity'), {'NSAllowsArbitraryLoads': True})
     if 'voip' in (modes or []) or 'voip' in raw:
         report.fail('no voip background mode', 'the plist names voip')
     else:

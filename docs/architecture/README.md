@@ -159,8 +159,14 @@ video, both `a=sendrecv`, H.264 or VP8 mandatory, no renegotiation, and a
 
 [RFC-0021](../rfcs/0021-ios-client.md) and
 [ADR-0014](../decisions/0014-ios-client.md) are `proposed`, not accepted. Two
-simulators have completed calls in both directions on a local stand; nothing
-has run on a physical phone and no hosted account exists. This view is a map of
+simulators have completed calls in both directions on a local stand; on
+2026-09-13 a signed build on a physical iPhone registered, paired by camera,
+exchanged text and placed a call on that stand, and one registration from the
+phone on the hosted alpha paired the owner's Android and sent a text the
+server accepted. App Transport Security is off (`NSAllowsArbitraryLoads`)
+because it refused the self-signed leaf on a public IP before the pinning
+delegate ran; the pin above stays the only trust decision. The joint tests
+with the owner have not run. This view is a map of
 a candidate, not accepted architecture or evidence of a delivered client — the
 honest status of every requirement is
 [the iOS verification table](../clients/ios/verification.md), and the platform

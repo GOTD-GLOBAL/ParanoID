@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client behaviour: rule to source table
@@ -13,7 +13,11 @@ the reading of it. Since then the two clients have also been run against each
 other on the build Mac — `clients/ios/test_android_compatibility.py` and
 `clients/ios/test_qr_cross.py`, both `CLAIMED` in
 [verification.md](verification.md) — which checks the scenarios those scripts
-cover on the revisions they digest, and not every row of this table. Line
+cover on the revisions they digest, and not every row of this table. The only
+contact with the owner's Android on its own hardware so far is from
+2026-09-13: a signed build on a physical iPhone paired it from the owner's QR
+image and sent one text the hosted server accepted, still undelivered and
+unanswered — no row here is confirmed by an Android client on a phone. Line
 numbers refer to `main` at `fe9c26c`
 (Android v15) unless a row says otherwise; a row marked `(Android v16)` cites
 the call-v2 and video code of the post-v15 Android client instead, read in the
@@ -58,6 +62,7 @@ Rules of the Swift adapter over the C-ABI bridge
 | Registration/status response `{mode:"active",account,device,credential}` must match the local credential, otherwise `status_conflict`; then `prepare_contact_v2` publishes the fallback key | `docs/protocol/self-service-v2.md:50-51` | `clients/core/src/clean_service.rs:796-829` | `SelfServiceClient.java:131-134,186-189`; `RealtimeLoop.java:173-176` | none |
 | Server bounds: eight new accounts per 60 s, 1024 accounts, identical retries free | `docs/protocol/self-service-v2.md:68-71` | `server/src/self_service_http.rs:336-345` | not applicable | none (input to RFC-0021 question 4) |
 | Realm is the saved HTTPS origin without path; `pin` is SHA-256 of the server leaf SPKI DER; saved trust wins over compiled defaults | `docs/protocol/key-enrollment-v1.md:41-42`; `docs/protocol/first-contact-v1.md:31,45` | `clients/core/src/lib.rs:166-169,457-460` | `KeyClient.java:9-10,17-21,37-41`; `PinnedTls.java:18-21` | A.5: documents say `SPKI`, code says `pin` / `tls_pin` / `PARANOID_KEY_PIN`; same value |
+| App Transport Security is off: `NSAppTransportSecurity` is exactly `{NSAllowsArbitraryLoads: true}` with no per-domain exception, and every `URLSession` is built by `PinnedSessionDelegate` (pinned SPKI, self-signed leaf, TLS 1.2 floor, no proxies, no redirects); trust never comes from a CA chain. On a device ATS refuses a self-signed leaf on a public IP before any delegate runs and its exception lists take no IP literal, which a LAN stand never shows | none in `docs/protocol/` (platform rule); `docs/security/ios-client-threats.md:139-157`; `docs/decisions/0014-ios-client.md:130-136` | not applicable (`clients/ios/App/ParanoID/Info.plist:27-31`; `clients/ios/ParanoidKit/Sources/ParanoidKit/Tls/PinnedSessionDelegate.swift`; `clients/ios/test_ui_contract.py:733-741` enforces both halves) | `PinnedTls.java:15,47-72` (a pinned trust manager replaces the platform store; Android has no ATS) | none; defect 4 of the device smoke, found 2026-09-13 against the hosted server (`NSURLErrorDomain -1200`, stream error `-9802`) and fixed in `adb56be` |
 
 ## Session
 

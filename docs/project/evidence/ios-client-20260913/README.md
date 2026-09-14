@@ -13,25 +13,27 @@ names, in its own section, everything that was **not** run.
 | File | What it is |
 | --- | --- |
 | `README.md` (this file) | the catalogue: commands, results, versions, digests, what was not run, the owner's decisions |
-| [artifacts.json](artifacts.json) | the same catalogue for machines: 32 artifacts and 49 screenshots, each with path, bytes, SHA-256 and the time it was produced |
-| [stage1-text.md](stage1-text.md) | joint test 1 (text and QR on real phones), written in advance, every `Result` cell `NOT RUN` |
+| [artifacts.json](artifacts.json) | the same catalogue for machines: 33 artifacts and 56 screenshots, each with path, bytes, SHA-256 and the time it was produced |
+| [stage1-text.md](stage1-text.md) | joint test 1 (text and QR on real phones), written in advance, every `Result` cell `NOT RUN`; steps 1, 2, 4 and the first half of 5 were pre-run by the contributor alone on 2026-09-13, which is not the joint test |
 | [stage2-voice.md](stage2-voice.md) | joint test 2 (calls on real phones), written in advance, every `Result` cell `NOT RUN` |
+| [independent-review.md](independent-review.md) | the independent AI reviews of policy item 2: reviewer, model, revision, every finding and what became of it |
 
 ## Counters
 
 | Counter | Value |
 | --- | --- |
 | Accounts this branch created on the hosted alpha | `hosted_registrations: 2` — one from the build Mac through `service-bridge` while diagnosing the phone's TLS failure, and one from the physical iPhone once App Transport Security was switched off; both under the owner's answer to RFC-0021 question 4 (no fixed budget). The phone then paired the owner's Android from its QR and sent a text the hosted server accepted |
-| Contacts with the hosted server | one TLS handshake, no HTTP request, no POST, no registration |
-| Physical phones involved so far | none |
+| Contacts with the hosted server | one TLS handshake from the build Mac with no HTTP request (2026-09-13T08:06Z); then the build Mac's `service-bridge` registration, made while diagnosing the phone's TLS failure; then, after the App Transport Security fix of `adb56be`, the iPhone's registration, the pairing of the owner's Android from his QR image on the iPhone, and one text the hosted server accepted (one check) — its delivery to the owner's Android was still pending because his phone had not polled |
+| Physical phones involved so far | one: the contributor's iPhone 16 Pro Max (iOS 26.6.1, Developer Mode enabled) — a Debug build against the local stand and, later the same day, a Release build against the hosted server, both installed on 2026-09-13 with team `5RPGVC566Q`. The owner's Android took part only as the source of a QR image and the addressee of one text not yet delivered |
 | Simulator devices used | iPhone 17 Pro and iPhone 17e, both on iOS 26.5 |
 
-The counter moves only with an explicit owner "go" for that specific
-registration, whose permalink is written here beside it. RFC-0021 question 4
-was answered on 2026-09-13 — **as many accounts as the tests need, no fixed
-budget** — which sets a budget, not an authorisation: each registration still
-needs its own "go", and each is counted here because the server has **no
-account-deletion path** and every registration is permanent.
+RFC-0021 question 4 was answered on 2026-09-13 — **as many accounts as the
+tests need, no fixed budget** — which sets a budget, not a number. The two
+registrations above are recorded under that answer with the reason each was
+needed, and no separate per-registration permalink is written beside them.
+Each is counted here because the server has **no account-deletion path** and
+every registration is permanent; any further registration is counted here the
+same way.
 
 ## The revision this catalogue describes
 
@@ -50,7 +52,10 @@ while the branch is being edited, so the gate's own `note:` line in the run
 that is being reported is the record, and this row is only that line at that
 moment. Nothing in this branch touches `server/`, `clients/core/src/`,
 `clients/android/`, `key-protocol/` or `deploy/` — that is the part the gate
-checks, and it re-passed at this head.
+checks, and it re-passed at this head. The device smoke further down was run
+around this head — its simulator frames straddle the Keychain entitlement fix
+`bcb4046`, which is this head — and its hosted leg at the later App Transport
+Security fix `adb56be`, where the gate table below was not re-run.
 
 ## Command → result
 
@@ -118,7 +123,7 @@ says why and is never counted as a pass.
 | 21 | simulator Keychain tests | `xcodebuild test … -only-testing:ParanoIDTests/KeychainStoreTests` | ok | 6 | 8 tests, 0 failures; the only run where the application owns a Keychain (ad-hoc simulator signature, no team) — measured, see below |
 | 22 | device build (Release, unsigned) | `xcodebuild … -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` | ok | 6 | `out/ParanoID.app`, `global.paranoid.messenger` 0.0.1 (1) |
 | 23 | application bundle | `python3 test_app_bundle.py out/ParanoID.app` | ok | 1 | `PASS: 24 checks (1 skipped)`; the skipped one is the Team ID, which needs a signed bundle |
-| 24 | archive and export | owner signing gate | **skipped** | 0 | `Archive skipped: PARANOID_IOS_TEAM_ID unset` — no signing material exists on this machine and none was created |
+| 24 | archive and export | owner signing gate | **skipped** | 0 | `Archive skipped: PARANOID_IOS_TEAM_ID unset` — no signing material existed on this machine at that run. The device installs of 2026-09-13 were signed with team `5RPGVC566Q` from the `xcodebuild` command line, outside `build.sh`; this gate has not been re-run, and no archive or export exists |
 
 ### Runs from earlier in this branch, dated by the file each one left
 
@@ -140,13 +145,35 @@ file is still on disk, because a re-run overwrites the artifact in place.
 | QR round trip on the simulator | 2026-09-12T19:07Z | byte-identical round trip of the core's own 901-byte contact; 2049 bytes refused | `qr-round-trip.json` |
 | storage commit order and the injected-fault matrix | 2026-09-12T07:22Z | every durable step failed in turn | `storage-20260912/summary.json` |
 | every `run` command of `.github/workflows/ios.yml`, locally in workflow order | 2026-09-13T13:39Z | twelve of the thirteen exited 0; the thirteenth is the `rustup toolchain install` setup line, not re-run on a Mac that already pins 1.98.1 | `ci/step45-workflow-commands.log`, `ci/step45-verification.log` |
+| Device smoke on the contributor's iPhone 16 Pro Max (iOS 26.6.1, Developer Mode enabled): a Debug build signed with team `5RPGVC566Q`, installed with `xcodebuild -allowProvisioningUpdates` and `xcrun devicectl`, against the local stand bound to the Mac's LAN address, with a persistent peer in place of the in-memory fixture peer, and a simulator as the call peer. The Debug build takes the stand's realm and pin through a `DEBUG`-only environment channel, because `devicectl` relays no launch arguments | 2026-09-13T20:41Z (the result file's time) | identity created on the device; own QR shown; a QR scanned off the Mac screen with the real camera; fingerprint sheet confirmed; 2 texts device→peer and 1 peer→device with receipts; one call device→simulator `connected`, video from the iPhone visible (the simulator has no camera). The local stand afterwards: 5 accounts, 5 devices, 7 stored envelopes all frame 2, 0 plaintext rows. Screen lock during dialling not run — it moves to the joint test | `device-smoke-20260913/device-smoke-result.json` + 7 simulator screenshots |
+| The same iPhone against the hosted alpha: a Release build signed with the same team at `adb56be`, after the App Transport Security fix | 2026-09-13, recorded in the same file | the phone registered (`hosted_registration_from_device: true`); it paired the owner's Android from his QR image, scanned off a screen, and sent one text the hosted server accepted (one check); delivery to the owner's Android `pending` — his phone had not polled. Before the fix, a `service-bridge` registration from the build Mac diagnosed the phone's TLS failure; the two together are the counter's 2 | the same `device-smoke-result.json` |
+| `.github/workflows/ios.yml` on a GitHub runner: pull request [#36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36), opened as a draft on 2026-09-14 | 2026-09-14 | job `ios-static` passed; the docs workflow passed; the server workflow's `client-core-and-tls` and `native-package` passed; `Legacy client history` is informational and fails on `main` too | none on this Mac — the run lives on GitHub |
 
 Every run above used the local stand — the **unchanged** server binary against
-a private PostgreSQL 16 on the build Mac — or no server at all, with one
-exception: row 4 is the single TLS handshake to the hosted alpha. That
-handshake sent no HTTP request, created no account and is the only contact this
-branch has had with the hosted server; it is the contact the **Counters** table
-at the top of this file records.
+a private PostgreSQL 16 on the build Mac — or no server at all, with two
+exceptions: row 4 is the TLS handshake to the hosted alpha, which sent no HTTP
+request and created no account, and the hosted leg of the device smoke, which
+is where the two registrations, the pairing from the owner's QR image and the
+one accepted text of the **Counters** table come from. The `server_state`
+block of `device-smoke-result.json` (5 accounts, 5 devices, 7 frame-2
+envelopes, 0 plaintext rows) is the **local** stand's — its `stand` line says
+so — and no such count was taken on the hosted server.
+
+The device smoke found three defects, two on the local stand and one against
+the hosted server. An empty entitlements file made the simulator's Keychain
+answer `errSecMissingEntitlement (-34018)` — fixed by declaring
+`keychain-access-groups` (`bcb4046`), with no change of behaviour on the
+device; and the fixture peer kept its key in memory only, so a peer registered
+in one process could not be read by the next — replaced by a persistent peer,
+harness only. The third is defect 4 of
+[verification.md](../../../clients/ios/verification.md): App Transport
+Security refused the self-signed leaf on a public IP address before
+`PinnedSessionDelegate` ran (`NSURLErrorDomain -1200`, stream error `-9802`),
+which a LAN stand never shows and which `NSPinnedDomains` cannot exempt for an
+IP literal. Fixed in `adb56be` by `NSAllowsArbitraryLoads = YES` under the
+`test_ui_contract.py` contract of exactly that key and no `URLSession` outside
+the delegate; the reasoning is in
+[ios-client-threats.md](../../../security/ios-client-threats.md).
 
 **The stand runs a prebuilt server binary, and that is an environment fact.**
 Since `main` `547099f` (2026-09-13), `server/src/android_updates.rs:297` opens
@@ -198,6 +225,7 @@ is kept in `out/logs/keychain-signed.log` (`** TEST SUCCEEDED **`,
 | Python | 3.14.4 | `build-manifest.json` |
 | Bundle | `global.paranoid.messenger` 0.0.1 (1), unsigned, background mode `audio` | `build-manifest.json` |
 | Simulators | iPhone 17 Pro, iPhone 17e, iOS 26.5 | `voice-sim-result.json` |
+| Physical device | iPhone 16 Pro Max, iOS 26.6.1, Developer Mode enabled; Debug and Release builds of `global.paranoid.messenger` signed with team `5RPGVC566Q` | `device-smoke-result.json` |
 | Android reference for the source cross-check | `fe9c26cb4824…` (v15 plus the two classes that moved past it on `main`: call-v2 video and the push wake gateway) | `java-host.json` |
 | Markdown linter | `markdownlint-cli2@0.18.1`, the version CI pins | `docs.yml` |
 
@@ -224,7 +252,7 @@ file as it now stands, not of what that run wrote.
 | `clients/ios/out/evidence/bridge-hashes.json` | 2026-09-13T14:38Z | 2125 | `060b0578cda0b288dab1f520bdccb5c2a73961ae8e78c6cfe97b8c25724ca685` | build-core.sh manifest: the three release slices, the xcframework, the header digests and the bridge lock digest |
 | `clients/ios/out/evidence/bridge.json` | 2026-09-11T20:24Z | 4482 | `e01ada5545552a524539645f93fb7e895be88aeb2039582826fbee902d672ca5` | plan steps 5-6, kept as it was written: the first compile of the unchanged core and key-protocol for aarch64-apple-ios, with the red-zone stop gate not tripped |
 | `clients/ios/out/evidence/toolchain.json` | 2026-09-13T19:23Z | 868 | `9e91b4960408a862581baf204b59365293b58a85ce01ab363ea049b8f9127f7a` | test_toolchain.py: pinned versus observed toolchain, with the members it could not observe listed as skipped. The file now on disk is a later run whose `skipped` list is `xcode`, `ios_sdk`, `swift`, `pg_bin`, so it observes `rustc`, the three Apple targets and OpenSSL only; the Xcode, SDK, Swift and PostgreSQL readings of gate 1 are preserved in `build-manifest.json` and `build-sh.log` |
-| `clients/ios/out/evidence/app-bundle.json` | 2026-09-13T14:40Z | 3585 | `17bcc1748f14d00a245e7589558acd8cb9ee0c84e9af4e4e5cdbd9fdaf193667` | test_app_bundle.py: the unsigned Release bundle taken apart (Info.plist, embedded WebRTC slice, notices, no simulator slice) |
+| `clients/ios/out/evidence/app-bundle.json` | 2026-09-13T20:13Z | 3930 | `d7fb910d36b91bf4ec58a6b352031192bb729022f7e14669c134f11988f88af6` | test_app_bundle.py: the last run overwrote the 14:40Z reading of the unsigned bundle with a signed Release bundle (team `5RPGVC566Q`) taken apart — `PASS`, the Team ID reported, the signed entitlements without `aps-environment`, the WebRTC digest `SKIPPED` because Xcode re-signed the framework. It predates `adb56be`, so it still reports no `NSAppTransportSecurity`; the gate has not read a bundle built after that commit |
 | `clients/ios/out/logs/keychain-signed.log` | 2026-09-13T19:34Z | 180812 | `279edb7cdbbf6d3b7a6e2c5448c179f508ee90f264217a824fc5bee0c6ed3f47` | the Keychain gate run with a development team (`DEVELOPMENT_TEAM=5RPGVC566Q`): `Executed 8 tests, with 0 failures`, `** TEST SUCCEEDED **` — the third row of the signing table above |
 | `clients/ios/out/evidence/pinned-tls.json` | 2026-09-13T19:25Z | 2366 | `1e0c3fb4975717bc25a321eed504c6b680bc818a8a4edd7bb5ca0c3ad49e195a` | check-pinned-tls.py: nine leaf cases against real loopback servers, what was rejected before any HTTP request, and the TLS floor |
 | `clients/ios/out/checks/transport/realtime-transport.json` | 2026-09-13T19:24Z | 22682 | `3c2f900937790657d50dd33211d750160b25e89ce0a35d45c3ef2dc601ecdcd0` | test_realtime_transport.py: the eight transport rules against the fake server, with the server-side record of connections, resets and idle closes |
@@ -246,7 +274,8 @@ file as it now stands, not of what that run wrote.
 | `clients/ios/out/checks/realtime/network-timings.json` | 2026-09-12T19:17Z | 16521 | `34f538d7aa4b41b3bbd90d1385daf312d71a23577c6cfa6b08af1c21a33fb42c` | the network timings of that run |
 | `clients/ios/out/evidence/sim-text/sim-text-result.json` | 2026-09-13T12:12Z | 2556 | `971bc6f48a1dcf2a6b2b2a09ad3c0414fd7efe0768a1787c386d64cc030f0570` | test_sim_text.py: the application itself on one simulator — identity, QR paste, pairing, text, receipts, block/unblock, contact names, reinstall |
 | `clients/ios/out/evidence/voice-sim/voice-sim-result.json` | 2026-09-13T12:15Z | 5171 | `0ba4005c5a24338666a7fff919a673f3b4b0d0e65eb30de9476b80cd3e072f09` | test_voice_sim.py: two simulators, two call-v2 calls one each way, both sides connected over direct ICE with the RTP counters, the held time and the heartbeat envelopes; screen lock recorded NOT RUN with its reason |
-| `clients/ios/out/evidence/hosted-preflight.json` | 2026-09-13T08:06Z | 615 | `6fea521e5b880d34c7e55bcdeb4400fbb4a6848e99337701193b756398255b03` | one TLS handshake to the hosted alpha and nothing else: the live SubjectPublicKeyInfo digest equals the pin this client carries, the renewed leaf is valid to 2026-12-12, and the registration counter is zero |
+| `clients/ios/out/evidence/device-smoke-20260913/device-smoke-result.json` | 2026-09-13T21:51Z | 3227 | `7794d8838b67b557f12695543d13bcd9e4261c4e863bc9d9ffa42727b1d51d91` | the device smoke on the physical iPhone: device, build, results, the local stand's state, the hosted registration note, the defects found and what was not run; listed in `artifacts.json` under `group: device` |
+| `clients/ios/out/evidence/hosted-preflight.json` | 2026-09-13T08:06Z | 615 | `6fea521e5b880d34c7e55bcdeb4400fbb4a6848e99337701193b756398255b03` | one TLS handshake to the hosted alpha and nothing else: the live SubjectPublicKeyInfo digest equals the pin this client carries, the renewed leaf is valid to 2026-12-12, and the registration counter as it stood then, zero |
 | `clients/ios/out/ci/step45-workflow-commands.log` | 2026-09-13T13:39Z | 839 | `e901781e2c2d11c104aa1eff37781d55106755ef8575cb17a8b07dadc26991f7` | every run command of .github/workflows/ios.yml executed locally on the build Mac, in workflow order |
 | `clients/ios/out/ci/step45-verification.log` | 2026-09-13T13:39Z | 11996 | `3f2c1da6580af99f6a64b48c699107a9c9ceb42463f0b12f8591b06a53f92a4e` | the verification pass of that workflow: YAML parse, action pin, path filters, no always-skipping step |
 | `clients/ios/out/ci/toolchain-ci.json` | 2026-09-13T13:28Z | 868 | `362a09ff38886768d58d24a6ca97449f323ccacc70fe9983ffe66bc8e88b6077` | test_toolchain.py --no-xcode, the form the Ubuntu job runs |
@@ -259,12 +288,29 @@ frame. They are **not** committed: the pairing and contact frames show a
 64-digit contact fingerprint and an account identifier, which this directory
 never records — so the digest-plus-description form is used for all of them,
 including the ones under 200 KB, rather than committing a subset and cutting
-the story in half.
+the story in half. Seven more, under `device-smoke-20260913/`, are
+simulator-side frames of the device smoke, listed in `artifacts.json` the same
+way; none of them was taken on the iPhone.
 
 | Set | Count | What is in it |
 | --- | --- | --- |
 | `clients/ios/out/evidence/voice-sim/` | 32 | the two-simulator call run: welcome, identity, pairing confirmation, contacts, «Сервер подключён», then per call the caller prompt, outgoing, connected, held, ended and a mid-call frame — for both the iPhone 17 Pro (`a-*`) and the iPhone 17e (`b-*`) |
 | `clients/ios/out/evidence/sim-text/` | 17 | the text run on one simulator: welcome, identity, add contact, paste, fingerprint confirmation, contacts, chat, sent, delivered, double tap, details, blocked, unblocked, renamed, default name, and the two frames after a reinstall |
+| `clients/ios/out/evidence/device-smoke-20260913/` | 7 | the simulator side of the device smoke, 19:05Z–20:08Z: the local-state screen «Не удалось открыть локальное состояние» — two frames on the two simulators before the entitlements fix, when the Keychain answered `-34018`, and one more at 20:06Z whose cause the result file does not record — the welcome screen right after the fix, «Чаты» with «Сервер подключён» (two frames, the last at 20:08Z), and the chat with one text each way and «Доставлено» |
+
+## Shown on a physical iPhone
+
+Rows that this catalogue listed as `NOT RUN` until 2026-09-13 and that the
+device smoke above has shown; the recording rules at the end of this file are
+what make them `SHOWN` rather than `CLAIMED`.
+
+| Shown | Where |
+| --- | --- |
+| Anything at all on a physical iPhone | the contributor's iPhone 16 Pro Max, iOS 26.6.1, Developer Mode enabled: a Debug build on the local stand and a Release build against the hosted alpha, both installed on 2026-09-13 |
+| A QR code read off a real camera | scanned off the Mac screen on the local stand, and off the owner's QR image — sent as an image, scanned off a screen — for the hosted pairing |
+| Identity, own QR, the fingerprint sheet, text both ways with receipts, on a phone | the local-stand leg of the device smoke |
+| A call from a phone that connected and carried video | device→simulator on the local stand; video from the iPhone was visible, the simulator has no camera, and audio actually heard is not recorded |
+| A registration, a pairing and one accepted text on the hosted alpha from a phone | the hosted leg; delivery to the owner's Android and his reply are still pending |
 
 ## NOT RUN
 
@@ -275,20 +321,19 @@ reviewer should hold the pull request to.
 
 | Not run | Why |
 | --- | --- |
-| Anything at all on a physical iPhone | No signed build exists: no App ID without the push capability, no owner "go" for an install, and the export-compliance gate is closed. Every row below follows from this one |
-| The two joint tests with the owner | [stage1-text.md](stage1-text.md) and [stage2-voice.md](stage2-voice.md) are written in advance and every `Result` cell reads `NOT RUN` |
-| Registration on the hosted alpha | No owner "go". The server cannot delete an account, so a registration is permanent; the counter above stays at zero until such a "go" is given and recorded here with its permalink |
-| Interoperability with the Android client **on its own hardware** | The protocol comparison did run, and it is `CLAIMED`, not `SHOWN`: both stacks were processes on this Mac (gates 11 and 12). No Android build on a phone has spoken to this client, over any network. Stage 2 of the joint tests is where that happens |
+| Anything on a physical iPhone beyond the device smoke | A signed build ran on the contributor's iPhone on 2026-09-13 (the section above); the rows below say, one by one, what that run did not cover. The export-compliance gate is still closed, so no TestFlight build exists |
+| The two joint tests with the owner | [stage1-text.md](stage1-text.md) and [stage2-voice.md](stage2-voice.md) are written in advance and every `Result` cell reads `NOT RUN`. Stage 1 steps 1, 2, 4 and the first half of 5 (one check, no reply yet) were pre-run by the contributor alone on 2026-09-13 against the hosted server with the owner's QR image — a pre-run, not the joint test, and it fills no `Result` cell |
+| Delivery of the hosted text to the owner's Android, and his reply | The one text the iPhone sent on 2026-09-13 was accepted by the hosted server (one check); the owner's phone had not polled, so delivery, the second check and any reply are pending. The two registrations are counted above; the server cannot delete an account |
+| Interoperability with the Android client **on its own hardware** | The protocol comparison did run, and it is `CLAIMED`, not `SHOWN`: both stacks were processes on this Mac (gates 11 and 12). The only contact with the owner's Android so far is the pairing from his QR image and one text the hosted server accepted, not yet delivered or answered; no Android build on a phone has sent anything to this client. Stage 2 of the joint tests is where a call happens |
 | The unpaired first-contact story with an Android peer | `test_android_compatibility.py` pairs both sides before the first text, so REQ-MSG-005 across the two clients is untested; between two instances of this client it is covered by `test_clean_self_service.py` |
-| The Data Protection class of the state file | A simulator has no Data Protection and reports no protection class |
-| A QR code read off a real camera | Simulators pair by pasting the contact text; `AVCaptureSession` has no camera to open |
-| A real screen recording, AirPlay or a wired mirror over the call stage | No simulator can start one; the cover is verified source-only |
-| Screen lock during dialling or during a call | `xcrun simctl` exposes no lock verb and `XCUIDevice` has no lock API; recorded with that reason inside `voice-sim-result.json` |
-| A call over a real network, and any relayed call | Both simulators were on one Mac over loopback and the stand starts no TURN, so `/v2/voice/turn` answered `404 turn_disabled` and every pair that carried a call was `host` to `host` |
-| Audio actually heard, or a camera image actually seen | Nothing was decoded to a speaker and no camera exists; the measurement is RTP packet counters |
-| A signed build, an archive, an export | `PARANOID_IOS_TEAM_ID` is unset and no signing material exists on this machine; `build.sh` skips that gate out loud |
+| The Data Protection class of the state file | A simulator has no Data Protection and reports no protection class, and the device smoke did not measure it either |
+| A real screen recording, AirPlay or a wired mirror over the call stage | No simulator can start one and none was started on the iPhone; the cover is verified source-only |
+| Screen lock during dialling or during a call | `xcrun simctl` exposes no lock verb and `XCUIDevice` has no lock API; recorded with that reason inside `voice-sim-result.json`. Not run on the iPhone either: `device-smoke-result.json` moves it to the joint test |
+| Any relayed call, and a call between two phones | The simulator calls were on one Mac over loopback; the device call went from the iPhone to a simulator on the build Mac over the LAN stand. The stand starts no TURN, so `/v2/voice/turn` answered `404 turn_disabled` and every simulator pair that carried a call was `host` to `host`; no relayed call has been placed |
+| Audio actually heard | Not recorded in `device-smoke-result.json`, and on the simulators nothing was decoded to a speaker — the measurement is RTP packet counters. Video from the iPhone's camera was visible during the device call; the simulator has no camera, so no image came back |
+| An archive and an `.ipa` export | The device installs were signed from the `xcodebuild` command line with team `5RPGVC566Q`; `build.sh`'s archive gate was not re-run and no archive or export exists |
 | A TestFlight build, internal or otherwise | The [export-compliance gate](../../../clients/ios/export-compliance.md) is closed: `ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple applies the requirement to TestFlight too |
-| `.github/workflows/ios.yml` on a runner | It lands with this pull request; its first execution is that pull request. Every check in it was run locally instead, with exit 0. There is no macOS runner (RFC-0021 question 6, answered "no") |
+| Recovery after a network drop on the phone — open item, 2026-09-13/14 | After a network drop the application stayed at «Нет подключения» while the server answered from the Mac and the pinned key was unchanged; the cause is under investigation on the branch and device logs were not collected |
 | Independent **human** review of identity, cryptography, persistence and application security | Not available to the contributor. The closed-alpha exception permits an independent AI review in a fresh context, recorded separately (plan step 46) |
 
 ## The owner's decisions, by permalink
@@ -302,25 +347,36 @@ table has not been given, whatever a local note may say.
 | Answer to RFC-0021 question 5 (`404 turn_disabled` permits the disclosed direct-ICE mode) and question 10 (a docs-only pull request for the factual corrections) — by the owner's agents | 2026-09-12 | <https://github.com/GOTD-GLOBAL/ParanoID/issues/27> | it covers those two questions only |
 
 Still missing, each one a separate "go" that has not been given: closed-alpha
-scope approval, ADR-0014 acceptance, opening the pull request, installing a
-signed build on a phone, every hosted registration, and TestFlight
-distribution.
+scope approval, ADR-0014 acceptance and TestFlight distribution. The pull
+request was opened as a draft on 2026-09-14
+(<https://github.com/GOTD-GLOBAL/ParanoID/pull/36>); the signed install on the
+contributor's own iPhone and the two hosted registrations happened on
+2026-09-13 and are recorded in the **Counters** table under the question-4
+answer, with no separate permalink beside them.
 
 ## Before either joint test may run
 
 1. An explicit owner "go" for that specific live action, with a permalink
    recorded in the evidence file beside the result.
-2. A signed build installed on the contributor's iPhone. That needs an App ID
-   without the push capability and the Apple team; the
+2. A signed build installed on the contributor's iPhone — done on 2026-09-13:
+   a Release build signed with team `5RPGVC566Q`, installed with `xcodebuild`
+   and `xcrun devicectl`. The
    [export-compliance gate](../../../clients/ios/export-compliance.md) is
    separate and blocks TestFlight distribution specifically.
 3. For stage 1, a hosted registration for each iPhone identity the test needs.
    RFC-0021 question 4 sets no fixed budget, so the limit is the "go" of item 1
    and not a number; every registration is counted in this file and none can be
-   deleted afterwards.
+   deleted afterwards. The iPhone's registration was consumed on 2026-09-13,
+   before the stage: the counter reads 2 in total, 1 for the phone.
 4. For stage 2, an Android build of **v16 or later** on the owner's phone:
    call-v2 rejects v1 call bodies, so an older build can exchange text with
    this client but cannot call it.
+
+**Pre-run, 2026-09-13.** Stage 1 steps 1, 2, 4 and the first half of 5 (one
+check, no reply yet) were exercised by the contributor alone against the
+hosted server, with the owner's QR image in place of his screen. That is not
+the joint test: no `Result` cell of `stage1-text.md` changes because of it,
+and step 3, the second half of 5 and everything from 6 on wait for the owner.
 
 ## Recording rules
 

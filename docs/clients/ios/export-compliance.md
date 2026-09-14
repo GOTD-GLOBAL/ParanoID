@@ -2,7 +2,7 @@
 status: draft
 owner: ios
 decision_owner: martadvix-web
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # Export compliance inventory (iOS client, RFC-0021)
@@ -68,3 +68,10 @@ Before any TestFlight upload, the owner records in the client pull request:
 
 Until those four lines exist, the upload step stays `NOT RUN`, and this document
 says so rather than implying that a single `Info.plist` key settles the matter.
+
+The signed build installed on a physical iPhone on 2026-09-13 (a Debug and then
+a Release configuration, installed directly with `xcodebuild` and
+`xcrun devicectl`) did not pass through this gate and does not satisfy it: a
+direct developer install is not an upload. No archive, no `.ipa` export and no
+TestFlight upload were produced, and the signed-archive gate in `build.sh` did
+not run; all three stay `NOT RUN` behind this document.

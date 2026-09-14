@@ -1,9 +1,10 @@
 {
-  "generated": "2026-09-13T19:53Z",
+  "generated": "2026-09-13T21:30Z",
   "branch": "feat/ios-client-20260911",
   "head": "bcb40463120419ffb9e86824078c220db50dbceb",
   "merge_base_with_main": "2d91bd4dba79bd35f563e51850f2e18796a3c9ba",
-  "hosted_registrations": 0,
+  "hosted_registrations": 2,
+  "hosted_registrations_note": "two accounts on the hosted alpha, both under the owner's answer to RFC-0021 question 4 (no fixed budget): one from the build Mac through service-bridge while diagnosing the phone's TLS failure (defect 4, App Transport Security, fixed in adb56be), one from the physical iPhone with the Release build after that fix. The phone then paired the owner's Android from his QR image and sent one text the hosted server accepted (one check); delivery to the owner's Android was still pending",
   "committed": false,
   "note": "The files below are the raw output of the runs this branch records. They stay under clients/ios/out/, which is git-ignored, because they carry absolute paths of the build Mac, loopback addresses and, in the screenshots, contact fingerprints and account identifiers. What travels into the repository is this catalogue: path, size, SHA-256 and the time the file was produced. Re-running the command in the README table reproduces the run, not the digest.",
   "artifacts": [
@@ -58,10 +59,10 @@
     {
       "path": "clients/ios/out/evidence/app-bundle.json",
       "group": "build",
-      "what": "test_app_bundle.py: the unsigned Release bundle taken apart (Info.plist, embedded WebRTC slice, notices, no simulator slice)",
-      "bytes": 3585,
-      "sha256": "17bcc1748f14d00a245e7589558acd8cb9ee0c84e9af4e4e5cdbd9fdaf193667",
-      "produced": "2026-09-13T14:40Z"
+      "what": "test_app_bundle.py: the last run overwrote the 14:40Z reading of the unsigned bundle with a signed Release bundle (team 5RPGVC566Q) taken apart — PASS, the Team ID reported, the signed entitlements without aps-environment, the WebRTC digest SKIPPED because Xcode re-signed the framework; it predates adb56be, so it still reports no NSAppTransportSecurity, and the gate has not read a bundle built after that commit",
+      "bytes": 3930,
+      "sha256": "d7fb910d36b91bf4ec58a6b352031192bb729022f7e14669c134f11988f88af6",
+      "produced": "2026-09-13T20:13Z"
     },
     {
       "path": "clients/ios/out/logs/keychain-signed.log",
@@ -234,7 +235,7 @@
     {
       "path": "clients/ios/out/evidence/hosted-preflight.json",
       "group": "hosted",
-      "what": "one TLS handshake to the hosted alpha and nothing else: the live SubjectPublicKeyInfo digest equals the pin this client carries, the renewed leaf is valid to 2026-12-12, and hosted_registrations is zero",
+      "what": "one TLS handshake to the hosted alpha and nothing else: the live SubjectPublicKeyInfo digest equals the pin this client carries, the renewed leaf is valid to 2026-12-12, and hosted_registrations as it stood then, zero",
       "bytes": 615,
       "sha256": "6fea521e5b880d34c7e55bcdeb4400fbb4a6848e99337701193b756398255b03",
       "produced": "2026-09-13T08:06Z"
@@ -262,6 +263,14 @@
       "bytes": 868,
       "sha256": "362a09ff38886768d58d24a6ca97449f323ccacc70fe9983ffe66bc8e88b6077",
       "produced": "2026-09-13T13:28Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/device-smoke-result.json",
+      "group": "device",
+      "what": "the device smoke of 2026-09-13: a Debug build signed with the development team on a physical iPhone 16 Pro Max (iOS 26.6.1, Developer Mode) against the local stand — identity created on the device, own QR shown, a QR scanned off the Mac screen with the real camera, fingerprint sheet confirmed, 2 texts device→peer and 1 peer→device with receipts, one call device→simulator connected with video visible from the device; the server_state counts (5 accounts, 5 devices, 7 envelopes all frame 2, 0 plaintext rows) are the local stand's; its hosted_registration_note records the two hosted registrations and the one text to the owner's Android made later with the Release build; not run: screen lock during dialling; the two defects it lists are the empty entitlements file (-34018 on the simulator) and the in-memory fixture peer",
+      "bytes": 3227,
+      "sha256": "7794d8838b67b557f12695543d13bcd9e4261c4e863bc9d9ffa42727b1d51d91",
+      "produced": "2026-09-13T20:41Z"
     }
   ],
   "screenshots": [
@@ -705,6 +714,69 @@
       "bytes": 196118,
       "sha256": "808494b0e5e79e305e2fb6e5e9a4f5d885d46481d74ddac1d629910501b9e3cc",
       "produced": "2026-09-13T12:12Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-peer-01.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the simulator peer before the entitlements fix: the local-state-unavailable screen the app shows when the Keychain answers errSecMissingEntitlement (-34018); keys reported kept, launch halted",
+      "bytes": 166671,
+      "sha256": "490e1ac3b7dbddbd302dd421dfb5e4c5177407934885ee4b25084c771438222b",
+      "produced": "2026-09-13T19:05Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-pro-01.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the same screen on the iPhone 17 Pro simulator one minute later, the second reproduction of the -34018 defect before the fix",
+      "bytes": 171357,
+      "sha256": "6b731b8613f4596fd3ac604a4bcdeca51700192a646c6675ab8c41e98d7a171e",
+      "produced": "2026-09-13T19:06Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-pro-02.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the iPhone 17 Pro simulator after the keychain access group was declared: the welcome screen opens again",
+      "bytes": 191850,
+      "sha256": "9d45e54b299bbb69d0aec762afc9c8fe98b57246bdfe1acb0ff0bfff654ba98b",
+      "produced": "2026-09-13T19:10Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-identity.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the simulator peer with its identity created and the local stand connected, empty chat list",
+      "bytes": 176610,
+      "sha256": "ea3e9c30f884bed8492eca5462dca5c21688cd256950c432522b0cdf6abf3221",
+      "produced": "2026-09-13T19:11Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-call.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the simulator peer's chat with the physical iPhone at the call stage: one text received from the phone, one sent back with a delivered receipt, the call buttons in the bar; the header shows a contact identifier fragment, which keeps the file out of the repository",
+      "bytes": 158953,
+      "sha256": "ec03427c044da866a63c34cd1e251a8361cc8731bae9c42c91326071f536f26e",
+      "produced": "2026-09-13T19:15Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-error.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the simulator peer back on the local-state-unavailable screen at 20:06Z; the cause of this second occurrence is not recorded in device-smoke-result.json",
+      "bytes": 172028,
+      "sha256": "a8ed0e51263ee15b3dfec39db3e428a4ad218fdc4ed78df94c7cc5e3b95ff38e",
+      "produced": "2026-09-13T20:06Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/device-smoke-20260913/sim-after-fix.png",
+      "group": "device",
+      "set": "clients/ios/out/evidence/device-smoke-20260913",
+      "what": "device smoke of 2026-09-13, the simulator side of the session (no capture of the phone's own screen is in this set) — the simulator peer two minutes later, chat list open with the stand connected again",
+      "bytes": 179272,
+      "sha256": "2f6dc45373f2d201f27779aa4e475c459debf7fe98df8d006ec3501e89c27583",
+      "produced": "2026-09-13T20:08Z"
     }
   ]
 }

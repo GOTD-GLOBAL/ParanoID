@@ -4,29 +4,40 @@ Joint test of the candidate iOS client ([RFC-0021](../../../rfcs/0021-ios-client
 [REQ-CLIENT-001](../../../product/requirements.md), REQ-ID-005/007/008,
 REQ-MSG-002/003/005) against the Android client on the hosted alpha.
 
-**This test has not been run.** The scenario is written in advance; every
-`Result` cell reads `NOT RUN` and changes only after the step has actually been
-performed. Participants: **Yaroslav** (contributor, iPhone, TestFlight or a
-direct signed install) and **Sergey** (owner, Android).
+**This test has not been run as a joint session.** The scenario is written in
+advance; every `Result` cell reads `NOT RUN` and changes only after the step has
+actually been performed by both participants together. Participants:
+**Yaroslav** (contributor, iPhone 16 Pro Max on iOS 26.6.1, a direct signed
+install — TestFlight is `NOT RUN`) and **Sergey** (owner, Android).
+
+**Pre-run, 2026-09-13.** Before the joint session, Yaroslav alone exercised
+steps 1, 2, 4 and the first half of step 5 on the physical iPhone against the
+hosted server: the identity was created on the device, the own QR shown, the
+owner's Android paired from a QR image the owner sent (scanned off a screen with
+the real camera), and one text sent that the hosted server accepted — one check,
+«Сохранено сервером». Delivery to the owner's Android was still pending (his
+phone had not polled) and no reply exists. That is a solo pre-run, not this
+test: the rows below keep `NOT RUN` and carry a note where the pre-run touched
+them.
 
 ## Preconditions
 
 | Precondition | State |
 | --- | --- |
 | Owner "go" for this live test, permalink recorded here | missing |
-| Signed build installed on Yaroslav's iPhone | missing |
+| Signed build installed on Yaroslav's iPhone | present — Release build signed with the Apple team, installed on 2026-09-13 with `xcodebuild` and `xcrun devicectl` (branch head `adb56be`); no archive, no `.ipa`, no TestFlight |
 | Android build on Sergey's phone, version recorded here | not recorded |
-| Hosted registrations consumed by this stage (the server has no deletion path) | 0 |
+| Hosted registrations consumed by this stage (the server has no deletion path) | 1 for the iPhone, consumed on 2026-09-13 in the pre-run, before the stage itself; the branch total is 2 (the other is the build Mac's `service-bridge` registration while diagnosing the phone's TLS failure), both under the owner's answer to RFC-0021 question 4 (no fixed budget) |
 
 ## Scenario
 
 | # | Step | Expected | Result |
 | --- | --- | --- | --- |
-| 1 | Yaroslav: fresh install, opens the application, taps «Создать ID» | The identity is created and saved before any request; the welcome screen gives way to «Чаты»; the connection screen states in full that messages arrive only while the application is open | NOT RUN |
-| 2 | Yaroslav: opens «Мой ID» | The contact QR is shown together with the 64-digit account; the code is dense and readable at arm's length | NOT RUN |
+| 1 | Yaroslav: fresh install, opens the application, taps «Создать ID» | The identity is created and saved before any request; the welcome screen gives way to «Чаты»; the connection screen states in full that messages arrive only while the application is open | NOT RUN — pre-run 2026-09-13: done solo on the iPhone against the hosted server |
+| 2 | Yaroslav: opens «Мой ID» | The contact QR is shown together with the 64-digit account; the code is dense and readable at arm's length | NOT RUN — pre-run 2026-09-13: shown solo on the iPhone |
 | 3 | Sergey: scans that QR with the Android scanner; both see: the full fingerprint | Sergey compares the fingerprint aloud with what Yaroslav's screen shows and confirms «Отпечаток совпадает»; the contact appears as verified on Android | NOT RUN |
-| 4 | Sergey: opens his own «Мой ID»; Yaroslav: scans it with the iPhone camera | The iPhone scanner opens in-app, decodes the dense code without leaving the application, shows the full fingerprint and requires «Отпечаток совпадает». Nothing is imported until Yaroslav confirms | NOT RUN |
-| 5 | Yaroslav: sends the first message to Sergey; both see: the bubble on each side | One check appears on the iPhone only after the server accepted the envelope, two only after Sergey's client acknowledged it; Sergey sees the text | NOT RUN |
+| 4 | Sergey: opens his own «Мой ID»; Yaroslav: scans it with the iPhone camera | The iPhone scanner opens in-app, decodes the dense code without leaving the application, shows the full fingerprint and requires «Отпечаток совпадает». Nothing is imported until Yaroslav confirms | NOT RUN — pre-run 2026-09-13: the owner's QR was scanned from an image he sent, off a screen, not from his phone in the room. The contact was paired, which this client does only after «Отпечаток совпадает» is tapped on the confirmation sheet (`App/ParanoID/Screens/ConfirmContact.swift`); the fingerprint itself was not read aloud against the owner's screen, which is what step 3 and this step are for |
+| 5 | Yaroslav: sends the first message to Sergey; both see: the bubble on each side | One check appears on the iPhone only after the server accepted the envelope, two only after Sergey's client acknowledged it; Sergey sees the text | NOT RUN — pre-run 2026-09-13: one text sent, one check («Сохранено сервером»); delivery to Sergey's Android pending, second check not observed |
 | 6 | Sergey: replies; both see: the reply | The reply appears on the iPhone while the application is open, with the same one-check/two-check meaning in reverse. No read receipt appears anywhere | NOT RUN |
 | 7 | Yaroslav: closes the application completely (swipes it out of the app switcher). Sergey: sends a message. Yaroslav: waits at least one minute, then opens the application | Nothing arrives while the application is closed — there is no push and this is the documented limitation. On opening, the message arrives and its receipt leaves; Sergey's second check appears then, not before | NOT RUN |
 | 8 | Yaroslav: opens the application, locks the iPhone screen without closing it, waits one minute; Sergey: sends a message; Yaroslav: unlocks | The application stays in the foreground behind the lock screen or is suspended by the system; on unlock the message is present exactly once and the connection status recovers without a duplicate bubble | NOT RUN |

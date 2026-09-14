@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client documentation (candidate, RFC-0021)
@@ -15,8 +15,20 @@ Component documentation for the native iOS client proposed in
 
 What exists and what does not, once and plainly: the client is built and its
 checks run on simulators and a local stand, which makes those results
-`CLAIMED`; **nothing has run on a physical phone**, so no requirement is
-`SHOWN`; **no hosted account exists** and no TestFlight build was uploaded.
+`CLAIMED`. On 2026-09-13 a signed build ran on a physical iPhone 16 Pro Max
+(iOS 26.6.1) against the local stand — identity created, own QR shown, a
+contact read off a screen with the real camera, the fingerprint sheet
+confirmed, text with receipts in both directions and one call that connected
+with video — so those rows are `SHOWN (phone, local stand)`, not yet in a
+joint test with the owner. **Two hosted accounts exist**
+(`hosted_registrations: 2`: one from the build Mac while diagnosing the
+phone's TLS failure, one from the iPhone; both under the owner's answer to
+RFC-0021 question 4, no fixed budget); the iPhone then paired the owner's
+Android from his QR image and sent one text the hosted server accepted,
+delivery to his phone still pending. No archive, no `.ipa` export and no
+TestFlight build exist. One open item: after a network drop the phone stayed
+at «Нет подключения» while the server answered and the pinned key was
+unchanged; the cause is under investigation on the branch.
 [verification.md](verification.md) says it row by row.
 
 ## What the candidate is
@@ -72,8 +84,8 @@ the shared [core contract](../core/self-service.md) and
   the call controller, the media engine, relay credentials, consent and the
   audio session, and the screen-capture difference from Android.
 - [build-and-testflight.md](build-and-testflight.md): pinned toolchain, the
-  one-command build, the bundle gate, the absent CI, signing and the upload
-  gates.
+  one-command build, the bundle gate, the `ios-static` CI job (first run on
+  the pull request), signing and the upload gates.
 - [protocol-sources.md](protocol-sources.md): each behaviour rule mapped to
   its `docs/protocol` line, the core/server line, the Java cross-check and any
   discrepancy. The Java client was read, not executed.
@@ -82,8 +94,10 @@ the shared [core contract](../core/self-service.md) and
   owner records a classification.
 - The platform trust delta is
   [docs/security/ios-client-threats.md](../../security/ios-client-threats.md);
-  the two joint-test scenarios, written in advance and entirely `NOT RUN`, are
-  in [docs/project/evidence/ios-client-20260913/](../../project/evidence/ios-client-20260913/README.md),
+  the two joint-test scenarios, written in advance and not yet run as joint
+  sessions (the contributor pre-ran part of stage 1 alone against the hosted
+  server on 2026-09-13; every `Result` cell still reads `NOT RUN`), are in
+  [docs/project/evidence/ios-client-20260913/](../../project/evidence/ios-client-20260913/README.md),
   together with the evidence catalogue of that directory: every command with
   what it printed, the digest of every artifact and screenshot it wrote, the
   versions, the list of what was not run, and the permalinks of the owner's

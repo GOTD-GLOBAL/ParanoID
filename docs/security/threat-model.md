@@ -250,14 +250,20 @@ interruption. Public deployment is not authorized by local task scope.
 [The iOS client delta](ios-client-threats.md) records the platform boundaries a
 second client adds without changing a wire contract: Keychain and Data
 Protection with the install-marker reinstall rule, leaf-SPKI evaluation on
-`Security.framework` instead of system trust, the digest-pinned WebRTC binary,
-foreground-only delivery that leaves boundary 8 unused, Apple as a TestFlight
-installation observer, and the closed export-compliance gate. It also names
-what a simulator cannot observe (Data Protection classes, a real camera, a real
-recording, a locked screen) as `NOT RUN`. Proposed under
+`Security.framework` instead of system trust with
+[App Transport Security off](ios-client-threats.md#app-transport-security-is-off-and-why-that-removes-nothing)
+(it refused the self-signed leaf on a public IP before the pinning delegate
+ran; found on the phone against the hosted server), the digest-pinned WebRTC
+binary, foreground-only delivery that leaves boundary 8 unused, Apple as a
+TestFlight installation observer, and the closed export-compliance gate. It
+also names what was not observed on the device (Data Protection classes, a
+real recording, a locked screen) as `NOT RUN`; a real camera read a QR on the
+phone on 2026-09-13. Proposed under
 [RFC-0021](../rfcs/0021-ios-client.md) and
-[ADR-0014](../decisions/0014-ios-client.md); no physical-device evidence and no
-independent human review exist.
+[ADR-0014](../decisions/0014-ios-client.md); physical-device evidence exists
+from 2026-09-13 (a signed build on an iPhone 16 Pro Max against the local
+stand, one hosted registration from the phone), and no independent human
+review exists.
 
 ## One-host coordinator work — 2026-09-10
 

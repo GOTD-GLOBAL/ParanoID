@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-13
+last_reviewed: 2026-09-14
 ---
 
 # iOS client: storage, registration, contacts and text
@@ -43,7 +43,12 @@ The sealed snapshot is an AES-256-GCM envelope under a Keychain-held key:
 - key: `kSecClassGenericPassword`, account `paranoid-text-state-v0`,
   `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, not synchronizable. The
   class is the answer to RFC-0021 question 3: a locked screen during a call
-  must not turn a heartbeat commit into a terminal freeze.
+  must not turn a heartbeat commit into a terminal freeze. The item lives in
+  the application's own keychain group, which `ParanoID.entitlements` names
+  under `keychain-access-groups`: with an empty entitlements file the
+  simulator's Keychain answered `errSecMissingEntitlement` (-34018) and the
+  storage guard froze the launch; a device build inherits the same group from
+  its provisioning profile, so its behaviour did not change.
 - file: `Application Support/paranoid/text-state.enc`, owner-only,
   `.completeUntilFirstUserAuthentication`, excluded from backup, 9 MiB read
   ceiling.
@@ -102,14 +107,27 @@ RSA ≥ 2048, SAN-only host match, TLS 1.2 minimum, no client certificate. Saved
 trust always wins over a compiled default, and a fixture that disagrees with a
 saved pair is refused.
 
+`Info.plist` turns App Transport Security off — `NSAllowsArbitraryLoads = YES`,
+exactly that key and nothing else — because on a physical iPhone ATS refuses a
+self-signed leaf on a public IP address before the pinning delegate is
+consulted (`NSURLErrorDomain -1200`, stream error -9802), `NSPinnedDomains`
+does not match an IP literal, and a stand on a private LAN address never shows
+it. ATS contributed nothing this client relies on: every session is built by
+`PinnedSessionDelegate`, and `test_ui_contract.py` refuses that key in any
+other shape and any `URLSession` created outside the delegate. The measurement
+and its threat delta are in
+[ios-client-threats.md](../../security/ios-client-threats.md) and ADR-0014.
+
 The pin is the same value the Android client carries. The owner renewed the
 hosted certificate **with the same key** on 2026-09-13, so the pin did not
 change and both clients keep working; the new leaf is valid until
 2026-12-12T07:38:09Z. A same-key renewal must be repeated before that date —
-there is no automatic renewal — and rotating the key itself is a separate
-deploy-trust decision, because the pin is part of the first-contact channel
-transcript and a new key would invalidate enrolled contacts, not only the
-transport ([RFC-0021](../../rfcs/0021-ios-client.md) question 7).
+the [bounded same-key automation](../../operations/tls-auto-renewal.md)
+installed on the host on 2026-09-13 does that, outside this client — and
+rotating the key itself is a separate deploy-trust decision, because the pin
+is part of the first-contact channel transcript and a new key would
+invalidate enrolled contacts, not only the transport
+([RFC-0021](../../rfcs/0021-ios-client.md) question 7).
 
 ## Registration
 
@@ -124,9 +142,15 @@ registration response must match the local credential or the operation is
 `status_conflict`; `prepare_contact_v2` then publishes the fallback key.
 
 There is no operator, no grant, no role, no invitation and no manual URL or pin
-form anywhere in the interface (REQ-ID-008). A Debug build without a local
-stand has no realm at all and creates no identity: the hosted defaults apply
-only in a Release build or under `-paranoid-allow-hosted`.
+form anywhere in the interface (REQ-ID-008). A Debug build names a local stand
+through the `-paranoid-realm` / `-paranoid-pin` launch arguments (Xcode and
+`xcodebuild test` on a simulator) or the `PARANOID_REALM` / `PARANOID_PIN`
+environment variables (`devicectl` starts a build on a physical phone without
+relaying launch arguments, so there the environment is the only channel); both
+go through the same `checkedRealm` / `checkedPin` as a Release build. A Debug
+build with neither pair has no realm at all and creates no identity: the
+hosted defaults apply only in a Release build, which reads neither channel, or
+under `-paranoid-allow-hosted`.
 
 ## Contacts and QR
 
@@ -205,6 +229,17 @@ Android push wake gateway and no iOS half of it exists).
 
 Everything above is what the code is written to do. What has been executed, on
 what, and what has not, is [verification.md](verification.md): simulator and
-local-stand results are `CLAIMED`, physical-phone results are `SHOWN`, and no
-row is `SHOWN` today. No hosted account exists yet
-(`hosted_registrations` is zero) and no build has run on a phone.
+local-stand results are `CLAIMED`, physical-phone results are `SHOWN`. On
+2026-09-13 a signed build ran on a physical iPhone 16 Pro Max (iOS 26.6.1): a
+Debug build against the local stand — identity created on the device, own QR
+shown, a contact scanned off a screen with the real camera, fingerprint sheet
+confirmed, text both ways with receipts, one call to a simulator that
+connected with video from the device — and then a Release build against the
+hosted server. Two hosted accounts exist (`hosted_registrations` is 2: one
+from the build Mac through `service-bridge` while diagnosing the phone's TLS
+failure, one from the iPhone after the ATS fix, both under the owner's answer
+to RFC-0021 question 4, no fixed budget); the iPhone then paired the owner's
+Android from his QR image and sent one text the hosted server accepted (one
+check), not yet delivered to his phone. The joint tests with the owner have
+not been run, and no archive, TestFlight upload, relayed call or Data
+Protection class measurement has.
