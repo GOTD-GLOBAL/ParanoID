@@ -43,7 +43,7 @@ import Dispatch
 /// credential (`docs/protocol/realtime-v1.md:38-41`), it lives 300 seconds
 /// from its monotonic receipt and it is renewed at 240 seconds
 /// (`:179-181`), and the server allows **two** live sessions per account
-/// (`server/src/self_service_http.rs:377-391`). Those two slots are what
+/// (`server/src/self_service_http.rs:398-409`). Those two slots are what
 /// renewal uses, so a client that dropped its session on every pause would
 /// spend them on nothing and meet `session_capacity` instead of talking. The
 /// session is therefore owned by this object and survives `stop()`, `start()`
@@ -153,6 +153,42 @@ public actor StateOwner {
             enabled = true
             run = run.next
         }
+        hook.wake()
+        return run
+    }
+
+    /// Mints a new generation while the lanes stay enabled
+    /// (`RealtimeLoop.java:61-62`).
+    ///
+    /// Android's `restart()` is its `stop()` minus one line: the counter moves
+    /// and the lifecycle monitor is notified, but `enabled` is left set, so
+    /// nothing has to start the lanes afterwards and nothing else is touched.
+    /// This is the port of that line, and it exists for the one case a
+    /// generation alone cannot cover: the default network changed under a
+    /// running loop — Wi-Fi lost, cellular taking over, connectivity back —
+    /// and the receive lane is suspended in a long poll over an interface that
+    /// no longer exists. Nobody refuses that request until its own 30-second
+    /// bound and the backoff after it, which is the owner's report of
+    /// 2026-09-13: the status line stayed offline for 25 seconds after the
+    /// network was back. Moving the counter is what makes the answer that lane
+    /// is still waiting for worthless and what makes the next cycle a fresh
+    /// `messages` read on the interface the device actually has;
+    /// `RealtimeLoop.restart()` is what then frees the socket itself.
+    ///
+    /// A stopped or closed owner is refused, exactly as Android's
+    /// `if(closed||!enabled)return` — and the wake goes with the refusal,
+    /// because `kick()` is after that early return. A network that comes back
+    /// while the application is in the background therefore starts nothing:
+    /// `start()` is the only thing that ever enables the lanes, and this
+    /// client has no background delivery for a network change to deliver
+    /// anything to (`docs/clients/ios/README.md`).
+    ///
+    /// - Returns: the generation the lanes now run under, or `nil` when
+    ///   nothing was minted because the owner is stopped or closed.
+    @discardableResult
+    public func restart() -> Generation? {
+        guard !closed, enabled else { return nil }
+        run = run.next
         hook.wake()
         return run
     }
@@ -297,7 +333,7 @@ public actor StateOwner {
     /// Stops asking for sessions for a while and uses the challenge transport
     /// meanwhile: the answer to a 429 `session_capacity` on `/v2/session`
     /// (`RealtimeLoop.java:192`). The account is at its two-session cap
-    /// (`server/src/self_service_http.rs:377-391`) and hammering the route
+    /// (`server/src/self_service_http.rs:398-409`) and hammering the route
     /// would only keep it there.
     public func holdSessions(for nanoseconds: UInt64) {
         sessionsHeldUntil = clock.now().advanced(byNanoseconds: nanoseconds)

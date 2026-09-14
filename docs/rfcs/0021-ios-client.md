@@ -408,11 +408,14 @@ What has been run, in one sentence each:
   call stage, a relayed call, an archive, an `.ipa` export, a TestFlight build
   and the parts of the two joint tests that session did not reach (stage 1
   steps 7-15, and stage 2 steps 1-3, 5-7 and 10-17, among them an outgoing
-  call from this client to an Android on real phones) — `NOT RUN`. One open
-  item from 2026-09-13: after a network drop the phone stayed at «Нет
-  подключения» while the server answered and the pinned key was unchanged; the
-  cause is under investigation on the branch and no device log was collected for
-  that drop. A second and different failure followed the joint session, at
+  call from this client to an Android on real phones) — `NOT RUN`. The open
+  item from 2026-09-13 — after a network drop the phone stayed at «Нет
+  подключения» while the server answered and the pinned key was unchanged — has
+  a cause and a fix on the branch since 2026-09-14: this client had no restart
+  when the default network changes, so a lane parked in a long poll or in a
+  backoff stayed there. The fix is `CLAIMED`, and its proof is `NOT RUN` — no
+  real change of network path was produced on a simulator or a phone, and no
+  device log was ever collected for that drop. A second and different failure followed the joint session, at
   07:06 (Europe/Moscow) on 2026-09-14, measured and posted to
   [pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864):
   the iPhone shows «Нет подключения» and does not recover, and a Debug build

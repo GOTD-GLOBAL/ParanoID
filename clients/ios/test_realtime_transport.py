@@ -78,8 +78,8 @@ REQUEST_LIMIT = 65536          # `RealtimeTransport.java:41`
 RESPONSE_LIMIT = 2 * 1024 * 1024  # `:50`
 ERROR_LIMIT = 4096             # `:50`
 CAPACITY = 2                   # `:18`, `docs/protocol/realtime-v1.md:150`
-READ_TIMEOUT_S = 8             # `:36`
-EVENTS_READ_TIMEOUT_S = 30     # `:36`
+READ_TIMEOUT_S = 15             # `realtime-v1.md:138-142,153-154`, not Android's `:36`
+EVENTS_READ_TIMEOUT_S = 30     # `realtime-v1.md:140,153-154`
 
 sys.path.insert(0, str(HERE / 'test'))
 import fake_server  # noqa: E402  (the path is set up right above)

@@ -34,6 +34,38 @@ public protocol ProofTransport: Sendable {
               path: String,
               body: String,
               authorization: String?) async throws -> RealtimeTransport.Reply
+
+    /// Abandons whatever this transport has in flight, and changes nothing
+    /// else about it.
+    ///
+    /// It is `RealtimeTransport.java:66-71` and the second half of
+    /// `RealtimeLoop.restart()` (`RealtimeLoop.java:64-66`): when the default
+    /// network changes, the request a lane is suspended on belongs to an
+    /// interface that no longer exists, and nobody refuses it until its own
+    /// 30-second read bound and the backoff after that. Cancelling it is what
+    /// turns those 30 seconds into the next cycle.
+    ///
+    /// It is not `close()`: the session, its pin and its configuration stay,
+    /// so the very next call goes out over the new interface with no new
+    /// factory, no new pin and no new trust.
+    func cancelActive() async
+}
+
+extension ProofTransport {
+    /// Doing nothing is the right answer for a transport that has no socket to
+    /// abandon, which is every double in the test suites: they answer from
+    /// memory, nothing of theirs can be parked, and a seam that cannot be
+    /// parked cannot be freed. It is also the safe direction to default in — a
+    /// cancellation that a transport does not implement costs one cycle the
+    /// time it would have saved, while a default that tore something down
+    /// would take a working transport off the network on every path change.
+    ///
+    /// The real implementation is the shipped one,
+    /// `RealtimeTransport.cancelActive()` (`Net/RealtimeTransport.swift:220`),
+    /// which cancels every task in the pool and keeps the pinned session; a
+    /// type's own member is the witness of a requirement it matches, so this
+    /// default never stands in for it.
+    public func cancelActive() async {}
 }
 
 /// The pinned transport is the shipped implementation; it needs nothing added.
@@ -112,7 +144,7 @@ public final class ProofFlow: Sendable {
     public static let challengeSpacing: UInt64 = 600_000_000
     /// How long the session route is left alone after a 429
     /// (`RealtimeLoop.java:192`). The account is at its two live sessions
-    /// (`server/src/self_service_http.rs:377-391`) or the challenge route is
+    /// (`server/src/self_service_http.rs:398-409`) or the challenge route is
     /// metered; either way, hammering it would only keep it there, and the
     /// retained challenge transport carries everything meanwhile.
     public static let legacyWindow: UInt64 = 5 * MonotonicClock.nanosecondsPerSecond

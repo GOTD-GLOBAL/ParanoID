@@ -61,9 +61,31 @@ public final class RealtimeTransport: @unchecked Sendable {
     /// An error body is kept up to this size and truncated after it
     /// (`RealtimeTransport.java:50`).
     public static let errorLimit = 4096
-    /// Connect and read bound of every request but a long poll
-    /// (`RealtimeTransport.java:36`).
-    public static let readTimeout: TimeInterval = 8
+    /// Connect and read bound of every request but a long poll.
+    ///
+    /// Fifteen seconds, which is the server's own ten-second handler deadline
+    /// for every route other than `GET /v2/events`
+    /// (`docs/protocol/realtime-v1.md:138-142`) plus the same five-second
+    /// margin `eventsReadTimeout` already keeps over its twenty-five-second
+    /// bound. The protocol states the rule for that bound —
+    /// "client read timeout must exceed the … handler bound" (`:153-154`) —
+    /// and the reason is the same on both: a client that gives up first can
+    /// never receive the `408 request_timeout` the server is about to send,
+    /// so a slow server is indistinguishable from a dead one and the user is
+    /// told «Нет подключения» while the connection is fine.
+    ///
+    /// This is a **deliberate divergence from Android**, whose
+    /// `RealtimeTransport.java:36` sets eight seconds for these routes and
+    /// therefore always loses that race. It was measured on 2026-09-14: a
+    /// signed `GET /v2/messages` on the hosted alpha timed out on this client
+    /// at eight seconds, four times in forty-five seconds, while `/health`
+    /// answered in 0.2 s (issue #38). Eight seconds is below the deadline the
+    /// server is working to, so the client aborts a request the server may
+    /// still be answering. The divergence is recorded in
+    /// `docs/clients/ios/protocol-sources.md`; Android carries the same
+    /// value and the same consequence, which is filed separately for the
+    /// owner rather than changed from here.
+    public static let readTimeout: TimeInterval = 15
     /// Read bound of `/v2/events?…`, above the server's 25-second handler
     /// deadline (`docs/protocol/realtime-v1.md:140`, `:153-154`).
     public static let eventsReadTimeout: TimeInterval = 30

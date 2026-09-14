@@ -320,13 +320,54 @@ final class AppModel {
     /// *after* each incoming candidate is sealed, renamed and read back
     /// (`docs/protocol/realtime-v1.md:97-99`): what a screen shows has always
     /// been durable before it was shown.
-    fileprivate func published(connected: Bool, status: String) {
+    ///
+    /// It is `internal` rather than `fileprivate` only so that the tests can
+    /// publish the way the lanes do — a green status line is a state no
+    /// screen can put this object into, and it is the state a reconnect has to
+    /// leave.
+    func published(connected: Bool, status: String) {
         isConnected = connected
         lastStatus = status
         refresh()
     }
 
-    // MARK: - the status line (`MainActivity.java:598-623`)
+    /// The lanes were asked to connect again, and nothing has come back yet.
+    ///
+    /// The lanes publish only what they have actually seen: a delivered page
+    /// (`ReceiveLane.swift:444`) or an accepted envelope (`SendLane.swift:349`).
+    /// A start and a restart are neither, so without this the status line
+    /// would keep whatever it last said — «Сервер подключён» for a connection
+    /// that ended while the application was away, or the «Нет подключения»
+    /// of a lane that failed over an interface the device no longer has — until
+    /// the next page came back, which is the 25 seconds of the owner's report
+    /// of 2026-09-13. Android says the same thing in the same situation and
+    /// calls it «Подключаемся…» — when a screen starts listening and at the
+    /// end of every operation that is not connected (`TextEngine.java:196,221`).
+    ///
+    /// It publishes no green state of its own, because there is none to
+    /// publish: `isConnected` is what «Сервер подключён» is drawn from, and
+    /// only a page or an envelope may set it. This says the honest thing
+    /// instead — the client is connecting — and `statusLine` turns that into
+    /// the caption the mock-up gives it.
+    ///
+    /// - Parameter resumed: whether the lanes had been **stopped** until now.
+    ///   Android's split, exactly: `stopConnection()` clears `connected` and
+    ///   tells the call machinery (`TextEngine.java:198`), while `publish(…)`
+    ///   and `restart()` leave it alone, so «Сервер подключён» stands across a
+    ///   change of network until the new generation's first page either
+    ///   confirms it or fails. Keeping a restart out of that flag is what this
+    ///   parameter is for: it is not only the status line but the gate
+    ///   ``waitForCallConnection()`` spins on for the whole `callIntentWindow`,
+    ///   and it is the one view of the connection `CallController` is *not*
+    ///   told about here — only `Listener.changed` reaches both at once. A
+    ///   client whose route changed twice in a row would otherwise refuse an
+    ///   outgoing call while its pages were arriving normally.
+    func publishConnecting(resumed: Bool) {
+        if resumed { isConnected = false }
+        lastStatus = Strings.Status.connecting
+    }
+
+    // MARK: - the status line (`MainActivity.java:681-684`)
 
     /// The line under the title, in Android's order.
     ///
@@ -337,14 +378,27 @@ final class AppModel {
     /// publish «Подключено» and the failures of
     /// `RealtimeLoop.errorMessage`.
     var statusLine: String {
+        AppModel.statusLine(broken: isBroken, view: view, connected: isConnected,
+                            lastStatus: lastStatus)
+    }
+
+    /// The same rule over its four inputs alone.
+    ///
+    /// It is a function of them and of nothing else, which is what `static`
+    /// and `nonisolated` say here: the caption a user is left looking at after
+    /// a pause or a change of network is a table a test can drive, without a
+    /// core, a store and a socket behind it — the reason `DialogPolicy` and
+    /// `LifecyclePolicy` are values too.
+    nonisolated static func statusLine(broken: Bool, view: ClientView, connected: Bool,
+                                       lastStatus: String) -> String {
         var line: String
-        if isBroken {
+        if broken {
             line = Strings.Status.frozen
         } else if !view.hasIdentity {
             line = Strings.Status.alpha
         } else if !view.isActive {
             line = Strings.Status.registering
-        } else if isConnected {
+        } else if connected {
             line = Strings.Status.connected
         } else if lastStatus.hasPrefix("Сообщение сохранено") {
             line = Strings.Status.queued
@@ -352,7 +406,7 @@ final class AppModel {
             line = Strings.Status.connecting
         }
         // Android applies this last, over everything else
-        // (`MainActivity.java:609`).
+        // (`MainActivity.java:683`).
         if view.rejectedCount > 0 { line = Strings.Status.rejected }
         return line
     }
@@ -569,9 +623,53 @@ final class AppModel {
         showNotice(ContactPasteboard.confirmation)
     }
 
-    /// «Повторить подключение» (`MainActivity.java:519`).
+    /// «Повторить подключение» (`MainActivity.java:586`).
+    ///
+    /// Android's retry is `TextEngine.sync()` → `startConnection()` →
+    /// `realtime.start()` + `kick()` (`TextEngine.java:249-251,199`), and on a
+    /// thread-based loop that is a reconnection: `start()` ends in
+    /// `lifecycle.notifyAll()` (`RealtimeLoop.java:57`), so a receive lane
+    /// parked in `lifecycle.wait()` leaves its backoff at once, and `kick()`
+    /// releases the send gate.
+    ///
+    /// The same user intent needs a different mechanism here, because the
+    /// concurrency model differs. A wake arms the send lane's signal and
+    /// nothing else; it cannot free a receive lane suspended in a `URLSession`
+    /// long poll or in `Backoff`'s sleep, and with an empty outbox a
+    /// successful send pass publishes nothing at all — so the button used to
+    /// change nothing a user could see. Only a new generation plus
+    /// `transport.cancelActive()` ends those two waits, which is
+    /// `RealtimeLoop.restart()` (`RealtimeLoop.java:59-67`).
+    ///
+    /// That is a sharper instrument than Android's button, so it carries
+    /// Android's own gate for it. `restart()` "bumps the generation and
+    /// abandons an in-flight voice relay request/long-poll, which froze call
+    /// setup in v20/v21 (owner report 2026-09-12)", and `pushWake()` therefore
+    /// refuses it whenever `callActive||callDraining||connected`
+    /// (`TextEngine.java:184-187`). A tap during call setup is exactly when
+    /// that matters: the credential reply is dropped by
+    /// `StateOwner.deliverRelay`'s generation guard, nothing re-requests it,
+    /// and the call ends at the 45-second timeout. So a call that exists, or a
+    /// connection that is working, gets Android's harmless half — the kick —
+    /// and everything else gets the restart the user is asking for. A path
+    /// monitor reporting that the route really changed is not gated, on either
+    /// platform: `onAvailable` restarts a live loop with a call on it.
+    ///
+    /// The restart is asked for through the runner and never of the loop
+    /// directly: the lanes' task returns once its generation is superseded, and
+    /// the runner is what owns that task and relaunches it, so a restart taken
+    /// behind its back would leave the lanes enabled with nothing running them.
+    /// The runner has one event for "these running lanes are dialling over
+    /// something that no longer works", and a user pressing this button is
+    /// asserting exactly that about a path the monitor cannot see is broken —
+    /// the row is `isRunning → .restart`, so a frozen or paused client is
+    /// still left alone.
     func reconnect() {
-        runtime?.loop.wake()
+        if isCallActive || isConnected {
+            runtime?.loop.wake()
+        } else {
+            runtime?.runner.post(.networkChanged)
+        }
         refresh()
     }
 
@@ -1035,7 +1133,10 @@ final class AppModel {
             // 404 on this optional route must not discard a working text
             // session (`voice-turn-v1.md`, `VoiceRelayLane`).
             let relay = VoiceRelayLane(owner: owner, flow: flow, listener: listener)
-            let queue = LifecycleRunner(target: lanes)
+            // The runner drives the lanes through `AnnouncedLanes`, so that a
+            // start and a restart say so on screen; everything else here holds
+            // the loop itself, which is the thing that sends and receives.
+            let queue = LifecycleRunner(target: AnnouncedLanes(lanes: lanes, model: model))
             runner = queue
             // A live call keeps the lanes up: the policy has the rule and the
             // coordinator is what tells it the call's state.
@@ -1055,6 +1156,81 @@ final class AppModel {
 private struct ClientState: Sendable {
     let view: ClientView
     let outbox: Int
+}
+
+/// The lanes, with the one thing they cannot say about themselves said for
+/// them.
+///
+/// `RealtimeLoop` publishes through its listener, and it publishes only what
+/// it has seen: a delivered page (`ReceiveLane.swift:444`) or an accepted
+/// envelope (`SendLane.swift:349`). Being started and being restarted are
+/// neither — nothing has been sent or received yet — so they publish nothing,
+/// and the status line and the connection sheet keep whatever they last said.
+/// After a pause that is «Сервер подключён» for a connection that no longer
+/// exists; after a walk out of Wi-Fi it is the «Нет подключения» of a lane
+/// that failed over an interface the device has given up. Both are read by a
+/// user as the client's opinion of *now*.
+///
+/// This is where that is answered, and it is answered where the decision is
+/// actually taken rather than where an event is posted: `LifecycleRunner`
+/// calls `start()` and `restart()` exactly when `LifecyclePolicy` has decided
+/// on one, so a network change that finds the lanes stopped — the background,
+/// a frozen client — announces nothing, because nothing is being connected.
+///
+/// It wraps rather than replaces: every member forwards, and `stop()` and
+/// `run(under:)` are handed over untouched. Android publishes from the two
+/// places that ask for a connection and from no other — `listen()` and the end
+/// of every `submit()` (`TextEngine.java:196,221`), both of them
+/// «Подключаемся…» — and it clears the online flag in one place that is
+/// neither of them, `stopConnection()` (`:198`). The two announcements here
+/// keep that split: only the one that follows a pause touches the flag.
+final class AnnouncedLanes: LifecycleTarget, @unchecked Sendable {
+    private let lanes: any LifecycleTarget
+    /// Weak for the reason `Listener` is: the lanes outlive a scene, and
+    /// nothing in them should keep the screens' model alive.
+    private weak var model: AppModel?
+
+    init(lanes: any LifecycleTarget, model: AppModel) {
+        self.lanes = lanes
+        self.model = model
+    }
+
+    func start() async -> Generation {
+        // The lanes were stopped until now, which on Android is where
+        // `connected` was cleared (`stopConnection()`, `TextEngine.java:198`);
+        // this is the first moment a foreground-only client can say so.
+        await announce(resumed: true)
+        return await lanes.start()
+    }
+
+    func stop() async {
+        await lanes.stop()
+    }
+
+    @discardableResult
+    func restart() async -> Generation? {
+        await announce(resumed: false)
+        return await lanes.restart()
+    }
+
+    func run(under generation: Generation) async {
+        await lanes.run(under: generation)
+    }
+
+    /// Says that the client is connecting, before the lanes are asked to.
+    ///
+    /// It is awaited rather than left to a `Task` of its own, and that is the
+    /// whole reason it is `async`. The lanes publish from a second,
+    /// independent hop (`Listener.changed`), and two unstructured tasks have
+    /// no order on the main actor: a page delivered immediately after a
+    /// restart could be overwritten by an announcement created before it, and
+    /// the sheet would read «Подключение» for a client that is connected until
+    /// the next long poll returned. Finishing here means every publication the
+    /// lanes make afterwards is, by construction, afterwards.
+    private func announce(resumed: Bool) async {
+        let model = self.model
+        await MainActor.run { model?.publishConnecting(resumed: resumed) }
+    }
 }
 
 /// The seam between the lanes and the screens.

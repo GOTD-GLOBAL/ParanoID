@@ -163,7 +163,7 @@ extension StateOwner {
     /// A rejection belongs to the session the lane signed against. If the
     /// other lane has renewed in the meantime, dropping would throw away a
     /// session nothing is wrong with and spend one of the account's two slots
-    /// (`server/src/self_service_http.rs:377-391`) reopening it. The
+    /// (`server/src/self_service_http.rs:398-409`) reopening it. The
     /// comparison and the drop are one isolated step, so nothing can renew
     /// between them.
     public func dropSession(ifHeld session: SessionModel) {

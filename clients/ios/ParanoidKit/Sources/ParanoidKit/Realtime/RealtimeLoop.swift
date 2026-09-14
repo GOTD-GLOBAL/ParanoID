@@ -230,14 +230,19 @@ extension StateOwner {
 ///   flight worthless; the session, the capability and the state stay exactly
 ///   as they are, because a pause is not a reset
 ///   (`docs/protocol/realtime-v1.md:179-181`, and the account has two
-///   live-session slots, `server/src/self_service_http.rs:377-391`);
-/// - `run()` runs both lanes until the generation they started under is
-///   superseded, and returns.
+///   live-session slots, `server/src/self_service_http.rs:398-409`);
+/// - `restart()` moves the counter with the lanes left enabled and abandons
+///   what is on the socket, which is what a change of network asks for
+///   (`RealtimeLoop.java:59-67`);
+/// - `run(under:)` runs both lanes under one generation and returns once it is
+///   superseded.
 ///
 /// The application therefore does `await loop.start()` and then
-/// `Task { await loop.run() }`; `didEnterBackground` calls `stop()`, which
-/// ends that task. There is no push and no background delivery in this client
-/// (`docs/clients/ios/README.md`), so nothing else starts a lane.
+/// `Task { await loop.run(under: generation) }`; `didEnterBackground` calls
+/// `stop()`, which ends that task, and a change of network calls `restart()`,
+/// which ends it too and is relaunched at once — `LifecycleRunner` owns that
+/// task and does both. There is no push and no background delivery in this
+/// client (`docs/clients/ios/README.md`), so nothing else starts a lane.
 public final class RealtimeLoop: Sendable {
     /// The state owner the lanes share.
     public let owner: StateOwner
@@ -247,6 +252,9 @@ public final class RealtimeLoop: Sendable {
     public let send: SendLane
 
     private let signal: WakeSignal
+    /// The pinned network, kept for `restart()` alone: the lanes reach it
+    /// through their own `SessionCall`, and nothing here composes a request.
+    private let transport: any ProofTransport
 
     /// - Parameters:
     ///   - owner: the state owner. It must have been built with `signal` as
@@ -266,6 +274,7 @@ public final class RealtimeLoop: Sendable {
                 pacer: any ProofPacer = SleepingPacer()) {
         self.owner = owner
         self.signal = signal
+        self.transport = transport
         receive = ReceiveLane(owner: owner, flow: flow, transport: transport,
                               listener: listener, pacer: pacer)
         send = SendLane(owner: owner, flow: flow, transport: transport,
@@ -286,6 +295,82 @@ public final class RealtimeLoop: Sendable {
         await owner.stop()
     }
 
+    /// Reconnects now, under a new generation: the port of
+    /// `RealtimeLoop.restart()` (`RealtimeLoop.java:59-67`), which is what
+    /// Android does when the default network changes
+    /// (`TextEngine.java:200-214`, `watchNetwork`).
+    ///
+    /// Three steps, in Android's order:
+    ///
+    /// 1. `owner.restart()` mints a generation with the lanes left enabled, so
+    ///    everything in flight under the old one is refused when it returns;
+    /// 2. `transport.cancelActive()` fails what is on the socket right now, so
+    ///    a receive lane suspended in a long poll over an interface that has
+    ///    gone leaves it at once instead of after the request's own 30-second
+    ///    bound and the backoff after that;
+    /// 3. the wake re-arms the send lane, so the outbox is offered over the
+    ///    interface the device has now. The owner's hook is this same signal in
+    ///    the shipped client, and arming it twice costs nothing: `WakeSignal`
+    ///    holds one permit however many wakes it is given.
+    ///
+    /// It is neither of its two neighbours:
+    ///
+    /// - `stop()` also moves the counter, but it **disables** the lanes, and
+    ///   something then has to start them again. Here they stay enabled: only
+    ///   the run they are working under changes, so the session, the
+    ///   discovered capability and the outbox are exactly where they were — a
+    ///   restart is not a reset, and the account's two live-session slots are
+    ///   not spent on one (`docs/protocol/realtime-v1.md:179-181`,
+    ///   `server/src/self_service_http.rs:398-409`).
+    /// - `wake()` leaves the counter alone, which is precisely why Android has
+    ///   `nudge()` beside this method (`RealtimeLoop.java:68-70`): a wake must
+    ///   never abandon an in-flight voice relay request, and a restart must,
+    ///   because an answer that comes back over an interface that no longer
+    ///   exists is worth nothing. That is also why nothing but an actual change
+    ///   of route reaches this method: `TextEngine.pushWake()` keeps every
+    ///   other hint on `nudge()` because a restart "abandons an in-flight voice
+    ///   relay request/long-poll, which froze call setup in v20/v21"
+    ///   (`TextEngine.java:184-187`), and `AppModel.reconnect()` carries that
+    ///   gate.
+    ///
+    /// The lanes' task returns when its generation is superseded, so whoever
+    /// calls this relaunches it under the generation returned here;
+    /// `LifecycleRunner` does, on `.networkChanged`. A stopped or closed loop
+    /// does nothing at all and answers `nil` — cancellation included, because
+    /// Android's `if(closed||!enabled)return` returns before its cancel thread
+    /// is started too, and a network that comes back while the application is
+    /// in the background must not open a socket in a client that has no
+    /// background delivery.
+    ///
+    /// - Returns: the generation the lanes must be relaunched under, or `nil`
+    ///   when nothing was minted because the loop is stopped or closed.
+    @discardableResult
+    public func restart() async -> Generation? {
+        guard let generation = await owner.restart() else { return nil }
+        // Awaited, and that is the whole of it: `cancelActive()` cancels every
+        // task in the pool rather than only this generation's
+        // (`RealtimeTransport.cancelActive()`), so a cancellation still running
+        // when the relaunched lanes composed their first request would cancel
+        // *that* — a `URLError(.cancelled)` under a live generation, which the
+        // receive lane reports as a failure and sleeps a `Backoff` step over.
+        // Finishing here is what orders the two: every task the pool holds when
+        // this returns is one the old generation created.
+        //
+        // Android has to hand the same call to a thread of its own
+        // (`RealtimeLoop.java:64-66`, `"paranoid-cancel"`) because
+        // `HttpsURLConnection.disconnect()` may block on the socket. Nothing
+        // here can: `URLSessionTask.cancel()` returns at once, and the
+        // `allTasks` it is applied to is answered on the session's own
+        // delegate queue, which does the pinned checks and no I/O — the
+        // evaluator parses the DER itself and calls no `SecTrustEvaluate*`
+        // (`PinnedTrustEvaluator`). So the `LifecycleRunner` actor that awaits
+        // this is held for the length of that queue's current callback and
+        // never for the length of a dead socket.
+        await transport.cancelActive()
+        wake()
+        return generation
+    }
+
     /// Ends this loop for good (`RealtimeLoop.close()`, `:295`).
     public func close() async {
         await owner.close()
@@ -299,14 +384,37 @@ public final class RealtimeLoop: Sendable {
 
     /// Runs both lanes under the current generation until it is superseded.
     ///
-    /// The two are separate tasks on purpose: "networking has separate
+    /// It reads the generation and then runs under it, which is safe only for
+    /// a caller that is not racing a restart — the bridges, which drive one
+    /// loop by hand, and the tests. `LifecycleRunner` uses ``run(under:)``
+    /// instead, because it launches the lanes in a `Task` that may not be
+    /// scheduled before the next event moves the counter.
+    public func run() async {
+        guard let generation = await owner.current else { return }
+        await run(under: generation)
+    }
+
+    /// Runs both lanes under one stated generation until it is superseded.
+    ///
+    /// The generation is an argument rather than something read here because
+    /// whoever launches the lanes has just been handed it by `start()` or
+    /// `restart()`, and between that moment and the first line of an
+    /// unstructured `Task` another lifecycle event can mint a newer one. A
+    /// task that read the counter itself would then adopt the *newer*
+    /// generation — and a task in that position has already been cancelled, so
+    /// two copies of both lanes would run under one generation until the
+    /// doomed one reached its first cancellation point, spending a session
+    /// nonce and the send lane's wake permit on the way. Stated, it is refused
+    /// by the lanes' own `isCurrent` guard on their first pass and costs
+    /// nothing.
+    ///
+    /// The two lanes are separate tasks on purpose: "networking has separate
     /// send/wait lanes and bounded handoff"
     /// (`docs/protocol/realtime-v1.md:127-128`), so a receive lane parked on a
     /// twenty-second long poll never delays an outgoing message, and neither
-    /// of them ever runs on the state owner. A stopped or closed loop runs
-    /// nothing and returns at once.
-    public func run() async {
-        guard let generation = await owner.current else { return }
+    /// of them ever runs on the state owner. A superseded, stopped or closed
+    /// loop runs nothing and returns at once.
+    public func run(under generation: Generation) async {
         await withTaskGroup(of: Void.self) { group in
             group.addTask { [receive] in await receive.run(under: generation) }
             group.addTask { [send] in await send.run(under: generation) }

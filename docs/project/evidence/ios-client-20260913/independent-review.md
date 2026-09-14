@@ -58,6 +58,50 @@ their output are the rows of [README.md](README.md). Nothing was marked
 passed by editing a document: where a claim was larger than the evidence,
 the claim was cut to the evidence.
 
+## A defect neither review found — 2026-09-13
+
+Both reviews above ran on 2026-09-13 at `bcb4046` and neither found the
+connectivity-change gap: this client had no restart when the default network
+changes, so a lane parked in a long poll or in a `Backoff` sleep stayed there
+until its own 30-second bound and the backoff after it, and «Повторить
+подключение» — `loop.wake()`, which arms the send lane's signal alone — could
+free neither. It was found in **use**, not in review: the contributor lost
+network on his iPhone on 2026-09-13 and the client stayed at «Нет подключения»
+while the hosted server answered from the build Mac and the pinned key was
+unchanged.
+
+Three things make that late catch worth writing down rather than passing over.
+
+- It was not a novel defect. The owner had reported exactly this on Android on
+  2026-09-12, and Android fixed it the same day
+  (`TextEngine.watchNetwork()`, whose comment states the symptom verbatim —
+  `TextEngine.java:200-215` in this branch's merged Android tree `0.0.22-push`;
+  the method does not exist at `fe9c26c`, the v15 reference this client's Java
+  citations are otherwise written from). The fix was one day old when the two
+  reviews read this branch, and neither review was asked to re-derive parity
+  against Android code newer than that reference — so a rule that had just
+  changed on the other client is precisely the shape of thing this review round
+  was not built to catch.
+- Neither reviewer ran the application. Review 1 ran the offline suites and the
+  socket fixtures and explicitly did not run `xcodebuild`; review 2 ran no
+  simulator script either. Nothing in the source is *wrong* about the gap —
+  there is simply no code where the restart should be — and an absence is what
+  a source review is worst at seeing.
+- What it cost: a defect on the owner's own alpha for a day, one open item
+  carried in five documents from 2026-09-13 to 2026-09-14, and a reproduction
+  measuring 25 seconds of «Подключение» with the server answering the whole
+  time. It cost no data and no key: the lanes' generation rules held, nothing
+  was sent twice and no message was lost — the client was silent, not wrong.
+
+The fix was written on this branch on 2026-09-14 and put through fresh-context
+verification passes of its own before it was recorded here; twelve findings
+were raised against it and all twelve are answered in the code. Its status is
+`CLAIMED`, on a simulator against the local stand, and the path change it is
+for has still never been produced — [verification.md](../../../clients/ios/verification.md)
+and the NOT RUN table of [README.md](README.md) say so in their own rows.
+Neither review is re-run at the new head, so nothing here inherits their
+approval.
+
 ## Reviews run by the owner's side
 
 On 2026-09-14 the owner's agents started their own reviews of pull request

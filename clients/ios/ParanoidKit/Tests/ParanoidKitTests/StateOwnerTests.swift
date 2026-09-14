@@ -85,6 +85,52 @@ final class StateOwnerTests: XCTestCase {
         XCTAssertFalse(live)
     }
 
+    func testARestartMintsAGenerationWithoutPausingTheLanesAndIsRefusedWhenTheyAreNotRunning() async throws {
+        let owned = try Owned()
+        let owner = owned.owner
+        let first = await owner.start()
+        XCTAssertEqual(owned.hook.wakes, 1)
+
+        let restarted = await owner.restart()
+
+        // `RealtimeLoop.java:61-62`: the counter moves, `enabled` is left
+        // exactly as it was, and the kick is the one `start()` also ends with.
+        XCTAssertEqual(restarted?.run, first.run + 1)
+        let current = await owner.current
+        XCTAssertEqual(current, restarted, "the lanes were never disabled")
+        let stale = await owner.isCurrent(first)
+        XCTAssertFalse(stale, "the answer the parked poll is waiting for is worthless")
+        XCTAssertEqual(owned.hook.wakes, 2)
+        await assertThrows({ try await owner.perform(first) { _ in } }, {
+            XCTAssertEqual($0 as? Superseded, Superseded(first))
+        })
+
+        // A stopped owner refuses, and the kick goes with the refusal: Android
+        // returns before its own `kick()` (`if(closed||!enabled)return`), so a
+        // network that comes back while the application is in the background
+        // asks for nothing at all.
+        await owner.stop()
+        let refused = await owner.restart()
+        XCTAssertNil(refused)
+        XCTAssertEqual(owned.hook.wakes, 2)
+        let paused = await owner.current
+        XCTAssertNil(paused)
+
+        // And it minted nothing while it was refusing: the next start is the
+        // counter `stop()` left behind, plus one.
+        let resumed = await owner.start()
+        XCTAssertEqual(resumed.run, first.run + 3, "restart, stop and start; the refusal moved nothing")
+        XCTAssertEqual(owned.hook.wakes, 3)
+
+        // A closed owner refuses too, and stays closed.
+        await owner.close()
+        let afterClose = await owner.restart()
+        XCTAssertNil(afterClose)
+        let none = await owner.current
+        XCTAssertNil(none)
+        XCTAssertEqual(owned.hook.wakes, 3)
+    }
+
     func testAResultThatReturnsUnderASupersededGenerationIsDiscarded() async throws {
         let owned = try Owned()
         let owner = owned.owner
@@ -147,7 +193,7 @@ final class StateOwnerTests: XCTestCase {
         }
         XCTAssertEqual(reused.id, opened.id)
         // The account has two live-session slots
-        // (`server/src/self_service_http.rs:377-391`); a pause must not spend
+        // (`server/src/self_service_http.rs:398-409`); a pause must not spend
         // one of them.
         XCTAssertEqual(owned.server.issuedSessions, 1)
 
@@ -208,7 +254,7 @@ final class StateOwnerTests: XCTestCase {
         _ = try await owned.flow.connect()
         await owner.dropSession()
         // The 429 `session_capacity` answer of
-        // `server/src/self_service_http.rs:377-391`: the account is at its two
+        // `server/src/self_service_http.rs:398-409`: the account is at its two
         // live sessions, so the route is left alone for five seconds.
         await owner.holdSessions(for: 5 * second)
 

@@ -22,13 +22,24 @@ import UIKit
 /// wrong order would leave the application on screen with its lanes paused
 /// and nothing to say so.
 ///
+/// The fourth source is not a UIKit post at all: `NetworkWatcher` reports that
+/// the default path changed, which is Android's fourth one too — its
+/// `registerDefaultNetworkCallback` sits beside the activity's own callbacks
+/// and hands its verdict to the same worker (`TextEngine.java:122,200-215`).
+/// It is wired here for the reason the three posts are: this is the only place
+/// where a platform fact becomes a `LifecycleEvent`, and the rule about what
+/// to do with one lives in the package, where a test can drive it.
+///
 /// There is nothing else here — no `BGTaskScheduler`, no `BGAppRefreshTask`,
 /// no `PushKit` registration and no remote notifications — because this client
-/// has no background delivery at all.
+/// has no background delivery at all. The path monitor is not one either: it
+/// observes and never wakes a process, and a change seen while the lanes are
+/// stopped is decided as `.unchanged` (`LifecyclePolicy`).
 final class AppLifecycle {
     private let runner: LifecycleRunner
     private let center: NotificationCenter
     private let pump: Task<Void, Never>
+    private let network: NetworkWatcher
     private var tokens: [any NSObjectProtocol] = []
 
     /// - Parameters:
@@ -49,12 +60,24 @@ final class AppLifecycle {
             Self.observe(UIApplication.didEnterBackgroundNotification,
                          as: .didEnterBackground, on: center, runner: runner),
         ]
+        // The monitor is registered last and only here, so it cannot report a
+        // path before there are lanes to report it to: Android starts its own
+        // callback in the same position, right after the loop it protects
+        // exists (`TextEngine.java:117-122`). The watcher's own first-path
+        // rule then keeps the report that arrives immediately afterwards from
+        // restarting a generation that was minted a moment ago.
+        network = NetworkWatcher { runner.post(.networkChanged) }
+        network.start()
     }
 
     deinit {
         for token in tokens {
             center.removeObserver(token)
         }
+        // Symmetric with `init`: every source this object subscribed to is
+        // released before the queue it fed is closed, so nothing is posted
+        // into a runner that is being torn down.
+        network.cancel()
         runner.finish()
         pump.cancel()
     }

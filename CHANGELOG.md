@@ -80,6 +80,20 @@ public contract is declared.
 - Foreground-only by design: no APNs, no PushKit, no background refresh, no
   CallKit and no in-app updates. A call to a locked or closed iPhone ends in
   the caller's expected 45-second `timeout`.
+- The lanes reconnect when the network changes (2026-09-14), which they did not
+  before: a change of the default path mints a generation with the lanes left
+  enabled, cancels the requests in flight and relaunches them, so a long poll
+  over an interface the device no longer has ends there instead of at its own
+  30-second bound plus the backoff after it. A change seen while the lanes are
+  stopped starts nothing, because there is no background delivery.
+  «Повторить подключение» does the same restart unless a call is live or the
+  client is already connected, where it keeps Android's harmless half, and a
+  start or a restart now says «Подключение · подробнее» instead of leaving the
+  previous caption standing — no connected state is invented. It is the port of
+  `TextEngine.watchNetwork()` and `RealtimeLoop.restart()`, Android's own fix
+  of 2026-09-12, and adds no dependency, no background mode, no `Info.plist`
+  key and no `URLSession` outside `PinnedSessionDelegate`
+  (`NWPathMonitor` observes and never wakes a process).
 - Screen capture is **not** parity with Android: `FLAG_SECURE` has no iOS
   equivalent, so the video stage is covered while the screen is recorded,
   mirrored or AirPlayed, and a screenshot and the app-switcher snapshot cannot
@@ -164,11 +178,15 @@ public contract is declared.
   and stage 2 steps 1-3, 5-7 and 10-17 (the outgoing call from this client,
   the two-minute hold, hang-up behaviour, mute, speaker, screen recording,
   lock during dialling and during a call, background and closed-application
-  calls, LTE and busy). Open since 2026-09-13/14: after a network drop the
-  phone stayed at «Нет подключения» while the server answered from the Mac
-  and the pinned key was unchanged; and after the joint session of 2026-09-14
-  the phone stopped connecting again and has not recovered. The second is a
-  different failure, and the first failure of this client to be read directly:
+  calls, LTE and busy). The network-drop open item of
+  2026-09-13/14 — the phone stayed at «Нет подключения» while the server
+  answered from the Mac and the pinned key was unchanged — now has a cause and
+  the fix above, but its proof stays `NOT RUN`: no real change of network path
+  was produced on any device, so the fix is `CLAIMED` on a simulator against
+  the local stand and nothing more. Separately, after the joint session of
+  2026-09-14 the phone stopped connecting again and has not recovered. That is
+  a different failure, which the restart does not address, and the first
+  failure of this client to be read directly:
   a Debug build on the same device, launched with its console attached, shows
   the lane's signed `GET /v2/messages` timing out four times in 45 seconds
   (`NSURLError -1001`) on the first cycle of a generation, while the same

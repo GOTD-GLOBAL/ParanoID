@@ -271,6 +271,110 @@
       "bytes": 3227,
       "sha256": "7794d8838b67b557f12695543d13bcd9e4261c4e863bc9d9ffa42727b1d51d91",
       "produced": "2026-09-13T20:41Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/reconnect-result.json",
+      "group": "simulator",
+      "what": "the connectivity-restart run: the recorded unfixed timings beside the measured fixed ones, the two button presses, what the real NWPathMonitor reports inside a simulator, the confounds, and a not_run list whose first entry is the path change that never happened",
+      "bytes": 10376,
+      "sha256": "cc9f784309ca6bd7a733572c3a63f0dfc6afd76acd053d3056f4c71e5ffc733f",
+      "produced": "2026-09-14T05:58Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/reconnect-report.txt",
+      "group": "simulator",
+      "what": "the same run in prose: what was measured, what was driven at the seam, and what was not run",
+      "bytes": 10079,
+      "sha256": "bee7a1aee034095d06670ab63a4fbcb8384f160c37afd050cbaa822338089fd5",
+      "produced": "2026-09-14T05:58Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/fixed1-timeline.txt",
+      "group": "simulator",
+      "what": "the no-tap run in the shape of the recorded reproduction (wall clock, offset, tag, line), with the lane, CFNetwork and screen tags: amber at +30 s, green at +110.1 s = 20.0 s after the restore",
+      "bytes": 4269,
+      "sha256": "eec3750b88529074262725feadfce5123fd419846ce0c71e274fb9290b513de2",
+      "produced": "2026-09-14T05:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/notap-timeline.txt",
+      "group": "simulator",
+      "what": "the same scenario read off the accessibility tree twice a second: amber at +29.2 s, green 20.002 s after the restore",
+      "bytes": 2304,
+      "sha256": "fa6f50bcd3b4db05d1c670c78b7d4468f977588fd784467272e7bf93ae9860a5",
+      "produced": "2026-09-14T05:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/restoretap-timeline.txt",
+      "group": "simulator",
+      "what": "«Повторить подключение» 4.17 s after the restore: the long poll cancelled at [-999] after 4346 ms of its 30000 ms bound, the next request answered 11 ms later, green 5.296 s after the restore",
+      "bytes": 2935,
+      "sha256": "9458b3c7d241502a55992f9963ddc3a2a8ffc81acabeb832d747a625877dd013",
+      "produced": "2026-09-14T05:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/button-timeline.txt",
+      "group": "simulator",
+      "what": "«Повторить подключение» during the outage: the request in flight cancelled at [-999], the announcement published in place of the stale failure, no green state invented, green 0.11 s after the restore",
+      "bytes": 4055,
+      "sha256": "e37666d173d8f127406717ea696adb69153d3a270f5b7e0307ce83dbefbb1dac",
+      "produced": "2026-09-14T05:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/fixed1-console.log",
+      "group": "simulator",
+      "what": "the lane prints of the no-tap run, read off simctl launch --console-pty",
+      "bytes": 2099,
+      "sha256": "25a40d1a951f6905e37453986bd0b615518a4a327efc65e882faf188743ae68e",
+      "produced": "2026-09-14T05:55Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/fixed1-cfnet.log",
+      "group": "simulator",
+      "what": "the CFNetwork subset of that run's unified log: task starts, timeouts and outcomes",
+      "bytes": 152025,
+      "sha256": "f75500ca39f4bbe4d1a7f6e2370e176c7b62e5aaaa6a215083df1b3083219613",
+      "produced": "2026-09-14T05:57Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/notap-cfnet.log",
+      "group": "simulator",
+      "what": "the CFNetwork subset of the no-tap XCUITest run",
+      "bytes": 202105,
+      "sha256": "d9702afa97e6626a0fbee9706facd80025f2651e0de9cb4b5c3eb42c0d26181f",
+      "produced": "2026-09-14T05:57Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/restoretap-cfnet.log",
+      "group": "simulator",
+      "what": "the CFNetwork subset of the run with one tap after the restore",
+      "bytes": 92263,
+      "sha256": "fbf171ab05bbe068d09b30aba7ac632abf4b1f5a0cfa07bc64f1cb41425b4fb7",
+      "produced": "2026-09-14T05:57Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/button-cfnet.log",
+      "group": "simulator",
+      "what": "the CFNetwork subset of the run with a tap during the outage and a second one while connected",
+      "bytes": 332790,
+      "sha256": "610320be336df00911d7eed97bafbcba12ce430b06d2cd194b6e45fc451cdbbb",
+      "produced": "2026-09-14T05:57Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/path-monitor.json",
+      "group": "simulator",
+      "what": "what the real NWPathMonitor reports inside the simulator: one satisfied path over the host Mac's Wi-Fi, and the interface list it is reduced from",
+      "bytes": 155,
+      "sha256": "f7a3d230cff9fb407372e58ee95ddb965959d6cce6e7fa24ca2c44366a802119",
+      "produced": "2026-09-14T05:50Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/path-chain.json",
+      "group": "simulator",
+      "what": "the shipped watcher, runner and policy driven at NetworkWatcher.report(_:): first path, same path, a change of carrying interface, an unsatisfied path, the path after it, and a change with the lanes stopped",
+      "bytes": 266,
+      "sha256": "e204c00f7a710d35b481c57067dd3ba3331c42edcf0cd4420d69c2a1f7d9350a",
+      "produced": "2026-09-14T05:50Z"
     }
   ],
   "screenshots": [
@@ -777,6 +881,51 @@
       "bytes": 179272,
       "sha256": "2f6dc45373f2d201f27779aa4e475c459debf7fe98df8d006ec3501e89c27583",
       "produced": "2026-09-13T20:08Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/register.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/reconnect-20260914",
+      "what": "the client registered on the disposable stand before the run",
+      "bytes": 179619,
+      "sha256": "aa2e835e0a2f5cf38b14a6ff97626c63c60ed452cf7b89a4ec83c11b28d370d6",
+      "produced": "2026-09-14T05:29Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/notap-green.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/reconnect-20260914",
+      "what": "«Сервер подключён» after the restore, no tap",
+      "bytes": 179054,
+      "sha256": "c6cbcbfadb557915908e2edb919d3f34cf41c915f5090c08f155553f866a5207",
+      "produced": "2026-09-14T05:45Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/restoretap-green.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/reconnect-20260914",
+      "what": "«Сервер подключён» 1.1 s after the tap that followed the restore",
+      "bytes": 178420,
+      "sha256": "06e79d77cacc394837d20f782c6f2aca0d650dbca993d1b285e0a4a840aa8a1c",
+      "produced": "2026-09-14T05:48Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/button-tap1.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/reconnect-20260914",
+      "what": "the connection sheet during the outage: «Последнее событие» reads «Подключение · подробнее», the announcement in place of the lane's stale failure",
+      "bytes": 219061,
+      "sha256": "3a6457412ae79ef3790d627fccaee80c7f3c8c1ded073b4fad9cfd5b577d8170",
+      "produced": "2026-09-14T05:39Z"
+    },
+    {
+      "path": "clients/ios/out/evidence/reconnect-20260914/button-tap2.png",
+      "group": "simulator",
+      "set": "clients/ios/out/evidence/reconnect-20260914",
+      "what": "the second tap, taken while connected: Android's gate, so only the send lane was woken and the sheet still reads «Подключено»",
+      "bytes": 215349,
+      "sha256": "9af1213547dcd8291244921d49bdd7bdb7c4ca7b2d25cab310af3f08448abad3",
+      "produced": "2026-09-14T05:40Z"
     }
   ]
 }

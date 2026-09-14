@@ -252,6 +252,9 @@ final class LifecycleTests: XCTestCase {
         XCTAssertEqual(policy.decide(.willResignActive), .unchanged)
         XCTAssertEqual(policy.decide(.didEnterBackground), .unchanged)
         XCTAssertEqual(policy.decide(.callTeardownElapsed), .unchanged)
+        // A network coming back is not a way in either: the monitor the
+        // application installs reports a path, never an intention to run.
+        XCTAssertEqual(policy.decide(.networkChanged), .unchanged)
         for state in CallActivity.allCases {
             XCTAssertEqual(policy.decide(.callChanged(state)), .unchanged, state.rawValue)
         }
@@ -306,6 +309,159 @@ final class LifecycleTests: XCTestCase {
         XCTAssertGreaterThan(scannedPackage, 5, "the scan found the package sources")
         XCTAssertGreaterThan(scannedApplication, 0, "the scan found the application sources")
         XCTAssertEqual(subscriptions.count, 3, "the three notifications the application subscribes to")
+    }
+
+    // MARK: - a change of network
+
+    func testTheNetworkRowIsARestartWhileTheLanesRunAndNothingInEveryOtherState() {
+        // Launching: the process is up, nothing has started the lanes, and the
+        // monitor's very first report arrives here
+        // (`TextEngine.java:210`, `if(realtime==null||broken)return`).
+        var launching = LifecyclePolicy()
+        XCTAssertEqual(launching.decide(.networkChanged), .unchanged)
+        XCTAssertEqual(launching.phase, .launching)
+        XCTAssertFalse(launching.isRunning)
+
+        // The foreground is the state it means something in, and it means the
+        // same thing every time: the interface changed again.
+        var foreground = LifecyclePolicy()
+        XCTAssertEqual(foreground.decide(.didBecomeActive), .start)
+        XCTAssertEqual(foreground.decide(.networkChanged), .restart)
+        XCTAssertEqual(foreground.decide(.networkChanged), .restart)
+        XCTAssertEqual(foreground.phase, .foreground, "a network change reports no phase")
+        XCTAssertTrue(foreground.isRunning, "a restart never stops anything")
+
+        // Resigned: an alert or the Control Center is covering an application
+        // that is still open, and its lanes never stopped.
+        var resigned = LifecyclePolicy()
+        XCTAssertEqual(resigned.decide(.didBecomeActive), .start)
+        XCTAssertEqual(resigned.decide(.willResignActive), .unchanged)
+        XCTAssertEqual(resigned.decide(.networkChanged), .restart)
+        XCTAssertEqual(resigned.phase, .resigned)
+
+        // The background: the lanes are stopped and a network is not a reason
+        // to start them, because this client delivers nothing in the
+        // background (`docs/clients/ios/README.md`).
+        var background = LifecyclePolicy()
+        XCTAssertEqual(background.decide(.didBecomeActive), .start)
+        XCTAssertEqual(background.decide(.didEnterBackground), .stop)
+        XCTAssertEqual(background.decide(.networkChanged), .unchanged)
+        XCTAssertFalse(background.isRunning)
+
+        // A call in the background keeps the signalling lanes up, and those
+        // are exactly the lanes a walk out of Wi-Fi would otherwise leave
+        // waiting out a long poll in the middle of the call.
+        for state in CallActivity.allCases where state.isActive {
+            var calling = LifecyclePolicy()
+            XCTAssertEqual(calling.decide(.didBecomeActive), .start)
+            XCTAssertEqual(calling.decide(.callChanged(state)), .unchanged)
+            XCTAssertEqual(calling.decide(.didEnterBackground), .unchanged)
+            XCTAssertEqual(calling.decide(.networkChanged), .restart, state.rawValue)
+        }
+
+        // And so does the teardown window a call left behind: the last control
+        // and its receipt still have to leave the device.
+        let source = FakeMonotonicSource()
+        var tearing = LifecyclePolicy(clock: source.clock)
+        XCTAssertEqual(tearing.decide(.didBecomeActive), .start)
+        XCTAssertEqual(tearing.decide(.callChanged(.connected)), .unchanged)
+        XCTAssertEqual(tearing.decide(.didEnterBackground), .unchanged)
+        XCTAssertEqual(tearing.decide(.callChanged(.ended)), .unchanged)
+        XCTAssertTrue(tearing.isTearingDown)
+        XCTAssertEqual(tearing.decide(.networkChanged), .restart)
+
+        // Once that window has elapsed the lanes are stopped, and the next
+        // change asks for nothing.
+        source.advance(LifecyclePolicy.callTeardown)
+        XCTAssertEqual(tearing.decide(.callTeardownElapsed), .stop)
+        XCTAssertEqual(tearing.decide(.networkChanged), .unchanged)
+    }
+
+    func testANetworkChangeRelaunchesTheLanesUnderANewGenerationAndStartsNothingWhenTheyAreStopped() async throws {
+        let lanes = FakeLanes()
+        let launched = Latch()
+        let cancelled = Latch()
+        // `run()` stays parked the way a receive lane parked on a long poll
+        // does, so that the relaunch is observable.
+        lanes.parked = 60 * MonotonicClock.nanosecondsPerSecond
+        lanes.onRun = { launched.signal() }
+        lanes.onCancel = { cancelled.signal() }
+        let runner = LifecycleRunner(target: lanes)
+
+        let early = await runner.handle(.networkChanged)
+        XCTAssertEqual(early, .unchanged)
+        XCTAssertEqual(lanes.log, [], "nothing had started the lanes")
+        XCTAssertEqual(lanes.runs, 0)
+
+        await runner.handle(.didBecomeActive)
+        let started = await launched.wait(for: 1)
+        XCTAssertTrue(started)
+        let first = lanes.generation
+
+        let changed = await runner.handle(.networkChanged)
+
+        XCTAssertEqual(changed, .restart)
+        XCTAssertEqual(lanes.log, ["start", "restart"], "the lanes were never stopped")
+        XCTAssertEqual(lanes.generation.run, first.run + 1,
+                       "the counter moved, so the answer in flight is worthless")
+        // `run()` returns when its generation is superseded, so the superseded
+        // task is cancelled and the lanes are given another one under the new
+        // generation. Without that the loop would sit enabled and idle.
+        let freed = await cancelled.wait(for: 1)
+        XCTAssertTrue(freed, "the superseded lanes task was cancelled")
+        let relaunched = await launched.wait(for: 2)
+        XCTAssertTrue(relaunched, "and a new one runs under the new generation")
+        XCTAssertEqual(lanes.runs, 2)
+        XCTAssertEqual(lanes.ran, [first, lanes.generation],
+                       "each launch was handed the generation it was for")
+        let running = await runner.state.isRunning
+        XCTAssertTrue(running)
+
+        // The background pauses them, and a network that comes back while the
+        // application is away changes nothing at all.
+        await runner.handle(.didEnterBackground)
+        let away = await runner.handle(.networkChanged)
+        XCTAssertEqual(away, .unchanged)
+        XCTAssertEqual(lanes.log, ["start", "restart", "stop"])
+        XCTAssertEqual(lanes.runs, 2, "nothing was launched while the application was away")
+        XCTAssertEqual(lanes.generation.run, first.run + 2,
+                       "the pause moved the counter; the change did not")
+    }
+
+    /// Two changes in a row — a switch that reports more than once, two taps of
+    /// «Повторить подключение» — never leave two copies of the lanes under one
+    /// generation.
+    ///
+    /// The launch is an unstructured `Task`, and one of those can be created,
+    /// cancelled by the next restart and *still* run its body. What it must not
+    /// do is read the counter for itself: it would then adopt the generation
+    /// the live launch is already running under and spend a session nonce and
+    /// the send lane's wake permit before its first cancellation point. Every
+    /// launch is therefore handed the generation it is for, and no generation
+    /// is ever handed out twice.
+    func testBackToBackChangesNeverLaunchTwoTasksUnderOneGeneration() async throws {
+        let lanes = FakeLanes()
+        lanes.parked = 60 * MonotonicClock.nanosecondsPerSecond
+        let runner = LifecycleRunner(target: lanes)
+
+        await runner.handle(.didBecomeActive)
+        for _ in 0..<8 {
+            await runner.handle(.networkChanged)
+        }
+        // The launches are tasks, so wait for the last one to have run a line.
+        for _ in 0..<200 where lanes.runs < 9 {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(lanes.runs, 9, "one launch for the start and one for each change")
+        XCTAssertEqual(Set(lanes.ran).count, lanes.ran.count,
+                       "no generation ran twice")
+        // Sorted, because the recording happens when a launch is *scheduled*
+        // and the executor is free to schedule two of them in either order;
+        // what is checked is which generations were handed out, not when each
+        // doomed task noticed.
+        XCTAssertEqual(lanes.ran.map(\.run).sorted(), Array(1...9).map(UInt64.init),
+                       "and they are exactly the generations the owner minted")
     }
 
     // MARK: - the states a call passes through
@@ -378,6 +534,7 @@ final class LifecycleTests: XCTestCase {
         private var counter = Generation(run: 0)
         private var recorded: [String] = []
         private var launches = 0
+        private var launched: [Generation] = []
 
         /// `start` and `stop`, in order.
         var log: [String] { lock.withLock { recorded } }
@@ -385,6 +542,9 @@ final class LifecycleTests: XCTestCase {
         var generation: Generation { lock.withLock { counter } }
         /// How many times the lanes' task was launched.
         var runs: Int { lock.withLock { launches } }
+        /// The generation each launch was handed, in order: what proves a task
+        /// cannot adopt one minted after it was created.
+        var ran: [Generation] { lock.withLock { launched } }
 
         func start() async -> Generation {
             lock.withLock {
@@ -405,8 +565,24 @@ final class LifecycleTests: XCTestCase {
             }
         }
 
-        func run() async {
-            lock.withLock { launches += 1 }
+        /// `StateOwner.restart()`: the counter moves and `enabled` stays as it
+        /// is, so a stopped fake refuses the same way the owner does
+        /// (`RealtimeLoop.java:62`, `if(closed||!enabled)return`).
+        @discardableResult
+        func restart() async -> Generation? {
+            lock.withLock {
+                guard enabled else { return nil }
+                counter = counter.next
+                recorded.append("restart")
+                return counter
+            }
+        }
+
+        func run(under generation: Generation) async {
+            lock.withLock {
+                launches += 1
+                launched.append(generation)
+            }
             onRun?()
             guard parked > 0 else { return }
             do {

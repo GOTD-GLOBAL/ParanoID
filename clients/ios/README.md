@@ -39,7 +39,15 @@ no CallKit, reinstall is a clean install). Java line numbers in this README are
 `MainActivity.java` references — `:444-542`, `:478` and `:533-537` — which are
 the call window and its render pass: call-v2 video moved that code past v15, so
 those four are read in this branch's merged Android tree (`0.0.22-push`) and
-say so where they appear. Every other reference resolves at `fe9c26c`; if one
+say so where they appear. The connectivity restart adds a second such group,
+for the same reason: `watchNetwork()`, `RealtimeLoop.restart()`/`nudge()` and
+the wake gate in front of them entered Android on 2026-09-12 (`2cdb850`),
+after v15, so `TextEngine.java:117-122,184-187,196,198,199,208-212,221,249-251`,
+`RealtimeLoop.java:57,59-70` and `MainActivity.java:586` are read in that same
+merged tree. The group is listed here rather than left to be worked out,
+because one of its numbers means something else at `fe9c26c`:
+`TextEngine.java:198` is `userError` there and `stopConnection()` in the merged
+tree. Every other reference resolves at `fe9c26c`; if one
 does not, the reference is wrong and not the base. A directory or
 script named in this README exists only once its pull-request step has landed;
 the name alone is not a claim that the code exists or works.
@@ -280,7 +288,7 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   is refused with `Superseded` before it can touch the state
   (`docs/protocol/realtime-v1.md:127-130`). The session belongs to the owner
   and not to a generation, because the account has two live-session slots
-  (`server/src/self_service_http.rs:377-391`) and renewal needs the second: a
+  (`server/src/self_service_http.rs:398-409`) and renewal needs the second: a
   pause keeps it, a new generation reuses one younger than 240 seconds by the
   monotonic clock, and it is dropped only on a second 401, a 404,
   `session_exhausted`, a server that stopped advertising the capability, or
@@ -343,9 +351,12 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   connection: 401 and 404 drop the session and rediscover, and a 429 leaves the
   route alone for `ProofFlow.legacyWindow` (5 s) while the retained challenge
   transport carries the traffic. `RealtimeLoop` is the object the application
-  holds: it owns the two lanes and the signal, `start()`/`stop()` are the
-  generation lifecycle on the owner, and `run()` drives both lanes in one task
-  group until the generation they started under is superseded.
+  holds: it owns the two lanes, the signal and the pinned transport;
+  `start()`/`stop()` are the generation lifecycle on the owner, `run(under:)`
+  drives both lanes in one task group until the stated generation is
+  superseded — stated rather than read, so a task launched after a newer
+  generation was minted cannot adopt it — and `restart()` is the reconnection
+  described in the next entry.
 - `LifecyclePolicy` is when the lanes run, as pure logic with no platform in
   it: `didBecomeActive` on stopped lanes starts them and mints a generation,
   which is what makes the first cycle ask for `messages` rather than wait on
@@ -359,14 +370,51 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   keep it alive. A call that has ended keeps them for ten more seconds so that
   the last control and its receipt leave the device (`callTeardown`,
   Android's `callDraining`, `TextEngine.java:81-83`), and when that window
-  elapses in the background the lanes stop. `LifecycleRunner` holds the policy,
+  elapses in the background the lanes stop. `networkChanged` is the fourth
+  event and the only one that is not the application's own state: **running
+  lanes are restarted and stopped lanes are left exactly as they are.** That is
+  Android's `onAvailable`, which restarts a live loop when the default network
+  actually changed and otherwise leaves through
+  `if(realtime==null||broken)return` (`TextEngine.java:208-211`); the second
+  half is the one worth writing down on this platform, because a client with no
+  background delivery has no reason to open a socket the user cannot see, so a
+  network that comes back while the application is away starts nothing.
+  `LifecycleRunner` holds the policy,
   applies what it decides to a `LifecycleTarget` (`RealtimeLoop`), owns the
-  task the lanes run in and takes the platform's posts through one ordered
+  task the lanes run in — every launch is handed the generation it is for, and
+  `.restart` moves the counter, cancels the superseded task and launches a new
+  one at once, because the lanes' task returns as soon as its generation is
+  superseded — and takes the platform's posts through one ordered
   queue, because two tasks over an actor could apply a background and a
   foreground in the wrong order. Nothing else starts a lane: there is no
   background-task scheduling, no background app refresh and no VoIP push
   registration in this client, and `LifecycleTests` scans both the package and
   the application sources to keep it that way.
+- `RealtimeLoop.restart()` is what `.restart` asks for, and the port of
+  `RealtimeLoop.java:59-67`. It is neither of its neighbours: `stop()` also
+  moves the counter but **disables** the lanes, so something has to start them
+  again, and `wake()` leaves the counter alone — which is exactly why Android
+  keeps `nudge()` beside `restart()` (`RealtimeLoop.java:68-70`), because a
+  wake must never abandon an in-flight voice-relay request and a restart must.
+  Three steps in Android's order: `StateOwner.restart()` mints a generation
+  with the lanes left **enabled** (`RealtimeLoop.java:61-63`), so every answer
+  in flight under the old one is refused when it returns;
+  `RealtimeTransport.cancelActive()` fails what is on the socket right now; and
+  the send lane's signal is re-armed. The session, the discovered capability
+  and the outbox are untouched — a restart is not a reset and does not spend
+  the account's second live-session slot
+  (`server/src/self_service_http.rs:398-409`) — and the protocol permits the
+  cancellation outright, with every request after it freshly signed
+  ([realtime v1](../../docs/protocol/realtime-v1.md) lines 149 and 154). The
+  cancellation is what the platform makes necessary: Android's `start()` ends
+  in `lifecycle.notifyAll()` (`RealtimeLoop.java:57`) and a lane parked in
+  `lifecycle.wait()` leaves its backoff on the spot, while nothing here can be
+  notified — a `Task` suspended in a `URLSession` long poll leaves it when the
+  request fails, and over an interface the device no longer has that is the
+  request's whole 30-second bound plus the backoff after it. A stopped or
+  closed loop does nothing at all, cancellation included, and answers `nil`;
+  that is Android's `if(closed||!enabled)return` before its own cancel thread
+  is started.
 
 ```sh
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests
@@ -457,8 +505,80 @@ plist is processed, not copied. The one shared scheme `ParanoID`
 - `ParanoID/AppLifecycle.swift` is the only place where UIKit meets the
   realtime lanes: three `NotificationCenter` subscriptions
   (`didBecomeActive`, `willResignActive`, `didEnterBackground`) handed to
-  `LifecycleRunner.post(_:)`, and one task draining that queue. It holds no
-  rule of its own; every decision is `LifecyclePolicy`'s, in the package.
+  `LifecycleRunner.post(_:)`, one task draining that queue, and one source
+  that is not a UIKit post at all — `NetworkWatcher`, built and started as the
+  **last** statement of `init`, so it cannot report a path before there are
+  lanes to report it to, and cancelled in `deinit` before the queue it feeds is
+  closed. Android registers its own network callback in the same position,
+  right after the loop it protects exists (`TextEngine.java:117-122`). It holds
+  no rule of its own; every decision is `LifecyclePolicy`'s, in the package.
+- `ParanoID/NetworkWatcher.swift` is `NWPathMonitor` over the default path with
+  the `changed` test of Android's `onAvailable` (`TextEngine.java:209`) in
+  front of it; all it ever does is post `.networkChanged`. `NWPath` has no
+  counterpart of Android's `Network` identity, and `availableInterfaces` is not
+  one: it lists **every** interface available to the path in order of
+  preference, so a plain Wi-Fi path reports a duplicate and a tunnel beside
+  `en0`, and on a phone those entries come and go under iCloud Private Relay,
+  an on-demand VPN, Wi-Fi Calling and Personal Hotspot without the route moving
+  once. What is kept and compared is therefore the **first** of them — the
+  interface the path is dialling over — so Wi-Fi giving way to cellular is a
+  change and so is a VPN that actually takes the route, while a second
+  interface merely becoming available is not. Three of the four answers are
+  "no", and each is a decision: the first path of the process is not a change
+  (Android's `last != null` is false, and the lanes have just been started under
+  a generation `.didBecomeActive` minted, whose first cycle is the `messages`
+  read that shows the inbox), the same path reported again is not a change, and
+  an unsatisfied path is not a change but is written down — Android's `onLost`
+  (`TextEngine.java:212`). A satisfied path **after** one that was not **is**
+  reported as a change, and that is the single place where the mechanism
+  differs rather than the spelling: there `onLost` clears `last`, so the
+  `onAvailable` after it runs only `startConnection()`, whose
+  `lifecycle.notifyAll()` frees a lane out of its wait; nothing here can be
+  notified, so the restart is what does it — and "after none" includes a launch
+  that found no network at all, where the lanes are already parked in a backoff
+  step by the time one arrives. The monitor opens no socket, sends nothing and
+  reaches no server. It is **not** a background mode and cannot become one: a
+  path change does not wake a process that is not running, so a network that
+  returns while the application is away is seen when the application is, and
+  the policy leaves stopped lanes stopped in any case.
+- «Повторить подключение» posts `.networkChanged` rather than waking the send
+  lane (`AppModel.reconnect()`). The intent is Android's — its retry is
+  `TextEngine.sync()` → `startConnection()` (`MainActivity.java:586`,
+  `TextEngine.java:249-251,199`) — and the mechanism has to differ, because a
+  wake arms the send lane's signal and nothing else: it frees neither a receive
+  lane suspended in a `URLSession` long poll nor one asleep in `Backoff`, and
+  with an empty outbox a successful send pass publishes nothing, so the button
+  used to change nothing a user could see. A restart is the sharper
+  instrument, so it carries Android's own gate for one: `pushWake()` keeps
+  every hint that is not a callback on `nudge()` whenever a call is live or the
+  connection is working, because a restart "abandons an in-flight voice relay
+  request/long-poll, which froze call setup in v20/v21"
+  (`TextEngine.java:184-187`). A tap with a call on it, or with the client
+  already connected, therefore still only wakes the send lane; everything else
+  restarts. The monitor is not gated on either platform, because a route that
+  really changed is not a hint. The restart is asked for through the runner and
+  never of the loop directly: the runner owns the lanes' task and is what
+  relaunches it.
+- A start and a restart say so on screen (`AnnouncedLanes`, in `AppModel.swift`).
+  The lanes publish only what they have actually seen — a delivered page
+  (`ReceiveLane.swift:444`) or an accepted envelope (`SendLane.swift:349`) —
+  so being started and being restarted publish nothing, and without this the
+  status line would keep «Сервер подключён» for a connection that ended while
+  the application was away, or the «Нет подключения» of a lane that failed over
+  an interface the device has given up. The decorator the runner drives
+  publishes «Подключение · подробнее» before forwarding `start()` and
+  `restart()` and forwards `stop()` and `run(under:)` untouched, so it
+  announces where the decision is taken rather than where an event is posted
+  and a network change that finds the lanes stopped announces nothing. It
+  invents no green state: `isConnected` is still set only by a page or an
+  envelope, and only the announcement that follows a **pause** clears it. That
+  is Android's own split: `connected` is cleared in `stopConnection()` alone
+  (`TextEngine.java:198`) and never where the client merely says it is
+  connecting — `listen()` and the end of every `submit()` (`:196,221`) — and
+  `RealtimeLoop.restart()` touches no flag at all. The split matters here
+  because that flag is also the gate an outgoing call spins on for its ten
+  seconds, and the one view of the connection `CallController` is not told
+  about through this path.
 - `ParanoID/Qr/` is the contact in both directions, and the same string on
   both sides of it. `ContactQrView` draws the code for the exact `contact`
   text (regenerated only when that text changes, Android's `displayedQr`

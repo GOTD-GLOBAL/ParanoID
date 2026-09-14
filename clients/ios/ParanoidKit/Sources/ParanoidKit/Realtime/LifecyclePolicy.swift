@@ -90,6 +90,22 @@ public enum LifecycleEvent: Sendable, Equatable {
     /// The teardown window after a call ended has elapsed. It is posted by the
     /// runner's own timer and never by the application.
     case callTeardownElapsed
+    /// The network the lanes are dialling over is not the one they were:
+    /// Wi-Fi lost and cellular taking over, a route moved into or out of a
+    /// tunnel, or connectivity back after none. It is the application's path
+    /// monitor saying so, which is Android's
+    /// `registerDefaultNetworkCallback` and the `changed` test inside its
+    /// `onAvailable` (`TextEngine.java:200-214`); a monitor that reports the
+    /// same route again has nothing to report and posts nothing.
+    ///
+    /// «Повторить подключение» posts it too, because a user pressing it is
+    /// asserting the same fact about a route the monitor cannot see is broken.
+    /// The gate Android puts in front of every hint that is not a callback —
+    /// never restart a live loop while a call or a working connection is on it
+    /// (`TextEngine.java:184-187`) — is in `AppModel.reconnect()`, where the
+    /// call state is, and not here: a monitor report that a route really
+    /// changed is never gated on Android either.
+    case networkChanged
 }
 
 /// What one event asks of the lanes.
@@ -98,6 +114,12 @@ public enum LifecycleAction: Sendable, Equatable {
     case start
     /// Pause them (`StateOwner.stop()`).
     case stop
+    /// Mint a generation with them left running, abandon what is on the socket
+    /// and relaunch their task (`RealtimeLoop.restart()`). Unlike `stop` it
+    /// disables nothing, and unlike `start` it mints a generation for lanes
+    /// that are already running, because that is the only thing that makes an
+    /// answer coming back over the old interface worthless.
+    case restart
     /// Nothing at all: the lanes are left exactly as they are, which means no
     /// generation is minted and nothing in flight is refused.
     case unchanged
@@ -124,8 +146,10 @@ public enum LifecycleAction: Sendable, Equatable {
 /// | `didEnterBackground` | otherwise | `stop` |
 /// | `callChanged` / `callTeardownElapsed` | in the background | the same three rules |
 /// | `callChanged` / `callTeardownElapsed` | in the foreground | `unchanged` |
+/// | `networkChanged` | lanes running | `restart` — a new generation, and the dead poll is abandoned |
+/// | `networkChanged` | lanes stopped | `unchanged` — a network is never a reason to start |
 ///
-/// Three of those rows are the ones worth saying out loud:
+/// Four of those rows are the ones worth saying out loud:
 ///
 /// - **A new generation is what makes a resumed client read its inbox now.**
 ///   The receive lane asks for `messages` on the first cycle of a generation
@@ -151,6 +175,19 @@ public enum LifecycleAction: Sendable, Equatable {
 ///   the receipt it produces actually leave the device; the same ten seconds
 ///   are `callTeardown` here, measured on the monotonic clock, and when they
 ///   elapse in the background the lanes stop.
+/// - **A network change restarts a running loop and starts a stopped one
+///   never.** The interface the lanes were dialling over is gone, so the long
+///   poll on it will not fail until its own 30-second bound and the backoff
+///   after that — 25 seconds of an offline status line with the server
+///   answering the whole time, which is the owner's report of 2026-09-13.
+///   Android answers it in `onAvailable`: restart the loop when the network
+///   actually changed, and leave through `if(realtime==null||broken)return`
+///   otherwise (`TextEngine.java:200-214`), with its `startConnection()` still
+///   behind the gate that decides whether a connection may exist at all
+///   (`:199`). The second half of that is the half worth writing down
+///   here: a network that comes back while the application is in the
+///   background finds the lanes stopped and leaves them stopped, because this
+///   client has nothing to deliver in the background.
 ///
 /// Nothing else starts a lane: there is no `BGTaskScheduler`, no
 /// `BGAppRefreshTask` and no `PushKit` registration anywhere in this client,
@@ -231,6 +268,16 @@ public struct LifecyclePolicy: Sendable {
             return phase == .background ? pause() : .unchanged
         case .callTeardownElapsed:
             return phase == .background ? pause() : .unchanged
+        case .networkChanged:
+            // Nothing about the application changed, so neither the phase nor
+            // the call state moves: this is the same lanes, on a different
+            // interface. Running is the only state it means anything in —
+            // Android's `onAvailable` restarts a live loop and no-ops through
+            // `if(realtime==null||broken)return` otherwise
+            // (`TextEngine.java:210`) — and a stopped loop stays stopped,
+            // because a client with no background delivery has no reason to
+            // open a socket the user cannot see.
+            return isRunning ? .restart : .unchanged
         }
     }
 
@@ -259,8 +306,18 @@ public protocol LifecycleTarget: Sendable {
     /// Pauses the lanes: the generation moves and everything in flight is
     /// refused when it returns.
     func stop() async
-    /// Runs both lanes until the generation they started under is superseded.
-    func run() async
+    /// Mints a generation with the lanes left enabled and abandons what is on
+    /// the socket now, so a poll over an interface that has gone ends here
+    /// instead of at its own timeout (`RealtimeLoop.restart()`). The lanes'
+    /// task returns after it, because the generation it was running under is
+    /// superseded, so the caller relaunches it under the one returned here —
+    /// and `nil` says there was nothing to restart.
+    @discardableResult
+    func restart() async -> Generation?
+    /// Runs both lanes under one stated generation and returns once it is
+    /// superseded. It is stated rather than read so that a task which is
+    /// scheduled after a newer generation was minted cannot adopt it.
+    func run(under generation: Generation) async
 }
 
 extension RealtimeLoop: LifecycleTarget {}
@@ -286,11 +343,23 @@ extension RealtimeLoop: LifecycleTarget {}
 ///
 /// ## The lanes' task
 ///
-/// `start` mints the generation and then launches `run()`, exactly as
-/// `RealtimeLoop` documents; `stop` moves the counter — which is what makes
+/// `start` mints the generation and then launches the lanes under it, exactly
+/// as `RealtimeLoop` documents; `stop` moves the counter — which is what makes
 /// every answer in flight worthless — and then cancels that task, which only
-/// frees a lane parked on a long poll sooner than its next guard would. A
-/// commit that froze the client stops the lanes by itself
+/// frees a lane parked on a long poll sooner than its next guard would.
+/// `restart` is those two steps in that same order followed by a third: the
+/// counter moves, the superseded task is cancelled, and a new one is launched
+/// at once, because the lanes were never disabled and their task returns as
+/// soon as its generation is superseded.
+///
+/// Every launch is handed the generation it is for. An unstructured `Task` may
+/// not run a line before the actor takes its next event, so a task that read
+/// the counter itself could adopt a generation minted *after* it was created
+/// and already cancelled — two copies of both lanes under one generation, for
+/// as long as the doomed copy took to reach a cancellation point. Stated, the
+/// lanes refuse it on their first guard.
+///
+/// A commit that froze the client stops the lanes by itself
 /// (`StateOwner.perform`), and this actor does not restart them: a client that
 /// cannot persist must not keep talking to a server, and the application is
 /// off the network anyway because `updateTrust()` is its only source of a
@@ -361,9 +430,9 @@ public actor LifecycleRunner {
         switch action {
         case .start:
             lanes?.cancel()
-            _ = await target.start()
+            let generation = await target.start()
             let target = self.target
-            lanes = Task { await target.run() }
+            lanes = Task { await target.run(under: generation) }
         case .stop:
             // The handle on the task is taken out of the actor's state before
             // the await, so an event that interleaved on that suspension —
@@ -376,6 +445,28 @@ public actor LifecycleRunner {
             lanes = nil
             await target.stop()
             paused?.cancel()
+        case .restart:
+            // The ordering rule of `.stop`, for its reason, and then the
+            // relaunch `.stop` has no need of: the lanes' task returns once its
+            // generation is superseded, so without a task of its own the loop
+            // would sit enabled and idle with nothing to say so. The counter
+            // has to move before the cancellation here as well, and for a
+            // second reason: a cancelled request fails with `URLError`, not
+            // `CancellationError`, and a receive lane whose generation is
+            // still current reports that failure as «нет подключения» and
+            // sleeps a backoff step over it.
+            let target = self.target
+            let superseded = lanes
+            lanes = nil
+            let generation = await target.restart()
+            superseded?.cancel()
+            // `nil` is a loop that was stopped or closed under this actor's
+            // feet, and only the runner's own teardown timer can have
+            // interleaved on that await — but it can have stopped the lanes,
+            // and relaunching them here would put them back up behind the
+            // policy's back.
+            guard let generation, policy.isRunning else { break }
+            lanes = Task { await target.run(under: generation) }
         case .unchanged:
             break
         }

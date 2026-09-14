@@ -84,7 +84,23 @@ a new identity, the injected transport and storage faults, the nine pinned-TLS
 leaf checks, the call state machine against the Android smoke scenarios
 (`94/94` labels), the TURN credential lane over a real pinned socket, and two
 simulators placing and answering calls in both directions over direct ICE with
-about 2300 RTP packets per side per call. The 242 package tests pass; the
+about 2300 RTP packets per side per call. Since 2026-09-14 the lanes also
+**reconnect when the network changes**, which they did not before: a change of
+the default path mints a generation with the lanes left enabled, cancels what
+is on the socket and relaunches them, so a long poll over an interface the
+device no longer has ends there instead of at its own 30-second bound plus the
+backoff after it, while a change seen with the lanes stopped starts nothing;
+«Повторить подключение» does the same restart unless a call is live or the
+client is already connected, where it keeps Android's harmless half; and a
+start or a restart says «Подключение · подробнее» rather than leaving the
+previous caption standing, inventing no connected state. It is the port of
+`TextEngine.watchNetwork()` and `RealtimeLoop.restart()` (Android's own fix of
+2026-09-12, `2cdb850`), it adds no dependency, no background mode and no
+`URLSession` outside the pinning delegate, and it is `CLAIMED`: a real path
+change was never produced, because a simulator has no network of its own — the
+rule was driven through the shipped watcher, runner and policy instead
+([evidence](evidence/ios-client-20260913/README.md)). The 248 package tests
+pass, six of them new, with fifteen more in the application bundle; the
 application test bundles and the local-stand scripts were run by the steps that
 delivered them, and their output stays under `clients/ios/out/`, which is not
 committed.
@@ -141,11 +157,13 @@ upload, and the
 applies the requirement to TestFlight too. The Data Protection class on the
 device was not measured, no real screen recording was made over the call stage,
 a screen lock during dialling moves to the joint test, and no relayed call was
-placed, so all of those stay `NOT RUN`. Open since 2026-09-13/14: after a
-network drop on the phone the application stayed at «Нет подключения» while
-the server answered from the Mac and the pinned key was unchanged; the cause
-is under investigation on the branch and no device log was collected for that
-drop. Interoperability with the Android client on its own hardware is shown
+placed, so all of those stay `NOT RUN`. The open item of 2026-09-13/14 — after
+a network drop on the phone the application stayed at «Нет подключения» while
+the server answered from the Mac and the pinned key was unchanged — now has a
+cause and a fix (the connectivity restart above), but what stays `NOT RUN` is
+the proof: no real change of network path was ever produced, on a simulator or
+a phone, and no device log was ever collected for that drop.
+Interoperability with the Android client on its own hardware is shown
 only as far as the reported joint session above reaches; everything beyond it
 rests on the protocol comparison, which ran with both stacks as processes on
 the build Mac, where the real Android facade is compiled and agrees with the
@@ -201,10 +219,10 @@ non-`/v2/events` route is 10 s before it answers `408 request_timeout`; that is
 `clients/android/src/org/paranoid/text/RealtimeTransport.java:36` sets exactly
 `path.startsWith("/v2/events?") ? 30000 : 8000` for both clients, and this
 branch does not change it. This is a **different** failure from the
-connectivity-change parity gap above, whose fix is being written on this branch
-now and is **not** finished: that gap leaves a lane parked after a network
-change, while this symptom was a signed read that did not return while the
-server was otherwise healthy, which no client-side restart fixes.
+connectivity-change parity gap above, whose fix is now in the branch: that gap
+left a lane parked after a network change, while this symptom was a signed read
+that did not return while the server was otherwise healthy, which no
+client-side restart fixes and which the fix does not address.
 
 **Hosted accounts spent: two.** `hosted_registrations` is 2: a
 `service-bridge` registration from the build Mac on 2026-09-13, made while

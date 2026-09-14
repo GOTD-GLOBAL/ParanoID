@@ -201,7 +201,7 @@ final class RealtimeLoopTests: XCTestCase {
         let opened = await queue.owner.session
 
         // Three pauses and resumes inside the session's life. The account has
-        // two live-session slots (`server/src/self_service_http.rs:377-391`)
+        // two live-session slots (`server/src/self_service_http.rs:398-409`)
         // and renewal needs the second, so a pause must not spend one.
         for step in [80, 80, 79] {
             await queue.loop.stop()
@@ -429,6 +429,124 @@ final class RealtimeLoopTests: XCTestCase {
         XCTAssertEqual(SendLane.wakePoll, MonotonicClock.nanosecondsPerSecond)
     }
 
+    // MARK: - a network that changed under a running loop
+
+    func testARestartKeepsTheQueuedOutboxAndTheSessionAndOnlyMovesTheGeneration() async throws {
+        let queue = try Queue()
+        let first = await queue.owner.start()
+        let ids = try (1...3).map { try queue.enqueue("[TEST ONLY] сообщение \($0)") }
+        guard case .session(let opened) = try await queue.flow.connect(under: first) else {
+            return XCTFail("the stand offers the realtime capability")
+        }
+
+        await queue.loop.restart()
+
+        // Only the run changed (`RealtimeLoop.java:61-62`): the lanes were
+        // never disabled, so nothing has to start them again.
+        let current = await queue.owner.current
+        let next = try XCTUnwrap(current)
+        XCTAssertEqual(next.run, first.run + 1)
+        let stale = await queue.owner.isCurrent(first)
+        XCTAssertFalse(stale)
+
+        // The outbox is the core's and a restart never reaches the core: the
+        // three envelopes are still queued, in the order they were written in,
+        // and not one of them was sent twice or lost.
+        XCTAssertEqual(try queue.device.client.pending().compactMap { $0["id"] as? String }, ids)
+        XCTAssertEqual(queue.posts.count, 0)
+
+        // The session is the owner's and outlives any number of generations
+        // (`docs/protocol/realtime-v1.md:179-181`). The account has two live
+        // slots (`server/src/self_service_http.rs:398-409`) and a change of
+        // network must not spend one: it is reused, not reopened.
+        let held = await queue.owner.session
+        XCTAssertEqual(held?.id, opened.id)
+        guard case .session(let reused) = try await queue.flow.connect(under: next) else {
+            return XCTFail("the session was reused")
+        }
+        XCTAssertEqual(reused.id, opened.id)
+        XCTAssertEqual(queue.server.issuedSessions, 1)
+
+        // And the queue goes out under the new generation, in that same order.
+        let outcome = try await queue.lane.cycle(under: next)
+        XCTAssertEqual(outcome, .sent(accepted: 3))
+        XCTAssertEqual(queue.posts.compactMap { Queue.identifier(in: $0.body) }, ids)
+        XCTAssertEqual(try queue.device.client.pending().count, 0)
+    }
+
+    func testARestartFreesALaneParkedOnADeadPollAndTheLanesRunAgainUnderTheNewGeneration() async throws {
+        let stalled = try Stalled()
+        // Every long poll is held open and never answered, which is what
+        // `GET /v2/events?…` over an interface that has gone looks like from
+        // here: no bytes, no failure and nothing to report until the request's
+        // own 30-second bound and the backoff after it
+        // (`RealtimeTransport.eventsReadTimeout`).
+        stalled.transport.parks = { $0.method == "GET" && $0.path.hasPrefix("/v2/events?") }
+        let first = await stalled.loop.start()
+        let returned = Done()
+        let lanes = Task {
+            await stalled.loop.run()
+            returned.signal()
+        }
+
+        let parked = await stalled.transport.waitForParked(1)
+        XCTAssertTrue(parked, "the receive lane is waiting on the long poll")
+        // The immediate read of a new generation came back first and was
+        // delivered, so the application has been told it is online; the poll
+        // the lane is parked on now is the one the network change strands.
+        XCTAssertEqual(stalled.pagePaths, ["/v2/messages?after=0&limit=20",
+                                           "/v2/events?after=0&limit=20"])
+        XCTAssertEqual(stalled.listener.notifications.map(\.connected), [true])
+
+        await stalled.loop.restart()
+
+        // The lane leaves at its next guard instead of at the timeout, so the
+        // task `run()` was launched in returns — which is what makes a
+        // relaunch both necessary and possible.
+        let left = await returned.wait()
+        if !left {
+            // A lane that did not leave would park again for ever and hang the
+            // suite instead of reporting. Take it down by hand so that the
+            // assertion below is what ends this test.
+            await stalled.loop.stop()
+            stalled.loop.wake()
+            stalled.transport.parks = nil
+            await stalled.transport.cancelActive()
+        }
+        XCTAssertTrue(left, "the parked poll was abandoned, and run() returned with it")
+        await lanes.value
+        let cancelled = await stalled.transport.waitForCancellations(1)
+        XCTAssertTrue(cancelled, "cancelActive() freed the parked request")
+        XCTAssertEqual(stalled.transport.cancellations, 1, "once for one restart, and no more")
+        let current = await stalled.owner.current
+        let next = try XCTUnwrap(current)
+        XCTAssertEqual(next.run, first.run + 1)
+        let stale = await stalled.owner.isCurrent(first)
+        XCTAssertFalse(stale)
+        XCTAssertEqual(stalled.listener.losses, 0, "a restart is not an authorization failure")
+
+        // What `LifecycleRunner` does on `.networkChanged`, by hand: the lanes
+        // stayed enabled, so all they need is a task again.
+        let resumed = Task { await stalled.loop.run() }
+
+        let again = await stalled.transport.waitForParked(2)
+        XCTAssertTrue(again)
+        // The first cycle of the new generation is the immediate read and not
+        // the long poll (`RealtimeLoop.java:254`). That page is the one that
+        // was 25 seconds late in the owner's report of 2026-09-13, and the
+        // online flag is published with it.
+        XCTAssertEqual(Array(stalled.pagePaths.suffix(2)), ["/v2/messages?after=0&limit=20",
+                                                            "/v2/events?after=0&limit=20"])
+        XCTAssertEqual(stalled.listener.notifications.map(\.connected), [true, true])
+        XCTAssertEqual(stalled.listener.problems, [], "nothing was published that the device did not hold")
+
+        // Nothing is left suspended on a request that is not coming back.
+        await stalled.loop.stop()
+        stalled.loop.wake()
+        await stalled.transport.cancelActive()
+        await resumed.value
+    }
+
     // MARK: - fixtures
 
     /// A registered device with a paired peer, the owner over it, the loop and
@@ -562,6 +680,177 @@ final class RealtimeLoopTests: XCTestCase {
                 value += 1
                 return value
             }
+        }
+    }
+
+    /// A registered device whose long polls can be held open, and the whole
+    /// loop over it.
+    ///
+    /// It is `Queue` with the two differences the check above is about: the
+    /// page routes are answered the way the stand answers an empty inbox
+    /// (`server/src/self_service_messages.rs:26`, `ReceiveLaneTests.Inbox`),
+    /// and the transport in front of them can park a request. The lanes run in
+    /// their own task here rather than a fixed number of cycles, so the pacer
+    /// is the real one: a recording pacer returns at once, which would spin the
+    /// send lane's wait instead of waiting it out.
+    ///
+    /// `@unchecked Sendable` for the reason `Device` is: the fixture keeps the
+    /// client so the test can read the state, which a lane may not do.
+    final class Stalled: @unchecked Sendable {
+        let device: Device
+        let server: StandServer
+        let transport: ParkingTransport
+        let source: FakeMonotonicSource
+        let signal: WakeSignal
+        let listener: RecordingSends
+        let owner: StateOwner
+        let flow: ProofFlow
+        let loop: RealtimeLoop
+
+        init() throws {
+            let device = try Device(name: "stalled", trust: RealtimeLoopTests.stand)
+            try device.client.createIdentity()
+            self.device = device
+            let server = try StandServer(credential: (try? device.client.credential()) ?? [:])
+            self.server = server
+            let inner = FakeTransport(server: server)
+            // The two page routes are answered here; everything else is the
+            // stand's own answer.
+            inner.answer = { call in
+                guard call.method == "GET", Stalled.isPage(call.path) else { return nil }
+                return ["messages": [], "cursor": 0]
+            }
+            let transport = ParkingTransport(inner: inner)
+            self.transport = transport
+            let source = FakeMonotonicSource()
+            self.source = source
+            let signal = WakeSignal()
+            self.signal = signal
+            let owner = StateOwner(client: device.client, clock: source.clock, hook: signal)
+            self.owner = owner
+            let flow = ProofFlow(owner: owner, transport: transport,
+                                 clock: source.clock, pacer: RecordingPacer())
+            self.flow = flow
+            let listener = RecordingSends(device: device)
+            self.listener = listener
+            loop = RealtimeLoop(owner: owner, flow: flow, transport: transport,
+                                listener: listener, signal: signal)
+        }
+
+        /// Whether one path is a page request.
+        static func isPage(_ path: String) -> Bool {
+            path.hasPrefix("/v2/messages?") || path.hasPrefix("/v2/events?")
+        }
+
+        /// Every page the receive lane asked for, in order, parked or not.
+        var pagePaths: [String] {
+            transport.calls.filter { $0.method == "GET" && Stalled.isPage($0.path) }.map(\.path)
+        }
+    }
+
+    /// A flag one task raises and another waits for, so that a check about a
+    /// task that should end does not hang the suite when it does not.
+    final class Done: @unchecked Sendable {
+        private let lock = NSLock()
+        private var raised = false
+
+        var isRaised: Bool { lock.withLock { raised } }
+
+        func signal() {
+            lock.withLock { raised = true }
+        }
+
+        /// Waits for the flag, for at most a second.
+        func wait() async -> Bool {
+            for _ in 0..<200 {
+                if isRaised { return true }
+                try? await Task.sleep(nanoseconds: 5_000_000)
+            }
+            return isRaised
+        }
+    }
+
+    /// A transport that can hold a request open the way a long poll over an
+    /// interface that has gone does: no bytes, no failure, nothing at all
+    /// until something cancels it.
+    ///
+    /// Whatever it does not park is the inner transport's own answer, so the
+    /// stand's routes are untouched. `cancelActive()` is the seam
+    /// `RealtimeLoop.restart()` reaches for (`RealtimeTransport.java:66-71`):
+    /// every held request fails the way a cancelled `URLSessionTask` does, and
+    /// nothing else about the transport changes — no pin, no session, no
+    /// configuration.
+    ///
+    /// `@unchecked Sendable` like every fake in this target: it is reached from
+    /// both lanes' tasks, and everything it records is kept under a lock.
+    final class ParkingTransport: ProofTransport, @unchecked Sendable {
+        /// Which calls are held instead of answered.
+        var parks: (@Sendable (FakeTransport.Call) -> Bool)?
+
+        private let inner: FakeTransport
+        private let lock = NSLock()
+        private var waiting: [CheckedContinuation<RealtimeTransport.Reply, any Error>] = []
+        private var recorded: [FakeTransport.Call] = []
+        private var held = 0
+        private var freed = 0
+
+        init(inner: FakeTransport) {
+            self.inner = inner
+        }
+
+        /// Every call this transport was asked to make, parked or not.
+        var calls: [FakeTransport.Call] { lock.withLock { recorded } }
+        /// How many calls have been parked since the beginning.
+        var parked: Int { lock.withLock { held } }
+        /// How many times `cancelActive()` has been called.
+        var cancellations: Int { lock.withLock { freed } }
+
+        func call(method: String, path: String, body: String,
+                  authorization: String?) async throws -> RealtimeTransport.Reply {
+            let call = FakeTransport.Call(method: method, path: path, body: body,
+                                          authorization: authorization)
+            lock.withLock { recorded.append(call) }
+            guard parks?(call) == true else {
+                return try await inner.call(method: method, path: path, body: body,
+                                            authorization: authorization)
+            }
+            return try await withCheckedThrowingContinuation { continuation in
+                lock.withLock {
+                    waiting.append(continuation)
+                    held += 1
+                }
+            }
+        }
+
+        func cancelActive() async {
+            let abandoned: [CheckedContinuation<RealtimeTransport.Reply, any Error>] = lock.withLock {
+                freed += 1
+                let parked = waiting
+                waiting.removeAll()
+                return parked
+            }
+            // What the URL loading system answers a cancelled task with, and
+            // therefore what the lane sees: one failed cycle, which its next
+            // guard refuses because the generation has moved.
+            for continuation in abandoned { continuation.resume(throwing: URLError(.cancelled)) }
+        }
+
+        /// Waits until `count` calls have been parked, for at most a second.
+        func waitForParked(_ count: Int) async -> Bool {
+            await wait { self.parked >= count }
+        }
+
+        /// Waits until `cancelActive()` has been called `count` times.
+        func waitForCancellations(_ count: Int) async -> Bool {
+            await wait { self.cancellations >= count }
+        }
+
+        private func wait(_ reached: () -> Bool) async -> Bool {
+            for _ in 0..<200 {
+                if reached() { return true }
+                try? await Task.sleep(nanoseconds: 5_000_000)
+            }
+            return reached()
         }
     }
 

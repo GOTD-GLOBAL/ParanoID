@@ -312,11 +312,14 @@ of both scenarios `NOT RUN` — not by the table below.
   (local-stand smoke and one hosted registration with one accepted text on
   2026-09-13, then the unscheduled joint session of 2026-09-14), but the joint
   tests with the owner are only partly run and `hosted_registrations` is 2,
-  both accounts permanent, that session consuming none of them; open since
-  2026-09-13/14: after a network drop on the phone the application stayed at
-  «Нет подключения» while the server answered from the Mac and the pinned key
-  was unchanged — under investigation on the branch, no device log collected
-  for that drop; separately, after the session of 2026-09-14 the phone stopped
+  both accounts permanent, that session consuming none of them; the network-drop
+  item of 2026-09-13/14 — after a network drop on the phone the application
+  stayed at «Нет подключения» while the server answered from the Mac and the
+  pinned key was unchanged — has a cause and a fix on the branch since
+  2026-09-14 (this client had no connectivity-change restart), but its proof is
+  `NOT RUN`: no real change of network path was produced on any device and no
+  device log was ever collected for that drop; separately, after the session of
+  2026-09-14 the phone stopped
   connecting and has not recovered, and a Debug build on the same device
   logged the signed read of `/v2/messages` timing out four times in 45 seconds
   while the pinned handshake stood and the route answered from the build Mac —
