@@ -6,18 +6,24 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
-## iOS PR41 Mac verification — package compilation blocked (2026-09-14)
+## iOS PR41 integrated; Mac package/simulator verified (2026-09-14)
 
-Yaroslav reports app compilation and all 64 signed-simulator ParanoIDTests
-passing on exact e642907; package tests executed **zero** because a new
-InterruptedOnboardingTests fixture failed Swift6 region isolation. The
-[complete receipt](evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
-retains the failure and successful app run separately. The follow-up replaces
-retained credential object graphs with Sendable Data and avoids unnecessary
-onboarding candidates once own contact material exists. Its compiler/runtime
-result remains unverified pending the new-SHA Mac run.
+Yaroslav's [exact aab9e5d receipt](evidence/ios-client-20260913/mac-receipt-pr41-aab9e5d.md)
+reports package compilation and full suite **293/0**, lazy-key **14/0**, storage
+**25/0** and signed-simulator ParanoIDTests **64/0**. This closes the test-fixture
+Swift6 compile error; the [earlier e642907 failure](evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
+remains historical evidence, not erased or described as a passing package run.
+The coordinator verified PR41 merged into the iOS feature branch as cb52330,
+with an identical tree to aab9e5d and both receipt SHAs retained in history.
+All five named CI checks passed on cb52330; informational legacy history failed.
 [Handoff and review disposition](../clients/ios/review-integration-handoff.md).
-PR41 remains draft; no merge, device/live action or ADR acceptance is implied.
+PR36 remains open. The [full cb52330 re-review](evidence/ios-client-20260913/pr36-review-cb52330.md)
+found one remaining P2: End/Reject and mute/speaker controls do not carry the
+original call generation through the owner hop. Prior storage/Answer fixes stay
+closed; this separate correction and its regression precede a main recommendation.
+Main integration and permanent ADR acceptance remain separate owner gates.
+No new device, export/TestFlight or live action
+is implied. The new receipt is contributor execution, not a coordinator Mac run.
 
 ## iOS review integration corrections — local candidate (2026-09-14)
 
@@ -28,7 +34,8 @@ retry, valid onboarding checkpoint completion, call-scoped TURN cancellation,
 remote-video proximity and the pinned-session source gate. The scope remains
 iOS/tests/documentation only; RFC-0021 and ADR-0014 stay proposed.
 [Handoff and exact verification scope](../clients/ios/review-integration-handoff.md)
-separate Linux source checks from pending Swift/XCTest/simulator execution.
+separate coordinator Linux source checks from contributor Mac execution on
+aab9e5d, applicable to the identical cb52330 tree.
 No device, main merge, TestFlight or live-server action is implied.
 
 ## iOS lazy wrapping-key correction — local candidate (2026-09-14)
