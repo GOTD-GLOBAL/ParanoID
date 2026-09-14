@@ -7,6 +7,25 @@ last_reviewed: 2026-09-14
 
 # C1: call-targeted controls — correction and Mac handoff
 
+## Current disposition after contributor Mac execution
+
+The [complete dad2f7d receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+records actual C1 **7/0 GREEN**, full package **300/0**, lazy-key **14/0**,
+storage **25/0** and signed-simulator app **64/0**. The unchanged-assertion
+baseline on cb52330 executed **7 tests with 13 assertion failures, 0 unexpected**,
+Swift exit 1; harness exit 0 means expected behavioral RED. This was not a
+compiler-failure substitute. These are Yaroslav's runs, not coordinator Apple
+execution. Earlier pre-Mac NOT RUN statements below are historical.
+
+PR43 merged as 96298cd after docs-only PR42. The coordinator checked empty diff
+from dad2f7d for clients/ios, .github and CHANGELOG.md; only documentation differs.
+C1 is closed at the verified host/simulator scope. The
+[final integration review](../../project/evidence/ios-client-20260913/pr36-review-96298cd.md)
+separates main/architecture/device/live gates. Physical-device tap races, real
+container upgrades, power loss, archive/export and hosted probes remain NOT RUN.
+This documentation reconciliation changes no runtime/tests/workflows and does
+not itself require repeating the identical Mac code.
+
 ## Scope
 
 Yaroslav requested this bounded correction after the
@@ -62,7 +81,7 @@ scratch directory, and removes only its own temporary worktree in `finally`.
 It does not modify the active checkout or installed application state. Its
 Python classifier tests use explicit synthetic log fixtures, not Apple evidence.
 
-## Verification state
+## Historical pre-Mac verification state
 
 Coordinator Linux source gate was RED on old code (13 assertion failures,
 zero test errors after diagnostic cleanup), then GREEN after correction.
@@ -125,7 +144,7 @@ inputs or compiler failure is a blocker, not a passed negative test.
 The same signed simulator scope as the prior receipt is sufficient for this
 handoff; no physical phone, archive/export or hosted probe is requested.
 
-## Integration and rollback
+## Original integration conditions and rollback
 
 Keep the correction draft pending CI, independent review and exact-SHA Mac
 GREEN plus baseline behavioral RED. PR42 is separate docs-only reconciliation;

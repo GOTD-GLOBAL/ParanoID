@@ -6,18 +6,23 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
-## C1 call-control correction candidate (2026-09-14)
+## C1 integrated and verified at host/simulator scope (2026-09-14)
 
-Following the full cb52330 review, Yaroslav requested binding the remaining call
-controls to the originating ID/generation. A separate candidate now carries both
-fields through the UI/owner hop and checks them inside controller End, Reject,
-Hangup, Mute and Speaker entry points. New tests hold real owner dispatch while
-A is replaced by B. The [C1 Mac handoff](../clients/ios/call-controls-handoff.md)
-includes a disposable old-tree behavioral-RED runner that rejects compilation
-failure as evidence. Coordinator source RED/GREEN is not Apple execution;
-new-SHA Swift GREEN and behavioral RED remain pending on the contributor Mac.
-PR42 separately reconciles the previous receipt/status; neither that receipt nor
-this candidate grants main merge, ADR acceptance or live-action permission.
+PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b
+and dad2f7d. The coordinator verified that clients/ios, .github and CHANGELOG.md
+are unchanged from tested dad2f7d; the only manual conflict resolution joined
+the C1 and PR42 documentation sections. No runtime resolution was introduced.
+Yaroslav's [complete dad2f7d Mac receipt](evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+reports C1 **7/0 GREEN**, full package **300/0**, lazy-key **14/0**, storage
+**25/0**, signed-simulator app **64/0**; the old cb52330 baseline executed
+**7 tests / 13 expected assertion failures / 0 unexpected**, Swift exit 1,
+harness exit 0. This closes C1 at that scope, not a real iPhone tap-race claim.
+All five named CI checks passed on 96298cd; informational legacy remains failed.
+[Final integration review](evidence/ios-client-20260913/pr36-review-96298cd.md)
+and [C1 handoff](../clients/ios/call-controls-handoff.md) distinguish contributor
+execution from coordinator source checks. PR36 main merge is still Sergey's
+explicit decision; ADR0014, physical-device acceptance, export/TestFlight and
+all live operations remain separate gates. None is authorized by this receipt.
 
 ## iOS PR41 integrated; Mac package/simulator verified (2026-09-14)
 
@@ -31,9 +36,9 @@ with an identical tree to aab9e5d and both receipt SHAs retained in history.
 All five named CI checks passed on cb52330; informational legacy history failed.
 [Handoff and review disposition](../clients/ios/review-integration-handoff.md).
 PR36 remains open. The [full cb52330 re-review](evidence/ios-client-20260913/pr36-review-cb52330.md)
-found one remaining P2: End/Reject and mute/speaker controls do not carry the
-original call generation through the owner hop. Prior storage/Answer fixes stay
-closed; this separate correction and its regression precede a main recommendation.
+found C1/P2 in End/Reject and mute/speaker targeting. That historical finding
+is now closed by PR43 and the dad2f7d receipt described above; prior
+storage/Answer corrections remain closed at their own verified scope.
 Main integration and permanent ADR acceptance remain separate owner gates.
 No new device, export/TestFlight or live action
 is implied. The new receipt is contributor execution, not a coordinator Mac run.

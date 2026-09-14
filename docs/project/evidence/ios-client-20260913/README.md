@@ -18,6 +18,15 @@ names, in its own section, everything that was **not** run.
 | [stage2-voice.md](stage2-voice.md) | joint test 2 (calls on real phones), written in advance, **partly run** in the same session of 2026-09-14: steps 4, 8 and 9 read `SHOWN (joint, reported)` — one call the owner placed to the iPhone, answered and spoken on, with both cameras turned on — and every other `Result` cell stays `NOT RUN` |
 | [independent-review.md](independent-review.md) | the independent AI reviews of policy item 2: reviewer, model, revision, every finding and what became of it |
 
+## PR43 receipt and final 96298cd integration review
+
+- [dad2f7d Mac receipt](mac-receipt-pr43-dad2f7d.md): C1 7/0, package 300/0,
+  lazy-key 14/0, storage 25/0, signed-simulator app 64/0; old cb52330 behavioral
+  baseline seven tests/thirteen expected assertion failures, no unexpected.
+- [Final 96298cd review](pr36-review-96298cd.md): tested code identity preserved
+  through documentation-only conflict resolution; C1 closed at host/simulator
+  scope. No main merge, architecture acceptance or device/live authority implied.
+
 ## PR41 receipts and full cb52330 re-review
 
 - [e642907 Mac receipt](mac-receipt-pr41-e642907.md): app/simulator 64 PASS,

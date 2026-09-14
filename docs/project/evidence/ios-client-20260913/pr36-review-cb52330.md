@@ -31,7 +31,18 @@ REQ-CALL-002/003/006. The review read applicable governance, storage, realtime,
 first-contact, voice-v1, call-v2 and voice-turn-v1 boundaries. RFC-0021 and
 ADR-0014 remain proposed; this review changes no decision authority.
 
-## Verdict: changes required before main recommendation
+## Subsequent C1 closure (2026-09-14)
+
+PR43 fixes the remaining controls. The [dad2f7d Mac receipt](mac-receipt-pr43-dad2f7d.md)
+records C1 7/0 GREEN and actual old-code behavioral RED: seven tests, thirteen
+expected assertions, no unexpected failures. The code is integrated in 96298cd
+without runtime/test/workflow differences from the tested revision.
+[Final integration review](pr36-review-96298cd.md) closes C1 at host/simulator
+scope, while main and all permanent acceptance/live gates remain with their
+owners. The original source finding and its review-time limitations below are
+preserved as history, not presented as a currently unresolved bug.
+
+## Historical verdict at cb52330: changes required
 
 Prior PR40/41 corrections remain closed at their tested host/simulator scope.
 No new concrete blocker was established in storage/onboarding, TLS/FFI/build

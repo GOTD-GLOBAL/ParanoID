@@ -40,7 +40,9 @@ source tree; recording it in docs does not require rerunning unchanged runtime,
 tests or workflows. PR36 main merge and all permanent decision/device/live
 gates remain separate. The [full cb52330 review](../../project/evidence/ios-client-20260913/pr36-review-cb52330.md)
 subsequently identified unbound End/Reject and mute/speaker actions (C1), outside
-the now-closed Answer correction. It remains a code gate before main recommendation.
+the Answer correction. That later finding is closed at host/simulator scope by
+PR43: see the [C1 receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+and [final integration review](../../project/evidence/ios-client-20260913/pr36-review-96298cd.md).
 Historical commands and unrun physical-device,
 media-stop timing, real-container upgrade, power-loss and export checks below
 retain their scope.
