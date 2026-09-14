@@ -60,14 +60,19 @@ public contract is declared.
   the process. An install marker makes a reinstall a clean install with a new
   identity, because a Keychain item outlives the application container on iOS —
   the one platform difference from Android's key-and-file rule, recorded as a
-  platform note rather than a relaxation. After the owner-side review of
+  platform note rather than a relaxation. After the owner-side reviews of
   2026-09-14 that marker never deletes a key while a state file is there (a
   lost marker freezes with both halves intact instead, because a deleted
   wrapping key cannot be undone), and a container that has never committed a
   file no longer freezes over the key its first run created before the user
-  reached «Создать ID» — an exception that reaches only containers which were
-  keeping that record, so an installation made by any earlier build keeps
-  freezing over a state file that has gone missing.
+  reached «Создать ID» — an exception that opens only on the container's own
+  positive fact, `paranoid.firstrun.pending.v1`, recorded before that key
+  existed and withdrawn by the first commit, so a key without a file freezes
+  on every silence, an installation made by any earlier build included. The
+  first form of that exception read the absence of a "committed here" record
+  as evidence and was replaced the same day, after the second review showed
+  that a lost record and a lost file added up to a fresh identity over the
+  old key.
 - TLS is leaf-SPKI pinning evaluated on `Security.framework` with the same nine
   checks and the same pin the Android client carries. The hosted certificate
   was renewed **with the same key** on 2026-09-13, so the pin is unchanged and

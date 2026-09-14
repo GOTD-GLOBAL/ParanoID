@@ -122,6 +122,40 @@ NO_PHONE = (
     r'no iOS build has (?:yet )?(?:been installed|run) on a (?:physical )?(?:phone|iPhone)',
 )
 
+# Number words a document may spell a count with. The reviewer showed that
+# "Ninety-nine hosted accounts exist." passed the first version of this gate,
+# which read only digits after the counter's own name; a count in prose is a
+# count all the same.
+NUMBER_WORDS = {w: i for i, w in enumerate(
+    'zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen '
+    'fifteen sixteen seventeen eighteen nineteen'.split())}
+NUMBER_WORDS.update({w: 10 * (i + 2) for i, w in enumerate(
+    'twenty thirty forty fifty sixty seventy eighty ninety'.split())})
+
+
+def number_value(token):
+    """`3`, `three` or `ninety-nine` as an integer; None when it is not a number."""
+    token = token.lower()
+    if token.isdigit():
+        return int(token)
+    if '-' in token:
+        tens, _, ones = token.partition('-')
+        if tens in NUMBER_WORDS and ones in NUMBER_WORDS:
+            return NUMBER_WORDS[tens] + NUMBER_WORDS[ones]
+        return None
+    return NUMBER_WORDS.get(token)
+
+
+# A count of hosted accounts stated in prose: "Two hosted accounts exist",
+# "three accounts on the hosted alpha", "the branch created two accounts".
+# The verb list is what keeps "two of the three registrations" and "the two
+# registrations of 2026-09-13" from firing: those name a subset or a date, not
+# the total, and neither is followed by exist/created/on the hosted.
+PROSE_COUNT = re.compile(
+    r'\b([A-Za-z]+(?:-[A-Za-z]+)?|\d+)\s+(?:hosted\s+)?(?:accounts?|registrations?)\s+'
+    r'(?:exist|were created|have been created|on the hosted|created on the hosted)',
+    flags=re.IGNORECASE)
+
 NO_HOSTED = (
     r'`?hosted_registrations`? (?:is|=) *`?(?:zero|0)\b',
     r'no hosted account exists',
@@ -389,6 +423,12 @@ def main():
                 if int(value) != registrations:
                     problems.append(f'{name}: states hosted_registrations is {value}, '
                                     f'the catalogue lists {registrations} registration(s)')
+            for number, line in enumerate(text.splitlines(), start=1):
+                for token in PROSE_COUNT.findall(line):
+                    value = number_value(token)
+                    if value is not None and value != registrations:
+                        problems.append(f'{name}:{number}: says {token} hosted accounts, the catalogue '
+                                        f'lists {registrations} — {line.strip()[:100]}')
 
         if ran_on_device:
             for number, line in lines_matching(text, NO_PHONE):

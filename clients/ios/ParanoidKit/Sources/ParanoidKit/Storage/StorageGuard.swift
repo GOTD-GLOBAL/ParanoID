@@ -11,7 +11,10 @@ import Foundation
 ///
 /// `start(...)` is the launch decision around it, and it answers two questions
 /// the exclusive-or cannot, because on iOS the Keychain outlives the
-/// application container while the state file does not.
+/// application container while the state file does not. Each is answered by
+/// one fact the container keeps about itself (`InstallMarker`), and the two
+/// facts are read in opposite directions on purpose: the first by its
+/// absence, the second only by its presence.
 ///
 /// **Is this container new?** `InstallMarker.isPresent` answers it, and a key
 /// found under `paranoid-text-state-v0` in a container that has never been
@@ -32,50 +35,91 @@ import Foundation
 /// recorded nothing: refusing to proceed stays reproducible on every later
 /// launch, instead of turning into an ordinary one.
 ///
-/// **Has this container ever held a snapshot?** `InstallMarker`'s second fact
-/// answers that, and it is why a key without a file is not one case but two.
-/// Android creates its Keystore alias at the first commit and never before
-/// (`TextEngine.java:265-273`), so over there the question cannot arise. This
-/// client creates the Keychain item while opening, before the user has decided
-/// anything, so a first run that closes the Welcome screen without «Создать
-/// ID» leaves exactly a key and no file — an interrupted first run, not
+/// **Is this key from a first run that has committed nothing?** The question
+/// arises only here, because Android creates its Keystore alias at the first
+/// commit and never before (`TextEngine.java:265-273`), while this client
+/// creates the Keychain item while opening, before the user has decided
+/// anything. A first run that closes the Welcome screen without «Создать ID»
+/// therefore leaves exactly a key and no file — an interrupted first run, not
 /// evidence of tampering, and freezing it would be a permanent freeze reached
-/// by doing nothing wrong. A key whose container *has* committed a snapshot is
-/// the dangerous one: the file it belongs to has gone missing, and that still
-/// freezes, so a state file can never be silently replaced by a new identity.
+/// by doing nothing wrong. But the same two observations describe the one
+/// case this whole rule exists to refuse: a key whose file has gone missing.
+/// The answer that opens the client — `.fresh` on the key that is already
+/// there — is the one answer in this type that could put a new identity over
+/// an old one, so it is never inferred from what the container does *not*
+/// say. The previous form of this rule recorded "a state file has been
+/// committed here" and read its absence as proof that none was; the owner's
+/// reviewer showed the flaw in one sentence. That record was a defaults
+/// write, the file it described was `F_FULLFSYNC`ed, and the two are lost by
+/// different accidents: a record that never persisted, or a preferences domain
+/// rolled back, leaves a container whose file has gone missing looking
+/// exactly like one that never had a file. The absence of a record is not
+/// evidence that the event did not happen.
 ///
-/// **Was this container keeping that record?** The question above is only
-/// answerable where the answer was being written down, and a container
-/// installed before this rule was not writing it: every installation that
-/// exists today holds `paranoid.install.v1` and a committed state file and no
-/// `paranoid.snapshot.v1`, because no build ever wrote one. Reading that
-/// silence as "nothing was ever committed here" would hand the interrupted
-/// first run's `.fresh` to a container whose state file has gone missing —
-/// the one case the whole rule exists to refuse — in the window between
-/// installing this build and its first launch. So the licence to read the
-/// silence is `InstallMarker.recordsCommits`, written by the launch that
-/// starts the record and not assumed of every container; without it a key
-/// with no file keeps the stricter reading and freezes, exactly as it did
-/// before this rule. An installation from an earlier build earns the licence
-/// the first time it is seen holding neither a key nor a file — the one
-/// moment at which "nothing has been committed here" is an observation.
+/// So the fact is inverted. What the container records is
+/// `paranoid.firstrun.pending.v1`, "this container was opened and has not
+/// committed a state file yet": written by the launch that finds the
+/// container holding neither a key nor a file, the one moment at which that
+/// sentence is an observation, and written *before* that launch creates the
+/// key, so no key is made for a container that could not say why it has one.
+/// The first commit withdraws it at the last moment it is still certainly
+/// true — after the candidate is written and synced, before the rename that
+/// would make it false (`SnapshotStore.commit`) — because a positive fact is
+/// only worth its strength if it is never on disk while false. A key with no
+/// file is then read on the container's own word alone: the fact present is
+/// the interrupted first run and opens on that key; the fact absent is a
+/// history this container cannot vouch for, and it freezes with the key kept.
+/// Every way of losing the fact — a write that never persisted, a domain
+/// restored from before the first launch, an installation from a build that
+/// never wrote it — lands in that same row and produces a freeze, which a
+/// person can resolve, instead of an identity that nobody can undo. The
+/// upgrade needs no rule of its own: a container from an earlier build holds
+/// no such fact, so its key without a file freezes, which is what the previous
+/// form promised it.
+///
+/// What is left, stated so that nobody has to rediscover it: the fact can also
+/// be *stale* — still present after the commit that withdrew it, because the
+/// withdrawal is a defaults write too, acknowledged in this process and
+/// persisted by another. A stale fact beside a key whose file is then lost
+/// would read as the interrupted first run. Withdrawing before the rename
+/// keeps the fact off the disk while false, so what remains of that is a
+/// withdrawal that was acknowledged and never persisted, exposed until the
+/// next launch that opens the file withdraws it again — best effort there,
+/// while a container whose defaults refuse the withdrawal at the commit
+/// breaks the store with nothing renamed, so no identity is ever adopted by a
+/// container that cannot stop claiming it has none. Closing that means a fact
+/// that lives where the key lives, or a key that is not created until the
+/// first commit as Android's is; both change more than this rule and are the
+/// owner's call.
+///
+/// The fact also comes back with a preferences domain rolled back to a copy
+/// taken between the first launch and the first commit. That interval is not
+/// short — an interrupted first run lasts until the user returns to «Создать
+/// ID», which can be days — and the platform's own copy of it is a backup
+/// restored onto the device it was taken from, on any later day and by the
+/// user's own hand: it brings the fact back, an encrypted backup brings the
+/// `ThisDeviceOnly` key back with it, and the excluded file does not come
+/// back at all. Nothing kept on the device tells that launch from the
+/// interrupted first run, because the restore took every store this rule
+/// reads back to the same moment, and neither design above refuses it
+/// either: a fact on the Keychain item is restored with the item, and a key
+/// created at the first commit is absent from the copy, which is the row
+/// below that holds neither half. What the restore costs is the identity it
+/// had already discarded with the file — the cost the accepted restore onto
+/// a new iPhone carries too, with the key reused instead of new — and what
+/// the launch after it lacks is the visible refusal.
 ///
 /// The resulting matrix:
 ///
-/// | marker | records commits | held a snapshot | key | file | outcome |
-/// | --- | --- | --- | --- | --- | --- |
-/// | absent | — | — | any | present | `.frozen`, nothing deleted, nothing recorded |
-/// | absent | — | — | stale | absent | key deleted, marker recorded, `.fresh` |
-/// | present | yes | no | present | absent | `.fresh`, the interrupted first run |
-/// | present | yes | yes | present | absent | `.frozen` |
-/// | present | no | — | present | absent | `.frozen`: an installation from a build
-/// before this rule, whose silence is not evidence |
-/// | present | any | any | absent | present | `.frozen` |
-/// | present | any | any | absent | absent | `.fresh` (iCloud restore onto a new
-/// iPhone: the defaults came back, the `ThisDeviceOnly` key and the excluded file
-/// did not), the restored second fact is forgotten with them, and the record
-/// starts here |
-/// | present | any | any | present | present | `.retained`, the ordinary launch |
+/// | marker | pending | key | file | outcome |
+/// | --- | --- | --- | --- | --- |
+/// | absent | — | any | present | `.frozen`, nothing deleted, nothing recorded |
+/// | absent | — | stale | absent | key deleted, marker and pending fact recorded, `.fresh` |
+/// | present | present | present | absent | `.fresh` on the key that is there: the interrupted first run, on the container's own word |
+/// | present | absent | present | absent | `.frozen`, key kept: a container that committed a file, one whose fact was lost, and an installation from a build before this rule all land here, and none is told apart |
+/// | present | any | absent | present | `.frozen`; nothing withdrawn, so the refusal is the same on every later launch |
+/// | present | any | absent | absent | pending fact recorded, `.fresh` (iCloud restore onto a new iPhone: the defaults came back, the `ThisDeviceOnly` key and the excluded file did not) |
+/// | present | any | present | present | `.retained`, the ordinary launch; a pending fact found beside the file is withdrawn, best effort |
 ///
 /// No row replaces an existing state file, hands the core a fresh identity
 /// while a usable state exists, or deletes a key that any file could still
@@ -87,8 +131,12 @@ public enum StorageGuard {
 
     /// What a launch may do.
     public enum Continuity: Equatable, Sendable {
-        /// Neither a state file nor a key: create a key, register a new
-        /// identity.
+        /// No state file, and either no key or a key the container vouches
+        /// for as its own interrupted first run's: create the key where there
+        /// is none, reuse it where there is, and register a new identity. It
+        /// is the one answer in this type that can start an identity over a
+        /// key, which is why `start(...)` never infers it from what the
+        /// container does not say.
         case fresh
         /// Both present: open the state file with the retained key.
         case retained
@@ -124,11 +172,11 @@ public enum StorageGuard {
     ///    treating the stale key as this installation's.
     /// 3. The marker is recorded, which also fixes the answer to steps 1 and 2
     ///    for every later launch of this container.
-    /// 4. A file that is there is remembered, a container that holds neither a
-    ///    key nor a file forgets what it remembered and starts its record
-    ///    there, and the exclusive-or is evaluated against the Keychain as it
-    ///    now stands — refined by that memory for the one row where a key
-    ///    alone is ambiguous, and only where the memory was being kept.
+    /// 4. A file beside its key is opened, and a pending fact found beside
+    ///    them is withdrawn; a file without its key freezes and touches
+    ///    nothing; a container that holds neither half records that it holds
+    ///    nothing, before the caller creates the key; and a key alone opens
+    ///    only on that record.
     ///
     /// `snapshotExists` is read by the caller *before* this runs
     /// (`SnapshotStore.snapshotExists()`); the guard never touches the file.
@@ -145,30 +193,39 @@ public enum StorageGuard {
         }
         let keyExists = try key.exists()
         guard !snapshotExists else {
-            // Best effort, unlike the same call inside a commit
-            // (`SnapshotStore.commit`, step 6). This launch holds both halves
-            // and regenerates nothing, so refusing it would trade a usable
-            // client for the frozen screen — whose only exit for a user is the
-            // reinstall that destroys the identity being protected — over a
-            // fact the next launch would write again. Where the fact has to be
-            // kept is a launch that *starts* something, and there the commit
-            // itself refuses: a container that cannot record what it committed
-            // breaks the store before any identity is adopted or sent.
-            try? marker.recordCommittedSnapshot()
-            return continuity(snapshotExists: true, keyExists: keyExists)
+            let outcome = continuity(snapshotExists: true, keyExists: keyExists)
+            if outcome == .retained {
+                // A state file is the commit itself, so a pending fact beside
+                // it has outlived the withdrawal that was acknowledged and
+                // never persisted. Best effort, unlike the same call inside a
+                // commit: this launch holds both halves and regenerates
+                // nothing, so refusing it would trade a usable client for the
+                // frozen screen — whose only exit for a user is the reinstall
+                // that destroys the identity being protected — over a repair
+                // the next launch would attempt again. Where the withdrawal
+                // has to be kept is the commit that ends the first run, and
+                // there it breaks the store with nothing renamed. A file
+                // without its key is `.frozen` and left untouched: that
+                // freeze too is the same on every later launch, and nothing
+                // reads the fact from that state anyway — the file decides
+                // while it is there, and once it is gone the container holds
+                // neither half and records the fact afresh.
+                try? marker.withdrawPendingFirstRun()
+            }
+            return outcome
         }
         guard keyExists else {
             // Neither half: there is nothing left to protect and nothing left
-            // to lose, so whatever this container remembered is void and its
-            // record starts again here — which is also how an installation
-            // from before this rule stops being read by the stricter one.
-            marker.forgetCommittedSnapshot()
-            marker.beginRecordingCommits()
+            // to lose, and "nothing has been committed here" is an observation.
+            // It is recorded before the caller creates the key, so that a key
+            // never precedes the fact that explains it.
+            try marker.recordPendingFirstRun()
             return .fresh
         }
-        // A key on its own: dangerous if the file it wraps once existed, and
-        // equally dangerous if this container was never in a position to say.
-        guard marker.recordsCommits, !marker.hasCommittedSnapshot else { return .frozen }
-        return .fresh
+        // A key on its own opens the client on the container's own word alone.
+        // Every silence — a fact never written, not persisted, or written by
+        // no build this container has seen — freezes, with the key kept and
+        // nothing recorded, so the refusal is the same on every later launch.
+        return marker.isFirstRunPending ? .fresh : .frozen
     }
 }

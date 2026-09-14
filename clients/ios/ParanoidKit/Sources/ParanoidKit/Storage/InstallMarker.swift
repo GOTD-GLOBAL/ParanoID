@@ -11,46 +11,50 @@ import Foundation
 /// state and freeze. The marker turns that case back into what it is: a clean
 /// install (D-004), whose stale key is deleted before anything else happens.
 ///
-/// There are three facts, all in the standard user defaults, because each of
-/// them has to disappear exactly when the container does, and none holds a
-/// secret:
+/// There are two facts, both in the standard user defaults, because each of
+/// them has to disappear exactly when the container does, and neither holds a
+/// secret. They are read in opposite directions, and that is the whole design:
 ///
-/// - `paranoid.install.v1`: this container has been launched before;
-/// - `paranoid.snapshot.v1`: this container has committed a state file at
-///   least once. Android never needs it, because it creates the Keystore alias
-///   at the first commit and not before (`TextEngine.java:265-273`, reached
-///   only from `persist`), so a key it finds always belongs to a snapshot that
-///   once existed. This client creates the Keychain item while opening, before
-///   the user has decided to create an identity at all, so a key alone says
-///   nothing and this fact is what `StorageGuard` reads instead;
-/// - `paranoid.install.v2`: this container has been keeping the fact above
-///   since its own first launch. It exists because the absence of
-///   `paranoid.snapshot.v1` has two possible meanings and only one of them is
-///   safe. On a container this rule opened, absence means "nothing was ever
-///   committed here". On a container that some earlier build opened, absence
-///   means nothing at all — no build before this one wrote the key, so a
-///   container that holds a state file and has held one for days still has no
-///   such fact until a launch of this build sees the file. Reading that
-///   silence as "nothing was ever committed" is exactly the reinterpretation
-///   the version in `paranoid.install.v1` exists to prevent, so the licence to
-///   read it is a fact of its own, written by the launch that starts the
-///   container's record rather than assumed of every container.
+/// - `paranoid.install.v1`: this container has been launched before. Its
+///   *absence* is read as evidence — of a reinstall — and that reading is
+///   safe only because a state file overrules it (`StorageGuard`): the one act
+///   the absence licenses, deleting a key, is refused wherever a file could
+///   still need that key.
+/// - `paranoid.firstrun.pending.v1`: this container was opened and has not
+///   committed a state file yet. Only its *presence* is evidence. It is the
+///   fact behind the one row in which a key with no file opens the client
+///   instead of freezing it, and it is deliberately a statement of innocence
+///   rather than of guilt. Android never needs it, because it creates its
+///   Keystore alias at the first commit and not before
+///   (`TextEngine.java:265-273`, reached only from `persist`), so a key it
+///   finds always belongs to a snapshot that once existed. This client creates
+///   the Keychain item while opening, before the user has decided to create an
+///   identity at all, so a key alone says nothing; what says something is the
+///   container's own word, given before that key existed, that nothing has
+///   been committed here.
 ///
-/// The last two are never trusted on a container whose first is gone: whatever
-/// loses a whole defaults domain loses `paranoid.install.v1` with it, and that
-/// is the branch which refuses to touch anything at all.
+/// The previous form of this rule kept the opposite fact — "a state file has
+/// been committed here" — and read its absence as proof that none was. The
+/// owner's reviewer showed in one sentence why that cannot hold: the fact is a
+/// defaults write, the file it speaks of is an `F_FULLFSYNC`ed file, and the
+/// two are lost by different accidents, so a write that never persisted, or a
+/// preferences domain rolled back, left a container whose file had gone
+/// missing indistinguishable from one that never had a file. The absence of a
+/// record is not evidence that the event did not happen. Read the other way
+/// round, every loss lands on the safe side: a pending fact that is missing —
+/// never written, not persisted, restored from before the first launch, or
+/// never written at all by a build that predates it — freezes a key with no
+/// file, and only the fact's presence opens it.
+///
+/// The second fact is never trusted on a container whose first is gone:
+/// whatever loses a whole defaults domain loses `paranoid.install.v1` with it,
+/// and that is the branch which refuses to touch anything at all.
 public struct InstallMarker {
     /// The defaults key. Versioned, so that a future marker rule can be told
     /// apart from this one instead of silently reinterpreting it.
     public static let key = "paranoid.install.v1"
     /// The defaults key of the second fact, versioned for the same reason.
-    public static let snapshotKey = "paranoid.snapshot.v1"
-    /// The defaults key of the third. `v2` is deliberately a *second* install
-    /// key rather than a replacement for `v1`: a container has to stay
-    /// "launched before" across the upgrade, or the first launch of this build
-    /// would read every existing installation as a reinstall and delete the
-    /// wrapping key of its state file.
-    public static let recordingKey = "paranoid.install.v2"
+    public static let pendingKey = "paranoid.firstrun.pending.v1"
 
     private let defaults: UserDefaults
 
@@ -68,9 +72,7 @@ public struct InstallMarker {
         defaults.object(forKey: Self.key) != nil
     }
 
-    /// Records the marker, and verifies it is readable. A container recorded
-    /// here is one whose whole history this rule has seen, so it starts
-    /// keeping the commit record too (``beginRecordingCommits()``).
+    /// Records the marker, and verifies it is readable.
     ///
     /// A marker that cannot be stored would make the next launch delete the
     /// key this launch is about to create and use, so the failure is reported
@@ -82,69 +84,56 @@ public struct InstallMarker {
         guard defaults.object(forKey: Self.key) != nil else {
             throw StorageError.installMarkerUnavailable
         }
-        beginRecordingCommits()
     }
 
-    /// Whether this container's commits have been recorded from its first
-    /// launch onwards, which is what makes a missing
-    /// `paranoid.snapshot.v1` mean "nothing was committed here" rather than
-    /// "nobody was writing it down yet".
-    public var recordsCommits: Bool {
-        defaults.object(forKey: Self.recordingKey) != nil
+    /// Whether this container has said, before its key existed, that it has
+    /// committed nothing.
+    public var isFirstRunPending: Bool {
+        defaults.object(forKey: Self.pendingKey) != nil
     }
 
-    /// Starts that record, on a launch that can see the container hold
-    /// nothing: its very first, or one that finds neither a key nor a state
-    /// file. Both are moments at which "nothing has been committed here" is an
-    /// observation rather than an assumption.
+    /// Records that fact, and verifies it is readable.
     ///
-    /// Nothing calls it on a container that already holds a state file, and
-    /// that is the whole of the upgrade rule: an installation from an earlier
-    /// build keeps the stricter reading — a key with no file freezes — until
-    /// it has been through a launch with nothing left to protect.
+    /// Called by the launch that finds the container holding neither a key
+    /// nor a state file — the one moment at which "nothing has been committed
+    /// here" is an observation rather than an assumption — and before that
+    /// launch creates the key, so that no key is made for a container that
+    /// could not say why it has one.
     ///
-    /// It cannot throw. A container that fails to keep it is read as an
-    /// installation from before this rule, which is the fail-closed side: the
-    /// cost is a freeze that a person can investigate, never a key deleted or
-    /// a state file replaced.
-    public func beginRecordingCommits() {
-        defaults.set(true, forKey: Self.recordingKey)
-    }
-
-    /// Whether a state file has ever been committed in this container.
-    public var hasCommittedSnapshot: Bool {
-        defaults.object(forKey: Self.snapshotKey) != nil
-    }
-
-    /// Records that a state file exists, and verifies it is readable.
-    ///
-    /// Written by the commit that created the file and by every launch that
-    /// finds one, so that a launch which later finds the file *gone* freezes
-    /// instead of reading the leftover key as an interrupted first run. The
-    /// failure is reported for the same reason `record()` reports its own: a
-    /// fact about retained data that cannot be kept would be answered wrongly
-    /// by the next launch. What each caller does with the report differs, and
-    /// `StorageGuard.start(...)` says why: the commit that creates the fact
-    /// breaks the store, while the launch that merely repeats it goes on.
+    /// A fact that cannot be stored is reported for the same reason
+    /// `record()` reports its own: the launch after this one would find a
+    /// key, no file and no explanation, and freeze a container that did
+    /// nothing wrong. Throwing here costs the same freeze one launch earlier,
+    /// before any key exists, and «Повторить открытие» simply tries again.
     ///
     /// - Throws: `StorageError.installMarkerUnavailable`.
-    public func recordCommittedSnapshot() throws {
-        guard !hasCommittedSnapshot else { return }
-        defaults.set(true, forKey: Self.snapshotKey)
-        guard defaults.object(forKey: Self.snapshotKey) != nil else {
+    public func recordPendingFirstRun() throws {
+        defaults.set(true, forKey: Self.pendingKey)
+        guard defaults.object(forKey: Self.pendingKey) != nil else {
             throw StorageError.installMarkerUnavailable
         }
     }
 
-    /// Forgets that fact, on a launch that holds neither a key nor a file.
+    /// Withdraws it, and verifies it is gone.
     ///
-    /// It is what makes an iCloud restore onto a new iPhone start cleanly: the
-    /// defaults come back from the backup, the `ThisDeviceOnly` key and the
-    /// excluded state file do not, and the restored fact would otherwise
-    /// freeze the *next* launch of a container that has nothing left to
-    /// protect. It cannot throw, because failing to forget only freezes a
-    /// later launch — it deletes nothing.
-    public func forgetCommittedSnapshot() {
-        defaults.removeObject(forKey: Self.snapshotKey)
+    /// Called by the first commit at the last moment the fact is still
+    /// certainly true — after the candidate is written and synced, before the
+    /// rename that would make it false (`SnapshotStore.commit`) — and by every
+    /// launch that opens a state file beside its key and finds the fact still
+    /// standing, where it has outlived the commit that should have withdrawn
+    /// it. A fact that is still readable after this is reported, because a
+    /// container that goes on claiming it has committed nothing would open a
+    /// fresh identity over a file that had gone missing. What each caller
+    /// does with the report differs, and `StorageGuard.start(...)` says why:
+    /// the commit breaks the store with nothing renamed, the launch that
+    /// merely repairs goes on.
+    ///
+    /// - Throws: `StorageError.installMarkerUnavailable`.
+    public func withdrawPendingFirstRun() throws {
+        guard isFirstRunPending else { return }
+        defaults.removeObject(forKey: Self.pendingKey)
+        guard defaults.object(forKey: Self.pendingKey) == nil else {
+            throw StorageError.installMarkerUnavailable
+        }
     }
 }

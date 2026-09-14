@@ -68,27 +68,26 @@ On Android the Keystore alias and the snapshot file die together at uninstall,
 so the exclusive-or of `StorageGuard.java` is sufficient. On iOS a Keychain
 item outlives the application container. Without an extra rule a reinstalled
 application would see "key without file" and freeze forever. The client keeps
-three facts about the container in `UserDefaults`, and none holds a secret:
-`paranoid.install.v1`, that this container has been launched before,
-`paranoid.snapshot.v1`, that it has committed a state file at least once, and
-`paranoid.install.v2`, that this container has been keeping the second fact
-since its own first launch.
+two facts about the container in `UserDefaults`, neither of which holds a
+secret, and reads them in opposite directions: `paranoid.install.v1`, that
+this container has been launched before, is read by its *absence*;
+`paranoid.firstrun.pending.v1`, that this container was opened and has not
+committed a state file yet, is read only by its *presence*.
 
-| Marker | Held a file | Keychain key | Snapshot file | Result |
+| Marker | First run pending | Keychain key | Snapshot file | Result |
 | --- | --- | --- | --- | --- |
 | absent | — | any | present | frozen; **nothing deleted, nothing recorded** |
-| absent | — | any (stale) | absent | delete the key, write the marker, fresh install with a **new** identity |
-| present | no, and it was keeping the record | present | absent | fresh install on the key that is already there |
-| present | yes | present | absent | frozen (fail closed, no regeneration) |
-| present | not known: installed before the record | present | absent | frozen (fail closed, no regeneration) |
+| absent | — | any (stale) | absent | delete the key, write the marker and the pending fact, fresh install with a **new** identity |
+| present | yes | present | absent | fresh install on the key that is already there: the interrupted first run, on the container's own word |
+| present | no | present | absent | frozen (fail closed, no regeneration, key kept): a file that has gone missing, a word that was lost and an installation from a build before the rule all land here, and none is told apart |
 | present | any | absent | present | frozen (fail closed, no regeneration) |
-| present | any | absent | absent | fresh install; the container forgets what it held and starts its record here |
-| present | any | present | present | the ordinary retained launch |
+| present | any | absent | absent | the pending fact is recorded, fresh install |
+| present | any | present | present | the ordinary retained launch; a pending fact found beside the file is withdrawn, best effort |
 
-Two of those rows are answers to the owner-side review of 2026-09-14 and
-replace what this document and the code said before it:
+The rows are answers to the two owner-side reviews of 2026-09-14 (pull
+request #36) and replace what this document and the code said before them:
 
-- **A missing marker beside a state file no longer deletes the key.** The
+- **A missing marker beside a state file never deletes the key.** The
   marker is a `UserDefaults` entry and the state file is not, so the two are
   lost by different accidents, and an uninstall takes the container with both
   — a state file that is still there is therefore evidence *against* a
@@ -97,32 +96,72 @@ replace what this document and the code said before it:
   investigated by a person. So the launch refuses to proceed, deletes nothing
   and records nothing, which keeps the refusal reproducible on every later
   launch instead of turning the next one into an ordinary launch.
-- **A key without a file is not one case but two.** This document used to say
-  it always freezes. Android can say that because it creates its Keystore
-  alias at the first commit and never before (`TextEngine.java:265-273`,
-  reached only from `persist`); this client creates the Keychain item while
-  opening, before the user has decided anything, so a first run that closes
-  the Welcome screen without «Создать ID» leaves exactly a key and no file.
-  Freezing that is a permanent freeze reached by doing nothing wrong. The
-  second fact separates the two readings: the file is recorded by the commit
-  that wrote it and by every launch that sees one, so a state file that goes
-  missing under a live key still freezes, and an iCloud restore that brings
-  the defaults back without the `ThisDeviceOnly` key and the excluded file
-  forgets the fact together with them.
-- **An installation from before the rule keeps the stricter reading.** No
-  build shipped before 2026-09-14 wrote `paranoid.snapshot.v1`, so on every
-  container that exists today the fact is absent whatever that container
-  holds. Reading the absence as "nothing was ever committed here" would hand
-  the interrupted first run's `fresh` to an installation whose state file has
-  gone missing — the row above it — for as long as the window between an
-  update being installed and its first launch. The licence to read the
-  absence is therefore `paranoid.install.v2`, written by the launch that
-  starts a container's record; an installation that predates it freezes on a
-  key without a file exactly as it did before, and earns the record the first
-  time a launch finds it holding neither a key nor a state file. Nothing
-  reinterprets `paranoid.install.v1`: it still says only that the container
-  has been launched before, so the first launch of the new build deletes no
-  key and re-freezes no retained file.
+- **A key without a file is not one case but two, and only a positive fact
+  separates them.** Android can freeze every key without a file because it
+  creates its Keystore alias at the first commit and never before
+  (`TextEngine.java:265-273`, reached only from `persist`); this client
+  creates the Keychain item while opening, before the user has decided
+  anything, so a first run that closes the Welcome screen without «Создать
+  ID» leaves exactly a key and no file, and freezing that is a permanent
+  freeze reached by doing nothing wrong. The first correction (commit
+  `67af672`) recorded "a state file has been committed here" and read its
+  absence as proof that none was. The second review showed why that cannot
+  hold: the record is a defaults write and the file it describes is an
+  `F_FULLFSYNC`ed file, so a record that never persisted, or a preferences
+  domain rolled back, leaves a container whose file has gone missing looking
+  exactly like one that never had a file — and the launch offered a fresh
+  identity over the key of the lost file. Absence of a record is not evidence
+  that the event did not happen. The fact is therefore inverted: the launch
+  that finds the container holding neither a key nor a file records
+  `paranoid.firstrun.pending.v1` *before* the key is created, the first
+  commit withdraws it after the candidate is synced and before the rename
+  that would make it false, and a key without a file opens only on that
+  fact's presence. Every way of losing it — never written, not persisted,
+  restored from before the first launch, never written by an earlier build —
+  freezes, which a person can resolve, instead of starting an identity nobody
+  can undo.
+- **An installation from before the rule needs no rule of its own.** No
+  build before this one wrote the pending fact, so on every container that
+  exists today a key without a file freezes, exactly as the first correction
+  promised it; the container earns the fact the first time a launch finds it
+  holding neither a key nor a state file. `paranoid.install.v1` keeps its
+  meaning, so the first launch of the new build deletes no key and re-freezes
+  no retained file. The two facts the first correction added,
+  `paranoid.snapshot.v1` and `paranoid.install.v2`, decide no row any more
+  and are gone from the code; a container that still holds them from a build
+  of that commit is read on the pending fact alone.
+- **What the inversion does not close.** The withdrawal at the first commit
+  is a defaults write too, acknowledged in the process and persisted by
+  another. A withdrawal that was acknowledged and never persisted, followed
+  by the loss of the state file before any launch has opened it, leaves the
+  container claiming it has committed nothing beside the key of a lost file,
+  and that launch opens on the claim. Withdrawing before the rename keeps the
+  claim off the disk while false, the launch that opens the file withdraws it
+  again, and a container whose defaults refuse the withdrawal breaks the
+  store with nothing renamed; what remains is the window between the first
+  commit and the next launch, where the earlier record was exposed on every
+  later day. `SnapshotStoreTests` keeps it executable as a strict expected
+  failure. Closing it means a fact that lives where the key lives (an
+  attribute of the Keychain item) or a key created at the first commit as
+  Android's is; both change more than this rule and are for the owner.
+- **A restore that rolls the container back to its interrupted first run.**
+  The fact also comes back with a copy of the preferences taken between the
+  first launch and the first commit — an interval that is not short, because
+  an interrupted first run lasts until the user returns to «Создать ID» — and
+  the platform's own copy of it is a backup restored onto the device it was
+  taken from, on any later day: it brings the fact back, an encrypted backup
+  brings the `ThisDeviceOnly` key back with it, and the excluded file does
+  not come back at all. Nothing kept on the device tells that launch from
+  the interrupted first run, because the restore took every store the rule
+  reads back to the same moment, and neither closing design above refuses it
+  either — a fact on the Keychain item is restored with the item, and a key
+  created at the first commit is absent from the copy, which is the row that
+  holds neither half. What the restore costs is the identity it had already
+  discarded with the file, the cost the accepted restore onto a new iPhone
+  carries too, with the key reused instead of new; what the launch after it
+  lacks is the visible refusal. It is the interrupted-first-run row reached
+  by the user's own hand, and it is stated here rather than counted as
+  closed.
 
 A stale Keychain key is never reused to "recover" anything, and the fail-closed
 rule of `docs/clients/core/self-service.md` is unchanged: no path replaces a
@@ -130,10 +169,11 @@ state file, hands the core a fresh identity while a usable state exists, or
 deletes a key that any file could still need. Reinstalling the application
 therefore starts a new ID; the frozen screen says so. This is reported as a
 doc-to-code platform note, not an owner-approved change to the fail-closed
-rule; see [protocol-sources.md](protocol-sources.md) and RFC-0021 question 10,
-whose table carries the same matrix and the same upgrade note. The candidate
-ADR-0014 records the rows in its storage sub-decision; none of the three is an
-owner approval, which is still outstanding.
+rule; see [protocol-sources.md](protocol-sources.md) and the storage boundary
+of RFC-0021's proposed design, whose table carries the same matrix and the
+same remainder. The candidate ADR-0014 records the rows in its storage
+sub-decision; none of the three is an owner approval, which is still
+outstanding.
 
 ### Snapshot wrapper
 

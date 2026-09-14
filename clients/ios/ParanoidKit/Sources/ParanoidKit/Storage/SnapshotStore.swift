@@ -17,8 +17,12 @@ public enum StorageError: Error, Equatable, Sendable {
     /// Exactly one of the state file and the wrapping key exists, or the key
     /// is missing while the file is there. Nothing is regenerated.
     case frozen
-    /// The install marker could not be written, so the next launch would treat
-    /// this container as a fresh install and delete a live key.
+    /// A fact about the container could not be written or withdrawn
+    /// (`InstallMarker`): the install marker, without which the next launch
+    /// would delete a live key as a previous installation's; or the pending
+    /// first-run fact, which unrecorded would freeze the next launch over a
+    /// key it created itself, and which still readable after a commit would
+    /// open a fresh identity over a file that had gone missing.
     case installMarkerUnavailable
     /// The bytes read back after the rename are not the bytes that were
     /// written.
@@ -42,14 +46,7 @@ public enum StorageError: Error, Equatable, Sendable {
 /// 4. `read` the committed file and compare it byte for byte with what was
 ///    sealed;
 /// 5. `fullSync` the directory, so that the new directory entry survives a
-///    power loss too;
-/// 6. record in the container that a state file now exists, which is what
-///    `StorageGuard` reads on the next launch if the file has gone missing by
-///    then. It comes last because it is a statement about a file that is
-///    already committed, and it is treated as a step rather than as a
-///    best-effort note: a container that cannot keep it would let the next
-///    launch read that missing file as a first run that never created one.
-///    A store built without a container skips it and only it (see `marker`).
+///    power loss too.
 ///
 /// Between 1 and 2 the temporary file is excluded from backup. That is not a
 /// durability step, but it has to happen there: the flag lives on the inode,
@@ -59,6 +56,27 @@ public enum StorageError: Error, Equatable, Sendable {
 /// one would enter the backup — an iCloud restore would then hand a *stale*
 /// ratchet to a device whose Keychain key is still valid, which is exactly the
 /// state the protocol forbids.
+///
+/// Between 2 and 3, on the commit that ends a container's first run, the
+/// container's "nothing has been committed here" is withdrawn
+/// (`InstallMarker.withdrawPendingFirstRun`), which is what lets
+/// `StorageGuard` freeze a later launch that finds the key and no file. That
+/// is not a durability step either, and its place is chosen at both ends.
+/// After 2, so that a candidate that could not be written or synced leaves
+/// the fact standing and the next launch may try the first run again — nothing
+/// was renamed, so nothing is being claimed. Before 3, because the fact is a
+/// positive claim and it must never be on disk while false: withdrawn after
+/// the rename, a process killed between the two would leave a committed file
+/// beside a container still claiming it has none, and if that file were then
+/// lost the next launch would open a fresh identity over its key. Withdrawn
+/// before, the same accident leaves a key with no file and no claim, which
+/// freezes. The cost is deliberate and small: a rename that fails after the
+/// withdrawal freezes the next launch of a container that has nothing yet.
+/// The withdrawal is treated as a step rather than as a best-effort note — a
+/// container that cannot stop claiming it has committed nothing breaks the
+/// store here, with nothing renamed, so no identity is ever adopted or sent
+/// from such a container. A store built without a container skips it and only
+/// it (see `marker`).
 ///
 /// Any error in any step sets `isBroken` for the rest of the process: the
 /// candidate is neither adopted nor sent, and the application must take itself
@@ -107,10 +125,9 @@ public final class SnapshotStore {
     ///     no container to speak of. The command-line tools of this package are
     ///     the `nil` case: they hold their wrapping key in process memory, they
     ///     never run the launch rule, and their `UserDefaults.standard` is the
-    ///     build Mac's own preferences, so step 6 there would write a fact
-    ///     about a container that does not exist into a domain no launch will
-    ///     ever read. The tests pass a scratch suite so that a run leaves
-    ///     nothing behind.
+    ///     build Mac's own preferences, so the withdrawal between steps 2 and 3
+    ///     would touch a domain no launch will ever read. The tests pass a
+    ///     scratch suite so that a run leaves nothing behind.
     public init(directory: URL,
                 key: SymmetricKey,
                 fileSystem: FileSystem = DataProtectionFileSystem(),
@@ -188,12 +205,14 @@ public final class SnapshotStore {
                 // committed name; see the type documentation.
                 try fileSystem.excludeFromBackup(at: temporary)
                 try fileSystem.fullSync(at: temporary, directory: false)    // 2
+                // The last moment the container's "nothing committed here"
+                // is certainly true; see the type documentation.
+                try marker?.withdrawPendingFirstRun()
                 try fileSystem.rename(from: temporary, to: fileURL)         // 3
                 let readback = try fileSystem.read(at: fileURL,             // 4
                                                    maximumBytes: Self.maximumStoredBytes)
                 guard readback == sealed else { throw StorageError.readbackMismatch }
                 try fileSystem.fullSync(at: directory, directory: true)     // 5
-                try marker?.recordCommittedSnapshot()                       // 6
             } catch {
                 // Best effort: a candidate that never became the state must
                 // not stay behind. A failure here cannot make the outcome any

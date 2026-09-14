@@ -249,24 +249,33 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   account `paranoid-text-state-v0`, accessible after first unlock on this
   device only, not synchronizable), never regenerated over an existing file
   (`TextEngine.java:206-218`). `InstallMarker` (standard defaults) and
-  `StorageGuard` carry the reinstall rule over three facts about the container:
-  `paranoid.install.v1`, that it has been launched, `paranoid.snapshot.v1`,
-  that it has committed a state file, and `paranoid.install.v2`, that it has
-  been keeping the second fact since its own first launch. With no marker
-  **and no state file** the stale Keychain key is deleted and the marker is
-  recorded; with no marker and a state file nothing is deleted or recorded at
-  all and the launch freezes, because an uninstall would have taken that file
-  with the container and a deleted wrapping key cannot be undone by anyone.
-  Then Android's exclusive-or (`StorageGuard.java:7-8`) is evaluated: a file
-  without a key freezes, and so does a key without a file — unless the
-  container has never committed one *and was keeping that record*, which is an
-  interrupted first run and not evidence of tampering, because this client
-  creates the Keychain item while opening and Android creates its alias at the
-  first commit. The third fact is what keeps that exception away from every
-  installation made before it existed: no earlier build wrote the second one,
-  so on those containers its absence says nothing, and a key without a file
-  there freezes until a launch finds the container holding neither half and
-  starts the record.
+  `StorageGuard` carry the reinstall rule over two facts about the container,
+  read in opposite directions: `paranoid.install.v1`, that it has been
+  launched, read by its absence; and `paranoid.firstrun.pending.v1`, that it
+  was opened and has not committed a state file yet, read only by its
+  presence. With no marker **and no state file** the stale Keychain key is
+  deleted and the marker is recorded; with no marker and a state file nothing
+  is deleted or recorded at all and the launch freezes, because an uninstall
+  would have taken that file with the container and a deleted wrapping key
+  cannot be undone by anyone. Then Android's exclusive-or
+  (`StorageGuard.java:7-8`) is evaluated: a file without a key freezes, and so
+  does a key without a file — unless the container said, before that key
+  existed, that it has committed nothing, which is an interrupted first run
+  and not evidence of tampering, because this client creates the Keychain
+  item while opening and Android creates its alias at the first commit. The
+  fact is recorded by the launch that finds the container holding neither
+  half and withdrawn by the first commit after the candidate is synced and
+  before the rename, so it is never on disk while false; every silence — a
+  fact never written, not persisted, rolled back, or never written by an
+  earlier build — freezes with the key kept. The one loss that does not
+  close, a withdrawal acknowledged but never persisted followed by the loss
+  of the file before any launch opened it, is disclosed in
+  [ios-client-threats.md](../../docs/security/ios-client-threats.md) and held
+  as a strict expected failure in `SnapshotStoreTests`; so is the restore
+  nothing on the device can refuse — a backup taken during an interrupted
+  first run and restored onto the same device brings the fact back, an
+  encrypted one the `ThisDeviceOnly` key with it, and the excluded file not
+  at all, which is the interrupted-first-run row by the user's own hand.
 - `Sources/ParanoidKit/Service/` is the application adapter over the unchanged
   v2 opaque transport, the port of `SelfServiceClient.java`. `Snapshot` is the
   stored version-4 wrapper
@@ -865,12 +874,14 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   attributes it was asked for, the install-marker matrix (stale key with no
   marker and no file is wiped and `create_identity` then works; no marker
   beside a file keeps the key, keeps the file and freezes; a file with no key
-  freezes, and so does a key with no file once the container has committed
-  one and on a container installed before the record existed, while the key an
-  interrupted first run left behind opens normally;
-  marker with neither is a fresh install) and one commit driven through
-  `open`/`F_FULLFSYNC`/`rename(2)` on a real file system, which is also what
-  records that the container now holds a state file. It runs with the
+  freezes, and so does a key with no file unless the container's own pending
+  first-run fact vouches for it — so a container installed before the rule
+  freezes, a lost commit record beside a lost file freezes with the key kept,
+  and the key an interrupted first run left behind opens normally; marker
+  with neither is a fresh install that records the first run before its key
+  exists) and one commit driven through `open`/`F_FULLFSYNC`/`rename(2)` on a
+  real file system, which is also what withdraws the container's first-run
+  fact. It runs with the
   **default** simulator
   signature, not `CODE_SIGNING_ALLOWED=NO`: without signing Xcode skips
   `ProcessProductPackaging`, the process carries no `application-identifier`,
@@ -1876,10 +1887,11 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   freezes the application. An absent install marker means a fresh install and
   deletes a stale key — but only where no state file is there to disprove it,
   because a deleted wrapping key is the one loss nobody can undo. A present
-  marker with a missing key freezes, and so does a missing file whose
-  container has committed one or was installed before the container recorded
-  its commits. Raw core snapshots hold private keys and
-  plaintext: never log them.
+  marker with a missing key freezes, and so does a missing file unless the
+  container's own positive fact says its first run has committed nothing;
+  the absence of a record is never read as evidence that nothing was
+  committed. Raw core snapshots hold private keys and plaintext: never log
+  them.
 - **Trust.** Same server pin as Android
   (`8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba`) and the
   same eight leaf checks of `PinnedTls.java:54-70`, evaluated on

@@ -1,10 +1,10 @@
 name: iOS client
 on:
   pull_request:
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", ".github/workflows/ios.yml"]
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
   push:
     branches: [main]
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", ".github/workflows/ios.yml"]
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
 permissions:
   contents: read
 jobs:

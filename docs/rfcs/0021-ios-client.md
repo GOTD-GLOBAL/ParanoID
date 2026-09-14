@@ -229,57 +229,98 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    iOS, Keychain items survive removal of the application while the container
    file does not; without an extra rule a reinstalled app would see "key
    without file" and freeze forever, or worse, could be tempted to reuse a
-   stale key. The candidate therefore keeps an install marker in
-   `UserDefaults` (`paranoid.install.v1`):
+   stale key. The candidate therefore keeps two facts about the container in
+   `UserDefaults`, read in opposite directions: `paranoid.install.v1`, "this
+   container has been launched before", read by its absence, and
+   `paranoid.firstrun.pending.v1`, "this container was opened and has not
+   committed a state file yet", read only by its presence:
 
-   | Marker | Keychain key | Snapshot file | File ever committed | Result |
+   | Marker | Keychain key | Snapshot file | First run pending | Result |
    | --- | --- | --- | --- | --- |
    | absent | any | **present** | — | **frozen, nothing deleted**: a state file disproves the reinstall a missing marker suggests, and the key that opens it is kept for a person to recover; the marker can be lost for reasons that are not a reinstall |
-   | absent | any (stale) | absent | — | delete the key, write the marker, fresh install with a **new** identity |
-   | present | present | present | — | continue: the key opens the file |
-   | present | present | absent | yes | frozen (the file this key wrapped once existed; fail closed, no regeneration) |
-   | present | present | absent | no, and the container was keeping that record | fresh: an interrupted first run — this client creates the Keychain item while opening, before anything is committed, so a key alone is not evidence of loss |
-   | present | present | absent | not known: the container predates the record | frozen, as before this rule — an installation from an earlier build never wrote the fact, so its silence is not evidence |
+   | absent | any (stale) | absent | — | delete the key, write the marker and the pending fact, fresh install with a **new** identity |
+   | present | present | present | any | continue: the key opens the file; a pending fact found beside it is withdrawn, best effort |
+   | present | present | absent | yes | fresh: an interrupted first run, on the container's own word given before the key existed — this client creates the Keychain item while opening, before anything is committed, so a key alone is not evidence of loss |
+   | present | present | absent | no | frozen, key kept (fail closed, no regeneration): a file that has gone missing, a word that was lost and an installation from a build before this rule all land here, and none is told apart |
    | present | absent | present | — | frozen (fail closed, no regeneration) |
-   | present | absent | absent | — | fresh install (iCloud restore to a new device: marker restored, `ThisDeviceOnly` key and backup-excluded file are not) |
+   | present | absent | absent | any | the pending fact is recorded, fresh install (iCloud restore to a new device: marker restored, `ThisDeviceOnly` key and backup-excluded file are not) |
 
-   The first and the fifth rows were changed on 2026-09-14 at the owner
+   The first and the fourth rows were changed on 2026-09-14 at the owner
    reviewer's requirement (pull request #36, two P1 storage findings): the
    earlier rule deleted the key in the first row, which turned a recoverable
-   state into an unrecoverable one, and froze in the fifth, which a user
+   state into an unrecoverable one, and froze in the fourth, which a user
    reached by opening the application once and closing it without «Создать
-   ID». A second `UserDefaults` fact, `paranoid.snapshot.v1` ("this container
-   has committed a state file at least once"), is what distinguishes the
-   fourth row from the fifth; Android needs no such fact because it creates
-   its Keystore alias at the first commit. The deliberate cost, for the owner
-   to confirm: a container whose defaults are lost while its state file
-   survives now stops permanently instead of starting over, and only a person
-   can resolve it — the alternative destroyed the only key to that file.
+   ID». Android needs no fourth row because it creates its Keystore alias at
+   the first commit. The first correction (commit `67af672`) separated the
+   fourth row from the fifth with a fact recorded by the commit —
+   `paranoid.snapshot.v1`, "a state file has been committed here" — and read
+   its absence as proof that none was; a second review the same day showed
+   why that cannot hold. The record was a defaults write, the file it
+   described an `F_FULLFSYNC`ed file, and the two are lost by different
+   accidents: a record that never persisted, or a preferences domain rolled
+   back, left a container whose file had gone missing looking exactly like
+   one that never had a file, and the launch offered a fresh identity over
+   the key of the lost file. Absence of a record is not evidence that the
+   event did not happen.
 
-   **The upgrade.** The fifth row is readable only where the fact was being
-   written, and no build before this one wrote it: every container that exists
-   today — the contributor's iPhone included — holds `paranoid.install.v1`, a
-   committed state file and no `paranoid.snapshot.v1`. Reading that silence as
-   "nothing was ever committed here" would give the fifth row's `fresh` to a
-   container whose state file has gone missing, which is the fourth row's
-   case and the one the whole rule refuses, in the window between an update
-   being installed and its first launch. The licence to read the silence is
-   therefore a third fact of its own, `paranoid.install.v2`, written by the
-   launch that starts a container's record and not assumed of every container;
-   without it a key with no file keeps the pre-2026-09-14 reading and freezes
-   (the sixth row). `paranoid.install.v1` keeps its meaning unchanged and is
-   still what says "this container has been launched before", so the upgrade
-   deletes no key and re-freezes no retained file. An installation from an
-   earlier build earns the record the first time a launch finds it holding
-   neither a key nor a state file — the one moment at which "nothing has been
-   committed here" is an observation rather than an assumption.
+   **The inversion.** The fact is therefore the pending first run, recorded
+   by the launch that finds the container holding neither a key nor a file —
+   the one moment the sentence is an observation — and recorded before that
+   launch creates the key; the first commit withdraws it after the candidate
+   is synced and before the rename that would make it false; and a key
+   without a file opens only on the fact's presence. Every way of losing it
+   lands in the fifth row and freezes, which a person can resolve. The
+   upgrade needs no rule of its own: no build before this one wrote the fact,
+   so every installation that exists today freezes on a key without a file
+   until a launch finds it holding neither half, which is what the first
+   correction promised; `paranoid.install.v1` keeps its meaning, so the
+   upgrade deletes no key and re-freezes no retained file. The first
+   correction's `paranoid.snapshot.v1` and `paranoid.install.v2` decide no
+   row any more and are removed. The deliberate costs, for the owner to
+   confirm: a container whose defaults are lost while its state file
+   survives stops permanently instead of starting over, and only a person
+   can resolve it — the alternative destroyed the only key to that file; and
+   a pending fact that is lost freezes an installation that has nothing yet,
+   where a reinstall loses nothing.
+
+   **What the inversion does not close.** The withdrawal at the first commit
+   is a defaults write too. Acknowledged and never persisted, and followed by
+   the loss of the state file before any launch has opened it, it leaves the
+   container claiming it has committed nothing beside the key of a lost file,
+   and that launch opens on the claim. Withdrawing before the rename keeps
+   the claim off the disk while false, the launch that opens the file
+   withdraws it again, and a container whose defaults refuse the withdrawal
+   breaks the store with nothing renamed; what remains is the window between
+   the first commit and the next launch, where the earlier record was exposed
+   on every later day. `SnapshotStoreTests` keeps it executable as a strict
+   expected failure. Closing it means a fact that lives where the key lives —
+   an attribute of the Keychain item, updated at the first commit — or a key
+   created at the first commit as Android's is; either is a change to this
+   storage boundary for the owner to decide, not an operational fix.
+
+   The fact also comes back with a copy of the preferences taken between the
+   first launch and the first commit, an interval that lasts until the user
+   returns to «Создать ID» and can be days; the platform's own copy of it is a
+   backup restored onto the device it was taken from, on any later day, which
+   brings the fact back — an encrypted backup brings the `ThisDeviceOnly` key
+   back with it — and the excluded file not at all. Nothing kept on the device
+   tells that launch from the interrupted first run, because the restore took
+   every store the rule reads back to the same moment, and neither closing
+   design refuses it either: a fact on the Keychain item is restored with the
+   item, and a key created at the first commit is absent from the copy, which
+   is the row that holds neither half. What the restore costs is the identity
+   it had already discarded with the file — the cost of the accepted restore
+   onto a new iPhone, with the key reused instead of new — and what the launch
+   after it lacks is the visible refusal. It is stated for the owner rather
+   than counted as closed.
 
    A stale Keychain key is never used to "recover" anything. This is a
    platform note against `docs/clients/core/self-service.md:99-102`
    ("missing snapshot ... fail closed") and
    `docs/protocol/first-contact-v1.md:173-178`; it is reported as
-   discrepancy 12 for the owner and does not change the fail-closed rule when
-   the marker is present. Reinstalling the application therefore starts a new
+   discrepancy 12 for the owner and, with the marker present, changes the
+   fail-closed rule in the interrupted-first-run row alone. Reinstalling the
+   application therefore starts a new
    ID; the frozen screen says so (`Переустановка приложения начнёт с нового
    ID.`).
 3. **Security boundary.** Leaf-SPKI pinning is evaluated by the client on
