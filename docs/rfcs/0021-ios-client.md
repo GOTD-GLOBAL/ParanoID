@@ -43,17 +43,26 @@ measured row by row in [verification.md](../clients/ios/verification.md):
   capture — and no owner "go" permalink exists for the session, because it was
   not planned. Every row the report does not cover stays `NOT RUN`. After the
   session the iPhone stopped connecting and has not recovered;
-- **two hosted accounts exist** — `hosted_registrations` is 2: one
-  `service-bridge` registration from the build Mac while diagnosing the
-  phone's TLS failure, and one from the physical iPhone once App Transport
-  Security was switched off, both under the owner's answer to question 4 (no
-  fixed budget). The iPhone then paired the owner's Android from his QR image
-  and sent one text the hosted server accepted (one check); delivery to his
-  phone was still pending then, and happened in the joint session of
-  2026-09-14, which used that same account and consumed no further
-  registration. Before that, the only contact with the hosted
-  server was a TLS handshake that compared the live SubjectPublicKeyInfo
-  digest with the pin this client carries;
+- **three hosted accounts exist** — `hosted_registrations` is 3: one
+  `service-bridge` registration from the build Mac on 2026-09-13 while
+  diagnosing the phone's TLS failure, one from the physical iPhone on
+  2026-09-13 once App Transport Security was switched off, and one diagnostic
+  account from the build Mac on 2026-09-14, all three under the owner's answer
+  to question 4 (no fixed budget). The first of them is dead: that fixture
+  held its wrapping key in process memory only, so its state file no longer
+  opens and the account is registered but unreachable, which is why a third
+  had to be registered rather than reused. That third account is diagnostic —
+  no messages, no contacts, no relation to either participant's identity — and
+  exists to measure the hosted server from a second identity while issue #38
+  is diagnosed; its wrapping key is kept beside its state, so it is persistent
+  and needs no further registration. The iPhone account is the contributor's
+  own and still in use: it paired the owner's Android from his QR image and
+  sent one text the hosted server accepted (one check); delivery to his phone
+  was still pending then, and happened in the joint session of 2026-09-14,
+  which used that same account and consumed no further registration. Before
+  the first of the three, the only contact with the hosted server was a TLS
+  handshake that compared the live SubjectPublicKeyInfo digest with the pin
+  this client carries;
 - the calls this client speaks are **call-v2**, not the voice v1 this RFC was
   first drafted against; see [call-v2 migration](#call-v2-migration).
 
@@ -223,12 +232,47 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    stale key. The candidate therefore keeps an install marker in
    `UserDefaults` (`paranoid.install.v1`):
 
-   | Marker | Keychain key | Snapshot file | Result |
-   | --- | --- | --- | --- |
-   | absent | any (stale) | absent | delete the key, write the marker, fresh install with a **new** identity |
-   | present | present | absent | frozen (fail closed, no regeneration) |
-   | present | absent | present | frozen (fail closed, no regeneration) |
-   | present | absent | absent | fresh install (iCloud restore to a new device: marker restored, `ThisDeviceOnly` key and backup-excluded file are not) |
+   | Marker | Keychain key | Snapshot file | File ever committed | Result |
+   | --- | --- | --- | --- | --- |
+   | absent | any | **present** | — | **frozen, nothing deleted**: a state file disproves the reinstall a missing marker suggests, and the key that opens it is kept for a person to recover; the marker can be lost for reasons that are not a reinstall |
+   | absent | any (stale) | absent | — | delete the key, write the marker, fresh install with a **new** identity |
+   | present | present | present | — | continue: the key opens the file |
+   | present | present | absent | yes | frozen (the file this key wrapped once existed; fail closed, no regeneration) |
+   | present | present | absent | no, and the container was keeping that record | fresh: an interrupted first run — this client creates the Keychain item while opening, before anything is committed, so a key alone is not evidence of loss |
+   | present | present | absent | not known: the container predates the record | frozen, as before this rule — an installation from an earlier build never wrote the fact, so its silence is not evidence |
+   | present | absent | present | — | frozen (fail closed, no regeneration) |
+   | present | absent | absent | — | fresh install (iCloud restore to a new device: marker restored, `ThisDeviceOnly` key and backup-excluded file are not) |
+
+   The first and the fifth rows were changed on 2026-09-14 at the owner
+   reviewer's requirement (pull request #36, two P1 storage findings): the
+   earlier rule deleted the key in the first row, which turned a recoverable
+   state into an unrecoverable one, and froze in the fifth, which a user
+   reached by opening the application once and closing it without «Создать
+   ID». A second `UserDefaults` fact, `paranoid.snapshot.v1` ("this container
+   has committed a state file at least once"), is what distinguishes the
+   fourth row from the fifth; Android needs no such fact because it creates
+   its Keystore alias at the first commit. The deliberate cost, for the owner
+   to confirm: a container whose defaults are lost while its state file
+   survives now stops permanently instead of starting over, and only a person
+   can resolve it — the alternative destroyed the only key to that file.
+
+   **The upgrade.** The fifth row is readable only where the fact was being
+   written, and no build before this one wrote it: every container that exists
+   today — the contributor's iPhone included — holds `paranoid.install.v1`, a
+   committed state file and no `paranoid.snapshot.v1`. Reading that silence as
+   "nothing was ever committed here" would give the fifth row's `fresh` to a
+   container whose state file has gone missing, which is the fourth row's
+   case and the one the whole rule refuses, in the window between an update
+   being installed and its first launch. The licence to read the silence is
+   therefore a third fact of its own, `paranoid.install.v2`, written by the
+   launch that starts a container's record and not assumed of every container;
+   without it a key with no file keeps the pre-2026-09-14 reading and freezes
+   (the sixth row). `paranoid.install.v1` keeps its meaning unchanged and is
+   still what says "this container has been launched before", so the upgrade
+   deletes no key and re-freezes no retained file. An installation from an
+   earlier build earns the record the first time a launch finds it holding
+   neither a key nor a state file — the one moment at which "nothing has been
+   committed here" is an observation rather than an assumption.
 
    A stale Keychain key is never used to "recover" anything. This is a
    platform note against `docs/clients/core/self-service.md:99-102`
@@ -319,17 +363,21 @@ XcodeGen for project generation (rejected: an additional unpinned binary).
   parity unless the owner answers question 5 differently.
 - No migration: there is no previous iOS state. Reinstall is a clean install
   (see install marker rule). Rollback is removing the TestFlight build; the
-  two hosted accounts this branch created (one from the build Mac, one for
+  three hosted accounts this branch created (two from the build Mac, one for
   the iPhone) stay on the server (REQ-MSG-004: no deletion path).
 - The Android client is not modified; interoperability is proven only by the
   joint tests in the validation plan.
 
 ## Operations and observability
 
-- No server-side change, configuration or deployment. Two additional hosted
+- No server-side change, configuration or deployment. Three additional hosted
   accounts exist under question 4 (no fixed budget): one `service-bridge`
-  registration from the build Mac while diagnosing the phone's TLS failure
-  and one for the contributor's iPhone, both counted in the evidence
+  registration from the build Mac on 2026-09-13 while diagnosing the phone's
+  TLS failure, one for the contributor's iPhone on 2026-09-13, and one
+  diagnostic account from the build Mac on 2026-09-14 — no messages, no
+  contacts — registered for the diagnosis of issue #38 because the first
+  account's wrapping key existed only in the fixture's memory and its state
+  can no longer be opened; all three are counted in the evidence
   directory; simulators use only a local stand (unchanged server binary plus
   local PostgreSQL 16 on the build Mac), and the phone's local-stand smoke
   used that same stand bound to the Mac's LAN address.
@@ -446,8 +494,9 @@ report rather than an observation or a recording. Every other row keeps
 On 2026-09-13 the contributor alone exercised stage 1 steps 1, 2, 4 and the
 first half of 5 (one check, no reply yet) against the hosted server with the
 owner's QR image; that is a pre-run, not the joint test, and the iPhone's
-hosted registration was consumed before the stage, with the session of
-2026-09-14 consuming none.
+hosted registration was consumed before the stage, with the joint session of
+2026-09-14 consuming none — the third registration made that day belongs to
+the diagnosis of issue #38, not to the session.
 
 ## Closed-alpha scope (policy item 1)
 
@@ -483,7 +532,7 @@ the human decision owner.
 | # | Question | Status |
 | --- | --- | --- |
 | 3 | Keychain class for the wrapping key: `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, so a locked screen during a call cannot turn a heartbeat commit into a terminal freeze. | Answered 2026-09-13: confirmed. |
-| 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. Two were consumed on 2026-09-13: one from the build Mac while diagnosing the phone's TLS failure and one for the iPhone. |
+| 4 | Hosted account budget for the contributor's iPhone. | Answered 2026-09-13: as many as the tests need, no fixed budget. Each registration is still recorded in the evidence directory, because the server cannot delete an account. Three have been consumed: two on 2026-09-13 — one from the build Mac while diagnosing the phone's TLS failure, whose wrapping key lived only in that fixture's memory, so the account is registered but permanently unreachable, and one for the iPhone, the contributor's own — and one diagnostic account from the build Mac on 2026-09-14, with no messages and no contacts, registered for the diagnosis of issue #38 because the first could not be reopened; this answer covers it too. |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE mode or refuse the call? | Answered 2026-09-12 by the owner's agents in issue #27: a valid authenticated 404 from the pinned origin permits the pre-disclosed direct-ICE mode; a TLS failure, a timeout, a malformed 200 or a relay failure does not. |
 | 6 | Paid macOS CI runner for the iOS build. | Answered 2026-09-13: no. Ubuntu checks plus the local `build.sh` and an evidence directory. |
 | 7 | Pin and certificate rotation. | Partly answered 2026-09-13: the owner renewed the certificate with the **same key**, so the SPKI pin is unchanged and both clients keep working; the new validity ends 2026-12-12T07:38:09Z. Verified independently from this machine: the live SPKI equals the pin this client carries. A same-key renewal is therefore the safe path and must be repeated before that date; the [bounded same-key automation](../operations/tls-auto-renewal.md) installed on the host on 2026-09-13 does that, outside this client. Rotating the key itself stays open and needs its own deploy-trust RFC, because `clients/core/src/intro_v2.rs:21-44` feeds the pin into the first-contact channel transcript, so a new key invalidates existing contact channels and not only the transport. |

@@ -42,7 +42,14 @@ public enum StorageError: Error, Equatable, Sendable {
 /// 4. `read` the committed file and compare it byte for byte with what was
 ///    sealed;
 /// 5. `fullSync` the directory, so that the new directory entry survives a
-///    power loss too.
+///    power loss too;
+/// 6. record in the container that a state file now exists, which is what
+///    `StorageGuard` reads on the next launch if the file has gone missing by
+///    then. It comes last because it is a statement about a file that is
+///    already committed, and it is treated as a step rather than as a
+///    best-effort note: a container that cannot keep it would let the next
+///    launch read that missing file as a first run that never created one.
+///    A store built without a container skips it and only it (see `marker`).
 ///
 /// Between 1 and 2 the temporary file is excluded from backup. That is not a
 /// durability step, but it has to happen there: the flag lives on the inode,
@@ -86,6 +93,7 @@ public final class SnapshotStore {
 
     private let fileSystem: FileSystem
     private let key: SymmetricKey
+    private let marker: InstallMarker?
 
     /// - Parameters:
     ///   - directory: `Application Support/paranoid/`; use
@@ -94,10 +102,23 @@ public final class SnapshotStore {
     ///     creates or replaces a key.
     ///   - fileSystem: the real file system by default; the host tests inject
     ///     one that fails a chosen step.
-    public init(directory: URL, key: SymmetricKey, fileSystem: FileSystem = DataProtectionFileSystem()) {
+    ///   - marker: the container this store commits into — the same defaults
+    ///     `StorageGuard.start(...)` reads at launch — or `nil` where there is
+    ///     no container to speak of. The command-line tools of this package are
+    ///     the `nil` case: they hold their wrapping key in process memory, they
+    ///     never run the launch rule, and their `UserDefaults.standard` is the
+    ///     build Mac's own preferences, so step 6 there would write a fact
+    ///     about a container that does not exist into a domain no launch will
+    ///     ever read. The tests pass a scratch suite so that a run leaves
+    ///     nothing behind.
+    public init(directory: URL,
+                key: SymmetricKey,
+                fileSystem: FileSystem = DataProtectionFileSystem(),
+                marker: InstallMarker? = InstallMarker()) {
         self.directory = directory
         self.key = key
         self.fileSystem = fileSystem
+        self.marker = marker
     }
 
     /// Whether a committed state file is present. This is the `snapshotExists`
@@ -172,6 +193,7 @@ public final class SnapshotStore {
                                                    maximumBytes: Self.maximumStoredBytes)
                 guard readback == sealed else { throw StorageError.readbackMismatch }
                 try fileSystem.fullSync(at: directory, directory: true)     // 5
+                try marker?.recordCommittedSnapshot()                       // 6
             } catch {
                 // Best effort: a candidate that never became the state must
                 // not stay behind. A failure here cannot make the outcome any

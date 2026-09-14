@@ -612,6 +612,53 @@ class UiContract(unittest.TestCase):
                      'AppModel.toggleCamera()')
         self.present('guard let call, call.state == .connecting || call.state == .connected '
                      'else { return }', toggle, 'AppModel.toggleCamera()')
+        # The action carries the call it was taken in. Everything after the
+        # first line of the toggle crosses a suspension — the permission
+        # dialog, the hop onto the state owner — and the call on the screen can
+        # end and be replaced by a call with another peer before either
+        # completes. A platform grant lets this application see a camera; it
+        # never says which call the user meant. So the generation is read from
+        # the call that was tapped, before the first `await`, and the owner
+        # re-checks it against the live call (`CallController.video(_:generation:)`).
+        self.before('let generation = call.generation', 'await AppModel.requestCamera()',
+                    toggle, 'AppModel.toggleCamera()')
+        for carried in ('setVideo(false, generation: generation)',
+                        'setVideo(true, generation: generation)'):
+            self.present(carried, toggle, 'AppModel.toggleCamera()')
+        self.assertEqual(model.count('setVideo('), 2,
+                         'a camera action reaches the call machinery without naming its call')
+        # «Сменить камеру» names its call too. It cannot open a camera — only
+        # `setVideo(true, …)` starts a capture — but it crosses the same hop,
+        # and a tap that lands after its own call ended would turn the picture
+        # of whichever call replaced it. The coordinator checks the call the
+        # engine belongs to before the flip reaches the capturer.
+        switch = model[model.index('    /// «Сменить камеру»'):
+                       model.index('    /// Where a call\'s video is drawn.')]
+        self.present('guard let generation = call?.generation else { return }', switch,
+                     'AppModel.switchCamera()')
+        self.present('switchCamera(generation: generation)', switch, 'AppModel.switchCamera()')
+        coordinator = self.sources[COORDINATOR]
+        self.before('guard self.engineGeneration == generation else { return }',
+                    'self.engine?.switchCamera()',
+                    coordinator[coordinator.index('    func switchCamera(generation:'):],
+                    'CallCoordinator.switchCamera(generation:)')
+        # And nothing above the state owner remembers a camera across a
+        # background: a flag here could record only *that* one was on, never
+        # whose, and the call it was on may end while the application is away
+        # (`call-v2.md:67-69`, `CallController.foreground(_:phase:)`). What is
+        # kept here instead is which report of the screen this is: one trip to
+        # the background posts four of them through unstructured tasks that
+        # nothing orders, and whether the application is on the screen is state
+        # that stays, so the owner sorts them by a number minted on this actor
+        # before the first suspension — exactly as the toggle reads its
+        # generation there.
+        background = model[model.index('    func setBackground('):
+                           model.index('    /// «Открыть Настройки»')]
+        self.before('screenPhase += 1', 'Task {', background, 'AppModel.setBackground()')
+        self.present('Task { await calls?.setForeground(!background, phase: phase) }', background,
+                     'AppModel.setBackground()')
+        self.absent('setVideo', background, 'AppModel.setBackground()')
+        self.absent('cameraPaused', model, MODEL)
         # The call screen asks for nothing; it calls the model.
         self.absent('requestCamera', self.sources[CALL], CALL)
         self.absent('AVCaptureDevice', self.sources[CALL], CALL)

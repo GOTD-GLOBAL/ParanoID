@@ -474,13 +474,32 @@ final class Device: @unchecked Sendable {
     let client: SelfServiceClient
 
     private let key: SymmetricKey
+    /// Where a commit records that this container now holds a state file. One
+    /// scratch suite for every device of every run, because no test here reads
+    /// that fact back — it only has to stay out of the defaults the
+    /// application uses. The name is fixed rather than unique per run: a
+    /// removed domain still leaves its (empty) file behind in the host's
+    /// preferences, so a name minted per run would leave one more of them on
+    /// the build Mac every time the suite is executed.
+    private static let suiteName = "global.paranoid.messenger.tests.device"
+    private let marker: InstallMarker
 
     init(name: String, trust: ServiceTrust) throws {
         fileSystem = FakeFileSystem()
         directory = URL(fileURLWithPath: "/fake/\(name)/Application Support/paranoid", isDirectory: true)
         key = SymmetricKey(size: .bits256)
-        store = SnapshotStore(directory: directory, key: key, fileSystem: fileSystem)
+        // Never `?? .standard`: a fallback there would write this fixture's
+        // container facts into the defaults of whatever is running the tests,
+        // which is the one place they must not go. `suiteName` is a
+        // reverse-DNS name and no reserved one, so the unwrap holds; if it
+        // ever stopped holding, the test must say so and not carry on.
+        marker = InstallMarker(defaults: try XCTUnwrap(UserDefaults(suiteName: Self.suiteName)))
+        store = SnapshotStore(directory: directory, key: key, fileSystem: fileSystem, marker: marker)
         client = try SelfServiceClient(saved: nil, sink: store, fixture: trust, compiled: nil)
+    }
+
+    deinit {
+        UserDefaults().removePersistentDomain(forName: Self.suiteName)
     }
 
     /// How many candidates reached the device: one `rename(2)` per commit.
@@ -492,7 +511,7 @@ final class Device: @unchecked Sendable {
     /// tests read what is on the device after the client's own store froze,
     /// and it is also what the next launch would do.
     func reopenStore() -> SnapshotStore {
-        SnapshotStore(directory: directory, key: key, fileSystem: fileSystem)
+        SnapshotStore(directory: directory, key: key, fileSystem: fileSystem, marker: marker)
     }
 
     func stored() throws -> String? {

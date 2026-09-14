@@ -158,6 +158,14 @@ public final class CallController {
     private var generationCounter: UInt64 = 0
     private var online = false
     private var state: State = .idle
+    /// Whether the application is on the screen. The camera runs only while it
+    /// is (`call-v2.md:67-69`), and it starts `true` because no call can begin
+    /// from an application nobody is looking at.
+    private var inForeground = true
+    /// Which observation of the screen that is. Reports are numbered where
+    /// they are taken and applied in that order here, never in the order they
+    /// happen to arrive; `0` is the assumption above, which any report beats.
+    private var screenPhase: UInt64 = 0
     private var endReason: CallBody.EndReason?
     private var lastAccount = ""
     private var lastCallId = ""
@@ -324,8 +332,9 @@ public final class CallController {
     ///   - microphonePermission: whether the microphone is already granted;
     ///     this type never asks for it.
     ///   - videoIntent: an explicit "video call" start. It opens no camera
-    ///     here: it is applied once the media engine for this call exists and
-    ///     the camera permission is granted (`call-v2.md:73-75`).
+    ///     here: it is applied once the media engine for this call exists, the
+    ///     application is on the screen and the camera permission is granted
+    ///     (`call-v2.md:73-75`).
     public func start(account: String, microphonePermission: Bool, videoIntent: Bool = false) {
         own()
         guard checkClock() else { return }
@@ -351,7 +360,7 @@ public final class CallController {
                             outgoing: true,
                             generation: CallGeneration(number: generationCounter),
                             started: clock.now())
-        call.videoIntent = videoIntent
+        call.pendingCamera = videoIntent
         live = call
         state = .starting
         endReason = nil
@@ -451,9 +460,42 @@ public final class CallController {
     /// learns about it through a `media` control, never through a
     /// renegotiation — the video section stays `sendrecv` for the whole call
     /// (`call-v2.md:56-58`).
-    public func video(_ enabled: Bool) {
+    ///
+    /// - Parameter generation: the call the action was taken in. A camera
+    ///   action does not arrive here in the moment it is taken — it crosses
+    ///   the platform's permission dialog and at least one hop onto this
+    ///   thread — and the call that was on the screen when the user tapped may
+    ///   have ended and been replaced by another one in between. A platform
+    ///   permission grants this process access to a camera; it never says
+    ///   which call the user meant. So the call is stated, and it is checked
+    ///   here, with the live call in hand, rather than wherever the action
+    ///   started: nothing read before a suspension is still true after it. An
+    ///   action aimed at a call that is over captures nothing and announces
+    ///   nothing to the peer of the call that replaced it.
+    public func video(_ enabled: Bool, generation: CallGeneration) {
         own()
-        guard let call = live, call.media, call.localVideo != enabled else { return }
+        guard let call = live, call.generation == generation, call.media else { return }
+        guard inForeground else {
+            // What the user asked for is kept with the call it was asked of,
+            // and the capture waits for a screen to show it on
+            // (`call-v2.md:67-69`).
+            call.pendingCamera = enabled
+            return
+        }
+        // An explicit action settles what this call is owed: a camera switched
+        // off is not handed back by the next return to the foreground.
+        call.pendingCamera = false
+        apply(video: enabled, to: call)
+    }
+
+    /// The camera itself, once the call it belongs to has been settled.
+    ///
+    /// The explicit toggle, the engine becoming ready and the return to the
+    /// screen all end here, and each of them answers *which call* before it
+    /// arrives — which is the whole of the difference between turning a camera
+    /// on and turning this camera on.
+    private func apply(video enabled: Bool, to call: LiveCall) {
+        guard call.media, call.localVideo != enabled else { return }
         do {
             try media.video(enabled)
         } catch CallMediaError.cameraDenied {
@@ -480,13 +522,68 @@ public final class CallController {
         }
     }
 
-    /// The media engine for this generation exists: a pending "video call"
-    /// start intent may now be applied (`call-v2.md:73-75`).
+    /// The media engine for this generation exists: a camera this call is owed
+    /// may now be opened (`call-v2.md:73-75`).
     public func mediaReady(_ generation: CallGeneration) {
         own()
-        guard let call = live, call.generation == generation, call.media, call.videoIntent else { return }
-        call.videoIntent = false
-        video(true)
+        guard let call = live, call.generation == generation, call.media, call.pendingCamera
+        else { return }
+        // An engine that becomes ready while the application is away leaves
+        // the intent standing rather than starting a capture nobody can see:
+        // the debt belongs to this call and is paid when the screen returns
+        // (`call-v2.md:67-69`).
+        guard inForeground else { return }
+        call.pendingCamera = false
+        apply(video: true, to: call)
+    }
+
+    /// The application left the screen, or came back to it
+    /// (`call-v2.md:67-69`: "The app leaving the foreground disables the
+    /// camera (audio continues) and re-enables it on return if the user had it
+    /// on"). Audio is untouched either way: only the camera stops.
+    ///
+    /// Android keeps this in its activity (`MainActivity.java:700,703`); here
+    /// it is the controller's, and that divergence is the whole point. What
+    /// has to survive a background is an *intent* — the camera the user had on
+    /// — and an intent kept outside the call it was expressed in has no
+    /// subject: on the way back it would be restored into whatever call
+    /// happened to be live, which is a peer seeing a camera nobody turned on
+    /// for it. Here it is a member of the live call, so it dies with that call
+    /// and the call that replaces it inherits nothing.
+    ///
+    /// - Parameter phase: which observation of the screen this is, counted up
+    ///   by whoever watches the scene. One trip to the background and back
+    ///   produces four of these — the platform passes through *inactive* in
+    ///   each direction — and each of them crosses the same two suspensions a
+    ///   camera action does before it lands here, where nothing in the
+    ///   language orders two unstructured tasks against each other. This flag
+    ///   is state rather than a one-shot command, so a pair delivered the
+    ///   wrong way round would not merely be late: `inForeground` would settle
+    ///   at the older answer and stay there, leaving the camera button
+    ///   recording intents that open nothing until the next trip to the
+    ///   background — or, the other way round, leaving the way clear for a
+    ///   capture with the application off the screen. Numbering them makes the
+    ///   arrival order irrelevant: a report older than the one already applied
+    ///   describes a screen that has since been superseded and is dropped, the
+    ///   same rule the call generation states for a camera action.
+    public func foreground(_ inForeground: Bool, phase: UInt64) {
+        own()
+        guard phase > screenPhase else { return }
+        screenPhase = phase
+        guard self.inForeground != inForeground else { return }
+        self.inForeground = inForeground
+        guard let call = live else { return }
+        if !inForeground {
+            guard call.localVideo else { return }
+            call.pendingCamera = true
+            apply(video: false, to: call)
+            return
+        }
+        // The camera is owed back only once there is an engine to open it
+        // with; until then the debt stands and `mediaReady` pays it.
+        guard call.pendingCamera, call.media else { return }
+        call.pendingCamera = false
+        apply(video: true, to: call)
     }
 
     /// The engine reported that the camera cannot run — no permission, no
@@ -1154,8 +1251,12 @@ public final class CallController {
         /// The peer's camera, as its last authenticated `media` control
         /// claimed.
         var remoteVideo = false
-        /// An explicit "video call" start waiting for the media engine.
-        var videoIntent = false
+        /// A camera this call owes the user and has not opened yet: an
+        /// explicit "video call" start waiting for the media engine
+        /// (`call-v2.md:73-75`), or the camera the background took away and
+        /// the foreground has to give back (`:67-69`). It lives on the call so
+        /// that it ends with it.
+        var pendingCamera = false
         var speakerBeforeVideo = false
         /// When something was last heard from the peer. Every accepted
         /// control of a live call refreshes it, the `media` control included

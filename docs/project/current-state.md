@@ -99,8 +99,10 @@ previous caption standing, inventing no connected state. It is the port of
 `URLSession` outside the pinning delegate, and it is `CLAIMED`: a real path
 change was never produced, because a simulator has no network of its own — the
 rule was driven through the shipped watcher, runner and policy instead
-([evidence](evidence/ios-client-20260913/README.md)). The 248 package tests
-pass, six of them new, with fifteen more in the application bundle; the
+([evidence](evidence/ios-client-20260913/README.md)). The 261 package tests
+pass, six of them the reconnect rule's and five the storage and camera answers
+to the review of 2026-09-14, with fifteen more in the application bundle and
+eleven on the signed simulator's real Keychain; the
 application test bundles and the local-stand scripts were run by the steps that
 delivered them, and their output stays under `clients/ios/out/`, which is not
 committed.
@@ -224,16 +226,32 @@ left a lane parked after a network change, while this symptom was a signed read
 that did not return while the server was otherwise healthy, which no
 client-side restart fixes and which the fix does not address.
 
-**Hosted accounts spent: two.** `hosted_registrations` is 2: a
+**Hosted accounts spent: three.** `hosted_registrations` is 3: a
 `service-bridge` registration from the build Mac on 2026-09-13, made while
 diagnosing the phone's TLS failure to prove the client stack registers on the
-hosted server while the phone could not, and the physical iPhone's registration
-once App Transport Security was switched off — both under the owner's answer to
-RFC-0021 question 4 (no fixed budget). The joint session of 2026-09-14
-consumed none: it used the account the iPhone registered on 2026-09-13. The
-phone's failure was a defect that only the hosted server could show: ATS
-refused the self-signed leaf on a public IP before the pinning delegate ran
-(`NSURLErrorDomain -1200`), which a LAN stand never shows and
+hosted server while the phone could not; the physical iPhone's registration
+once App Transport Security was switched off, which is the contributor's own
+account and is still in use; and a diagnostic registration from the build Mac
+on 2026-09-14 at 08:26:45.596+03:00 (`POST /v2/registration/commit`, 200 in
+50.7 ms, its challenge at 08:26:45.396+03:00, 200 in 198.0 ms), public account
+id `240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`, opened
+to answer the owner agent's request for a comparative signed read while
+diagnosing the hosted server's intermittent failure (issue #38). That third
+account is diagnostic: no messages, no contacts, and no relation to the
+contributor's own account or to the owner's — it exists only to measure the
+hosted server from a second identity. A third exists at all because the
+2026-09-13 Mac account is permanently unreachable: that fixture kept its
+wrapping key in process memory only, so its state file no longer opens and the
+account is registered but dead. The diagnostic account is persistent instead —
+its wrapping key is kept beside its state in
+`clients/ios/out/evidence/hosted-probe-20260914/` (build output, not
+committed; key file mode 0600) — so this diagnosis needs no further
+registration. All three fall under the owner's answer to RFC-0021 question 4
+(as many accounts as the tests need, no fixed budget). The joint session of
+2026-09-14 consumed none: it used the account the iPhone registered on
+2026-09-13. The phone's failure was a defect that only the hosted server could
+show: ATS refused the self-signed leaf on a public IP before the pinning
+delegate ran (`NSURLErrorDomain -1200`), which a LAN stand never shows and
 `NSPinnedDomains` cannot exempt for an IP literal.
 `adb56be` sets `NSAllowsArbitraryLoads = YES`, `test_ui_contract.py` holds the
 contract "exactly that key and no `URLSession` outside `PinnedSessionDelegate`",

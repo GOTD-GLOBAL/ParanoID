@@ -183,9 +183,10 @@ final class AppModel {
     /// The identifier the call screen was last raised for, so that one call
     /// raises it once (`MainActivity.displayedCall`).
     private var shownCall = ""
-    /// The camera was on when the application went to the background, so it
-    /// comes back on when the application does (`MainActivity.java:700`).
-    private var cameraPausedByBackground = false
+    /// How many times the scene has been reported as on the screen or off it.
+    /// It only grows, and it is what lets the state owner apply those reports
+    /// in the order they were taken (``setBackground(_:)``).
+    private var screenPhase: UInt64 = 0
 
     /// How long the bottom banner stays (the mock-up's `notice`).
     static let noticeDuration = Duration.seconds(3)
@@ -818,11 +819,22 @@ final class AppModel {
     /// never on ring, never on Answer (`call-v2.md:62-64`). A refusal keeps
     /// the call and says so; it changes no section's direction, because camera
     /// state travels as a `media` control and not as a renegotiation.
+    ///
+    /// The action carries the call it was taken in, and every line below is
+    /// why: a permission dialog can be answered minutes later, the hop onto
+    /// the state owner is another suspension, and this call may be over and
+    /// replaced by a call with a different peer before either completes.
+    /// Granting the camera permission is the user letting this application see
+    /// a camera at all; it is not the user turning a camera on in whichever
+    /// call happens to be live when the answer arrives. The owner re-checks
+    /// the generation with the live call in hand
+    /// (``CallController/video(_:generation:)``).
     func toggleCamera() {
         guard let call, call.state == .connecting || call.state == .connected else { return }
+        let generation = call.generation
         let wanted = !call.localVideo
         guard wanted else {
-            Task { await calls?.setVideo(false) }
+            Task { await calls?.setVideo(false, generation: generation) }
             return
         }
         Task { [weak self] in
@@ -831,13 +843,20 @@ final class AppModel {
                 showNotice(Strings.Notice.cameraDenied)
                 return
             }
-            await calls?.setVideo(true)
+            await calls?.setVideo(true, generation: generation)
         }
     }
 
     /// «Сменить камеру» (`MainActivity.java:470`).
+    ///
+    /// It names its call for the same reason the toggle above does: the hop
+    /// onto the state owner is a suspension, and the invariant is that every
+    /// camera action carries the call it was taken in — including the one that
+    /// cannot open a camera, so there is no action left that a later call can
+    /// inherit.
     func switchCamera() {
-        Task { await calls?.switchCamera() }
+        guard let generation = call?.generation else { return }
+        Task { await calls?.switchCamera(generation: generation) }
     }
 
     /// Where a call's video is drawn.
@@ -864,24 +883,34 @@ final class AppModel {
     }
 
     /// The application went to the background, or came back
-    /// (`MainActivity.java:700,703`, and `call-v2.md`: "The app leaving the
-    /// foreground disables the camera (audio continues) and re-enables it on
-    /// return").
+    /// (`MainActivity.java:700,703`, and `call-v2.md:67-69`: "The app leaving
+    /// the foreground disables the camera (audio continues) and re-enables it
+    /// on return if the user had it on").
     ///
     /// It is driven by `.background` alone and never by `.inactive`, because a
     /// permission dialog is not leaving the foreground. The audio keeps
     /// running either way: only the camera stops.
+    ///
+    /// No camera is remembered here, and that is the point. "The user had it
+    /// on" is a fact about one particular call, and the call it was true of can
+    /// end while the application is away — the peer hangs up, the ring times
+    /// out, another call takes its place. A flag on this object could only
+    /// record *that* a camera was on, never whose, and a return to the screen
+    /// would hand it to whatever call was live by then. The intent therefore
+    /// lives on the call itself, on the state owner
+    /// (``CallController/foreground(_:phase:)``).
+    ///
+    /// What *is* kept here is which report this is. Whether the application is
+    /// on the screen is durable state rather than a one-shot command, and the
+    /// four reports of one trip to the background reach the owner through
+    /// unstructured tasks that the language does not order against each other,
+    /// so the number is what the owner sorts them by. It is minted on this
+    /// actor, before the first suspension, exactly as `toggleCamera` reads its
+    /// generation there.
     func setBackground(_ background: Bool) {
-        if background {
-            guard call?.localVideo == true else { return }
-            cameraPausedByBackground = true
-            Task { await calls?.setVideo(false) }
-            return
-        }
-        guard cameraPausedByBackground else { return }
-        cameraPausedByBackground = false
-        guard isCallActive, CallCoordinator.cameraGranted else { return }
-        Task { await calls?.setVideo(true) }
+        screenPhase += 1
+        let phase = screenPhase
+        Task { await calls?.setForeground(!background, phase: phase) }
     }
 
     /// «Открыть Настройки» — the application's own page, where a refused

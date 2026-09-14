@@ -40,7 +40,9 @@
 //   device;
 // - the state file lives under the directory given as the first argument (the
 //   harness puts it in a temporary directory) instead of
-//   `Application Support/paranoid/`.
+//   `Application Support/paranoid/`;
+// - its stores are built with no install marker, because there is no container
+//   whose launches could read one (`SnapshotStore.init(directory:key:...)`).
 //
 // The compiled hosted default is passed as `nil` when the client is built, so
 // this tool can only ever dial the realm and pin it was given on the command
@@ -417,7 +419,13 @@ private final class Phone {
     var lanes: Task<Void, Never>?
 
     init(directory: URL, key: SymmetricKey, trust: ServiceTrust) throws {
-        let store = SnapshotStore(directory: directory, key: key)
+        // `marker: nil`: the third thing this fixture has no counterpart for.
+        // "This container has committed a state file" is a fact a launch reads
+        // out of the application's own defaults, and a command line tool's
+        // defaults are the build Mac user's own — so recording it here would
+        // write a claim about a container that does not exist into a domain
+        // nothing will ever read it from.
+        let store = SnapshotStore(directory: directory, key: key, marker: nil)
         let saved = try store.load()
         sink = CountingSink(store: store, saved: saved)
         // `compiled: nil`: there is no built-in realm in this tool, so the

@@ -178,16 +178,20 @@ private func run(_ plan: [String: Any]) async throws -> [String: Any] {
     // expression, exactly as the application builds them: the owner becomes
     // their only caller, and nothing here can keep a reference and race the
     // lane against it. The compiler is what enforces that.
-    let saved = try SnapshotStore(directory: directory, key: key).load()
+    //
+    // `marker: nil` on every one of them: a command line tool has no
+    // application container, and its `UserDefaults.standard` is the build Mac
+    // user's own, so the commit's sixth step has nothing true to say here.
+    let saved = try SnapshotStore(directory: directory, key: key, marker: nil).load()
     let owner = StateOwner(client: try SelfServiceClient(
         saved: saved,
-        sink: SnapshotStore(directory: directory, key: key),
+        sink: SnapshotStore(directory: directory, key: key, marker: nil),
         fixture: trust, compiled: nil))
     // A second store over the same bytes and the same key, which is what the
     // next launch would open: it is how this probe reads what actually
     // reached the device without touching the store the client commits
     // through (`Device.reopenStore`).
-    let reader = SnapshotStore(directory: directory, key: key)
+    let reader = SnapshotStore(directory: directory, key: key, marker: nil)
     let transport = try RealtimeTransport(realm: trust.realm, pin: trust.pin)
     let flow = ProofFlow(owner: owner, transport: transport)
     let listener = Silence()

@@ -19,25 +19,33 @@ checks run on simulators and a local stand, which makes those results
 (iOS 26.6.1) against the local stand — identity created, own QR shown, a
 contact read off a screen with the real camera, the fingerprint sheet
 confirmed, text with receipts in both directions and one call that connected
-with video — so those rows are `SHOWN (phone, local stand)`. **Two hosted
-accounts exist** (`hosted_registrations: 2`: one from the build Mac while
-diagnosing the phone's TLS failure, one from the iPhone; both under the
-owner's answer to RFC-0021 question 4, no fixed budget); the iPhone paired the
-owner's Android from his QR image and sent one text the hosted server
-accepted, delivery to his phone still pending at that point. On 2026-09-14 an
-unscheduled session with the owner on the hosted alpha, using that same
-account, carried text both ways with his Android — both checks on the iPhone
-for the first time — and one call he placed to it, on which both sides turned
-their cameras on; the contributor is the only participant that record has, so
-those rows read `SHOWN (joint, reported)` and no owner "go" permalink exists
-for the session. **Both joint tests are only partly run**, and everything
-neither covered stays `NOT RUN`. No archive, no `.ipa` export and no
-TestFlight build exist. Two open items: after a network drop the phone stayed
-at «Нет подключения» while the server answered and the pinned key was
-unchanged, the cause under investigation on the branch; and after the session
-of 2026-09-14 the phone stopped connecting altogether and has not recovered —
-a separate failure, measured in pull request #36 and tracked as issue #38.
-[verification.md](verification.md) says it row by row.
+with video — so those rows are `SHOWN (phone, local stand)`. **Three hosted
+accounts exist** (`hosted_registrations: 3`: one from the build Mac on
+2026-09-13 while diagnosing the phone's TLS failure, one from the iPhone the
+same day, and one diagnostic account from the build Mac on 2026-09-14; all
+three under the owner's answer to RFC-0021 question 4, no fixed budget, and
+all three permanent, because the server has no deletion path). The first is
+registered but dead — that fixture kept its wrapping key in process memory
+only, so its state file no longer opens — which is why a third had to be
+registered rather than reused; that third carries no messages and no contacts
+and exists only to read the hosted server from a second identity while
+issue #38 is diagnosed, its key kept beside its state so the diagnosis needs
+no further registration. The iPhone's account is the contributor's own and
+still in use: it paired the owner's Android from his QR image and sent one
+text the hosted server accepted, delivery to his phone still pending at that
+point. On 2026-09-14 an unscheduled session with the owner on the hosted
+alpha, using that same account, carried text both ways with his Android — both
+checks on the iPhone for the first time — and one call he placed to it, on
+which both sides turned their cameras on; the contributor is the only
+participant that record has, so those rows read `SHOWN (joint, reported)` and
+no owner "go" permalink exists for the session. **Both joint tests are only
+partly run**, and everything neither covered stays `NOT RUN`. No archive, no
+`.ipa` export and no TestFlight build exist. Two open items: after a network
+drop the phone stayed at «Нет подключения» while the server answered and the
+pinned key was unchanged, the cause under investigation on the branch; and
+after the session of 2026-09-14 the phone stopped connecting altogether and
+has not recovered — a separate failure, measured in pull request #36 and
+tracked as issue #38. [verification.md](verification.md) says it row by row.
 
 ## What the candidate is
 
@@ -65,11 +73,17 @@ the shared [core contract](../core/self-service.md) and
 - Reinstalling the application is a clean install with a **new** identity,
   detected by an install marker, because the Keychain outlives the app
   container while the state file does not. With the marker present, a missing
-  or unreadable state file freezes the application exactly as Android does;
-  keys are never regenerated over an existing file and a stale Keychain key
-  is never reused. This platform note is reported as a doc-to-code
-  discrepancy against [`self-service.md`](../core/self-service.md) and is
-  not an owner-approved change to the fail-closed rule.
+  or unreadable state file freezes the application as Android does, with one
+  stated exception: a container that has never committed a state file *and was
+  keeping that record* holds a key from its own interrupted first run, not the
+  key of a file that went missing, and opens normally (this client creates the
+  Keychain item while opening; Android creates its alias at the first commit).
+  An installation made before the record existed keeps the freezing reading,
+  so the exception reaches no container that already holds an identity. Keys
+  are never regenerated over an existing file and a stale Keychain key is
+  never reused. This platform note is reported as a doc-to-code discrepancy
+  against [`self-service.md`](../core/self-service.md) and is not an
+  owner-approved change to the fail-closed rule.
 - Voice relay: `/v2/voice/turn` is used when the server issues credentials; a
   valid authenticated `404 turn_disabled` from the pinned origin is the only
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,

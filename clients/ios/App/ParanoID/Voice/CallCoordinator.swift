@@ -234,14 +234,42 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
 
     /// The explicit camera toggle. It is the only thing in this client that
     /// may open the camera during a call (`call-v2.md:62-64`).
-    func setVideo(_ enabled: Bool) async {
-        await owner.onOwner { self.controller.video(enabled) }
+    ///
+    /// - Parameter generation: the call the user aimed it at, carried across
+    ///   the hop onto the owner and checked there against the call that is
+    ///   live when it lands (``CallController/video(_:generation:)``).
+    func setVideo(_ enabled: Bool, generation: CallGeneration) async {
+        await owner.onOwner { self.controller.video(enabled, generation: generation) }
+    }
+
+    /// The application is on the screen, or it is not (`call-v2.md:67-69`).
+    ///
+    /// Which camera comes back on is decided on the owner, where the live call
+    /// is; nothing above this line remembers a camera across a background.
+    ///
+    /// - Parameter phase: which observation of the screen this is. It is
+    ///   carried rather than trusted to arrive in order, because two of these
+    ///   cross the same hop and nothing orders them
+    ///   (``CallController/foreground(_:phase:)``).
+    func setForeground(_ inForeground: Bool, phase: UInt64) async {
+        await owner.onOwner { self.controller.foreground(inForeground, phase: phase) }
     }
 
     /// Front camera to back and back again. It is a property of the capturer,
     /// not of the call, so it never reaches the controller.
-    func switchCamera() async {
-        await owner.onOwner { self.engine?.switchCamera() }
+    ///
+    /// - Parameter generation: the call the user aimed it at. It reaches the
+    ///   engine only if that call is still the one the engine belongs to: a tap
+    ///   that lands after its own call ended would otherwise turn the camera of
+    ///   whichever call replaced it, which is the same crossing
+    ///   ``CallController/video(_:generation:)`` refuses. It can open nothing
+    ///   by itself — capture is started from `setVideo(_:generation:)` alone —
+    ///   so what it saves is a stranger's picture flipping, not a camera.
+    func switchCamera(generation: CallGeneration) async {
+        await owner.onOwner {
+            guard self.engineGeneration == generation else { return }
+            self.engine?.switchCamera()
+        }
     }
 
     /// A video surface on its way to the media engine.

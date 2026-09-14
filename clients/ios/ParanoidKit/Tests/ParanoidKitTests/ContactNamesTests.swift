@@ -17,17 +17,22 @@ final class ContactNamesTests: XCTestCase {
     /// What every screen shows for that account with no local name.
     private var defaultTitle: String { MessagePresentation.title(account) }
 
-    private var suite = ""
-    private var defaults = UserDefaults.standard
+    /// The container these cases write names into. One fixed name for every
+    /// case and every run, emptied around each of them: a removed domain still
+    /// leaves its file behind in the host's preferences, so a name minted per
+    /// case left one more of them there on every execution. `defaults` has no
+    /// value until `setUpWithError` gives it one, because the standard suite
+    /// is not a safe stand-in for a scratch one even as an unread placeholder.
+    private let suite = "global.paranoid.messenger.tests.names"
+    private var defaults: UserDefaults!
 
     override func setUpWithError() throws {
-        suite = "global.paranoid.messenger.tests.\(UUID().uuidString)"
         defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defaults.removePersistentDomain(forName: suite)
     }
 
     override func tearDown() {
-        defaults.removePersistentDomain(forName: suite)
+        defaults?.removePersistentDomain(forName: suite)
     }
 
     // MARK: - the empty value restores the default
@@ -91,8 +96,9 @@ final class ContactNamesTests: XCTestCase {
         //    puts it on the wire and nothing puts it in the snapshot, so the
         //    only way a second store could know it is a shared file, and it
         //    has none.
-        let otherSuite = "global.paranoid.messenger.tests.\(UUID().uuidString)"
+        let otherSuite = "global.paranoid.messenger.tests.names.elsewhere"
         let elsewhere = try XCTUnwrap(UserDefaults(suiteName: otherSuite))
+        elsewhere.removePersistentDomain(forName: otherSuite)
         defer { elsewhere.removePersistentDomain(forName: otherSuite) }
         XCTAssertEqual(ContactNames(defaults: elsewhere).title(for: account), defaultTitle)
 

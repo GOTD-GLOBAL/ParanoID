@@ -39,8 +39,12 @@ final class KeychainStoreTests: XCTestCase {
 
     private let key = KeychainKey.standard
     private var suiteName = ""
-    private var defaults = UserDefaults.standard
-    private var marker = InstallMarker()
+    /// Both are given their value by `setUpWithError` and have none before it:
+    /// inside this application `UserDefaults.standard` is the container's own,
+    /// so it is not a safe stand-in for a scratch suite even as a placeholder
+    /// no test is meant to reach.
+    private var defaults: UserDefaults!
+    private var marker: InstallMarker!
     private var directory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     private let fileSystem = DataProtectionFileSystem()
     /// The key that was in the account before this run, if any.
@@ -50,7 +54,11 @@ final class KeychainStoreTests: XCTestCase {
         try super.setUpWithError()
         borrowed = Self.rawKey()
         try key.deleteRetained()
-        suiteName = "global.paranoid.messenger.tests.storage.\(UUID().uuidString)"
+        // One name for every case and every run: a removed domain still leaves
+        // its (empty) file behind in this application's own preferences, and a
+        // name minted per case left one more of them in the container on every
+        // run of this class.
+        suiteName = "global.paranoid.messenger.tests.storage"
         defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
         marker = InstallMarker(defaults: defaults)
@@ -63,7 +71,7 @@ final class KeychainStoreTests: XCTestCase {
         try key.deleteRetained()
         if let borrowed { Self.restore(borrowed) }
         borrowed = nil
-        defaults.removePersistentDomain(forName: suiteName)
+        defaults?.removePersistentDomain(forName: suiteName)
         try? FileManager.default.removeItem(at: directory.deletingLastPathComponent())
         try super.tearDownWithError()
     }
@@ -153,7 +161,7 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertEqual(upgraded.stateVersion, 3)
         let state = try XCTUnwrap(upgraded.state)
 
-        let store = SnapshotStore(directory: directory, key: fresh, fileSystem: fileSystem)
+        let store = SnapshotStore(directory: directory, key: fresh, fileSystem: fileSystem, marker: marker)
         try store.commit(state)
         XCTAssertFalse(store.isBroken)
         XCTAssertTrue(store.snapshotExists())
@@ -165,9 +173,14 @@ final class KeychainStoreTests: XCTestCase {
                                               key: key), .retained)
     }
 
-    func testMarkerWithAKeyAndNoStateFileFreezes() throws {
+    func testMarkerWithAKeyAndNoStateFileFreezesOnceTheContainerHasHeldOne() throws {
         try marker.record()
         _ = try key.create()
+        // The container has committed a state file, so the key is the wrapping
+        // key of a snapshot that is now missing — the case the guard exists
+        // for. (`testAKeyFromAnInterruptedFirstRunIsNotAFreeze` below is the
+        // other reading of the same two observations.)
+        try marker.recordCommittedSnapshot()
 
         let continuity = try StorageGuard.start(
             snapshotExists: SnapshotStore.snapshotExists(in: directory, fileSystem: fileSystem),
@@ -179,6 +192,107 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertThrowsError(try StorageGuard.requireContinuity(snapshotExists: false, keyExists: true)) { error in
             XCTAssertEqual(error as? StorageError, .frozen)
         }
+    }
+
+    /// A first run that showed Welcome and was closed without «Создать ID»:
+    /// the launch created the Keychain item, nothing committed a state file,
+    /// and the launch after it must open normally. The same two observations
+    /// as the test above — a key, no file — and the container's own record is
+    /// the only thing that tells them apart.
+    func testAKeyFromAnInterruptedFirstRunIsNotAFreeze() throws {
+        // Launch 1: an empty container and an empty account.
+        XCTAssertEqual(try StorageGuard.start(snapshotExists: false, marker: marker, key: key), .fresh)
+        let created = try key.loadOrCreate(snapshotExists: false)
+        let sealed = try SnapshotCodec.seal(key: created, value: Self.probeText)
+
+        // Launch 2: the key is still there, the state file never was.
+        XCTAssertEqual(try StorageGuard.start(snapshotExists: false, marker: marker, key: key), .fresh)
+        XCTAssertFalse(marker.hasCommittedSnapshot)
+
+        // It is the same key, so a first commit on this launch is readable by
+        // the launch after it — the item is created once, never regenerated.
+        let reused = try key.loadOrCreate(snapshotExists: false)
+        XCTAssertEqual(try SnapshotCodec.open(key: reused, value: sealed), Self.probeText)
+
+        // And once a state file exists, the ordinary rule is back: the
+        // container remembers it, and the same pair without the file freezes.
+        let store = SnapshotStore(directory: directory, key: reused, fileSystem: fileSystem, marker: marker)
+        try store.commit(#"{"version":4,"note":"[TEST ONLY] first identity"}"#)
+        XCTAssertTrue(marker.hasCommittedSnapshot, "the commit records it, not the next launch")
+        XCTAssertEqual(try StorageGuard.start(snapshotExists: store.snapshotExists(),
+                                              marker: marker,
+                                              key: key), .retained)
+        try fileSystem.removeItem(at: store.fileURL)
+        XCTAssertEqual(try StorageGuard.start(snapshotExists: store.snapshotExists(),
+                                              marker: marker,
+                                              key: key), .frozen)
+        XCTAssertTrue(try key.exists(), "and the key of the missing file is kept")
+    }
+
+    /// The installation that exists today, upgraded to the build that added
+    /// the rule above: `paranoid.install.v1` in its defaults, a real Keychain
+    /// item, a state file it committed under an earlier build — and no
+    /// `paranoid.snapshot.v1`, because no build before this one wrote one.
+    ///
+    /// The container on the contributor's iPhone is exactly that
+    /// (`docs/project/current-state.md`), so the silence of the second fact
+    /// there is not evidence that nothing was committed. If the state file is
+    /// missing by the first launch of the new build — the window an update
+    /// installed in the background leaves open — the launch must still freeze,
+    /// and the identity of that phone must not be replaced by a new one.
+    func testAnInstallationFromAnEarlierBuildKeepsFreezingOverItsMissingFile() throws {
+        // The upgraded container: the old marker and the old key, no record.
+        defaults.set(true, forKey: InstallMarker.key)
+        let retained = try key.create()
+        let sealed = try SnapshotCodec.seal(key: retained, value: Self.probeText)
+        XCTAssertFalse(marker.recordsCommits)
+        XCTAssertFalse(marker.hasCommittedSnapshot)
+
+        XCTAssertEqual(try StorageGuard.start(snapshotExists: false, marker: marker, key: key), .frozen)
+        XCTAssertTrue(try key.exists(), "the wrapping key of the missing file is kept")
+        XCTAssertEqual(try SnapshotCodec.open(key: try XCTUnwrap(try key.load()), value: sealed),
+                       Self.probeText,
+                       "and it is still the key that opens what that installation sealed")
+
+        // The same container on the ordinary upgrade — the file is where it
+        // was — adopts the record on the first launch that sees it.
+        try fileSystem.createDirectory(at: directory)
+        try fileSystem.write(sealed, to: directory.appendingPathComponent(SnapshotStore.fileName))
+        XCTAssertEqual(try StorageGuard.start(
+            snapshotExists: SnapshotStore.snapshotExists(in: directory, fileSystem: fileSystem),
+            marker: marker,
+            key: key), .retained)
+        XCTAssertTrue(marker.hasCommittedSnapshot)
+    }
+
+    /// The install marker lives in `UserDefaults` and the state file does not,
+    /// so the two are lost by different accidents. A missing marker beside a
+    /// state file is not a reinstall — a reinstall takes the container and the
+    /// file with it — and deleting the key on that evidence would leave a
+    /// snapshot nobody can ever decrypt again. A freeze is recoverable by a
+    /// person; a deleted wrapping key is not.
+    func testAMissingMarkerBesideAStateFileKeepsTheKeyAndTheFile() throws {
+        let retained = try key.create()
+        let sealed = try SnapshotCodec.seal(key: retained, value: Self.probeText)
+        try fileSystem.createDirectory(at: directory)
+        try fileSystem.write(sealed, to: directory.appendingPathComponent(SnapshotStore.fileName))
+        XCTAssertFalse(marker.isPresent)
+
+        let continuity = try StorageGuard.start(
+            snapshotExists: SnapshotStore.snapshotExists(in: directory, fileSystem: fileSystem),
+            marker: marker,
+            key: key)
+
+        XCTAssertEqual(continuity, .frozen)
+        XCTAssertTrue(try key.exists(), "the key of a retained state file is never deleted")
+        XCTAssertFalse(marker.isPresent, "and the refusal stays reproducible on the next launch")
+        // The point of keeping it: the retained state is still openable, which
+        // is exactly what a deleted key would have ended.
+        let store = SnapshotStore(directory: directory,
+                                  key: try XCTUnwrap(try key.load()),
+                                  fileSystem: fileSystem,
+                                  marker: marker)
+        XCTAssertEqual(try store.load(), Self.probeText)
     }
 
     func testMarkerWithAStateFileAndNoKeyFreezes() throws {
@@ -217,7 +331,8 @@ final class KeychainStoreTests: XCTestCase {
     func testEveryCommitLeavesTheStateFileExcludedFromBackupAndProtected() throws {
         let store = SnapshotStore(directory: directory,
                                   key: try key.loadOrCreate(snapshotExists: false),
-                                  fileSystem: fileSystem)
+                                  fileSystem: fileSystem,
+                                  marker: marker)
 
         try store.commit(#"{"version":4,"note":"[TEST ONLY] first"}"#)
         try store.commit(#"{"version":4,"note":"[TEST ONLY] second"}"#)

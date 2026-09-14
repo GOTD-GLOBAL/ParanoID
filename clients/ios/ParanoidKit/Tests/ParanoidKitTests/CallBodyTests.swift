@@ -469,7 +469,7 @@ final class CallBodyTests: XCTestCase {
     func testEveryControlTheControllerSendsIsOneTheCoreWouldTake() throws {
         let pair = CallPair()
         pair.connect()
-        pair.alice.video(true)
+        pair.alice.video(true, generation: pair.alice.generation)
         pair.alice.hangup()
         let sent = pair.alicePorts.everySent + pair.bobPorts.everySent
         XCTAssertEqual(sent.map(\.body.kind), [.knock, .offer, .media, .end, .ready, .answer],
@@ -698,7 +698,7 @@ final class CallBodyTests: XCTestCase {
         XCTAssertEqual(pair.alicePorts.videoCalls, 0, "media authority alone never opens the camera")
 
         pair.alice.speaker(false)
-        pair.alice.video(true)
+        pair.alice.video(true, generation: pair.alice.generation)
         XCTAssertTrue(pair.alicePorts.video)
         XCTAssertTrue(pair.alicePorts.speaker, "camera on routes audio to the speakerphone")
         XCTAssertTrue(pair.alice.presentation.localVideo)
@@ -714,7 +714,7 @@ final class CallBodyTests: XCTestCase {
         pair.deliver(to: pair.bob, from: CallPair.alice, on)
         XCTAssertTrue(pair.bob.presentation.remoteVideo, "a replayed media control is idempotent")
 
-        pair.alice.video(false)
+        pair.alice.video(false, generation: pair.alice.generation)
         XCTAssertFalse(pair.alicePorts.video)
         XCTAssertFalse(pair.alicePorts.speaker, "camera off restores the previous route")
         let off = try XCTUnwrap(pair.alicePorts.take())
@@ -742,7 +742,7 @@ final class CallBodyTests: XCTestCase {
 
         let failing = CallPair()
         failing.connect()
-        failing.alice.video(true)
+        failing.alice.video(true, generation: failing.alice.generation)
         _ = failing.alicePorts.take()
         failing.alice.videoUnavailable(failing.alice.generation)
         XCTAssertFalse(failing.alicePorts.video, "a camera failure stops capture")
@@ -1030,6 +1030,8 @@ final class CallPair {
     let bobPorts = CallTestPorts()
     let alice: CallController
     let bob: CallController
+    /// How many times the screen has been reported to each side.
+    private var phases: [ObjectIdentifier: UInt64] = [:]
 
     init() {
         alice = CallController(clock: time.clock, owner: owner, sender: alicePorts,
@@ -1068,6 +1070,19 @@ final class CallPair {
             preconditionFailure("the members of a call body are always JSON")
         }
         controller.received(account: account, json: json)
+    }
+
+    /// The scene reports the screen to one side, numbered the way that side's
+    /// application numbers its own reports (`AppModel.setBackground`).
+    ///
+    /// Each controller is a phone of its own and counts from its own zero. A
+    /// test that wants the numbers out of order states them itself; this is
+    /// the ordinary case, where every report is newer than the last.
+    func screen(_ onScreen: Bool, of controller: CallController) {
+        let side = ObjectIdentifier(controller)
+        let phase = (phases[side] ?? 0) + 1
+        phases[side] = phase
+        controller.foreground(onScreen, phase: phase)
     }
 
     /// A knock from an unrelated caller, for the admission checks.

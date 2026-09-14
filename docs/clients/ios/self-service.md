@@ -68,21 +68,72 @@ On Android the Keystore alias and the snapshot file die together at uninstall,
 so the exclusive-or of `StorageGuard.java` is sufficient. On iOS a Keychain
 item outlives the application container. Without an extra rule a reinstalled
 application would see "key without file" and freeze forever. The client keeps
-an install marker in `UserDefaults` (`paranoid.install.v1`):
+three facts about the container in `UserDefaults`, and none holds a secret:
+`paranoid.install.v1`, that this container has been launched before,
+`paranoid.snapshot.v1`, that it has committed a state file at least once, and
+`paranoid.install.v2`, that this container has been keeping the second fact
+since its own first launch.
 
-| Marker | Keychain key | Snapshot file | Result |
-| --- | --- | --- | --- |
-| absent | any (stale) | absent | delete the key, write the marker, fresh install with a **new** identity |
-| present | present | absent | frozen (fail closed, no regeneration) |
-| present | absent | present | frozen (fail closed, no regeneration) |
-| present | absent | absent | fresh install |
+| Marker | Held a file | Keychain key | Snapshot file | Result |
+| --- | --- | --- | --- | --- |
+| absent | — | any | present | frozen; **nothing deleted, nothing recorded** |
+| absent | — | any (stale) | absent | delete the key, write the marker, fresh install with a **new** identity |
+| present | no, and it was keeping the record | present | absent | fresh install on the key that is already there |
+| present | yes | present | absent | frozen (fail closed, no regeneration) |
+| present | not known: installed before the record | present | absent | frozen (fail closed, no regeneration) |
+| present | any | absent | present | frozen (fail closed, no regeneration) |
+| present | any | absent | absent | fresh install; the container forgets what it held and starts its record here |
+| present | any | present | present | the ordinary retained launch |
+
+Two of those rows are answers to the owner-side review of 2026-09-14 and
+replace what this document and the code said before it:
+
+- **A missing marker beside a state file no longer deletes the key.** The
+  marker is a `UserDefaults` entry and the state file is not, so the two are
+  lost by different accidents, and an uninstall takes the container with both
+  — a state file that is still there is therefore evidence *against* a
+  reinstall, not for one. Deleting the key on that evidence ends that snapshot
+  for everybody, permanently; a freeze keeps both halves and can be
+  investigated by a person. So the launch refuses to proceed, deletes nothing
+  and records nothing, which keeps the refusal reproducible on every later
+  launch instead of turning the next one into an ordinary launch.
+- **A key without a file is not one case but two.** This document used to say
+  it always freezes. Android can say that because it creates its Keystore
+  alias at the first commit and never before (`TextEngine.java:265-273`,
+  reached only from `persist`); this client creates the Keychain item while
+  opening, before the user has decided anything, so a first run that closes
+  the Welcome screen without «Создать ID» leaves exactly a key and no file.
+  Freezing that is a permanent freeze reached by doing nothing wrong. The
+  second fact separates the two readings: the file is recorded by the commit
+  that wrote it and by every launch that sees one, so a state file that goes
+  missing under a live key still freezes, and an iCloud restore that brings
+  the defaults back without the `ThisDeviceOnly` key and the excluded file
+  forgets the fact together with them.
+- **An installation from before the rule keeps the stricter reading.** No
+  build shipped before 2026-09-14 wrote `paranoid.snapshot.v1`, so on every
+  container that exists today the fact is absent whatever that container
+  holds. Reading the absence as "nothing was ever committed here" would hand
+  the interrupted first run's `fresh` to an installation whose state file has
+  gone missing — the row above it — for as long as the window between an
+  update being installed and its first launch. The licence to read the
+  absence is therefore `paranoid.install.v2`, written by the launch that
+  starts a container's record; an installation that predates it freezes on a
+  key without a file exactly as it did before, and earns the record the first
+  time a launch finds it holding neither a key nor a state file. Nothing
+  reinterprets `paranoid.install.v1`: it still says only that the container
+  has been launched before, so the first launch of the new build deletes no
+  key and re-freezes no retained file.
 
 A stale Keychain key is never reused to "recover" anything, and the fail-closed
-rule of `docs/clients/core/self-service.md` is unchanged whenever the marker is
-present. Reinstalling the application therefore starts a new ID; the frozen
-screen says so. This is reported as a doc-to-code platform note, not an
-owner-approved change to the fail-closed rule; see
-[protocol-sources.md](protocol-sources.md) and RFC-0021 question 10.
+rule of `docs/clients/core/self-service.md` is unchanged: no path replaces a
+state file, hands the core a fresh identity while a usable state exists, or
+deletes a key that any file could still need. Reinstalling the application
+therefore starts a new ID; the frozen screen says so. This is reported as a
+doc-to-code platform note, not an owner-approved change to the fail-closed
+rule; see [protocol-sources.md](protocol-sources.md) and RFC-0021 question 10,
+whose table carries the same matrix and the same upgrade note. The candidate
+ADR-0014 records the rows in its storage sub-decision; none of the three is an
+owner approval, which is still outstanding.
 
 ### Snapshot wrapper
 
@@ -235,15 +286,23 @@ Debug build against the local stand — identity created on the device, own QR
 shown, a contact scanned off a screen with the real camera, fingerprint sheet
 confirmed, text both ways with receipts, one call to a simulator that
 connected with video from the device — and then a Release build against the
-hosted server. Two hosted accounts exist (`hosted_registrations` is 2: one
-from the build Mac through `service-bridge` while diagnosing the phone's TLS
-failure, one from the iPhone after the ATS fix, both under the owner's answer
-to RFC-0021 question 4, no fixed budget); the iPhone then paired the owner's
-Android from his QR image and sent one text the hosted server accepted (one
-check), not yet delivered to his phone at that point. On 2026-09-14 an
-unscheduled session with the owner on that same account carried text both
-ways and one call he placed to the iPhone; those rows are the contributor's
-report, `SHOWN (joint, reported)` and not a capture, with no owner "go"
-permalink. The joint tests with the owner are only partly run, and no
-archive, TestFlight upload, relayed call or Data Protection class measurement
-has happened.
+hosted server. Three hosted accounts exist (`hosted_registrations` is 3: one
+from the build Mac through `service-bridge` on 2026-09-13 while diagnosing the
+phone's TLS failure, one from the iPhone on 2026-09-13 after the ATS fix, and
+one from the build Mac on 2026-09-14 while diagnosing issue #38; all three
+under the owner's answer to RFC-0021 question 4, no fixed budget, and all
+three permanent, because the server has no delete path). The first is dead:
+that fixture kept its wrapping key in process memory only, so its state file
+no longer opens and the account is registered but unreachable — which is why a
+third exists at all. The third is a diagnostic account with no messages and no
+contacts, registered to measure the hosted server from a second identity; its
+wrapping key is kept beside its state, so that diagnosis needs no further
+registration. The second is the contributor's own and still in use: the iPhone
+paired the owner's Android from his QR image and sent one text the hosted
+server accepted (one check), not yet delivered to his phone at that point. On
+2026-09-14 an unscheduled session with the owner on that same account carried
+text both ways and one call he placed to the iPhone; those rows are the
+contributor's report, `SHOWN (joint, reported)` and not a capture, with no
+owner "go" permalink. The joint tests with the owner are only partly run, and
+no archive, TestFlight upload, relayed call or Data Protection class
+measurement has happened.

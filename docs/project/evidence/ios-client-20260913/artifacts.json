@@ -3,8 +3,31 @@
   "branch": "feat/ios-client-20260911",
   "head": "bcb40463120419ffb9e86824078c220db50dbceb",
   "merge_base_with_main": "2d91bd4dba79bd35f563e51850f2e18796a3c9ba",
-  "hosted_registrations": 2,
-  "hosted_registrations_note": "two accounts on the hosted alpha, both under the owner's answer to RFC-0021 question 4 (no fixed budget): one from the build Mac through service-bridge while diagnosing the phone's TLS failure (defect 4, App Transport Security, fixed in adb56be), one from the physical iPhone with the Release build after that fix. The phone then paired the owner's Android from his QR image and sent one text the hosted server accepted. On 2026-09-14 an unscheduled joint session on the same account exchanged text both ways with his Android — both checks appeared — and carried one call, dialled by him, with video in both directions; that session consumed no further registration. Those results are the contributor's report and are recorded as SHOWN (joint, reported) in stage1-text.md and stage2-voice.md. After the session the phone stopped connecting: its signed read of /v2/messages times out while /health answers in 0.2 s, a server-side condition tracked as issue #38.",
+  "hosted_registrations": 3,
+  "hosted_registrations_note": "three accounts on the hosted alpha, all under the owner's answer to RFC-0021 question 4 (no fixed budget): one from the build Mac through service-bridge on 2026-09-13 while diagnosing the phone's TLS failure (defect 4, App Transport Security, fixed in adb56be), one from the physical iPhone with the Release build on 2026-09-13 after that fix — the contributor's own, still in use — and one diagnostic account from the build Mac on 2026-09-14. The 2026-09-13 Mac account is now permanently unreachable: that fixture kept its wrapping key in process memory only, so its state file no longer opens and the account is registered but dead, which is why a third account had to exist at all. The phone then paired the owner's Android from his QR image and sent one text the hosted server accepted. On 2026-09-14 an unscheduled joint session on the phone's account exchanged text both ways with his Android — both checks appeared — and carried one call, dialled by him, with video in both directions; that session consumed no further registration. Those results are the contributor's report and are recorded as SHOWN (joint, reported) in stage1-text.md and stage2-voice.md. After the session the phone stopped connecting: its signed read of /v2/messages times out while /health answers in 0.2 s, a server-side condition tracked as issue #38. The third account was registered from the build Mac at 08:26:45.596+03:00 on 2026-09-14 (POST /v2/registration/commit, 200 in 50.7 ms; its challenge at 08:26:45.396+03:00, 200 in 198.0 ms) to answer the owner agent's request for a comparative signed read while that issue was being diagnosed; its public account id is the diagnostic account (id recorded in issue #38, not here), it holds no messages and no contacts and has no relationship to the contributor's own account or to the owner's, and, unlike the 2026-09-13 Mac account, it is persistent — its wrapping key is kept beside its state under clients/ios/out/evidence/hosted-probe-20260914/, git-ignored build output with the key file at mode 0600 — so the diagnosis needs no further registration. The measurements taken from it are recorded in issue #38. The server has no delete path, so all three accounts are permanent.",
+  "hosted_registration_records": [
+    {
+      "account": null,
+      "at": "2026-09-13",
+      "machine": "build Mac, through service-bridge",
+      "what": "registered while diagnosing the phone's TLS failure — defect 4, App Transport Security, fixed in adb56be",
+      "note": "no account id for this one exists anywhere in the tree and none can be recovered: the fixture kept its wrapping key in the bridge process's memory only, so the state file no longer opens and the account, though registered, is unreachable for ever. That is why a third registration had to be made at all. Only the date was written down, not the instant."
+    },
+    {
+      "account": null,
+      "at": "2026-09-13",
+      "machine": "physical iPhone 16 Pro Max, Release build at adb56be",
+      "what": "the contributor's own account, registered from the phone once App Transport Security was switched off; it paired the owner's Android from his QR image, sent the one text the hosted server accepted, and carried the joint session of 2026-09-14, which registered nothing. Still in use.",
+      "note": "no id is recorded for this one: it is the contributor's own identity, kept out of this directory on purpose, and it is written nowhere in the tree. Only the date was written down, not the instant."
+    },
+    {
+      "account": null,
+      "at": "2026-09-14T08:26:45.596+03:00",
+      "machine": "build Mac, through a scratch harness driving the shipped ParanoidKit classes",
+      "what": "a diagnostic account with no messages and no contacts and no relationship to the contributor's own account or to the owner's, registered to read the hosted server from a second identity while diagnosing the intermittent failure of issue #38; POST /v2/registration/commit answered 200 in 50.7 ms, its challenge at 08:26:45.396+03:00 in 198.0 ms",
+      "note": "persistent, unlike the 2026-09-13 Mac account: its wrapping key is kept beside its state under clients/ios/out/evidence/hosted-probe-20260914/, git-ignored build output with the key file at mode 0600, so this diagnosis needs no further registration. Public account id deliberately not written here (this directory records no account identifiers); it is recorded in issue #38 where the measurements live"
+    }
+  ],
   "committed": false,
   "note": "The files below are the raw output of the runs this branch records. They stay under clients/ios/out/, which is git-ignored, because they carry absolute paths of the build Mac, loopback addresses and, in the screenshots, contact fingerprints and account identifiers. What travels into the repository is this catalogue: path, size, SHA-256 and the time the file was produced. Re-running the command in the README table reproduces the run, not the digest.",
   "artifacts": [
@@ -267,7 +290,7 @@
     {
       "path": "clients/ios/out/evidence/device-smoke-20260913/device-smoke-result.json",
       "group": "device",
-      "what": "the device smoke of 2026-09-13: a Debug build signed with the development team on a physical iPhone 16 Pro Max (iOS 26.6.1, Developer Mode) against the local stand — identity created on the device, own QR shown, a QR scanned off the Mac screen with the real camera, fingerprint sheet confirmed, 2 texts device→peer and 1 peer→device with receipts, one call device→simulator connected with video visible from the device; the server_state counts (5 accounts, 5 devices, 7 envelopes all frame 2, 0 plaintext rows) are the local stand's; its hosted_registration_note records the two hosted registrations and the one text to the owner's Android made later with the Release build; not run: screen lock during dialling; the two defects it lists are the empty entitlements file (-34018 on the simulator) and the in-memory fixture peer",
+      "what": "the device smoke of 2026-09-13: a Debug build signed with the development team on a physical iPhone 16 Pro Max (iOS 26.6.1, Developer Mode) against the local stand — identity created on the device, own QR shown, a QR scanned off the Mac screen with the real camera, fingerprint sheet confirmed, 2 texts device→peer and 1 peer→device with receipts, one call device→simulator connected with video visible from the device; the server_state counts (5 accounts, 5 devices, 7 envelopes all frame 2, 0 plaintext rows) are the local stand's; its hosted_registration_note records the two hosted registrations that existed on 2026-09-13 and the one text to the owner's Android made later with the Release build, and predates the third registration of 2026-09-14 counted in hosted_registrations above; not run: screen lock during dialling; the two defects it lists are the empty entitlements file (-34018 on the simulator) and the in-memory fixture peer",
       "bytes": 3227,
       "sha256": "7794d8838b67b557f12695543d13bcd9e4261c4e863bc9d9ffa42727b1d51d91",
       "produced": "2026-09-13T20:41Z"

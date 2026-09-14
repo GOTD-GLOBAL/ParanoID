@@ -111,4 +111,4 @@ size) and without Swift or Xcode on their machine. They make no claim of a
 second model. Their findings are answered in the pull request and, where a
 document changes, in a commit named there. Their first finding — documents
 that still described the state before the phone run and the two hosted
-registrations — is answered by the commit that adds this file.
+registrations of 2026-09-13 — is answered by the commit that adds this file.

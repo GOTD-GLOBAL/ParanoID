@@ -544,7 +544,7 @@ final class CallControllerTests: XCTestCase {
         pair.deliver(to: pair.bob, from: CallPair.alice, try take(pair.alicePorts))
         XCTAssertEqual(pair.bobPorts.videoCalls, 0, "incoming ring never opens the camera")
 
-        pair.bob.video(true)
+        pair.bob.video(true, generation: pair.bob.generation)
         XCTAssertEqual(pair.bobPorts.videoCalls, 0, "video toggle before Answer is ignored (no media)")
 
         pair.bob.answer(microphonePermission: true)
@@ -560,7 +560,7 @@ final class CallControllerTests: XCTestCase {
                       "no media control before anyone turns video on")
 
         pair.alice.speaker(false)
-        pair.alice.video(true)
+        pair.alice.video(true, generation: pair.alice.generation)
         XCTAssertTrue(pair.alicePorts.video && pair.alicePorts.videoCalls == 1
                       && pair.alicePorts.speaker && pair.alice.presentation.localVideo,
                       "explicit toggle opens camera and routes to speaker")
@@ -575,7 +575,7 @@ final class CallControllerTests: XCTestCase {
         pair.deliver(to: pair.bob, from: CallPair.alice, cameraOn)
         XCTAssertTrue(pair.bob.presentation.remoteVideo, "replayed media control is idempotent")
 
-        pair.alice.video(false)
+        pair.alice.video(false, generation: pair.alice.generation)
         XCTAssertTrue(!pair.alicePorts.video && !pair.alicePorts.speaker
                       && !pair.alice.presentation.localVideo,
                       "video off restores previous audio route")
@@ -627,7 +627,7 @@ final class CallControllerTests: XCTestCase {
         let early = CallPair()
         early.ring()
         early.bob.answer(microphonePermission: true)
-        early.bob.video(true)
+        early.bob.video(true, generation: early.bob.generation)
         XCTAssertTrue(early.bobPorts.video && early.bobPorts.pendingCount == 0,
                       "callee camera during negotiation is not announced before its answer")
 
@@ -644,7 +644,7 @@ final class CallControllerTests: XCTestCase {
 
         let unavailable = CallPair()
         unavailable.connect()
-        unavailable.alice.video(true)
+        unavailable.alice.video(true, generation: unavailable.alice.generation)
         _ = try take(unavailable.alicePorts)
         unavailable.alice.videoUnavailable(unavailable.alice.generation)
         XCTAssertTrue(!unavailable.alicePorts.video && !unavailable.alice.presentation.localVideo
@@ -681,6 +681,206 @@ final class CallControllerTests: XCTestCase {
                        "one byte over the frame budget is already too much")
         XCTAssertEqual(overBudget.alice.presentation.reason, .failed,
                        "and it is this side's bug, not a timeout")
+    }
+
+    // MARK: - The camera and the call it was meant for
+
+    /// Ends the live call on both sides and connects a fresh one, leaving both
+    /// outboxes empty, so that an action taken in the first call can be
+    /// delivered while the second is the one that is live.
+    ///
+    /// It is the shape of every asynchronous camera scenario: the tap, then a
+    /// permission dialog or a hop onto this thread, and a different call by
+    /// the time the answer arrives.
+    private func replaceCall(_ pair: CallPair,
+                             file: StaticString = #filePath,
+                             line: UInt = #line) throws {
+        pair.alice.hangup()
+        while let sent = pair.alicePorts.take() {
+            pair.deliver(to: pair.bob, from: CallPair.alice, sent)
+        }
+        while pair.bobPorts.take() != nil {}
+        XCTAssertTrue(!pair.alice.isActive && !pair.bob.isActive,
+                      "the first call is over on both sides", file: file, line: line)
+        pair.connect()
+        XCTAssertTrue(pair.alice.currentState == .connected
+                      && pair.alicePorts.pendingCount == 0 && pair.bobPorts.pendingCount == 0,
+                      "the replacement is connected and nothing is left in either outbox",
+                      file: file, line: line)
+    }
+
+    /// A camera action belongs to the call it was taken in, and to no other.
+    ///
+    /// The permission dialog is the delay that makes this reachable: the user
+    /// presses «Включить камеру» in call A, the system asks for the camera, and
+    /// the answer can arrive at any later moment — after A has ended and after
+    /// an audio-only call B with a different peer has taken its place. A
+    /// platform grant says this application may see a camera; it does not say
+    /// which call the user meant, so the action carries the generation it was
+    /// taken in and the state owner refuses it against the call that is live.
+    /// Otherwise the grant opens the camera in B and announces it, over an
+    /// authenticated `media` control, to a peer nobody turned a camera on for.
+    func testADelayedCameraActionCannotReachTheCallThatReplacedItsOwn() throws {
+        let pair = CallPair()
+        pair.connect()
+        // Pressed in A, with A's generation, before the dialog is raised.
+        let tapped = pair.alice.generation
+        try replaceCall(pair)
+        XCTAssertNotEqual(pair.alice.generation, tapped,
+                          "the call that replaced it is a different generation")
+
+        let opened = pair.alicePorts.videoCalls
+        pair.alice.video(true, generation: tapped)
+        XCTAssertTrue(!pair.alicePorts.video && pair.alicePorts.videoCalls == opened
+                      && !pair.alice.presentation.localVideo,
+                      "a camera grant for a call that is over opens no camera in the call that "
+                      + "replaced it")
+        XCTAssertEqual(pair.alicePorts.pendingCount, 0,
+                       "and the peer of that call is told nothing: no authenticated media control "
+                       + "announces a camera nobody turned on for it")
+
+        // The same crossing the other way round: the camera is legitimately on
+        // in B when a "camera off" queued in A is finally delivered.
+        pair.alice.video(true, generation: pair.alice.generation)
+        let announced = try take(pair.alicePorts)
+        XCTAssertTrue(announced.body.video && pair.alicePorts.video,
+                      "the live call's own toggle still opens the camera and announces it")
+
+        pair.alice.video(false, generation: tapped)
+        XCTAssertTrue(pair.alicePorts.video && pair.alice.presentation.localVideo
+                      && pair.alicePorts.pendingCount == 0,
+                      "a camera action queued in a call that is over leaves the live call's "
+                      + "camera exactly as its own user set it")
+    }
+
+    /// The camera the background took away comes back to the call it was taken
+    /// from, and to nothing else (`call-v2.md:67-69`).
+    ///
+    /// "The user had it on" is a fact about one call. Recorded as a bare flag
+    /// on the application it would say only *that* a camera was on: a call
+    /// that ends while the application is away — the peer hangs up, the ring
+    /// times out — and a second call in its place would then inherit the
+    /// resume, and the return to the screen would open the camera on a peer
+    /// the user never showed it to.
+    func testTheCameraPausedByTheBackgroundIsResumedOnlyInTheCallItWasPausedIn() throws {
+        let same = CallPair()
+        same.connect()
+        same.alice.video(true, generation: same.alice.generation)
+        XCTAssertTrue(try take(same.alicePorts).body.video, "the camera is on and the peer knows")
+
+        same.screen(false, of: same.alice)
+        XCTAssertTrue(!same.alicePorts.video && !same.alice.presentation.localVideo,
+                      "leaving the screen stops the capture")
+        XCTAssertFalse(try take(same.alicePorts).body.video,
+                       "and the peer is told the camera went off")
+        XCTAssertTrue(same.alice.isActive && same.alice.currentState == .connected,
+                      "the call itself runs on: only the camera stopped")
+
+        same.screen(true, of: same.alice)
+        XCTAssertTrue(same.alicePorts.video && same.alice.presentation.localVideo,
+                      "the camera the user had on comes back with the screen")
+        XCTAssertTrue(try take(same.alicePorts).body.video, "and the peer is told it is back")
+
+        // The same pause, in a call that does not survive the background.
+        let replaced = CallPair()
+        replaced.connect()
+        replaced.alice.video(true, generation: replaced.alice.generation)
+        _ = try take(replaced.alicePorts)
+        replaced.screen(false, of: replaced.alice)
+        _ = try take(replaced.alicePorts)
+        try replaceCall(replaced)
+
+        let opened = replaced.alicePorts.videoCalls
+        replaced.screen(true, of: replaced.alice)
+        XCTAssertTrue(!replaced.alicePorts.video && replaced.alicePorts.videoCalls == opened
+                      && !replaced.alice.presentation.localVideo,
+                      "the audio-only call that replaced it inherits no camera")
+        XCTAssertEqual(replaced.alicePorts.pendingCount, 0,
+                       "and its peer is told of none")
+    }
+
+    /// A "video call" whose media authority arrives while the application is
+    /// away keeps the intent and opens nothing until the screen comes back.
+    ///
+    /// This is the gap a pause cannot see: at the moment the application
+    /// leaves, the camera of a video call that is still authorizing is not on
+    /// yet, so there is nothing to pause — and the engine that becomes ready a
+    /// moment later would otherwise start a capture with the application off
+    /// the screen, and announce it.
+    func testAVideoCallAuthorizedInTheBackgroundCapturesNothingUntilTheScreenIsBack() throws {
+        let intent = CallPair()
+        intent.alice.start(account: CallPair.bob, microphonePermission: true, videoIntent: true)
+        intent.deliver(to: intent.bob, from: CallPair.alice, try take(intent.alicePorts))
+        intent.screen(false, of: intent.alice)
+
+        intent.deliver(to: intent.alice, from: CallPair.bob, try take(intent.bobPorts))
+        XCTAssertTrue(intent.alice.presentation.mediaActive && intent.alicePorts.offers == 1,
+                      "the call itself is authorized and its media exists")
+        XCTAssertTrue(!intent.alicePorts.video && intent.alicePorts.videoCalls == 0
+                      && !intent.alice.presentation.localVideo,
+                      "a video call that becomes ready off the screen opens no camera")
+
+        intent.screen(true, of: intent.alice)
+        XCTAssertTrue(intent.alicePorts.video && intent.alice.presentation.localVideo,
+                      "and the intent it was started with is applied on the way back")
+
+        // An explicit toggle taken while the application is away is the same
+        // rule: the intent is kept with its call, the capture waits.
+        let toggled = CallPair()
+        toggled.connect()
+        toggled.screen(false, of: toggled.alice)
+        toggled.alice.video(true, generation: toggled.alice.generation)
+        XCTAssertTrue(!toggled.alicePorts.video && toggled.alicePorts.pendingCount == 0,
+                      "a camera asked for off the screen captures nothing and announces nothing")
+        toggled.screen(true, of: toggled.alice)
+        XCTAssertTrue(toggled.alicePorts.video && toggled.alice.presentation.localVideo,
+                      "and it opens once there is a screen to show it on")
+        XCTAssertTrue(try take(toggled.alicePorts).body.video, "the peer learns it then")
+    }
+
+    /// One trip to the background produces four reports of the screen, they
+    /// reach this thread through unstructured tasks that nothing orders
+    /// against each other, and whether the application is on the screen is
+    /// state that stays — so a pair applied the wrong way round does not
+    /// merely arrive late. It settles on the older answer and stays there: the
+    /// camera button would record intents that open nothing, with no notice
+    /// and nothing on the screen to show for it, until another whole trip to
+    /// the background happened to set it right.
+    ///
+    /// The reports are therefore numbered where they are taken, and the one
+    /// that describes a superseded screen is dropped here.
+    func testAScreenReportThatArrivesAfterANewerOneIsIgnored() throws {
+        let late = CallPair()
+        late.connect()
+
+        // The trip: inactive (1, on screen), background (2, off), inactive
+        // (3, on), active (4, on) — and the one that says the application left
+        // the screen is the one that is delayed past all of them.
+        late.alice.foreground(true, phase: 1)
+        late.alice.foreground(true, phase: 3)
+        late.alice.foreground(true, phase: 4)
+        late.alice.foreground(false, phase: 2)
+
+        late.alice.video(true, generation: late.alice.generation)
+        XCTAssertTrue(late.alicePorts.video && late.alice.presentation.localVideo,
+                      "the camera opens: the application is on the screen, whatever order the "
+                      + "reports of it arrived in")
+        XCTAssertTrue(try take(late.alicePorts).body.video, "and its peer is told")
+
+        // The other direction of the same crossing: a stale "on screen" must
+        // not unblock a capture while the application is away.
+        let away = CallPair()
+        away.connect()
+        away.alice.foreground(false, phase: 2)
+        away.alice.foreground(true, phase: 1)
+
+        away.alice.video(true, generation: away.alice.generation)
+        XCTAssertTrue(!away.alicePorts.video && !away.alice.presentation.localVideo
+                      && away.alicePorts.pendingCount == 0,
+                      "no capture starts off the screen on the strength of an older report")
+        away.alice.foreground(true, phase: 3)
+        XCTAssertTrue(away.alicePorts.video && away.alice.presentation.localVideo,
+                      "and the intent it kept is paid when the screen really is back")
     }
 
     // MARK: - The constants of the runtime
@@ -749,7 +949,7 @@ final class CallControllerTests: XCTestCase {
         let announced = CallPair()
         announced.connect()
         announced.time.advance(millis: CallController.silenceMillis - 1)
-        announced.bob.video(true)
+        announced.bob.video(true, generation: announced.bob.generation)
         announced.deliver(to: announced.alice, from: CallPair.bob, try take(announced.bobPorts))
         announced.time.advance(millis: CallController.silenceMillis - 1)
         announced.alice.tick()
@@ -1093,7 +1293,7 @@ final class CallControllerTests: XCTestCase {
 
         // The camera goes on in between, and its announcement takes the next
         // number of the same counter rather than one of its own.
-        pair.alice.video(true)
+        pair.alice.video(true, generation: pair.alice.generation)
         let announcement = try take(pair.alicePorts)
         XCTAssertEqual(announcement.body.kind, .media)
         numbers.append(announcement.body.seq)

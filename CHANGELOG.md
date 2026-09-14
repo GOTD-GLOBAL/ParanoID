@@ -60,7 +60,14 @@ public contract is declared.
   the process. An install marker makes a reinstall a clean install with a new
   identity, because a Keychain item outlives the application container on iOS —
   the one platform difference from Android's key-and-file rule, recorded as a
-  platform note rather than a relaxation.
+  platform note rather than a relaxation. After the owner-side review of
+  2026-09-14 that marker never deletes a key while a state file is there (a
+  lost marker freezes with both halves intact instead, because a deleted
+  wrapping key cannot be undone), and a container that has never committed a
+  file no longer freezes over the key its first run created before the user
+  reached «Создать ID» — an exception that reaches only containers which were
+  keeping that record, so an installation made by any earlier build keeps
+  freezing over a state file that has gone missing.
 - TLS is leaf-SPKI pinning evaluated on `Security.framework` with the same nine
   checks and the same pin the Android client carries. The hosted certificate
   was renewed **with the same key** on 2026-09-13, so the pin is unchanged and
@@ -76,7 +83,14 @@ public contract is declared.
   H.264 first with VP8 as the mandatory fallback, camera on/off as a track flag
   plus an informative `media` control and never a renegotiation, and a
   9000-byte description cap below the measured 10040-byte frame2 ceiling. This
-  client cannot call an Android build older than v16.
+  client cannot call an Android build older than v16. Every camera action
+  carries the call it was taken in — the toggle, the switch between front and
+  back, and the camera the background took away and the return to the screen
+  gives back — because a permission dialog or a hop onto the state owner can
+  outlive the call that raised it, and a grant says this application may see a
+  camera, never which call the user meant. Reports that the application is on
+  the screen carry a number for the same reason: they cross the same hop, and
+  the flag they set is state that stays.
 - Foreground-only by design: no APNs, no PushKit, no background refresh, no
   CallKit and no in-app updates. A call to a locked or closed iPhone ends in
   the caller's expected 45-second `timeout`.
@@ -160,11 +174,22 @@ public contract is declared.
   the session was not planned, so no owner "go" permalink exists for it, and
   the owner did not scan the iPhone's QR, so the Android side of the pairing
   and the fingerprint compared aloud stay untested. `hosted_registrations` is
-  2, and that session consumed none of it: the iPhone's own, registered on
-  2026-09-13 and reused, and a `service-bridge` registration from the build
-  Mac made while diagnosing the phone's TLS failure, both under the owner's
-  answer to RFC-0021 question 4 (no fixed budget). The device smoke also found
-  an empty entitlements file (the simulator's Keychain answered
+  3, and that session consumed none of it: a `service-bridge` registration
+  from the build Mac on 2026-09-13, made while diagnosing the phone's TLS
+  failure, whose wrapping key was held in process memory only, so its state
+  file no longer opens and the account is registered but dead; the iPhone's
+  own, registered on 2026-09-13 after that fix and still in use; and a
+  diagnostic account registered from the build Mac on 2026-09-14 at
+  08:26:45+03:00,
+  `240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`, with no
+  messages and no contacts, to answer the owner agent's request for a
+  comparative signed read while diagnosing issue #38. It exists as a third
+  because the key of the first Mac account is lost; unlike it, this one is
+  persistent — its wrapping key is kept beside its state in git-ignored build
+  output — so the diagnosis needs no further registration. All three fall
+  under the owner's answer to RFC-0021 question 4 (no fixed budget), and the
+  server has no delete path, so all three are permanent. The device smoke also
+  found an empty entitlements file (the simulator's Keychain answered
   `errSecMissingEntitlement`; fixed by declaring `keychain-access-groups`,
   device behaviour unchanged) and a memory-only fixture peer (replaced by a
   persistent one; harness, not product). Still `NOT RUN`: archive, `.ipa`

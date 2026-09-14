@@ -38,7 +38,7 @@ them.
 | Owner "go" for this live test, permalink recorded here | missing — the session of 2026-09-14 was unscheduled and no permalink exists for it |
 | Signed build installed on Yaroslav's iPhone | present — Release build signed with the Apple team, installed on 2026-09-13 with `xcodebuild` and `xcrun devicectl` (branch head `adb56be`); no archive, no `.ipa`, no TestFlight |
 | Android build on Sergey's phone, version recorded here | not recorded — the calls of the same session used call-v2, which an Android before v16 cannot answer, so his build was v16 or later; the exact version was not asked for |
-| Hosted registrations consumed by this stage (the server has no deletion path) | 1 for the iPhone, consumed on 2026-09-13 in the pre-run, before the stage itself; the branch total is 2 (the other is the build Mac's `service-bridge` registration while diagnosing the phone's TLS failure), both under the owner's answer to RFC-0021 question 4 (no fixed budget) |
+| Hosted registrations consumed by this stage (the server has no deletion path) | 1 for the iPhone, consumed on 2026-09-13 in the pre-run, before the stage itself; the branch total is 3 — the other two are the build Mac's `service-bridge` registration of 2026-09-13, made while diagnosing the phone's TLS failure and unreachable ever since because that fixture kept its wrapping key in process memory only, and a diagnostic account registered from the build Mac on 2026-09-14, with no messages and no contacts, to read the hosted server from a second identity while issue #38 was diagnosed, outside this stage — all three under the owner's answer to RFC-0021 question 4 (no fixed budget) |
 
 ## Scenario
 

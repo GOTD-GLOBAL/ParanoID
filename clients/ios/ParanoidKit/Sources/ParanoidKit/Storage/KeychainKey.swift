@@ -2,6 +2,22 @@ import CryptoKit
 import Foundation
 import Security
 
+/// The two questions `StorageGuard.start(...)` asks about the retained
+/// wrapping key.
+///
+/// It is the seam `FileSystem` is for the commit: the Keychain answers only
+/// inside an application that owns a keychain group, so the startup rule can
+/// be driven over a real Keychain on the simulator
+/// (`App/ParanoIDTests/KeychainStoreTests.swift`) and over a stand-in on the
+/// host, where `SecItemCopyMatching` refuses an unsigned test binary with
+/// `errSecMissingEntitlement` before any rule is reached.
+public protocol RetainedKey {
+    /// Whether the item is there, without copying the key material out.
+    func exists() throws -> Bool
+    /// Removes the item of a previous installation.
+    func deleteRetained() throws
+}
+
 /// The AES-256 wrapping key of `text-state.enc`, held in the Keychain.
 ///
 /// It is the iOS counterpart of the Android Keystore alias
@@ -24,7 +40,7 @@ import Security
 /// - `kSecAttrSynchronizable` = `false`: never iCloud Keychain.
 ///
 /// The key is created once and never regenerated over an existing state file.
-public struct KeychainKey: Sendable {
+public struct KeychainKey: RetainedKey, Sendable {
     /// The one account this client uses, unchanged from Android.
     public static let account = "paranoid-text-state-v0"
     /// AES-256.

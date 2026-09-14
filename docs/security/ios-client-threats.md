@@ -40,13 +40,25 @@ Not used: APNs / PushKit / background refresh / CallKit (foreground-only)
 | Snapshot readable from a stolen, powered-on, locked device | AES-256-GCM key in the Keychain as `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, not synchronizable; file at `.completeUntilFirstUserAuthentication` | `KeychainStoreTests` reads the stored attributes back. The **class the file write asks for cannot be observed in a simulator** — the simulator has no Data Protection and reports no protection class, and the 2026-09-13 device smoke did not measure it either, so this stays `NOT RUN` |
 | Snapshot or key leaves the device through backup or iCloud | Backup exclusion set on the candidate **before** the rename, because the flag lives on the inode; the Keychain item is this-device-only and not synchronizable | Storage unit tests on the commit order; device behaviour is `NOT RUN` (not measured in the 2026-09-13 device smoke) |
 | Torn write or silent truncation adopts a corrupt ratchet | Five durable steps in one order — temp write, `F_FULLFSYNC`, `rename(2)`, byte-exact read-back, directory `F_FULLFSYNC` — and any failure sets `isBroken` for the rest of the process | `SnapshotStoreTests` with injected file-system faults, one step at a time |
-| A reinstall silently resurrects a stale identity, or freezes forever | Install marker (`paranoid.install.v1`): with no marker the stale Keychain key is **deleted** and a new identity is created; with the marker present, key-without-file and file-without-key both freeze | `KeychainStoreTests` marker matrix (signed simulator run) and the `reinstall` scenario of `test_sim_text.py`; both `CLAIMED` |
+| A reinstall silently resurrects a stale identity, or freezes forever | Install marker (`paranoid.install.v1`): with no marker **and no state file** the stale Keychain key is deleted and a new identity is created; with the marker present, a file without a key freezes, and so does a key whose container has committed a file or was installed before the container kept that record | `KeychainStoreTests` marker matrix, 11 tests on the signed simulator, 2026-09-14, and the `reinstall` scenario of `test_sim_text.py`; both `CLAIMED` |
 | A stale key is reused to "recover" state | Never: the absent-marker path deletes rather than reuses | same |
+| A lost install marker destroys the wrapping key of a state file that is still there | Never: the marker is a `UserDefaults` entry and the file is not, so a file that survived disproves the reinstall the missing marker suggests. That launch freezes with both halves intact and records nothing, because a freeze is recoverable by a person and a deleted key is recoverable by nobody | `KeychainStoreTests.testAMissingMarkerBesideAStateFileKeepsTheKeyAndTheFile` reopens the retained file after the refusal — run on the signed simulator on 2026-09-14, in the 11-test run above; `SnapshotStoreTests` covers the same rule on the host — `CLAIMED` |
+| A first run that creates no identity freezes the client for good | Never: this client creates the Keychain item while opening, so a Welcome screen closed without «Создать ID» leaves a key and no file. A second `UserDefaults` fact (`paranoid.snapshot.v1`), written by the commit that creates a state file and by every launch that finds one, is what distinguishes that from a file that has gone missing | `KeychainStoreTests.testAKeyFromAnInterruptedFirstRunIsNotAFreeze`, same 2026-09-14 signed simulator run, and the host `SnapshotStoreTests` startup cases; both `CLAIMED` |
+| The upgrade to this build reads an existing installation as a container that committed nothing, and starts a second identity over it | Never: no build before 2026-09-14 wrote `paranoid.snapshot.v1`, so its absence is evidence only where a third fact (`paranoid.install.v2`) says the container was keeping the record. An installation from an earlier build — the contributor's iPhone is one — keeps the pre-review reading and freezes on a key without a file; it earns the record the first time a launch finds it holding neither a key nor a file. `paranoid.install.v1` is not reinterpreted, so the first launch of this build deletes no key and re-freezes no retained file | `KeychainStoreTests.testAnInstallationFromAnEarlierBuildKeepsFreezingOverItsMissingFile` on the real Keychain, same 2026-09-14 signed simulator run, plus the two host cases in `SnapshotStoreTests` (the frozen upgrade and the launch that starts the record); `CLAIMED` |
 
 The install marker is the one place where this client's behaviour differs from
 `docs/clients/core/self-service.md`. It is recorded as a platform note and a
 doc-to-code finding, not as an owner-approved relaxation of the fail-closed
-rule; the rule is unchanged whenever the marker is present.
+rule: nothing here replaces a state file, starts an identity while a usable
+state exists, or deletes a key any file could still need. Three of the rows
+are the 2026-09-14 owner-side review's P1 storage findings and the defect the
+verification of those findings turned up: before that review a missing marker
+deleted the key of a retained file, and a key left by an interrupted first run
+froze every later launch; the fix for the second then had to be given an
+upgrade rule, because the fact it reads does not exist in any container
+installed before it. RFC-0021 question 10 and the candidate ADR-0014 now carry
+the same matrix and the same upgrade note. None of the three documents is an
+owner approval, which is still outstanding.
 
 ## Transport trust boundary
 
@@ -114,15 +126,23 @@ fixed in this pull request.
 2. **No independent human review** of the storage, trust and call code; the
    closed-alpha exception permits an independent AI review in a fresh context
    and does not replace item 6.
-3. **Two hosted accounts exist** (`hosted_registrations` is 2): one from the
-   build Mac through `service-bridge` while diagnosing the phone's TLS
-   failure, one from the physical iPhone (Release build, 2026-09-13, after the
-   ATS fix below); both under the owner's answer to RFC-0021 question 4 (no
-   fixed budget). On 2026-09-14 an unscheduled joint session on that server
-   exchanged text both ways with the owner's Android — both checks appeared —
-   and carried one call, dialled by the owner, with video in both directions.
-   Those results are the contributor's report, marked
-   `SHOWN (joint, reported)` in
+3. **Three hosted accounts exist** (`hosted_registrations` is 3): one from the
+   build Mac through `service-bridge` on 2026-09-13 while diagnosing the
+   phone's TLS failure, one from the physical iPhone (Release build,
+   2026-09-13, after the ATS fix below, the contributor's own and still in
+   use), and one diagnostic account registered from the build Mac on
+   2026-09-14 to measure the hosted server from a second identity while
+   diagnosing issue #38. The third exists because the first is permanently
+   unreachable: that fixture kept its wrapping key in process memory only, so
+   its state file no longer opens and the account is registered but dead. The
+   diagnostic account keeps its key beside its state, carries no messages and
+   no contacts, and has no relationship to either of the other two. All three
+   fall under the owner's answer to RFC-0021 question 4 (no fixed budget), and
+   the server has no delete path, so all three are permanent. On 2026-09-14 an
+   unscheduled joint session on that server exchanged text both ways with the
+   owner's Android — both checks appeared — and carried one call, dialled by
+   the owner, with video in both directions. Those results are the
+   contributor's report, marked `SHOWN (joint, reported)` in
    [stage1-text.md](../project/evidence/ios-client-20260913/stage1-text.md) and
    [stage2-voice.md](../project/evidence/ios-client-20260913/stage2-voice.md),
    and no owner "go" permalink exists for the session. What remains untested is

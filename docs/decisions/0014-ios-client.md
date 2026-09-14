@@ -17,12 +17,13 @@ text the server accepted. On 2026-09-14 an unscheduled joint session with the
 owner on the hosted alpha exchanged text both ways and carried one call with
 both cameras on against his Android; that is the contributor's report,
 recorded as `SHOWN (joint, reported)` in the two stage files, and most of both
-scenarios stays `NOT RUN`. Two hosted accounts exist, no TestFlight build was
-uploaded, neither joint test is complete, and no independent human review has
-happened. It cannot move to `accepted` until the closed-alpha scope has a
-permanent owner approval permalink, the independent AI review of the exact
-review revision is recorded, and the physical-phone joint-test evidence the
-validation plan names exists.
+scenarios stays `NOT RUN`. Three hosted accounts exist (the build Mac and the
+iPhone on 2026-09-13, a diagnostic account from the build Mac on 2026-09-14),
+no TestFlight build was uploaded, neither joint test is complete, and no
+independent human review has happened. It cannot move to `accepted` until the
+closed-alpha scope has a permanent owner approval permalink, the independent
+AI review of the exact review revision is recorded, and the physical-phone
+joint-test evidence the validation plan names exists.
 [RFC-0021](../rfcs/0021-ios-client.md) carries the proposal text.
 
 ## Required review rationale
@@ -99,9 +100,13 @@ compatibility.
 
 Storage, pinning and media sub-decisions within option 3 are recorded in
 [RFC-0021 Proposed design](../rfcs/0021-ios-client.md#proposed-design): the
-install marker rule (Keychain outlives the container, so an absent marker means
-a fresh install and stale keys are deleted, while marker-present ambiguity
-freezes exactly like Android `StorageGuard`), `Security.framework` leaf-SPKI
+install marker rule (Keychain outlives the container; an absent marker with no
+state file is a fresh install and the stale key is deleted, an absent marker
+beside a state file freezes without deleting anything, and a key with no file
+freezes unless this container is known never to have committed one — the last
+two rows changed on 2026-09-14 at the owner reviewer's requirement, and an
+installation from a build before that change keeps the old reading until a
+launch can see it holds nothing; see the RFC's question 10), `Security.framework` leaf-SPKI
 evaluation with the same pin as Android, and WebRTC.xcframework `150.7871.01`.
 
 ## Decision
@@ -187,8 +192,20 @@ security-boundary detail of this decision, not a widening of it.
   fix, never patch the core; if voice fails the pull request ships text-only
   and this ADR's scope narrows.
 - Reinstall semantics differ from Android (clean install by marker): stated
-  in the frozen screen and in the platform note; the fail-closed rule is not
-  weakened when the marker is present.
+  in the frozen screen and in the platform note. Since 2026-09-14 a missing
+  marker beside a state file also fails closed and deletes nothing — the
+  reviewer's P1 — at the deliberate cost that lost defaults with a surviving
+  file now need a person, which the owner should confirm rather than inherit.
+- The fail-closed rule with the marker present is weakened in exactly one row
+  and no other, and this is the clause to read before approving: a key whose
+  container has **never committed a state file while keeping that record** is
+  an interrupted first run and opens normally (the reviewer's second P1 —
+  freezing it was a permanent freeze a user reached by opening the
+  application once and closing it). A key whose container committed a file,
+  and a key whose container is an installation from before the record
+  existed, both still freeze. Nothing in any row replaces a state file, hands
+  the core a fresh identity while a usable state exists, or deletes a key
+  that any file could still need.
 - Keychain class too strict (device locked during a call turns a heartbeat
   commit into a freeze): question 3 fixes the class before storage code is
   written.
@@ -228,8 +245,15 @@ of `.github/workflows/ios.yml`. The platform trust delta is
 
 Same wire versions as Android v15; no server or core change; no data to
 migrate. Rollback is removing the TestFlight build and the application; the
-two hosted accounts this branch created (one from the build Mac, one for the
-iPhone) remain on the server because REQ-MSG-004 provides no deletion path.
+three hosted accounts this branch created — the build Mac and the iPhone on
+2026-09-13, and a diagnostic account from the build Mac on 2026-09-14 while
+issue #38 was being measured — remain on the server because REQ-MSG-004
+provides no deletion path. The 2026-09-13 Mac account is registered but dead:
+its fixture held the wrapping key in process memory only, so its state file no
+longer opens; the diagnostic account of 2026-09-14
+(`240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`) keeps its
+wrapping key beside its state in the git-ignored build output, has no messages
+and no contacts, and is why a third registration exists at all.
 Same-data rollback of the server is unaffected because nothing on the server
 changes.
 
@@ -249,9 +273,11 @@ changes.
   decision (question 8); an explicit "go" with a permalink for each live
   action (install on the contributor's iPhone, each hosted registration, the
   TestFlight upload). The install on the contributor's own iPhone and two
-  hosted registrations happened on 2026-09-13, the registrations under the
-  owner's answer to question 4 (no fixed budget), with no separate permalink
-  recorded; the TestFlight upload has not.
+  hosted registrations happened on 2026-09-13, and a third, the diagnostic
+  account registered from the build Mac on 2026-09-14 for the issue #38
+  measurements; all three registrations fall under the owner's answer to
+  question 4 (no fixed budget), with no separate permalink recorded; the
+  TestFlight upload has not.
 - One GUI step the contributor performs by hand: the contributor's Apple ID in
   Xcode Accounts.
 
@@ -273,7 +299,7 @@ of both scenarios `NOT RUN` — not by the table below.
 | # | Question | Owner | Proposed deadline |
 | --- | --- | --- | --- |
 | 3 | Keychain class `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` for the wrapping key. Confirm. | martadvix-web | 2026-09-18 |
-| 4 | Hosted account budget: exactly one account for the contributor's iPhone, no reserve, reinstall means a new authorization; who registers. Answered 2026-09-13: as many as the tests need, no fixed budget; two consumed so far (the build Mac and the iPhone), each recorded in the evidence directory because the server cannot delete an account. | martadvix-web | 2026-10-01 |
+| 4 | Hosted account budget: exactly one account for the contributor's iPhone, no reserve, reinstall means a new authorization; who registers. Answered 2026-09-13: as many as the tests need, no fixed budget; three consumed so far — the build Mac and the iPhone on 2026-09-13, and a diagnostic account from the build Mac on 2026-09-14 (no messages, no contacts) registered to measure the hosted server from a second identity while issue #38 was diagnosed, a third being needed because the 2026-09-13 Mac account kept its wrapping key in process memory only and can no longer be opened — each recorded in the evidence directory because the server cannot delete an account. | martadvix-web | 2026-10-01 |
 | 5 | `404 turn_disabled` on `/v2/voice/turn`: disclosed direct-ICE parity with Android or refuse the call. | martadvix-web | 2026-09-25 |
 | 6 | Paid macOS CI runner: yes or no (default no). | martadvix-web | 2026-10-01 |
 | 7 | Key rotation RFC: who and when, tied to the TestFlight build date. The certificate itself was renewed with the same key on 2026-09-13 (valid to 2026-12-12), so this is no longer an outage deadline; the open part is what happens when the key changes. | martadvix-web | 2026-10-15 |
@@ -311,15 +337,17 @@ of both scenarios `NOT RUN` — not by the table below.
 - Known limitations and follow-up: one physical iPhone has run the client
   (local-stand smoke and one hosted registration with one accepted text on
   2026-09-13, then the unscheduled joint session of 2026-09-14), but the joint
-  tests with the owner are only partly run and `hosted_registrations` is 2,
-  both accounts permanent, that session consuming none of them; the network-drop
-  item of 2026-09-13/14 — after a network drop on the phone the application
-  stayed at «Нет подключения» while the server answered from the Mac and the
-  pinned key was unchanged — has a cause and a fix on the branch since
-  2026-09-14 (this client had no connectivity-change restart), but its proof is
-  `NOT RUN`: no real change of network path was produced on any device and no
-  device log was ever collected for that drop; separately, after the session of
-  2026-09-14 the phone stopped
+  tests with the owner are only partly run and `hosted_registrations` is 3 —
+  the build Mac and the iPhone on 2026-09-13, and the diagnostic account
+  registered from the build Mac on 2026-09-14 for the issue #38 measurements —
+  all three accounts permanent, that session consuming none of them; the
+  network-drop item of 2026-09-13/14 — after a network drop on the phone the
+  application stayed at «Нет подключения» while the server answered from the
+  Mac and the pinned key was unchanged — has a cause and a fix on the branch
+  since 2026-09-14 (this client had no connectivity-change restart), but its
+  proof is `NOT RUN`: no real change of network path was produced on any device
+  and no device log was ever collected for that drop; separately, after the
+  session of 2026-09-14 the phone stopped
   connecting and has not recovered, and a Debug build on the same device
   logged the signed read of `/v2/messages` timing out four times in 45 seconds
   while the pinned handshake stood and the route answered from the build Mac —

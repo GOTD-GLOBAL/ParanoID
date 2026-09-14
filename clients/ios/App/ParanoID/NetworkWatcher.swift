@@ -21,13 +21,25 @@ import Network
 /// would call each of those a change of network; Android would not have been
 /// told about any of them.
 ///
-/// So what is kept is the **first** of those interfaces, which is the one the
-/// path is dialling over: the order is the path's own order of preference, so
-/// a connection opened now uses it. Wi-Fi lost with cellular taking over turns
-/// `en0#14` into `pdp_ip0#21`; a VPN that actually takes the route makes its
-/// tunnel the preferred interface and changes it too, which is the same
-/// reconnect for the same reason. A second interface that is merely available
-/// never reaches this value, and neither does the multiplicity of the list.
+/// So what is kept is the **first** of those interfaces. That is the path's
+/// own preferred interface by the system's ordering, and it is the closest
+/// signal `NWPath` offers to "the network the traffic is on" — but it is a
+/// proxy, not a proof: nothing here observes which interface a `URLSession`
+/// socket actually bound to, and this type does not claim to. Two limits
+/// follow and are stated rather than hidden. First, two different Wi-Fi
+/// networks joined in turn on the same `en0` carry the same `name#index`, so
+/// that change is invisible to this reducer, and a report that repeats the
+/// same value is ignored even when it followed a switch of that kind; Android
+/// would see a new `Network` there and this client will not, and it recovers
+/// from that case only by the request's own timeout and backoff. Second, the
+/// pairing of "first interface changed" with "the socket is dead" is inferred
+/// from the platform's ordering and has been driven at this seam with stated
+/// paths, not observed on a phone across a real Wi-Fi to cellular, VPN or
+/// same-interface transition — `docs/clients/ios/verification.md` records
+/// those as `NOT RUN` with the reason. What is proven is narrower and still
+/// worth having: Wi-Fi giving way to cellular turns `en0#14` into `pdp_ip0#21`,
+/// a VPN that takes the route makes its tunnel the preferred interface, and an
+/// interface that is merely available never reaches this value.
 ///
 /// It is a value with an initializer of its own so that the decision above it
 /// can be driven without a network: a test states the path instead of waiting

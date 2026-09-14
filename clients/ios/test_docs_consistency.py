@@ -14,23 +14,45 @@ prose must not contradict it. The gate never asserts that a document *mentions*
 something — a document is free to be silent — only that what it does say about
 these facts is not the opposite of what was measured.
 
+Comparing every document against one counter catches disagreement and nothing
+else. On 2026-09-14 a third account was registered on the hosted alpha and
+nobody touched the catalogue: every document still said two, none of them
+contradicted the other, and this gate passed. It was extended that day because
+of that shared stale counter. The counter is no longer a number somebody types
+— the catalogue lists the registrations themselves and the number has to equal
+how many are listed — so registering an account now means writing a record, and
+a stale counter fails the build instead of passing it. The limit is worth
+saying plainly: this gate runs offline and never asks the server anything, so
+an account nobody wrote down anywhere is still invisible to it. What it removes
+is the cheap version of the mistake — the number and the accounts behind it can
+no longer drift apart in silence.
+
 What it checks, and where each fact comes from:
 
-1. **Hosted registrations.** The counter lives in the evidence catalogue. No
-   document may state a different number, or say that no hosted account exists.
-2. **The physical phone.** If the device evidence records a run, no document may
+1. **Hosted registrations.** How many accounts this branch created on the
+   hosted alpha is how many are recorded in check 2 — not a number typed
+   anywhere. No document may state a different one, or say that no hosted
+   account exists.
+2. **The registrations themselves.** ``artifacts.json`` carries one record per
+   hosted account — its public id, the instant, the machine it was made from
+   and one line on what it is for — and the counter must equal how many records
+   there are. A record whose account id was never written down keeps ``null``
+   and says why in a note: the gate counts it all the same, because inventing
+   an id to satisfy a check would be the same lie in a new place.
+3. **The physical phone.** If the device evidence records a run, no document may
    say that nothing has run on a phone or that no signed build exists.
-3. **The joint tests.** The two stage files carry the authoritative ``Result``
+4. **The joint tests.** The two stage files carry the authoritative ``Result``
    cells. If either records a shown step, no document may say that the joint
    tests have not been run; if neither does, no document may say they have.
-4. **The status vocabulary.** Every status token used in a ``Result`` cell of
+5. **The status vocabulary.** Every status token used in a ``Result`` cell of
    the requirement table or the stage files must be defined in the vocabulary
    section of ``docs/clients/ios/verification.md``. A status nobody defined is
    how ``SHOWN`` quietly grew a second meaning.
 
 Exit codes:
   0  ``PASS: N facts checked across M documents``
-  1  at least one contradiction (each one is printed with its file and line)
+  1  at least one contradiction (each printed with its file and, for prose, the
+     line; for a registration record, which record it is)
   2  a source of truth is missing or unreadable — never a vacuous PASS
 """
 import json
@@ -42,10 +64,25 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 EVIDENCE = ROOT / 'docs/project/evidence/ios-client-20260913'
 CATALOGUE = EVIDENCE / 'README.md'
+ARTIFACTS = EVIDENCE / 'artifacts.json'
 STAGE1 = EVIDENCE / 'stage1-text.md'
 STAGE2 = EVIDENCE / 'stage2-voice.md'
 VERIFICATION = ROOT / 'docs/clients/ios/verification.md'
 DEVICE_EVIDENCE = HERE / 'out/evidence/device-smoke-20260913/device-smoke-result.json'
+
+# The machine-readable list of hosted registrations inside `artifacts.json`,
+# and the shape one record has to have.
+RECORDS_KEY = 'hosted_registration_records'
+# `account` and `at` are checked by their own patterns; these two only have to
+# say something.
+RECORD_PROSE = ('machine', 'what')
+ACCOUNT_ID = re.compile(r'^[0-9a-f]{64}$')
+# A full ISO-8601 instant with an offset, or the bare date when that is all
+# anybody wrote down — the two registrations of 2026-09-13 were recorded by
+# date only, and a clock time invented to satisfy this pattern would be the
+# same kind of untruth the gate is here to stop.
+INSTANT = re.compile(r'^\d{4}-\d{2}-\d{2}'
+                     r'(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$')
 
 # Every document that makes claims about what this client has been shown to do.
 # A file that does not exist is skipped, so the gate survives a rename without
@@ -91,6 +128,13 @@ NO_HOSTED = (
     r'the counter above stays at zero',
 )
 
+JOINT_COMPLETE = (
+    # A negation in front — "neither joint test is complete" — is the opposite
+    # claim and must not fire.
+    r'(?<!neither )(?<!not )(?<!nor )(?<!never )joint tests? (?:with the owner )?(?:are|were|is|was|have been|has been) (?:complete|completed|fully run|finished|passed)',
+    r'both joint tests (?:passed|completed|are done)',
+)
+
 NO_JOINT = (
     r'(?:the )?(?:two )?joint tests? (?:with the owner )?(?:have|has) not (?:yet )?been run',
     r'this test has not been run',
@@ -102,6 +146,13 @@ NO_JOINT = (
 def unavailable(message):
     print(f'ERROR: {message}', file=sys.stderr)
     sys.exit(2)
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as error:
+        unavailable(f'cannot read {path.relative_to(ROOT)}: {error}')
 
 
 def read(path):
@@ -132,32 +183,151 @@ def lines_matching(text, patterns):
     return found
 
 
-def hosted_count():
-    """The registration counter, read from the catalogue's own table."""
-    text = read(CATALOGUE)
-    match = re.search(r'`hosted_registrations:\s*(\d+)`', text)
-    if not match:
-        unavailable(f'{CATALOGUE.relative_to(ROOT)} states no `hosted_registrations: N` counter')
-    return int(match.group(1))
+def require_catalogue_counter():
+    """The catalogue's table must still state ``hosted_registrations: N``.
 
-
-def device_ran():
-    """Whether the device evidence records a run on the physical phone.
-
-    The file is a build artifact and git-ignored, so its absence is not a
-    failure: the catalogue's own prose is then the only source, and the phone
-    checks below are skipped rather than guessed at.
+    The number itself is no longer taken from here — the list of registrations
+    below is — and the value written here is checked like any other document
+    statement, because the catalogue is one of ``DOCUMENTS``. What stays fatal
+    is the counter disappearing: the catalogue is where a reader looks first,
+    and a catalogue that has stopped counting is not one.
     """
-    if not DEVICE_EVIDENCE.is_file():
-        return None
+    if not re.search(r'`hosted_registrations:\s*\d+`', read(CATALOGUE)):
+        unavailable(f'{CATALOGUE.relative_to(ROOT)} states no `hosted_registrations: N` counter')
+
+
+def registration_records():
+    """The hosted registrations themselves, with the counter written beside them.
+
+    Both come out of ``artifacts.json``: the list is what exists, the counter is
+    a claim about the list, and ``main`` makes the two agree. A missing, empty
+    or malformed list is fatal rather than a contradiction — with nothing to
+    count, the hosted checks below would be vacuous, which is exactly how a
+    stale counter got through on 2026-09-14.
+    """
     try:
-        data = json.loads(DEVICE_EVIDENCE.read_text(encoding='utf-8'))
-    except (OSError, ValueError) as error:
-        unavailable(f'cannot read {DEVICE_EVIDENCE}: {error}')
-    results = data.get('results')
-    if not isinstance(results, dict):
-        unavailable(f'{DEVICE_EVIDENCE.name} has no `results` object')
-    return any(value is True for value in results.values())
+        data = json.loads(read(ARTIFACTS))
+    except ValueError as error:
+        unavailable(f'cannot parse {ARTIFACTS.relative_to(ROOT)}: {error}')
+    records = data.get(RECORDS_KEY)
+    if not isinstance(records, list) or not records:
+        unavailable(f'{ARTIFACTS.relative_to(ROOT)} carries no non-empty `{RECORDS_KEY}` '
+                    'list; the hosted accounts are counted by listing them one by one')
+    counter = data.get('hosted_registrations')
+    if not isinstance(counter, int) or isinstance(counter, bool):
+        unavailable(f'{ARTIFACTS.relative_to(ROOT)} states no whole-number '
+                    '`hosted_registrations` counter')
+    return records, counter
+
+
+def registration_problems(records, counter):
+    """Everything wrong inside the registration list itself.
+
+    These are contradictions, not missing sources: the catalogue is readable and
+    says two different things about the same accounts, or a record does not say
+    enough to be one.
+    """
+    problems = []
+    name = ARTIFACTS.relative_to(ROOT)
+    if counter != len(records):
+        problems.append(f'{name}: states hosted_registrations is {counter}, but lists '
+                        f'{len(records)} registration(s) — an account is counted by '
+                        f'recording it, not by raising the number')
+    seen = {}
+    for index, record in enumerate(records, start=1):
+        where = f'{name}: registration {index}'
+        if not isinstance(record, dict):
+            problems.append(f'{where} is not an object')
+            continue
+        account = record.get('account')
+        if account is None:
+            if not str(record.get('note') or '').strip():
+                problems.append(f'{where} records no account id and no `note` saying why; '
+                                f'an id nobody wrote down must be told apart from one '
+                                f'nobody bothered to copy')
+        elif not isinstance(account, str) or not ACCOUNT_ID.match(account):
+            problems.append(f'{where} has account `{account}`, which is neither null nor a '
+                            f'64-digit lowercase hex account id')
+        elif account in seen:
+            problems.append(f'{where} repeats the account id of registration {seen[account]} '
+                            f'— one account, one record')
+        else:
+            seen[account] = index
+        if not isinstance(record.get('at'), str) or not INSTANT.match(record['at']):
+            problems.append(f'{where} has at `{record.get("at")}`, which is not an ISO-8601 '
+                            f'date or an instant with an offset')
+        for field in RECORD_PROSE:
+            if not isinstance(record.get(field), str) or not record[field].strip():
+                problems.append(f'{where} does not say `{field}`')
+    return problems
+
+
+def device_recorded():
+    """Whether the tracked catalogue records a run on the physical phone.
+
+    The owner's reviewer found the first version of this check reading the raw
+    device evidence, which is git-ignored build output: in a clean checkout the
+    file is absent, the check quietly switched itself off, and a document
+    denying any phone run passed. The source of truth is therefore the tracked
+    ``artifacts.json``: a run happened if the catalogue carries a ``device``
+    artifact with its digest. When the raw file is also present its SHA-256
+    must match that record, so a catalogue that describes a file other than
+    the one on disk fails instead of passing on a stale digest.
+    """
+    data = read_json(ARTIFACTS)
+    records = [a for a in data.get('artifacts', [])
+               if isinstance(a, dict) and (a.get('group') == 'device'
+                                           or 'device-smoke' in str(a.get('path', '')))]
+    if not records:
+        return False
+    if DEVICE_EVIDENCE.is_file():
+        import hashlib
+        digest = hashlib.sha256(DEVICE_EVIDENCE.read_bytes()).hexdigest()
+        recorded = {r.get('sha256') for r in records if r.get('path', '').endswith('device-smoke-result.json')}
+        if recorded and digest not in recorded:
+            unavailable(f'{DEVICE_EVIDENCE.name} on disk has digest {digest[:12]}…, the catalogue '
+                        f'records {sorted(recorded)[0][:12]}…; the evidence and its record disagree')
+    return True
+
+
+STATUS_TOKEN = re.compile(r'\b(NOT RUN|CLAIMED|FAILED|SHOWN(?:\s*\([^)]*\))?)')
+
+
+def requirement_statuses():
+    """Every status token in the ``Result`` cells of the requirement table.
+
+    The owner's reviewer found that the first version of this gate never read
+    this table at all, so a row could carry any word in its status cell. A
+    ``Result`` cell may hold several tokens — a device result beside a joint
+    one — and each is checked on its own; a row with none is reported too,
+    because a row without a status is a claim without a verdict.
+    """
+    rows = []
+    for number, line in enumerate(read(VERIFICATION).splitlines(), start=1):
+        if not line.startswith('| ') or set(line) <= set('| -'):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
+        if len(cells) < 4 or not cells[0].startswith('REQ-'):
+            continue
+        tokens = [t.strip() for t in STATUS_TOKEN.findall(cells[-1])]
+        rows.append((number, cells[0], tokens, cells[-1]))
+    if not rows:
+        unavailable(f'{VERIFICATION.relative_to(ROOT)} has no requirement rows')
+    return rows
+
+
+def status_is_defined(token, defined):
+    """Whether one token is a status the vocabulary section defines.
+
+    ``SHOWN`` may carry a stand qualifier the vocabulary describes in prose —
+    ``(phone, local stand)``, ``(phone, hosted)`` — so a qualified ``SHOWN``
+    is defined when its qualifier names the phone; any other qualifier, and
+    any other word, is a status nobody defined.
+    """
+    if token in defined:
+        return True
+    match = re.match(r'SHOWN\s*\((.*)\)$', token)
+    return bool(match) and 'SHOWN' in defined and match.group(1).strip().startswith('phone')
 
 
 def stage_statuses():
@@ -188,7 +358,7 @@ def defined_statuses():
 
 
 def main():
-    for required in (CATALOGUE, STAGE1, STAGE2, VERIFICATION):
+    for required in (CATALOGUE, ARTIFACTS, STAGE1, STAGE2, VERIFICATION):
         if not required.is_file():
             unavailable(f'{required.relative_to(ROOT)} is missing; it is a source of truth')
 
@@ -198,8 +368,11 @@ def main():
     if not present:
         unavailable('none of the documents this gate checks exists')
 
-    registrations = hosted_count()
-    ran_on_device = device_ran()
+    require_catalogue_counter()
+    records, counter = registration_records()
+    problems.extend(registration_problems(records, counter))
+    registrations = len(records)
+    ran_on_device = device_recorded()
     shown_jointly = any(status.startswith('SHOWN') for status in stage_statuses())
 
     for name, path in present:
@@ -208,14 +381,14 @@ def main():
         if registrations:
             for number, line in lines_matching(text, NO_HOSTED):
                 problems.append(f'{name}:{number}: says no hosted account exists, but the '
-                                f'catalogue records {registrations} — {line[:120]}')
+                                f'catalogue lists {registrations} — {line[:120]}')
             # `is`, `=` or `:` and an optional pair of backticks, because the
             # counter is written all three ways across these documents.
             wrong = re.findall(r'`?hosted_registrations`?\s*(?:is|=|:)\s*`?(\d+)', text)
             for value in wrong:
                 if int(value) != registrations:
                     problems.append(f'{name}: states hosted_registrations is {value}, '
-                                    f'the catalogue records {registrations}')
+                                    f'the catalogue lists {registrations} registration(s)')
 
         if ran_on_device:
             for number, line in lines_matching(text, NO_PHONE):
@@ -227,10 +400,35 @@ def main():
                 problems.append(f'{name}:{number}: says the joint tests have not run, but a stage '
                                 f'file records a shown step — {line[:120]}')
 
-    undefined = {status for status in stage_statuses() if status} - defined_statuses()
+    defined = defined_statuses()
+    undefined = {status for status in stage_statuses() if status and not status_is_defined(status, defined)}
     for status in sorted(undefined):
         problems.append(f'stage files use the status `{status}`, which '
                         f'docs/clients/ios/verification.md does not define')
+
+    # The requirement table itself: every Result cell carries only defined
+    # statuses, and no phone status is claimed without a recorded device run.
+    for number, req, tokens, cell in requirement_statuses():
+        if not tokens:
+            problems.append(f'docs/clients/ios/verification.md:{number}: {req} has no status in its '
+                            f'Result cell — {cell[:80]}')
+        for token in tokens:
+            if not status_is_defined(token, defined):
+                problems.append(f'docs/clients/ios/verification.md:{number}: {req} uses the status '
+                                f'`{token}`, which the vocabulary does not define')
+            if token.startswith('SHOWN') and 'phone' in token and not ran_on_device:
+                problems.append(f'docs/clients/ios/verification.md:{number}: {req} claims `{token}` '
+                                f'but the catalogue records no device artifact')
+
+    # A joint test with any NOT RUN step left is not complete, whatever a
+    # document says about it.
+    if any(status.startswith('NOT RUN') for status in stage_statuses()):
+        for name, path in present:
+            if path in (STAGE1, STAGE2):
+                continue
+            for number, line in lines_matching(read(path), JOINT_COMPLETE):
+                problems.append(f'{name}:{number}: says the joint tests are complete, but a stage '
+                                f'file still has a NOT RUN step — {line[:120]}')
 
     if problems:
         print(f'FAIL: {len(problems)} contradiction(s) between the documents and the evidence')
@@ -238,9 +436,9 @@ def main():
             print(f'  {problem}')
         return 1
 
-    checks = 2 + (1 if ran_on_device else 0) + 1
+    checks = 3 + (1 if ran_on_device else 0) + 3
     print(f'PASS: {checks} facts checked across {len(present)} documents '
-          f'(hosted_registrations={registrations}, '
+          f'(hosted_registrations={registrations}, one record each, '
           f'device run={"recorded" if ran_on_device else "no artifact"}, '
           f'joint steps shown={shown_jointly})')
     return 0

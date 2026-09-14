@@ -14,10 +14,12 @@ This directory is a **candidate under development** proposed in
 [RFC-0021](../../docs/rfcs/0021-ios-client.md) and recorded as
 [proposed ADR-0014](../../docs/decisions/0014-ios-client.md) for REQ-CLIENT-001.
 Nothing in it is accepted architecture. A signed build has run on one physical
-iPhone (2026-09-13: an iPhone 16 Pro Max on iOS 26.6.1) and two hosted
-accounts exist — one from the build Mac's `service-bridge` while diagnosing
-the phone's TLS failure, one from the phone itself — but no TestFlight upload
-has happened, the two joint tests with the owner are only partly run, and
+iPhone (2026-09-13: an iPhone 16 Pro Max on iOS 26.6.1) and three hosted
+accounts exist — one from the build Mac's `service-bridge` on 2026-09-13 while
+diagnosing the phone's TLS failure, one from the phone itself on 2026-09-13
+after that fix, and one diagnostic account from the build Mac on 2026-09-14
+while diagnosing issue #38 — but no TestFlight upload has happened, the two
+joint tests with the owner are only partly run, and
 nothing counts as `SHOWN` unless the
 [verification table](../../docs/clients/ios/verification.md) says so with an
 evidence link. The joint session of 2026-09-14 was unscheduled and has no
@@ -246,11 +248,25 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   `KeychainKey` is the AES-256 wrapping key (`kSecClassGenericPassword`,
   account `paranoid-text-state-v0`, accessible after first unlock on this
   device only, not synchronizable), never regenerated over an existing file
-  (`TextEngine.java:206-218`). `InstallMarker` (`paranoid.install.v1`, standard
-  defaults) and `StorageGuard` carry the reinstall rule: with no marker the
-  stale Keychain key is deleted and the marker is recorded, and only then is
-  Android's exclusive-or (`StorageGuard.java:7-8`) evaluated — a key without a
-  file, or a file without a key, freezes.
+  (`TextEngine.java:206-218`). `InstallMarker` (standard defaults) and
+  `StorageGuard` carry the reinstall rule over three facts about the container:
+  `paranoid.install.v1`, that it has been launched, `paranoid.snapshot.v1`,
+  that it has committed a state file, and `paranoid.install.v2`, that it has
+  been keeping the second fact since its own first launch. With no marker
+  **and no state file** the stale Keychain key is deleted and the marker is
+  recorded; with no marker and a state file nothing is deleted or recorded at
+  all and the launch freezes, because an uninstall would have taken that file
+  with the container and a deleted wrapping key cannot be undone by anyone.
+  Then Android's exclusive-or (`StorageGuard.java:7-8`) is evaluated: a file
+  without a key freezes, and so does a key without a file — unless the
+  container has never committed one *and was keeping that record*, which is an
+  interrupted first run and not evidence of tampering, because this client
+  creates the Keychain item while opening and Android creates its alias at the
+  first commit. The third fact is what keeps that exception away from every
+  installation made before it existed: no earlier build wrote the second one,
+  so on those containers its absence says nothing, and a key without a file
+  there freezes until a launch finds the container holding neither half and
+  starts the record.
 - `Sources/ParanoidKit/Service/` is the application adapter over the unchanged
   v2 opaque transport, the port of `SelfServiceClient.java`. `Snapshot` is the
   stored version-4 wrapper
@@ -835,14 +851,27 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   stays `a=sendrecv`, carrying no frames, while a `media` control tells the
   peer what this camera is doing (`call-v2.md`). Leaving the **background**
   stops the camera and returning restarts it; an `inactive` scene — which is
-  what a permission dialog produces — does not.
+  what a permission dialog produces — does not. Every one of those actions
+  names the call it belongs to, and the state owner checks the name against
+  the call that is live when the action lands: a permission dialog can be
+  answered minutes after the call it was raised in ended, and the hop onto the
+  owner is another suspension, so a camera that is opened, switched or given
+  back after the fact would otherwise belong to whichever call had taken its
+  place. The scene reports themselves are numbered rather than trusted to
+  arrive in order, because one trip to the background posts four of them and
+  the flag they set is state that stays.
 - `ParanoIDTests/KeychainStoreTests.swift` is the half of the storage rules
   that needs a real platform: the item under `paranoid-text-state-v0` with the
   attributes it was asked for, the install-marker matrix (stale key with no
-  marker is wiped and `create_identity` then works; marker with a key and no
-  file, and marker with a file and no key, both freeze; marker with neither is
-  a fresh install) and one commit driven through `open`/`F_FULLFSYNC`/
-  `rename(2)` on a real file system. It runs with the **default** simulator
+  marker and no file is wiped and `create_identity` then works; no marker
+  beside a file keeps the key, keeps the file and freezes; a file with no key
+  freezes, and so does a key with no file once the container has committed
+  one and on a container installed before the record existed, while the key an
+  interrupted first run left behind opens normally;
+  marker with neither is a fresh install) and one commit driven through
+  `open`/`F_FULLFSYNC`/`rename(2)` on a real file system, which is also what
+  records that the container now holds a state file. It runs with the
+  **default** simulator
   signature, not `CODE_SIGNING_ALLOWED=NO`: without signing Xcode skips
   `ProcessProductPackaging`, the process carries no `application-identifier`,
   and every `SecItem` call returns `errSecMissingEntitlement` (-34018). A
@@ -1845,8 +1874,12 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   this-device-only, not synchronizable) plus a Data Protection file, committed
   as temp file, `F_FULLFSYNC`, `rename`, byte-exact read-back; any failure
   freezes the application. An absent install marker means a fresh install and
-  deletes a stale key; a present marker with a missing key or file freezes.
-  Raw core snapshots hold private keys and plaintext: never log them.
+  deletes a stale key — but only where no state file is there to disprove it,
+  because a deleted wrapping key is the one loss nobody can undo. A present
+  marker with a missing key freezes, and so does a missing file whose
+  container has committed one or was installed before the container recorded
+  its commits. Raw core snapshots hold private keys and
+  plaintext: never log them.
 - **Trust.** Same server pin as Android
   (`8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba`) and the
   same eight leaf checks of `PinnedTls.java:54-70`, evaluated on
@@ -1869,9 +1902,22 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   budget** — and every registration is still counted in the evidence
   directory, because the server has no account-deletion path, so each one is
   permanent. A budget is not an authorization: each live registration still
-  needs its own "go". Two have been spent so far, both on 2026-09-13 and both
-  under that answer: a `service-bridge` registration from the build Mac while
-  diagnosing the phone's TLS failure (defect 4) and the physical iPhone's own.
+  needs its own "go". Three have been spent so far, all under that answer.
+  Two on 2026-09-13: a `service-bridge` registration from the build Mac while
+  diagnosing the phone's TLS failure (defect 4) and the physical iPhone's own,
+  which is the contributor's account and still in use. One on 2026-09-14, a
+  diagnostic registration from the build Mac
+  (`240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`), made
+  to measure the hosted server from a second identity while issue #38 was
+  being diagnosed: it carries no messages and no contacts and stands in no
+  relation to the contributor's account or to the owner's. A third exists at
+  all because the first is dead — that Mac fixture kept its wrapping key in
+  process memory only, so its state file no longer opens and the account is
+  registered but unreachable. The 2026-09-14 one is persistent instead: its
+  wrapping key is kept beside its state in
+  `out/evidence/hosted-probe-20260914/` (git-ignored build output, key file
+  mode 0600), so the diagnosis needs no further registration. It falls under
+  the same answer as the other two and has no separate permalink.
   Simulators use only the local stand (unchanged server
   binary plus local PostgreSQL 16); they never contact the hosted server.
 - **Language.** English in this README, under `docs/` and in evidence;
