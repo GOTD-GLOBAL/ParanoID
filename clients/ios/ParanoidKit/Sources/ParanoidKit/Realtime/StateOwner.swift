@@ -102,6 +102,9 @@ public actor StateOwner {
     private let clock: MonotonicClock
     private let hook: any PushHook
 
+    private var freezeHandler: (@Sendable () -> Void)?
+    private var freezeNotified = false
+
     private var enabled = false
     private var closed = false
     private var run = Generation(run: 0)
@@ -145,10 +148,12 @@ public actor StateOwner {
     /// already running is asked to run a cycle now rather than to restart. A
     /// closed owner does neither.
     ///
-    /// - Returns: the generation in force after the call.
+    /// - Returns: the current counter, including the unchanged old counter when
+    ///   closed or frozen. A returned token is not proof of a running lane;
+    ///   callers must check `current`/`isCurrent` before acting on it.
     @discardableResult
     public func start() -> Generation {
-        guard !closed else { return run }
+        guard !closed, !client.isBroken else { return run }
         if !enabled {
             enabled = true
             run = run.next
@@ -187,7 +192,7 @@ public actor StateOwner {
     ///   nothing was minted because the owner is stopped or closed.
     @discardableResult
     public func restart() -> Generation? {
-        guard !closed, enabled else { return nil }
+        guard !closed, !client.isBroken, enabled else { return nil }
         run = run.next
         hook.wake()
         return run
@@ -258,19 +263,27 @@ public actor StateOwner {
     public func perform<T: Sendable>(_ generation: Generation? = nil,
                                      _ body: sending (SelfServiceClient) throws -> T) throws -> T {
         precondition(isOnOwner, "every bridge call runs on the state owner")
+        defer { notifyFreezeIfNeeded() }
         if let generation { try check(generation) }
         guard !client.isBroken else { throw SelfServiceError.frozen }
-        do {
-            return try body(client)
-        } catch {
-            // "Any failure sets isBroken for the rest of the process, so
-            // nothing derived from that candidate is adopted or sent"
-            // (`TextEngine.java:226-237`): the lanes stop here, and the
-            // application is off the network because `updateTrust()` is the
-            // only source of a realm and a pin.
-            if client.isBroken { enabled = false }
-            throw error
-        }
+        return try body(client)
+    }
+
+    /// Installed before lanes start. Called synchronously on this owner, not
+    /// via a receive-lane catch or UI hop: a parked receive may be superseded.
+    public func setFreezeHandler(_ handler: @escaping @Sendable () -> Void) {
+        precondition(freezeHandler == nil, "install the terminal handler once")
+        freezeHandler = handler
+        notifyFreezeIfNeeded()
+    }
+
+    private func notifyFreezeIfNeeded() {
+        guard client.isBroken else { return }
+        enabled = false
+        guard !freezeNotified, freezeHandler != nil else { return }
+        // Mark before calling out so reentrant cleanup cannot notify twice.
+        freezeNotified = true
+        freezeHandler?()
     }
 
     // MARK: - The session and the capability

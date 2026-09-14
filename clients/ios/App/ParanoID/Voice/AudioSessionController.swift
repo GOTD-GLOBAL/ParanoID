@@ -120,7 +120,8 @@ final class AudioSessionController: @unchecked Sendable {
     /// This device's own camera. It decides the proximity sensor and, with
     /// ``remoteVideo``, the screen.
     private var video = false
-    /// The peer's camera. It decides the screen and nothing else.
+    /// The peer's camera. Like local video, it keeps the stage visible and
+    /// prevents proximity blanking; it does not change the audio route.
     private var remoteVideo = false
     /// Both are touched on ``keepAliveQueue`` and nowhere else.
     private var keepAlive: AVAudioPlayer?
@@ -218,16 +219,16 @@ final class AudioSessionController: @unchecked Sendable {
         }
     }
 
-    /// Whether the **peer's** camera is on. It decides the screen and nothing
-    /// else.
+    /// Whether the **peer's** camera is on. It keeps the screen awake and
+    /// disables proximity blanking without changing the audio route.
     ///
     /// A call with the peer's camera on and this device's off is the ordinary
     /// one-way video call, and it is drawn with the same stage as a two-way
     /// one (`CallScreen.showsStage`, `MainActivity.java:533-537`:
     /// `showStage = live && (localVideo || remoteVideo)`, with
-    /// `FLAG_KEEP_SCREEN_ON` bound to that flag). The proximity sensor stays
-    /// local-only, exactly as on Android (`WebRtcAudioEngine.java:401`): the
-    /// peer's camera says nothing about this device being against a face.
+    /// `FLAG_KEEP_SCREEN_ON` bound to that flag). Either camera also disables
+    /// proximity blanking: keeping the idle timer off alone cannot keep a
+    /// remote-only video stage visible when the proximity sensor is covered.
     func setRemoteVideo(_ enabled: Bool) {
         queue.async { [self] in
             remoteVideo = enabled
@@ -307,8 +308,16 @@ final class AudioSessionController: @unchecked Sendable {
 
     // MARK: - The route, the proximity sensor and the screen
 
-    /// Applies the speakerphone decision and the two screen behaviours that
-    /// follow from it. Called on ``queue``.
+    /// Pure decision used by the route application and deterministic tests.
+    /// Neither local nor remote video may be hidden by proximity blanking.
+    static func screenPolicy(held: Bool, audible: Bool, video: Bool, remoteVideo: Bool,
+                             speaker: Bool, headset: Bool) -> (proximity: Bool, awake: Bool) {
+        let proximity = held && audible && !video && !remoteVideo && !speaker && !headset
+        let awake = held && (video || remoteVideo)
+        return (proximity, awake)
+    }
+
+    /// Applies routing and screen policy on ``queue``.
     private func applyRoute() {
         let session = RTCAudioSession.sharedInstance()
         if held {
@@ -317,18 +326,14 @@ final class AudioSessionController: @unchecked Sendable {
             try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)
             session.unlockForConfiguration()
         }
-        // The earpiece is the only route a face can be against, and the local
-        // camera is the one thing that must not be blanked. `audible` is
-        // Android's `connected`: a call that is only ringing must never blank
-        // the screen, or a phone lying face down would hide «Ответить» from
-        // the person it is ringing for (`WebRtcAudioEngine.java:401`).
-        let proximity = held && audible && !video && !speaker && !isHeadsetRoute
-        // Either camera keeps the screen awake, because the stage is drawn for
-        // either one: a one-way video call must not dim halfway through.
-        let awake = held && (video || remoteVideo)
+        // Ringing never blanks the screen; either video direction must remain
+        // visible. Audio-only earpiece behavior is unchanged.
+        let policy = Self.screenPolicy(held: held, audible: audible, video: video,
+                                       remoteVideo: remoteVideo, speaker: speaker,
+                                       headset: isHeadsetRoute)
         Task { @MainActor in
-            UIDevice.current.isProximityMonitoringEnabled = proximity
-            UIApplication.shared.isIdleTimerDisabled = awake
+            UIDevice.current.isProximityMonitoringEnabled = policy.proximity
+            UIApplication.shared.isIdleTimerDisabled = policy.awake
         }
     }
 

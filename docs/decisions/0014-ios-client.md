@@ -139,8 +139,11 @@ this ADR — acceptance remains the human decision owner's.
 On a device ATS blocks a self-signed leaf on a public IP before the pinning
 delegate runs, and it offers no exception keyed by an IP literal, so a pinned
 server without a domain name is unreachable with it on. The client relies on its
-own pin, never on a CA chain, and a contract test forbids any session outside
-the pinning delegate; the threat delta records the measurement. This is a
+own pin, never on a CA chain. A finite lexical gate inventories production Swift
+sources, restricts session constructors to reviewed pinned factories and tests
+negative mutations. It is not Swift name-resolution/data-flow proof; new factories
+and network APIs still require security review. The threat delta records the
+measurement and limits. This is a
 security-boundary detail of this decision, not a widening of it.
 
 ## Consequences

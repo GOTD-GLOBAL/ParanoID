@@ -6,6 +6,31 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## iOS PR41 Mac verification — package compilation blocked (2026-09-14)
+
+Yaroslav reports app compilation and all 64 signed-simulator ParanoIDTests
+passing on exact e642907; package tests executed **zero** because a new
+InterruptedOnboardingTests fixture failed Swift6 region isolation. The
+[complete receipt](evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
+retains the failure and successful app run separately. The follow-up replaces
+retained credential object graphs with Sendable Data and avoids unnecessary
+onboarding candidates once own contact material exists. Its compiler/runtime
+result remains unverified pending the new-SHA Mac run.
+[Handoff and review disposition](../clients/ios/review-integration-handoff.md).
+PR41 remains draft; no merge, device/live action or ADR acceptance is implied.
+
+## iOS review integration corrections — local candidate (2026-09-14)
+
+Yaroslav requested coordinator implementation of F1–F7 from the full PR36 review
+on f1fbdb2, followed by his Mac verification. The separate candidate covers
+owner-ordered freeze notification, call-bound Answer consent, safe initial-open
+retry, valid onboarding checkpoint completion, call-scoped TURN cancellation,
+remote-video proximity and the pinned-session source gate. The scope remains
+iOS/tests/documentation only; RFC-0021 and ADR-0014 stay proposed.
+[Handoff and exact verification scope](../clients/ios/review-integration-handoff.md)
+separate Linux source checks from pending Swift/XCTest/simulator execution.
+No device, main merge, TestFlight or live-server action is implied.
+
 ## iOS lazy wrapping-key correction — local candidate (2026-09-14)
 
 At Yaroslav's request, the coordinator implemented a separate candidate based on
