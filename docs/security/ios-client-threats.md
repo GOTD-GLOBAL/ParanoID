@@ -165,6 +165,19 @@ fixed in this pull request.
    pinned key was unchanged; the cause is under investigation on the branch
    and no device logs were collected.
 
+## C1: stale non-camera call controls
+
+The candidate binds End/Reject/Hangup and mute/speaker UI operations to both the
+original call ID and generation before controller mutation on the owner. This
+prevents an action taken in A from rejecting or altering incoming B after an
+asynchronous hop. Existing owner-local synchronous methods remain for internal
+paths/tests; production coordinator forwarding uses only scoped variants.
+`CallControlDispatchTests` holds real owner dispatch while valid readiness/offer
+processing replaces A with B. Its signaling/media ports are fakes. The
+[C1 handoff](../clients/ios/call-controls-handoff.md) separates source RED/GREEN,
+Mac behavioral baseline RED, new-SHA runtime GREEN and physical-device gaps.
+No assertion of unsolicited capture or measured media-stop latency is added.
+
 ## Review integration delta — 2026-09-14 candidate
 
 - Storage freeze from any owner operation terminates live call authority on the

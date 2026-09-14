@@ -810,11 +810,11 @@ final class AppModel {
     /// is over (`MainActivity.java:473`).
     func endCall() {
         cancelCallIntent()
-        guard isCallActive else {
+        guard let call, isCallActive else {
             showsCall = false
             return
         }
-        Task { await calls?.end() }
+        Task { await calls?.end(callId: call.callId, generation: call.generation) }
     }
 
     /// «К переписке»: the call keeps running behind the conversation.
@@ -825,13 +825,13 @@ final class AppModel {
     /// «Выключить микрофон» / «Включить микрофон» (`MainActivity.java:466`).
     func toggleMute() {
         guard let call else { return }
-        Task { await calls?.setMuted(!call.muted) }
+        Task { await calls?.setMuted(!call.muted, callId: call.callId, generation: call.generation) }
     }
 
     /// «Громкая связь» / «Телефонный динамик» (`MainActivity.java:467`).
     func toggleSpeaker() {
         guard let call else { return }
-        Task { await calls?.setSpeaker(!call.speaker) }
+        Task { await calls?.setSpeaker(!call.speaker, callId: call.callId, generation: call.generation) }
     }
 
     /// «Включить камеру» / «Выключить камеру» (`MainActivity.toggleVideo`,

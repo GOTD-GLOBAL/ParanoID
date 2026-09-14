@@ -61,6 +61,8 @@ jobs:
           python3 clients/ios/test_freeze_open_contract.py
           python3 clients/ios/test_interrupted_onboarding_contract.py
           python3 clients/ios/test_call_review_regressions.py
+          python3 clients/ios/test_call_control_targeting.py
+          python3 clients/ios/test_call_control_baseline_harness.py
           python3 clients/ios/test_pinned_session_contract.py
           python3 clients/ios/test_call_controller_parity.py
           python3 clients/ios/test_docs_consistency.py
