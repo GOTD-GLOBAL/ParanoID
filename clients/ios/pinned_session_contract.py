@@ -8,7 +8,9 @@ proof of TLS behavior. Runtime pin/redirect/configuration tests remain necessary
 
 Policy: exactly one reviewed constructor expression in each of three files;
 reviewed factory/delegate wiring; no other URLSession value references, aliases,
-metatypes, subclasses, explicit .init or .shared. Simple immediately inferred
+literal URLSession.self metatypes, subclasses, explicit .init or .shared.
+Computed type(of:) metatypes, generic T.init and reflection are not excluded.
+Simple immediately inferred
 initializers/shared values in URLSession annotations/returns are also rejected.
 Arbitrary inferred expressions, shadowing, macros, reflection, imported aliases
 and computed factories need Swift-aware review; do not describe this as semantic

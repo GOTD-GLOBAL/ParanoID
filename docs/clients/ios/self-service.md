@@ -109,7 +109,9 @@ hexadecimal digits; a schema-0 state left by a crash is validated by running
 `upgrade_v2` as a dry run that commits nothing; the wrapper realm must be the
 realm the core state was created for. Before any connection, `ProofFlow` asks the
 owner to resume valid onboarding checkpoints: commit a schema-0 upgrade and, for
-active registration, prepare any missing own contact material. This uses the
+active registration, prepare any missing own contact material. A single read-only
+core view gates preparation on absent contact material; completed onboarding
+issues no candidate and no no-op commit depends on JSON text byte equality. This uses the
 existing core commands; it creates no replacement identity and does not repair
 invalid/missing storage. Opening itself remains validation-only.
 Every transition goes through one

@@ -205,11 +205,17 @@ blacklist did not exclude configured sessions through variable aliases (F7).
 App/ParanoID and ParanoidKit Swift sources, including inactive conditional
 branches. It permits only three exact reviewed constructors and checks their
 pinned-factory wiring. Negative mutations cover variable configurations, shared
-sessions, explicit/inferred initializers, direct aliases/metatypes and extra
+sessions, covered explicit/immediately inferred initializers, aliases that name
+`URLSession` directly, the literal `URLSession.self`, and extra
 constructors even inside approved files. Comments/strings cannot satisfy the
 allowlist. This is finite lexical enforcement, not Swift parsing/name resolution
 or data-flow proof: arbitrary inference, shadowing, macros, reflection, imported
-aliases and other network APIs are outside its assurance. Tests/probes/binaries
+aliases and other network APIs are outside its assurance. In particular,
+`type(of: pinned.makeSession()).init(configuration: .ephemeral)`, generic
+`T.init(configuration:)` under `T: URLSession`, and
+`NSClassFromString("NSURLSession")` are not excluded by this gate. The first is
+a computed metatype, not the direct `URLSession.self` spelling checked above.
+Tests/probes/binaries
 are outside its production-source inventory. Security review and the existing
 runtime pin/configuration/redirect tests remain required; no MITM reproduction
 or claim of universal constructor exclusion is made. Apple submission still

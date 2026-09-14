@@ -538,7 +538,9 @@ class UiContract(unittest.TestCase):
         self.present('try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)',
                      audio, AUDIO)
         self.present('UIDevice.current.isProximityMonitoringEnabled = policy.proximity', audio, AUDIO)
-        # The proximity sensor is local-only and **connected-only**, as on
+        # The proximity sensor is audio-only and **connected-only**. Both local
+        # and remote video exclude blanking; the retained Android source below
+        # checks local video only. It remains connected-only, as on
         # Android (`WebRtcAudioEngine.java:401`,
         # `!speaker && connected && !videoEnabled`): a ringing call must never
         # blank the screen, or a phone lying face down would hide «Ответить»

@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS PR41 Mac follow-up — 2026-09-14
+
+- Correct a Swift6 region-isolation error in the interrupted-onboarding test
+  fixture using Sendable credential bytes, not unchecked client sharing.
+- Skip contact-preparation candidates when onboarding is already complete;
+  refine ATS lexical-gate coverage and baseline-test evidence wording.
+- Record the e642907 Mac receipt: app/simulator 64 PASS, package compile failure
+  with zero tests executed. The new revision still requires Mac verification.
+
 ### iOS review integration corrections — 2026-09-14
 
 - Candidate fixes owner-ordered call termination on storage freeze, call-bound

@@ -22,6 +22,15 @@ def body(source, declaration):
 
 
 class InterruptedOnboardingContract(unittest.TestCase):
+    def test_checkpoint_comparison_keeps_only_sendable_credential_bytes(self):
+        tests = (ROOT.parents[2] / "Tests/ParanoidKitTests/InterruptedOnboardingTests.swift").read_text()
+        first = body(tests, "func testSchemaZeroCheckpointResumesSameIdentityBeforeRegistration()")
+        self.assertIn("let credential = try credentialBytes(resumed)", first)
+        self.assertNotIn("as NSDictionary", first)
+        self.assertIn("StandServer(credential: decodeCredential(credentialBytes(resumed)))", first)
+        self.assertIn("credentialBytes(final), credential", first)
+        self.assertIn("private func credentialBytes(_ client: SelfServiceClient) throws -> Data", tests)
+
     def test_retained_schema_zero_is_committed_before_registration(self):
         client = (ROOT / "SelfServiceClient.swift").read_text()
         flow = (ROOT / "ProofFlow.swift").read_text()
@@ -46,8 +55,12 @@ class InterruptedOnboardingContract(unittest.TestCase):
     def test_active_checkpoint_prepares_contact_without_registration(self):
         client = (ROOT / "SelfServiceClient.swift").read_text()
         resume = body(client, "func resumeOnboarding() throws")
-        self.assertRegex(resume, r'if try active\(\)\s*\{\s*try apply\(\["op": "prepare_contact_v2"\]\)',
-                         "F4: active enrollment still needs durable contact preparation")
+        self.assertIn('let current = try view().object', resume)
+        self.assertIn('enrollment["mode"] as? String == "active"', resume)
+        self.assertIn('isAbsent(current["contact"]) else { return }', resume)
+        self.assertLess(resume.index('isAbsent(current["contact"])'),
+                        resume.index('try apply(["op": "prepare_contact_v2"])'))
+        self.assertNotIn('try active()', resume, "one read-only view, not a redundant core query")
         self.assertNotIn('"server_status_v2"', resume)
         self.assertNotIn("sink.save", resume, "resume must use the existing guarded apply path")
         apply = body(client, "private func apply(")

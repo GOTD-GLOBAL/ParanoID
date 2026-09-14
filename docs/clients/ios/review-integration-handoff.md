@@ -24,6 +24,64 @@ Requirements: REQ-CLIENT-001, REQ-ID-005/008, REQ-MSG-002 and REQ-CALL-002/003.
 and decision status. No server, shared core, Android, key protocol or deployment
 code changes. Human risk/decision owner remains `martadvix-web`.
 
+## Mac receipt for e642907 and follow-up gate
+
+Yaroslav supplied the full [Mac receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
+for exact `e6429070772bed303db109fb42d2ce41064b888b`, run 2026-09-14
+14:47–14:50Z on macOS 26.5.2 / Xcode 26.6 / Swift 6.3.3. These are
+contributor-reported executions, not coordinator execution:
+
+- App compilation and signed clean-simulator `ParanoIDTests`: **64 tests,
+  0 failures**, including Keychain and OpeningRetryTests.
+- Python gates and changed-Markdown lint: **PASS**.
+- All three `swift test` commands: **exit 1, zero tests executed**. The package
+  test target fails compilation at InterruptedOnboardingTests:39: the retained
+  `NSDictionary` credential belongs to the region of `resumed`, which is sent
+  into StateOwner while that credential remains locally used. The production
+  openClient sending-result fix compiled, but source review missed this separate
+  fixture ownership error. Package acceptance is **blocked**, not green.
+
+The follow-up replaces retained credential object graphs with sorted JSON `Data`
+(a Sendable value). Server fixture objects are decoded from those bytes and
+full-credential equality assertions are preserved. No unchecked Sendable client
+or actor-isolation waiver is introduced. The source regression was RED before
+this correction and GREEN after; **the correction is not compiler-confirmed on
+Linux**. The next exact SHA requires the same full Mac run, including both
+filtered package commands and the whole signed-simulator app suite.
+
+The optional review observations are dispositioned explicitly:
+
+1. ATS wording now names the directly checked spellings and expressly excludes
+   computed `type(of:)` metatypes, generic initialization and reflection. No
+   universal metatype/alias coverage is claimed.
+2. resumeOnboarding reads one core view and only prepares contact material when
+   active enrollment lacks it. A complete checkpoint produces no candidate,
+   so this path no longer relies on JSON byte equality to avoid repeat commits.
+3. A stale Answer does not cancel another in-flight intent. This is retained
+   deliberately: a stale action should not gain authority over a current intent.
+4. The opening test still builds the full runtime and uses the internal factory
+   seam, with no identity/server account; it is not resource-lifecycle coverage.
+   Test-runtime disposal/DEBUG-only seam restructuring is deferred rather than
+   bundled into this ownership fix.
+5. start() retains its existing return type; its documentation now states that
+   a returned old counter does not mean started. `current`/`isCurrent` decide.
+6. Baseline RED counts below distinguish the original test version from the
+   final source gate; the stale local-only proximity comment is corrected.
+
+Follow-up Linux verification: onboarding source gate **3 PASS** (two expected
+assertion failures against e642907 source in the independent baseline probe),
+freeze/open **3 PASS**, call review **5 PASS**, pinned mutations **11 PASS**,
+UI **20 PASS**, storage bootstrap **5 PASS**; docs consistency and the unchanged
+six Rust ABI tests pass. Six changed Markdown documents pass lint; the original
+receipt has a file-local MD010 exemption only to preserve its xcodebuild tab.
+An independent fresh GPT-6-Astra context found no source-level blocker in the
+Data ownership boundary or active/missing-contact guard. This repeats neither
+the prior compiler overconfidence nor a Swift test success claim: **new-SHA
+compilation and package/app runtime results are still pending on Mac**.
+
+No new Mac result is implied by the e642907 receipt. No merge or decision
+acceptance follows from this record.
+
 ## Corrections and regression mapping
 
 - **F1:** `StateOwner.perform` synchronously notifies its installed terminal
@@ -64,9 +122,11 @@ Linux source/mutation checks, **not execution of the Swift regressions**.
 The coordinator's Linux host has no Swift/Xcode executable. New Swift tests,
 Apple framework type checking, Keychain, audio/media and simulator behavior are
 **NOT RUN here**. Prior PR40 Mac receipts remain scoped to their exact runtime
-source and do not verify these new changes. Initial F1/F3 source tests were RED
-with two assertion failures on the old code, then GREEN after correction.
-Final Linux verification on the candidate:
+source and do not verify these new changes. The initial two-test F1/F3 source
+gate produced two assertion failures on the old code, then GREEN. That is a
+historical run of the initial gate, not the final three-test suite: Yaroslav
+reports four failures for the final gate against f1fbdb2 in the receipt above.
+Linux verification on the original e642907 candidate (before this follow-up):
 
 - Freeze/open contracts: **3 PASS**; call review contracts: **5 PASS**;
   interrupted onboarding: **2 PASS**; pinned-session mutations: **11 PASS**.
@@ -86,7 +146,8 @@ Final Linux verification on the candidate:
   as well as existing sending/if-await syntax; no Swift syntax/compile PASS is
   claimed from that parser.
 
-Independent fresh-context **GPT-6-Astra** source reviews found no remaining
+On the original e642907 source, independent fresh-context **GPT-6-Astra**
+reviews reported no remaining
 bounded F1–F7 source blockers after correction. The initial F1/F3 review found
 that the injected bootstrap factory needed a `sending` result contract; a third
 context added it in both factory types, with an extra RED/GREEN source test,
@@ -120,6 +181,10 @@ python3 -B clients/ios/test_pinned_session_contract.py
 python3 -B clients/ios/test_storage_bootstrap_contract.py
 python3 -B clients/ios/test_ui_contract.py
 python3 -B clients/ios/test_docs_consistency.py
+swift test --package-path clients/ios/ParanoidKit \
+  --scratch-path clients/ios/out/spm --filter LazySnapshotKeyTests
+swift test --package-path clients/ios/ParanoidKit \
+  --scratch-path clients/ios/out/spm --filter SnapshotStoreTests
 swift test --package-path clients/ios/ParanoidKit \
   --scratch-path clients/ios/out/spm
 ```

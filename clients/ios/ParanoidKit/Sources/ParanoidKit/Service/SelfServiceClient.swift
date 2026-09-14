@@ -173,12 +173,14 @@ public final class SelfServiceClient {
         if stateVersion == Snapshot.legacyStateVersion {
             try apply(["op": "upgrade_v2"])
         }
-        // server_status_v2 and prepare_contact_v2 are separate commits. An
-        // active enrollment alone does not mean the fallback key was saved.
-        // The core preparation is idempotent; apply writes nothing if complete.
-        if try active() {
-            try apply(["op": "prepare_contact_v2"])
-        }
+        // Inspect one read-only view. Once contact material exists, do not
+        // issue a candidate at all: no-op must not depend on serialized JSON
+        // retaining byte-for-byte ordering across repeated connections.
+        let current = try view().object
+        guard let enrollment = current["enrollment"] as? [String: Any],
+              enrollment["mode"] as? String == "active",
+              isAbsent(current["contact"]) else { return }
+        try apply(["op": "prepare_contact_v2"])
     }
 
     /// Whether a state exists at all (`SelfServiceClient.java:196`).

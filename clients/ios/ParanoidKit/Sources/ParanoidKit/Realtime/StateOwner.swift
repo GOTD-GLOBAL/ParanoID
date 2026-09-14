@@ -148,7 +148,9 @@ public actor StateOwner {
     /// already running is asked to run a cycle now rather than to restart. A
     /// closed owner does neither.
     ///
-    /// - Returns: the generation in force after the call.
+    /// - Returns: the current counter, including the unchanged old counter when
+    ///   closed or frozen. A returned token is not proof of a running lane;
+    ///   callers must check `current`/`isCurrent` before acting on it.
     @discardableResult
     public func start() -> Generation {
         guard !closed, !client.isBroken else { return run }
