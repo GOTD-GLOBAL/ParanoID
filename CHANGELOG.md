@@ -8,6 +8,18 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS storage: verify first-key readback — 2026-09-14
+
+- Follow-up candidate verifies newly created Keychain bytes with a separate load
+  and equality check before sealing/writing a snapshot. A failed check preserves
+  the item and terminally breaks the store. The unused eager helper is removed.
+- Fresh-store direct-commit regressions cover missing file/key and unreadable
+  keys; error wrapping is documented and tested. Contributor execution of
+  `628958b` passed 14 lazy-key, 25 storage, 278 package and 11 signed-simulator
+  Keychain tests ([receipt](docs/project/evidence/ios-client-20260913/lazy-storage-mac-628958b.md)).
+  Baseline RED remains in the separate 0709212 receipt. No physical-device,
+  power-loss, merge or release result is implied.
+
 ### Android client: remove fixed APK ceiling — 2026-09-13
 
 - Local client candidate no longer rejects updates/provider files merely because
@@ -54,25 +66,14 @@ public contract is declared.
   SwiftUI application over the **unchanged** shared Rust core through a C-ABI
   bridge crate beside it (`clients/ios/`). No server, core, `key-protocol`,
   Android or deploy change; a boundary gate enforces that.
-- Storage is a Keychain-held AES-256-GCM key
-  (`AfterFirstUnlockThisDeviceOnly`) plus a Data Protection file committed with
-  `F_FULLFSYNC`, `rename(2)` and a byte-exact read-back; any failure freezes
-  the process. An install marker makes a reinstall a clean install with a new
-  identity, because a Keychain item outlives the application container on iOS —
-  the one platform difference from Android's key-and-file rule, recorded as a
-  platform note rather than a relaxation. After the owner-side reviews of
-  2026-09-14 that marker never deletes a key while a state file is there (a
-  lost marker freezes with both halves intact instead, because a deleted
-  wrapping key cannot be undone), and a container that has never committed a
-  file no longer freezes over the key its first run created before the user
-  reached «Создать ID» — an exception that opens only on the container's own
-  positive fact, `paranoid.firstrun.pending.v1`, recorded before that key
-  existed and withdrawn by the first commit, so a key without a file freezes
-  on every silence, an installation made by any earlier build included. The
-  first form of that exception read the absence of a "committed here" record
-  as evidence and was replaced the same day, after the second review showed
-  that a lost record and a lost file added up to a fresh identity over the
-  old key.
+- Storage uses the unchanged Keychain-held wrapping key and sealed snapshot
+  codec. The lazy-key correction creates no key on Welcome and acquires one
+  only at first commit; marker-present key/file XOR always freezes, ignoring
+  prior pending/commit defaults. Failure after first key creation may freeze an
+  incomplete installation rather than delete the key. Missing install marker
+  with a surviving snapshot also freezes without deletion. Existing valid
+  state reopens unchanged; Apple verification of this correction is pending
+  ([handoff](docs/clients/ios/lazy-storage-handoff.md)), not a released fix.
 - TLS is leaf-SPKI pinning evaluated on `Security.framework` with the same nine
   checks and the same pin the Android client carries. The hosted certificate
   was renewed **with the same key** on 2026-09-13, so the pin is unchanged and

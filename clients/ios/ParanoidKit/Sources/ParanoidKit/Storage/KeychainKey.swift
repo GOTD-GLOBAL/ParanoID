@@ -18,6 +18,13 @@ public protocol RetainedKey {
     func deleteRetained() throws
 }
 
+/// The storage seam used by SnapshotStore. load() must never create, and
+/// create() must refuse replacement. Errors are not interpreted as absence.
+public protocol WrappingKeyStore: RetainedKey {
+    func load() throws -> SymmetricKey?
+    func create() throws -> SymmetricKey
+}
+
 /// The AES-256 wrapping key of `text-state.enc`, held in the Keychain.
 ///
 /// It is the iOS counterpart of the Android Keystore alias
@@ -40,7 +47,7 @@ public protocol RetainedKey {
 /// - `kSecAttrSynchronizable` = `false`: never iCloud Keychain.
 ///
 /// The key is created once and never regenerated over an existing state file.
-public struct KeychainKey: RetainedKey, Sendable {
+public struct KeychainKey: WrappingKeyStore, Sendable {
     /// The one account this client uses, unchanged from Android.
     public static let account = "paranoid-text-state-v0"
     /// AES-256.
@@ -137,22 +144,6 @@ public struct KeychainKey: RetainedKey, Sendable {
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw StorageError.keychain(status) }
         return SymmetricKey(data: material)
-    }
-
-    /// Returns the stored key, creating one only when there is no state file
-    /// to make unreadable.
-    ///
-    /// This is `TextEngine.java:206-218` line for line: a missing key with a
-    /// snapshot present is "key missing; do not regenerate", which here is
-    /// `StorageError.frozen`. `StorageGuard.start(...)` has already decided
-    /// the same thing; the check is repeated at the point of creation so that
-    /// no later caller can reach a regeneration by skipping the guard.
-    ///
-    /// - Throws: `StorageError.frozen`, `StorageError.keychain`.
-    public func loadOrCreate(snapshotExists: Bool) throws -> SymmetricKey {
-        if let existing = try load() { return existing }
-        guard !snapshotExists else { throw StorageError.frozen }
-        return try create()
     }
 
     /// Deletes the item, if any.

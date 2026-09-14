@@ -99,18 +99,13 @@ compatibility.
    sufficient and reviewable as text.
 
 Storage, pinning and media sub-decisions within option 3 are recorded in
-[RFC-0021 Proposed design](../rfcs/0021-ios-client.md#proposed-design): the
-install marker rule (Keychain outlives the container; an absent marker with no
-state file is a fresh install and the stale key is deleted, an absent marker
-beside a state file freezes without deleting anything, and a key with no file
-opens only on the container's own positive word, `paranoid.firstrun.pending.v1`,
-recorded before that key existed and withdrawn by the first commit — every
-silence freezes with the key kept, an installation from a build before the
-rule included. Both corrections date from the two owner-side reviews of
-2026-09-14; the second replaced the first's "committed here" record, whose
-absence had been read as evidence; see the RFC's storage boundary),
-`Security.framework` leaf-SPKI evaluation with the same pin as Android, and
-WebRTC.xcframework `150.7871.01`.
+[RFC-0021](../rfcs/0021-ios-client.md#proposed-design). The current correction
+creates the wrapping key only at first commit; marker-present key/file XOR has
+no defaults-based exception. The existing install.v1 reinstall distinction,
+Security.framework pinning and WebRTC dependency remain. See
+[the correction handoff](../clients/ios/lazy-storage-handoff.md) for exact crash
+cost, transition matrix and pending Mac tests. This is a candidate requested by
+the contributor, not an accepted architectural decision.
 
 ## Decision
 
@@ -199,47 +194,20 @@ security-boundary detail of this decision, not a widening of it.
   marker beside a state file also fails closed and deletes nothing — the
   reviewer's P1 — at the deliberate cost that lost defaults with a surviving
   file now need a person, which the owner should confirm rather than inherit.
-- The fail-closed rule with the marker present is weakened in exactly one row
-  and no other, and this is the clause to read before approving: a key whose
-  container **says, in a fact recorded before that key existed, that it has
-  committed nothing** (`paranoid.firstrun.pending.v1`) is an interrupted
-  first run and opens normally (the reviewer's second P1 — freezing it was a
-  permanent freeze a user reached by opening the application once and
-  closing it). Every other key without a file freezes with the key kept: a
-  container that committed a file, one whose fact was lost and an
-  installation from a build before the rule are not told apart. The first
-  form of this row read the *absence* of a "committed here" record as
-  evidence and was rejected on the second review of the same day, because a
-  lost record and a lost file added up to a fresh identity over the old key.
-  Nothing in any row replaces a state file, hands the core a fresh identity
-  while a usable state exists, or deletes a key that any file could still
-  need.
-- The one loss the inversion does not close, disclosed rather than absorbed:
-  the first commit withdraws the pending fact with a defaults write, and a
-  withdrawal that was acknowledged but never persisted, followed by the loss
-  of the state file before any launch has opened it, still opens the client
-  on the stale claim. The window is the one between the first commit and the
-  next launch — the withdrawal happens before the rename, the launch that
-  opens the file withdraws a stale claim again, and a container that refuses
-  the withdrawal breaks the store with nothing renamed — and
-  `SnapshotStoreTests` holds it as a strict expected failure. Closing it
-  needs a fact that lives with the key (an attribute of the Keychain item)
-  or a key created at the first commit as Android's is; either is a change
-  to this storage boundary for the owner, not an operational fix.
-- The restore nothing on the device can refuse, stated for the owner rather
-  than counted as closed: a backup taken during an interrupted first run —
-  which lasts until the user returns to «Создать ID», and can be days — and
-  restored onto the same device on any later day brings the pending fact
-  back, an encrypted backup brings the `ThisDeviceOnly` key back with it,
-  and the excluded file does not come back; the launch after it is the
-  interrupted-first-run row and starts a new identity over that key. The
-  restore took every store the rule reads back to the same moment, so no
-  fact in the defaults or on the Keychain item tells it apart, and a key
-  created at the first commit would be absent from the copy, which is the
-  row that holds neither half. What it costs is the identity the restore had
-  already discarded with the file — the cost of the accepted restore onto a
-  new iPhone, with the key reused instead of new — and what the launch lacks
-  is the visible refusal.
+- Welcome creates no persistent wrapping key. The first commit creates it
+  before the candidate file is written. Keychain and filesystem are not one
+  atomic transaction; a failure after key creation may freeze key-without-file
+  on all later launches. This is an explicit availability cost and never
+  permission to delete the key or start over automatically.
+- Earlier valid key/file pairs remain usable; eager-key-only installations
+  from previous candidates freeze. Old pending/commit defaults are ignored,
+  removing their authority to turn lost history into a fresh client.
+- Complete rollback/removal of both halves cannot be distinguished from an
+  empty installation. No local anti-rollback or backup recovery is promised.
+  The rejected expected-failure bookkeeping scenario is an ordinary regression
+  in the correction; contributor Mac receipts for 0709212 and 628958b now
+  record passing host and signed-simulator checks. Physical-device/upgrade/
+  power-loss checks and human decision acceptance remain outstanding.
 - Keychain class too strict (device locked during a call turns a heartbeat
   commit into a freeze): question 3 fixes the class before storage code is
   written.
