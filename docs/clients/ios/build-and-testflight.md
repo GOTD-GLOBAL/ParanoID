@@ -74,16 +74,17 @@ bundle, and it is where the foreground-only promise becomes checkable:
 - `UIBackgroundModes` exactly `[audio]` — no `voip`;
 - **no `aps-environment`** in the plist or in the signed entitlements, so the
   build cannot register for push even by accident;
-- no `NSAppTransportSecurity` and no `NSAllowsArbitraryLoads` — a rule the
-  branch has since overtaken. `adb56be` (2026-09-13) sets
-  `NSAllowsArbitraryLoads = YES`, because on a physical iPhone ATS refused the
-  self-signed leaf on the hosted server's public address before the pinning
-  delegate ran (`NSURLErrorDomain -1200`; measured and recorded in
+- `NSAppTransportSecurity` equal to exactly `{NSAllowsArbitraryLoads: true}`
+  and nothing else. `adb56be` (2026-09-13) set that key because on a physical
+  iPhone App Transport Security refused the self-signed leaf on the hosted
+  server's public address before the pinning delegate ran
+  (`NSURLErrorDomain -1200`; measured and recorded in
   [the threat delta](../../security/ios-client-threats.md) and ADR-0014; a LAN
-  stand never shows it), and `test_ui_contract.py` now requires exactly that
-  key and no `URLSession` outside `PinnedSessionDelegate`. `test_app_bundle.py`
-  has not been changed to match and has not read a bundle built after that
-  commit; its last run predates the change;
+  stand never shows it). The gate was rewritten to require that one key with
+  that one value, so it tests the decision instead of forbidding it, and
+  `test_ui_contract.py` holds the other half: no `URLSession` outside
+  `PinnedSessionDelegate`. The gate has not read a bundle built since the
+  rewrite; its last recorded run predates `adb56be`;
 - one arm64 executable and exactly one embedded framework, whose binary is the
   pinned WebRTC slice;
 - `THIRD_PARTY_NOTICES.txt` identical to what the packager wrote, naming the

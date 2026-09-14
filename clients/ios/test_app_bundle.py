@@ -16,9 +16,14 @@ a package before it goes anywhere near a phone.
 * **No delivery path this client does not have.** ``UIBackgroundModes`` is
   exactly ``[audio]`` — the mode a live call needs — with no ``voip``; no
   ``aps-environment`` in the plist or in the signed entitlements, because
-  there is no push (RFC-0020 is the Android gateway, not this client); and no
-  ``NSAppTransportSecurity`` / ``NSAllowsArbitraryLoads``, because every
-  socket goes through the pinned trust evaluator.
+  there is no push (RFC-0020 is the Android gateway, not this client); and
+  ``NSAppTransportSecurity`` equal to exactly
+  ``{NSAllowsArbitraryLoads: true}`` and nothing else. App Transport Security
+  refuses a self-signed leaf on a public IP address before any delegate runs,
+  and its exception lists take domain names only, so the hosted realm is
+  unreachable with it on; trust is then the pinned evaluator's alone, and
+  ``test_ui_contract.py`` is what forbids a socket that bypasses it. Any other
+  ATS key, or any other value, is a different decision and fails here.
 * **What is inside.** One arm64 Mach-O executable, exactly one embedded
   framework — the pinned ``WebRTC.framework`` — whose binary is byte-for-byte
   the slice ``webrtc_dependency.py`` verified against the pinned archive, and
