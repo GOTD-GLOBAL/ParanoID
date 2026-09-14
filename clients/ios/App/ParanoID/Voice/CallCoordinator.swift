@@ -222,19 +222,16 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     }
 
     /// «Отклонить» while ringing, «Завершить» afterwards.
-    func end() async {
-        await owner.onOwner {
-            if self.controller.currentState == .incoming { self.controller.reject() }
-            else if self.controller.isActive { self.controller.hangup() }
-        }
+    func end(callId: String, generation: CallGeneration) async {
+        await owner.onOwner { self.controller.end(callId: callId, generation: generation) }
     }
 
-    func setMuted(_ muted: Bool) async {
-        await owner.onOwner { self.controller.mute(muted) }
+    func setMuted(_ muted: Bool, callId: String, generation: CallGeneration) async {
+        await owner.onOwner { self.controller.mute(muted, callId: callId, generation: generation) }
     }
 
-    func setSpeaker(_ speaker: Bool) async {
-        await owner.onOwner { self.controller.speaker(speaker) }
+    func setSpeaker(_ speaker: Bool, callId: String, generation: CallGeneration) async {
+        await owner.onOwner { self.controller.speaker(speaker, callId: callId, generation: generation) }
     }
 
     /// The explicit camera toggle. It is the only thing in this client that

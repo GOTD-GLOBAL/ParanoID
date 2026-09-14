@@ -6,6 +6,19 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## C1 call-control correction candidate (2026-09-14)
+
+Following the full cb52330 review, Yaroslav requested binding the remaining call
+controls to the originating ID/generation. A separate candidate now carries both
+fields through the UI/owner hop and checks them inside controller End, Reject,
+Hangup, Mute and Speaker entry points. New tests hold real owner dispatch while
+A is replaced by B. The [C1 Mac handoff](../clients/ios/call-controls-handoff.md)
+includes a disposable old-tree behavioral-RED runner that rejects compilation
+failure as evidence. Coordinator source RED/GREEN is not Apple execution;
+new-SHA Swift GREEN and behavioral RED remain pending on the contributor Mac.
+PR42 separately reconciles the previous receipt/status; neither that receipt nor
+this candidate grants main merge, ADR acceptance or live-action permission.
+
 ## iOS PR41 Mac verification — package compilation blocked (2026-09-14)
 
 Yaroslav reports app compilation and all 64 signed-simulator ParanoIDTests

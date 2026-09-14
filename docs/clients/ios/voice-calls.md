@@ -78,6 +78,17 @@ interface and SDK callbacks share one thread" expressed with this client's
 thread. Each control is enqueued as one `send_call_v1` and resolves only when
 the server's acceptance is durable.
 
+### Call-targeted controls (C1 correction candidate)
+
+End, explicit Reject/Hangup, Mute and Speaker carry original call ID/generation
+and validate them in CallController before mutation, as Answer already does.
+The UI captures its presentation before scheduling work; the owner check is
+still required even if the UI refreshes before that work executes. Legacy
+synchronous owner-local overloads are not used across production UI hops.
+[Call-control handoff](call-controls-handoff.md) records held-dispatch tests,
+old-tree behavioral RED and pending exact-SHA Mac evidence. This changes no wire
+contract, media consent rule, state schema or architecture status.
+
 ### Review corrections (2026-09-14 candidate)
 
 Answer permission results, including refusal, carry the presented call ID and

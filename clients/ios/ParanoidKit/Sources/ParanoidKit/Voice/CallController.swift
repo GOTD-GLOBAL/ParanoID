@@ -401,7 +401,46 @@ public final class CallController {
         }
     }
 
-    /// Refuse a ringing call.
+    // Call-targeted UI operations must carry their original presentation across
+    // every executor hop. These guards execute on the owner before any mutation.
+    private func matchesCall(callId: String, generation: CallGeneration) -> Bool {
+        guard let call = live else { return false }
+        return call.identity.callId == callId && call.generation == generation
+    }
+
+    public func end(callId: String, generation: CallGeneration) {
+        own()
+        guard matchesCall(callId: callId, generation: generation) else { return }
+        if state == .incoming { reject() }
+        else if isActive { hangup() }
+    }
+
+    public func reject(callId: String, generation: CallGeneration) {
+        own()
+        guard matchesCall(callId: callId, generation: generation) else { return }
+        reject()
+    }
+
+    public func hangup(callId: String, generation: CallGeneration) {
+        own()
+        guard matchesCall(callId: callId, generation: generation) else { return }
+        hangup()
+    }
+
+    public func mute(_ muted: Bool, callId: String, generation: CallGeneration) {
+        own()
+        guard matchesCall(callId: callId, generation: generation) else { return }
+        mute(muted)
+    }
+
+    public func speaker(_ speaker: Bool, callId: String, generation: CallGeneration) {
+        own()
+        guard matchesCall(callId: callId, generation: generation) else { return }
+        self.speaker(speaker)
+    }
+
+    /// Refuse a ringing call. Synchronous owner-local entry; callers crossing
+    /// executors must use the ID/generation overload (as for hangup/mute/speaker).
     public func reject() {
         own()
         guard live != nil else { return }

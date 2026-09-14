@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS call-control targeting candidate — 2026-09-14
+
+- Bind End/Reject/Hangup and mute/speaker UI operations to the original call ID
+  and generation inside the state owner, so delayed actions cannot modify a
+  replacement call. Add held-owner-dispatch regressions and an old-tree Mac
+  behavioral-RED harness. Swift execution remains a new-SHA verification gate.
+- No wire/schema, shared core, server, Android or live change.
+
 ### iOS PR41 Mac follow-up — 2026-09-14
 
 - Correct a Swift6 region-isolation error in the interrupted-onboarding test
