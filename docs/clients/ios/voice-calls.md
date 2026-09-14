@@ -86,7 +86,8 @@ The UI captures its presentation before scheduling work; the owner check is
 still required even if the UI refreshes before that work executes. Legacy
 synchronous owner-local overloads are not used across production UI hops.
 [Call-control handoff](call-controls-handoff.md) records held-dispatch tests,
-old-tree behavioral RED and pending exact-SHA Mac evidence. This changes no wire
+old-tree behavioral RED and the executed dad2f7d Mac receipt, applicable to the
+identical runtime/tests/workflows integrated in 96298cd. This changes no wire
 contract, media consent rule, state schema or architecture status.
 
 ### Review corrections (2026-09-14 candidate)

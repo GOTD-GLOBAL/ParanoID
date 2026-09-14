@@ -62,7 +62,20 @@ it ran on that account. Before all three, the only contact this branch had had
 with the hosted server was one TLS handshake that compared the live
 SubjectPublicKeyInfo digest against the pin this client carries.
 
-## Current package/simulator receipt (aab9e5d, identical cb52330 tree)
+## Current package/simulator receipt (dad2f7d, integrated in 96298cd)
+
+Yaroslav's [full dad2f7d receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+records package **300/0**, C1 **7/0**, lazy-key **14/0**, storage **25/0** and
+signed-simulator app **64/0**, with old-code behavioral RED **7 tests / 13
+assertion failures / 0 unexpected** on cb52330. The coordinator verified an
+empty dad2f7d..96298cd diff for clients/ios, .github and CHANGELOG.md after the
+manual documentation-only merge resolution. The Mac evidence applies to that
+identical code, not to new physical-device behavior. The
+[final review](../../project/evidence/ios-client-20260913/pr36-review-96298cd.md)
+records closure scope and retained owner/device/export/live gates. No additional
+Mac run is implied by recording this evidence in documentation.
+
+## Earlier package/simulator receipt (aab9e5d, identical cb52330 tree)
 
 The [complete contributor Mac receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr41-aab9e5d.md)
 records package **293/0**, lazy-key **14/0**, storage **25/0** and signed-simulator
