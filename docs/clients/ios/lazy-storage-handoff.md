@@ -62,9 +62,13 @@ passed, and the strict baseline regression failed as expected. The initial
 missing-notices failure is retained. These are participant-reported results,
 not execution by the coordinator. Physical device/upgrade/power-loss remain NOT RUN.
 
-**Next revision:** new-key readback, removal of the unused eager helper, explicit
-terminal error semantics and fresh-store direct-commit regressions require a new
-Mac run. Do not apply the 0709212 receipt to this follow-up before it is executed.
+**Follow-up executed:** Yaroslav supplied a separate
+[628958b receipt](../../project/evidence/ios-client-20260913/lazy-storage-mac-628958b.md):
+14 lazy-key, 25 storage, 278 full-package and 11 signed-simulator Keychain tests
+passed. This covers readback, helper removal and direct-commit regressions on
+that exact code. The storage findings are closed at host/simulator scope; physical
+validation and permanent decision acceptance remain separate. Recording these
+receipts changes docs only and does not require rerunning unchanged runtime code.
 
 **Executed on Linux:** source-wiring regression was RED with three failures on
 base code, then GREEN after correction; the existing UI source-contract suite
@@ -81,8 +85,9 @@ this does not supply the missing Apple runtime verification.
 **NOT RUN here:** all changed/new Swift tests, CryptoKit execution, Keychain,
 Xcode app build, simulator, physical-device lifecycle and real filesystem power
 loss. No Swift/Xcode toolchain is present on the coordinator host. The contributor
-executed 0709212 as recorded above; the readback/direct-commit follow-up is not
-covered by that receipt and remains NOT RUN until its own Mac verification.
+executed 0709212 and then 628958b as recorded above. The coordinator's Apple-tool
+NOT RUN is not a claim that the contributor did not execute them. Physical-device,
+real upgrade and power-loss coverage remain absent.
 
 `SnapshotStoreTests` retains the lost-bookkeeping/lost-file regression as an
 ordinary assertion, not `XCTExpectFailure`. Legacy pending facts are explicitly

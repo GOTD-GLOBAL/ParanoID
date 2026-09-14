@@ -205,7 +205,9 @@ security-boundary detail of this decision, not a widening of it.
 - Complete rollback/removal of both halves cannot be distinguished from an
   empty installation. No local anti-rollback or backup recovery is promised.
   The rejected expected-failure bookkeeping scenario is an ordinary regression
-  in the correction; its actual Mac/XCTest execution is still pending.
+  in the correction; contributor Mac receipts for 0709212 and 628958b now
+  record passing host and signed-simulator checks. Physical-device/upgrade/
+  power-loss checks and human decision acceptance remain outstanding.
 - Keychain class too strict (device locked during a call turns a heartbeat
   commit into a freeze): question 3 fixes the class before storage code is
   written.

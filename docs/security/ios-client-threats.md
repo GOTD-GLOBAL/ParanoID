@@ -36,18 +36,18 @@ Not used: APNs / PushKit / background refresh / CallKit (foreground-only)
 ## Storage boundary (threat-model boundary 2)
 
 The lazy wrapping-key correction replaces the defaults-based first-run exception;
-old candidate evidence does not certify this implementation. RFC-0021 and ADR-0014
+execution is recorded for exact 628958b in the [Mac receipt](../project/evidence/ios-client-20260913/lazy-storage-mac-628958b.md). RFC-0021 and ADR-0014
 remain proposed. [Mac verification handoff](../clients/ios/lazy-storage-handoff.md).
 
 | Threat | Current control / limitation | Verification |
 | --- | --- | --- |
-| Key or plaintext exposure | Unchanged AES-256-GCM, Keychain accessibility/account and non-synchronizing item; backup exclusion on candidate inode before rename | Existing codec tests; current real-Keychain/device execution NOT RUN |
-| Torn file commit adopts invalid state | Unchanged write, F_FULLFSYNC, rename, byte-exact readback, directory F_FULLFSYNC; errors terminal before candidate adoption/network | Existing injected file-fault tests retained; current Mac run NOT RUN |
-| Welcome exit creates orphan key | Persistent-key SnapshotStore construction/load never create a key; first commit does | LazySnapshotKeyTests and isolated-account KeychainStoreTests; runtime NOT RUN |
-| Lost pending/commit bookkeeping authorizes fresh identity over lost history | No such defaults are read. Marker-present key/file XOR always freezes, including stale positive pending flags | Former expected failure is a strict SnapshotStoreTests regression; runtime NOT RUN |
-| Missing install marker destroys usable snapshot key | A surviving file forces freeze before deletion or marker recording | Host and real-Keychain regression sources retained; current runtime NOT RUN |
+| Key or plaintext exposure | Unchanged AES-256-GCM, Keychain accessibility/account and non-synchronizing item; backup exclusion on candidate inode before rename | Package and signed-simulator Keychain tests reported passing on 628958b; device NOT RUN |
+| Torn file commit adopts invalid state | Unchanged write, F_FULLFSYNC, rename, byte-exact readback, directory F_FULLFSYNC; errors terminal before candidate adoption/network | Injected file-fault tests included in reported passing 628958b Mac suite; power loss NOT RUN |
+| Welcome exit creates orphan key | Persistent-key SnapshotStore construction/load never create a key; first commit does | LazySnapshotKeyTests and isolated-account KeychainStoreTests reported passing on 628958b |
+| Lost pending/commit bookkeeping authorizes fresh identity over lost history | No such defaults are read. Marker-present key/file XOR always freezes, including stale positive pending flags | Former expected failure is a strict regression, reported GREEN on 628958b and RED on d96cea1 |
+| Missing install marker destroys usable snapshot key | A surviving file forces freeze before deletion or marker recording | Host and signed-simulator Keychain regression reported passing on 628958b |
 | First commit creates key, then file commit fails | Key retained, store terminal, next launch freezes. This is an availability cost, not atomic cross-store commit | LazySnapshotKeyTests fault cases; real interruption/power-loss NOT RUN |
-| Key changes/disappears while a store is running | Persistent adapter rechecks key/file continuity and remembers its acquired key; no substitution or regeneration | New runtime regression sources; Mac run NOT RUN |
+| Key changes/disappears while a store is running | Persistent adapter rechecks key/file continuity and remembers its acquired key; no substitution or regeneration | Included in reported passing 628958b Mac host suite |
 | Upgrade from an earlier candidate | Valid key/file pair unchanged; orphan eager key remains frozen even if old pending defaults survive | Upgrade matrix in both suites; physical-device upgrade NOT RUN |
 | Whole-container loss/reinstall or rollback of both key and file | Existing install.v1 reinstall distinction remains; no independent recovery/rollback witness exists | Explicit residual limitation; physical backup/restore NOT RUN |
 

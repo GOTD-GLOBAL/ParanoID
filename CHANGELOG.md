@@ -14,10 +14,11 @@ public contract is declared.
   and equality check before sealing/writing a snapshot. A failed check preserves
   the item and terminally breaks the store. The unused eager helper is removed.
 - Fresh-store direct-commit regressions cover missing file/key and unreadable
-  keys; error wrapping is documented and tested. Apple execution of this
-  follow-up is pending. The contributor's successful Mac/signed-simulator run
-  and baseline RED apply only to `0709212`
-  ([receipt](docs/project/evidence/ios-client-20260913/lazy-storage-mac-0709212.md)).
+  keys; error wrapping is documented and tested. Contributor execution of
+  `628958b` passed 14 lazy-key, 25 storage, 278 package and 11 signed-simulator
+  Keychain tests ([receipt](docs/project/evidence/ios-client-20260913/lazy-storage-mac-628958b.md)).
+  Baseline RED remains in the separate 0709212 receipt. No physical-device,
+  power-loss, merge or release result is implied.
 
 ### Android client: remove fixed APK ceiling — 2026-09-13
 

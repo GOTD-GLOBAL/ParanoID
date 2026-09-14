@@ -263,9 +263,10 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    **Status.** This replaces the rejected bookkeeping designs of `67af672`
    and `d96cea1`, not their historical evidence. The former strict expected
    failure is now an ordinary regression. Source-wiring RED/GREEN was run on
-   Linux; Apple runtime/Keychain results for this correction are NOT RUN until
-   the contributor's Mac verification. The local implementation request is not
-   permanent ADR acceptance. See
+   Linux. Contributor Mac receipts for 0709212 and 628958b now cover the
+   package and signed-simulator Keychain regressions, including baseline RED;
+   physical device/upgrade/power-loss remain NOT RUN. This is not permanent
+   ADR acceptance. See
    [the correction handoff](../clients/ios/lazy-storage-handoff.md).
 
    A stale Keychain key is never used to "recover" anything. This is a
