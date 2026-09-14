@@ -112,6 +112,86 @@ final class LazySnapshotKeyTests: XCTestCase {
         XCTAssertEqual(keys.creations, 1)
     }
 
+    func testDirectCommitRefusesKeyOnlyState() throws {
+        let keys = MemoryWrappingKey()
+        _ = try keys.create()
+        let fs = FakeFileSystem()
+        let store = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+        XCTAssertThrowsError(try store.commit(text)) { error in
+            XCTAssertEqual(error as? StorageError, .broken)
+        }
+        XCTAssertEqual(store.brokenCause as? StorageError, .frozen)
+        XCTAssertEqual(keys.creations, 1)
+        XCTAssertEqual(keys.deletions, 0)
+        XCTAssertFalse(fs.log.contains { if case .write = $0 { return true }; return false })
+    }
+
+    func testDirectCommitRefusesFileOnlyState() throws {
+        let keys = MemoryWrappingKey()
+        let fs = FakeFileSystem()
+        let prior = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+        try prior.commit(text)
+        let before = fs.contents(at: prior.fileURL)
+        keys.material = nil
+        let writes = fs.log.filter { if case .write = $0 { return true }; return false }.count
+        let store = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+        XCTAssertThrowsError(try store.commit(text + " must not replace")) { error in
+            XCTAssertEqual(error as? StorageError, .broken)
+        }
+        XCTAssertEqual(store.brokenCause as? StorageError, .frozen)
+        XCTAssertEqual(keys.creations, 1)
+        XCTAssertEqual(keys.deletions, 0)
+        XCTAssertEqual(fs.contents(at: prior.fileURL), before)
+        XCTAssertEqual(fs.log.filter { if case .write = $0 { return true }; return false }.count, writes)
+    }
+
+    func testDirectCommitRefusesUnreadableKey() throws {
+        let keys = MemoryWrappingKey()
+        keys.unreadable = true
+        let fs = FakeFileSystem()
+        let store = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+        XCTAssertThrowsError(try store.commit(text)) { error in
+            XCTAssertEqual(error as? StorageError, .broken)
+        }
+        XCTAssertEqual(store.brokenCause as? StorageError, .keychain(-25308))
+        XCTAssertEqual(keys.creations, 0)
+        XCTAssertEqual(keys.deletions, 0)
+        XCTAssertFalse(fs.log.contains { if case .write = $0 { return true }; return false })
+    }
+
+    func testFirstKeyIsReadBackBeforeAnyCandidateWrite() throws {
+        let keys = MemoryWrappingKey()
+        let fs = FakeFileSystem()
+        fs.failure = { call in
+            if case .write = call { XCTAssertEqual(keys.events, ["load", "create", "load"]) }
+            return nil
+        }
+        let store = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+        try store.commit(text)
+        XCTAssertEqual(keys.events, ["load", "create", "load"])
+        XCTAssertEqual(try store.load(), text)
+    }
+
+    func testFailedFirstKeyReadbackNeverWritesOrDeletes() throws {
+        for fault in [MemoryWrappingKey.CreateFault.missing, .different, .unreadable] {
+            let keys = MemoryWrappingKey()
+            keys.createFault = fault
+            let fs = FakeFileSystem()
+            let store = SnapshotStore(directory: directory, keyStore: keys, fileSystem: fs)
+            XCTAssertThrowsError(try store.commit(text)) { error in
+                XCTAssertEqual(error as? StorageError, .broken)
+            }
+            let cause: StorageError = fault == .unreadable ? .keychain(-25308) : .frozen
+            XCTAssertEqual(store.brokenCause as? StorageError, cause)
+            XCTAssertEqual(keys.creations, 1)
+            XCTAssertEqual(keys.deletions, 0)
+            XCTAssertFalse(store.snapshotExists())
+            XCTAssertFalse(fs.log.contains { if case .write = $0 { return true }; return false })
+            XCTAssertThrowsError(try store.commit(text))
+            XCTAssertEqual(keys.creations, 1, "the broken store cannot try creating again")
+        }
+    }
+
     func testCreateFailureIsTerminalWithoutWritingSnapshot() throws {
         let keys = MemoryWrappingKey()
         keys.refuseCreation = true
@@ -126,6 +206,9 @@ final class LazySnapshotKeyTests: XCTestCase {
 }
 
 final class MemoryWrappingKey: WrappingKeyStore {
+    enum CreateFault: Equatable { case none, missing, different, unreadable }
+    var createFault = CreateFault.none
+    var events: [String] = []
     var material: SymmetricKey?
     var creations = 0
     var deletions = 0
@@ -136,15 +219,23 @@ final class MemoryWrappingKey: WrappingKeyStore {
         return material != nil
     }
     func load() throws -> SymmetricKey? {
+        events.append("load")
         if unreadable { throw StorageError.keychain(-25308) }
         return material
     }
     func create() throws -> SymmetricKey {
+        events.append("create")
         if refuseCreation { throw StorageError.keychain(-25291) }
         guard material == nil else { throw StorageError.keychain(-25299) }
         let key = SymmetricKey(size: .bits256)
         material = key
         creations += 1
+        switch createFault {
+        case .none: break
+        case .missing: material = nil
+        case .different: material = SymmetricKey(size: .bits256)
+        case .unreadable: unreadable = true
+        }
         return key
     }
     func deleteRetained() throws {

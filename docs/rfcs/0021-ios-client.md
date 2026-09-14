@@ -244,7 +244,8 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    | present | absent | present | freeze, never regenerate |
    | present | present | present | retained key and snapshot, unchanged codec/trust |
 
-   **Commit ordering and cost.** Create the key, then seal/write the candidate,
+   **Commit ordering and cost.** Create the key, load it back and require equality,
+   then seal/write the candidate,
    exclude it from backup, full-sync it, rename, read back and full-sync the
    parent. Keychain and filesystem are not one atomic transaction. Failure
    after key creation may leave key-without-file and permanently freeze this

@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS storage: verify first-key readback — 2026-09-14
+
+- Follow-up candidate verifies newly created Keychain bytes with a separate load
+  and equality check before sealing/writing a snapshot. A failed check preserves
+  the item and terminally breaks the store. The unused eager helper is removed.
+- Fresh-store direct-commit regressions cover missing file/key and unreadable
+  keys; error wrapping is documented and tested. Apple execution of this
+  follow-up is pending. The contributor's successful Mac/signed-simulator run
+  and baseline RED apply only to `0709212`
+  ([receipt](docs/project/evidence/ios-client-20260913/lazy-storage-mac-0709212.md)).
+
 ### Android client: remove fixed APK ceiling — 2026-09-13
 
 - Local client candidate no longer rejects updates/provider files merely because

@@ -62,10 +62,18 @@ final class KeychainStoreTests: XCTestCase {
     }
 
     func testAMissingKeyIsNeverRegeneratedOverAnExistingStateFile() throws {
-        XCTAssertThrowsError(try key.loadOrCreate(snapshotExists: true)) { error in
-            XCTAssertEqual(error as? StorageError, .frozen)
+        XCTAssertEqual(try startup(), .fresh)
+        let prior = store()
+        try prior.commit(Self.probeText)
+        let before = try fileSystem.read(at: prior.fileURL, maximumBytes: SnapshotStore.maximumStoredBytes)
+        try key.deleteRetained() // isolated test account only
+        let direct = store()
+        XCTAssertThrowsError(try direct.commit(Self.probeText)) { error in
+            XCTAssertEqual(error as? StorageError, .broken)
         }
+        XCTAssertEqual(direct.brokenCause as? StorageError, .frozen)
         XCTAssertFalse(try key.exists())
+        XCTAssertEqual(try fileSystem.read(at: prior.fileURL, maximumBytes: SnapshotStore.maximumStoredBytes), before)
     }
 
     func testTheItemIsAfterFirstUnlockThisDeviceOnlyAndNotSynchronizable() throws {

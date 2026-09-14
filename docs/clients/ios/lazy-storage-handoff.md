@@ -25,8 +25,14 @@ to those previous revisions, not to this correction.
 
 - Welcome constructs the persistent-key `SnapshotStore` adapter but creates no
   Keychain item. Empty-store load creates no key either.
-- Only an actual first commit can create the wrapping key, before sealing/writing
-  the candidate. Subsequent commits load the same retained key and never replace it.
+- Only an actual first commit can create the wrapping key. It reads that key
+  back and compares it with the created value before sealing/writing any
+  candidate. Missing/different/unreadable readback breaks the store without
+  deleting the item. Subsequent commits load the same key and never replace it.
+- The store wraps every load/commit failure in terminal `.broken`, retaining
+  the underlying `.frozen`/I/O/Keychain error in `brokenCause`. Startup
+  `StorageGuard` decides `.frozen` before the runtime exists; the distinction
+  does not permit a failed store to retry state mutation.
 - The five file steps and inode-bound backup exclusion are unchanged.
 - Keychain plus file are not one atomic transaction. A failure after key creation
   may leave a key without a committed file. That freezes on the next launch,
@@ -49,6 +55,17 @@ persistent-key path. The new application path is `keyStore:`.
 
 ## Verification state
 
+Contributor Mac execution for exact revision `0709212` is now recorded in
+[the dated receipt](../../project/evidence/ios-client-20260913/lazy-storage-mac-0709212.md):
+9 lazy-key, 25 storage, 273 full-package and 11 signed-simulator Keychain tests
+passed, and the strict baseline regression failed as expected. The initial
+missing-notices failure is retained. These are participant-reported results,
+not execution by the coordinator. Physical device/upgrade/power-loss remain NOT RUN.
+
+**Next revision:** new-key readback, removal of the unused eager helper, explicit
+terminal error semantics and fresh-store direct-commit regressions require a new
+Mac run. Do not apply the 0709212 receipt to this follow-up before it is executed.
+
 **Executed on Linux:** source-wiring regression was RED with three failures on
 base code, then GREEN after correction; the existing UI source-contract suite
 passes 20 tests. These inspect real source wiring, not Apple runtime behavior.
@@ -64,7 +81,8 @@ this does not supply the missing Apple runtime verification.
 **NOT RUN here:** all changed/new Swift tests, CryptoKit execution, Keychain,
 Xcode app build, simulator, physical-device lifecycle and real filesystem power
 loss. No Swift/Xcode toolchain is present on the coordinator host. The contributor
-agreed to execute these on the Mac; no runtime closure is claimed until receipt.
+executed 0709212 as recorded above; the readback/direct-commit follow-up is not
+covered by that receipt and remains NOT RUN until its own Mac verification.
 
 `SnapshotStoreTests` retains the lost-bookkeeping/lost-file regression as an
 ordinary assertion, not `XCTExpectFailure`. Legacy pending facts are explicitly
@@ -100,7 +118,11 @@ Then run the normal **signed simulator** Keychain suite (the signing-disabled ru
 cannot exercise Keychain). Use the simulator destination already used by the
 contributor, and the project's normal `ParanoID` scheme:
 
+Generate notices in this worktree first (the initial 0709212 Mac attempt
+failed with exit 65 because this git-ignored artifact was absent):
+
 ```sh
+python3 clients/ios/notices.py --offline
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
   -destination "$PARANOID_IOS_SIMULATOR" \
   -derivedDataPath clients/ios/out/lazy-key-signed \

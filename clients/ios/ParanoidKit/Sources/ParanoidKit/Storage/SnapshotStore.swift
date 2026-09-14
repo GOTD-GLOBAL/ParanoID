@@ -83,6 +83,9 @@ public final class SnapshotStore {
 
     /// Returns nil only for an empty store; the persistent adapter refuses a
     /// retained key without its file, even if defaults assert a pending run.
+    /// Every failure (including continuity .frozen) terminally breaks this
+    /// store: throws .broken and preserves the original error in brokenCause.
+    /// StorageGuard decides launch-time .frozen before constructing the runtime.
     public func load() throws -> String? {
         guard !isBroken else { throw StorageError.broken }
         do {
@@ -122,8 +125,14 @@ public final class SnapshotStore {
         }
         guard !present, retainedKey == nil else { throw StorageError.frozen }
         let created = try keyStore.create()
-        try remember(created)
-        return created
+        // SecItemAdd success alone is not evidence that the stored bytes are
+        // readable and equal. Refuse before sealing/writing; never delete a
+        // possibly retained key as recovery from failed verification.
+        guard let stored = try keyStore.load(), stored == created else {
+            throw StorageError.frozen
+        }
+        try remember(stored)
+        return stored
     }
 
     private func remember(_ key: SymmetricKey) throws {
@@ -133,6 +142,8 @@ public final class SnapshotStore {
 
     /// Adoption and all network work derived from the candidate follow success.
     /// No failure, including a partial Keychain creation, triggers key deletion.
+    /// Throws .broken for every failure; brokenCause preserves .frozen or the
+    /// underlying I/O/Keychain error. Retrying this instance never mutates state.
     public func commit(_ snapshot: String) throws {
         guard !isBroken else { throw StorageError.broken }
         do {

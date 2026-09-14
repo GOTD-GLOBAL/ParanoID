@@ -78,7 +78,10 @@ pending/commit defaults are ignored.
 | present | absent | present | frozen, no regeneration |
 | present | present | present | retained state |
 
-First commit acquires a key before the unchanged five file-commit steps. A
+First commit acquires a key and verifies it with a separate load/equality check
+before sealing or the unchanged five file-commit steps. A failed readback never
+writes a candidate or deletes the key. Load/commit always throw terminal `.broken`
+on failure, with the underlying reason (including `.frozen`) in `brokenCause`. A
 failure after key creation can leave key-without-file, which deliberately
 freezes on relaunch. No automatic key deletion disguises an interrupted commit.
 The normal Welcome/relaunch path has neither half and remains usable.

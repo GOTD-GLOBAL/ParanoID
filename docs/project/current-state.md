@@ -1,7 +1,7 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-11
+last_reviewed: 2026-09-14
 ---
 
 # Current project state
@@ -13,8 +13,12 @@ PR36 revision d96cea1: no key on Welcome, key acquisition at first commit, stric
 key/file XOR, and no pending-defaults recovery authority. Existing state/codec
 and reinstall-marker meaning are unchanged. Partial first-commit key creation
 can freeze the installation; no key is deleted as rollback. Source-contract
-RED/GREEN and UI checks ran on Linux. Apple XCTest/Keychain/device execution is
-NOT RUN for this correction; Yaroslav will run it on the Mac. Earlier evidence
+RED/GREEN and UI checks ran on Linux. Yaroslav reported Mac execution of exact `0709212`: package 273/0,
+lazy-key 9/0, storage 25/0 and signed-simulator Keychain 11/0, with baseline RED.
+The [receipt](evidence/ios-client-20260913/lazy-storage-mac-0709212.md) records the
+initial missing-notices failure and setup. The subsequent key-readback/direct-
+commit follow-up still needs its own Mac run; physical device, upgrade and power
+loss remain NOT RUN. Earlier evidence
 below remains revision-scoped, not proof for this candidate. See
 [handoff](../clients/ios/lazy-storage-handoff.md). No merge, ADR acceptance,
 TestFlight or live-server action is implied.

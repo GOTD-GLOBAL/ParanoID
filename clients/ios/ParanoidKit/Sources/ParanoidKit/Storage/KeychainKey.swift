@@ -146,22 +146,6 @@ public struct KeychainKey: WrappingKeyStore, Sendable {
         return SymmetricKey(data: material)
     }
 
-    /// Returns the stored key, creating one only when there is no state file
-    /// to make unreadable.
-    ///
-    /// This is `TextEngine.java:206-218` line for line: a missing key with a
-    /// snapshot present is "key missing; do not regenerate", which here is
-    /// `StorageError.frozen`. `StorageGuard.start(...)` has already decided
-    /// the same thing; the check is repeated at the point of creation so that
-    /// no later caller can reach a regeneration by skipping the guard.
-    ///
-    /// - Throws: `StorageError.frozen`, `StorageError.keychain`.
-    public func loadOrCreate(snapshotExists: Bool) throws -> SymmetricKey {
-        if let existing = try load() { return existing }
-        guard !snapshotExists else { throw StorageError.frozen }
-        return try create()
-    }
-
     /// Deletes the item, if any.
     ///
     /// Called on a first launch of a container whose Keychain may still hold
