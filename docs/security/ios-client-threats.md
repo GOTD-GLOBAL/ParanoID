@@ -165,7 +165,25 @@ fixed in this pull request.
    pinned key was unchanged; the cause is under investigation on the branch
    and no device logs were collected.
 
-## App Transport Security is off, and why that removes nothing
+## Review integration delta — 2026-09-14 candidate
+
+- Storage freeze from any owner operation terminates live call authority on the
+  owner before returning. Generation guards prevent delayed work from reviving
+  lanes. `OwnerFreezeNotificationTests` covers notification timing; actual
+  media/Swift execution remains a Mac gate.
+- Answer/refusal uses the original call ID and generation at the final owner hop;
+  a replacement call cannot inherit consent. Terminal TURN cancellation is bound
+  to the original request, including rejection of stale delivery.
+- Valid persisted onboarding checkpoints complete through existing core commands,
+  without changing identity/keys, validation, or storage schema. A failed commit
+  stays terminal; initial-open UI recovery does not clear an existing freeze.
+- Remote-only video disables proximity blanking just as local video does.
+
+[Regression mapping and Mac handoff](../clients/ios/review-integration-handoff.md)
+keep source checks separate from unrun Apple runtime scenarios. RFC-0021 and
+ADR-0014 remain proposed; this introduces no recovery or production guarantee.
+
+## App Transport Security is off: compensating checks and limits
 
 `Info.plist` sets `NSAppTransportSecurity` to `NSAllowsArbitraryLoads = YES`.
 This was not a shortcut: measured on a physical iPhone against the hosted
@@ -176,11 +194,23 @@ why the local stand never showed it. ATS's exception and pinning lists take
 domain names only, and the server has none — `NSPinnedDomains` with the correct
 SPKI was tried and does not match an IP literal.
 
-What ATS would have contributed is a CA-chain check. This client never relies
-on one: every session is built by `PinnedSessionDelegate`, which requires the
-pinned SubjectPublicKeyInfo digest, a self-signed leaf whose signature verifies
-with its own key, a TLS 1.2 floor, no proxies, no redirects and no cookies; the
-string contract test refuses any `URLSession` created outside it. That is the
-same posture as Android, whose pinned trust manager replaces the platform
-store. The residual difference is procedural: Apple asks for a justification
-of this key at submission, and this section is it.
+The currently reviewed production factories install `PinnedSessionDelegate`,
+which requires the pinned SubjectPublicKeyInfo digest, a self-signed leaf whose
+signature verifies with its own key, a TLS 1.2 floor, no proxies, no redirects
+and no cookies. They do not rely on a system CA chain. With ATS disabled, a
+future unpinned route could bypass these controls; the former four-string
+blacklist did not exclude configured sessions through variable aliases (F7).
+
+`pinned_session_contract.py`, invoked by the UI contract, inventories production
+App/ParanoID and ParanoidKit Swift sources, including inactive conditional
+branches. It permits only three exact reviewed constructors and checks their
+pinned-factory wiring. Negative mutations cover variable configurations, shared
+sessions, explicit/inferred initializers, direct aliases/metatypes and extra
+constructors even inside approved files. Comments/strings cannot satisfy the
+allowlist. This is finite lexical enforcement, not Swift parsing/name resolution
+or data-flow proof: arbitrary inference, shadowing, macros, reflection, imported
+aliases and other network APIs are outside its assurance. Tests/probes/binaries
+are outside its production-source inventory. Security review and the existing
+runtime pin/configuration/redirect tests remain required; no MITM reproduction
+or claim of universal constructor exclusion is made. Apple submission still
+needs an explicit ATS justification. No CA fallback or pin change is introduced.

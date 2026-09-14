@@ -370,6 +370,15 @@ public final class CallController {
 
     /// The explicit Answer action: the only thing that may create the callee's
     /// media (`voice-v1.md:103-104`).
+    public func answer(microphonePermission: Bool, callId: String, generation: CallGeneration) {
+        own()
+        guard let call = live, state == .incoming,
+              call.identity.callId == callId, call.generation == generation else { return }
+        answer(microphonePermission: microphonePermission)
+    }
+
+    /// Synchronous owner-local action. Cross-executor permission results must
+    /// use the call-ID/generation overload, including denied permission.
     public func answer(microphonePermission: Bool) {
         own()
         guard checkClock() else { return }

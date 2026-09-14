@@ -6,6 +6,18 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## iOS review integration corrections — local candidate (2026-09-14)
+
+Yaroslav requested coordinator implementation of F1–F7 from the full PR36 review
+on f1fbdb2, followed by his Mac verification. The separate candidate covers
+owner-ordered freeze notification, call-bound Answer consent, safe initial-open
+retry, valid onboarding checkpoint completion, call-scoped TURN cancellation,
+remote-video proximity and the pinned-session source gate. The scope remains
+iOS/tests/documentation only; RFC-0021 and ADR-0014 stay proposed.
+[Handoff and exact verification scope](../clients/ios/review-integration-handoff.md)
+separate Linux source checks from pending Swift/XCTest/simulator execution.
+No device, main merge, TestFlight or live-server action is implied.
+
 ## iOS lazy wrapping-key correction — local candidate (2026-09-14)
 
 At Yaroslav's request, the coordinator implemented a separate candidate based on

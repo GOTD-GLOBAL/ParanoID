@@ -78,6 +78,21 @@ interface and SDK callbacks share one thread" expressed with this client's
 thread. Each control is enqueued as one `send_call_v1` and resolves only when
 the server's acceptance is durable.
 
+### Review corrections (2026-09-14 candidate)
+
+Answer permission results, including refusal, carry the presented call ID and
+generation through the final owner hop. A stale action cannot answer or reject
+a replacement call. Confirmed storage freeze synchronously ends call authority
+on that same owner before the failed operation returns, not on a later tick.
+Terminal cleanup cancels only that call's pending TURN request; cancellation is
+sticky before the actor hop and cannot cancel a replacement request.
+Proximity blanking is disabled for local **or remote** video.
+
+These are candidate corrections to existing call-v2/voice-v1/voice-turn-v1
+contracts, not wire changes. New regression execution and Mac commands are in
+[review-integration-handoff.md](review-integration-handoff.md); previous device
+receipts do not prove the new interleavings.
+
 ## Media engine
 
 `App/ParanoID/Voice/WebRtcAudioEngine.swift` is the media of one call: one

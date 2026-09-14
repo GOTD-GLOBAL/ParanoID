@@ -293,8 +293,10 @@ Calls: WebRTC.xcframework 150.7871.01 <-> peer DTLS-SRTP; call-v2 Opus audio +
    refused the self-signed leaf on a public IP address before the pinning
    delegate ran (`NSURLErrorDomain -1200`), a LAN stand never shows it, and
    `NSPinnedDomains` does not match an IP literal. The source contract test
-   holds exactly that key and refuses any `URLSession` created outside
-   `PinnedSessionDelegate`; the reasoning is recorded in ADR-0014 and the
+   holds exactly that key and checks a finite lexical allowlist of reviewed
+   pinned session factories with negative mutation coverage. It does not prove
+   arbitrary Swift data flow or exclude other networking APIs; security review
+   remains required. The reasoning and limits are recorded in ADR-0014 and the
    [threat delta](../security/ios-client-threats.md).
 4. **Protocol compatibility.** A second client on the same contracts. Every
    behaviour is written from `docs/protocol/*.md` and the core; Java is only a
@@ -321,6 +323,20 @@ controller (readiness slots, nonces, 45 s ring, 10 s heartbeat, 30 s silence,
 before any capture, and the relay credential lane. The iOS call controller is
 written to the same state machine as `CallController.java` and cross-checked
 against its smoke test scenarios.
+
+### PR36 integration correction candidate (2026-09-14)
+
+At Yaroslav's request, F1–F7 from the full-component review are corrected in a
+separate branch with a Mac handoff. This completes existing contracts rather
+than accepting a new architecture: owner-ordered freeze termination, original
+call-bound consent at the final owner hop, call-owned TURN cancellation,
+remote-video proximity, initial-open UI retry, and completion of valid persisted
+onboarding checkpoints through existing core commands before networking.
+No invalid/missing storage is recovered or replaced and no wire/schema changes
+are introduced. The source guard for ATS-off pinning has explicit lexical limits.
+[Review integration handoff](../clients/ios/review-integration-handoff.md) and
+[threat delta](../security/ios-client-threats.md) record regression mapping,
+source-review evidence and the separate pending Apple execution gate.
 
 ## Alternatives
 

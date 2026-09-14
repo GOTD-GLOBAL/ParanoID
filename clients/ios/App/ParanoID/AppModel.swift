@@ -163,6 +163,13 @@ final class AppModel {
 
     // MARK: - what it owns
 
+    /// Bootstrap seam for isolated app tests; nil keeps the device storage path.
+    private let openClient: (() throws -> sending SelfServiceClient)?
+
+    init(openClient: (() throws -> sending SelfServiceClient)? = nil) {
+        self.openClient = openClient
+    }
+
     private let drafts = MessagePresentation.Drafts()
     private var runtime: Runtime?
     private var reload: Task<Void, Never>?
@@ -227,23 +234,34 @@ final class AppModel {
         guard runtime == nil else { return }
         stage = .opening
         do {
-            let fixture = try DebugFixture.trust()
-            let directory = try DataProtectionFileSystem.applicationSupportDirectory()
-            let snapshotExists = SnapshotStore.snapshotExists(in: directory)
-            // Saved trust wins, so a container that already holds a state file
-            // names its own realm and needs neither a fixture nor a default.
-            guard snapshotExists || fixture != nil || ServiceTrust.hostedDefault() != nil else {
-                stage = .noStand(nil)
-                return
+            let client: SelfServiceClient
+            if let openClient {
+                client = try openClient()
+            } else {
+                let fixture = try DebugFixture.trust()
+                let directory = try DataProtectionFileSystem.applicationSupportDirectory()
+                let snapshotExists = SnapshotStore.snapshotExists(in: directory)
+                // Saved trust wins, so a container that already holds a state file
+                // names its own realm and needs neither a fixture nor a default.
+                guard snapshotExists || fixture != nil || ServiceTrust.hostedDefault() != nil else {
+                    stage = .noStand(nil)
+                    return
+                }
+                let continuity = try StorageGuard.start(snapshotExists: snapshotExists,
+                                                        marker: InstallMarker())
+                guard continuity != .frozen else { return freeze(Strings.Status.brokenDetails) }
+                let store = SnapshotStore(directory: directory, keyStore: KeychainKey.standard)
+                let saved = try store.load()
+                client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             }
-            let continuity = try StorageGuard.start(snapshotExists: snapshotExists,
-                                                    marker: InstallMarker())
-            guard continuity != .frozen else { return freeze(Strings.Status.brokenDetails) }
-            let store = SnapshotStore(directory: directory, keyStore: KeychainKey.standard)
-            let saved = try store.load()
-            let client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             let built = try Runtime(client: client, model: self)
             runtime = built
+            // Only a successfully rebuilt initial runtime clears a bootstrap
+            // failure. A failed commit retains its runtime and cannot get here.
+            isBroken = false
+            isConnected = false
+            frozenDetail = Strings.Status.brokenDetails
+            lastStatus = Strings.Status.openingDetails
             stage = .running
             // The call listeners are installed **before** the lanes start, so
             // that a control inside the first committed candidate cannot
@@ -277,6 +295,8 @@ final class AppModel {
     }
 
     private func freeze(_ detail: String) {
+        cancelCallIntent()
+        isConnected = false
         isBroken = true
         frozenDetail = detail
         stage = .frozen
@@ -327,6 +347,7 @@ final class AppModel {
     /// screen can put this object into, and it is the state a reconnect has to
     /// leave.
     func published(connected: Bool, status: String) {
+        guard !isBroken else { return }
         isConnected = connected
         lastStatus = status
         refresh()
@@ -364,6 +385,7 @@ final class AppModel {
     ///   client whose route changed twice in a row would otherwise refuse an
     ///   outgoing call while its pages were arriving normally.
     func publishConnecting(resumed: Bool) {
+        guard !isBroken else { return }
         if resumed { isConnected = false }
         lastStatus = Strings.Status.connecting
     }
@@ -940,6 +962,10 @@ final class AppModel {
     /// it gives the audio session back only while it is still the session's
     /// owner (``ownsCallAudio(_:)``).
     private func beginCallIntent(account: String, answer: Bool, callId: String, video: Bool) {
+        // Capture consent on this main-actor turn, before permission/network
+        // waits. The controller revalidates both values on its final owner hop.
+        let answerGeneration = answer && call?.callId == callId ? call?.generation : nil
+        guard !answer || answerGeneration != nil else { return }
         cancelCallIntent()
         let generation = callIntentGeneration
         callIntent = Task { [weak self] in
@@ -954,7 +980,10 @@ final class AppModel {
                 // call would reject a ring the user has not seen yet. Android
                 // re-checks the same identifier
                 // (`MainActivity.java:600`: `…optString("call_id").equals(permissionCall)`).
-                if answer, call?.callId == callId { await calls?.answer(microphone: false) }
+                if answer, let answerGeneration, call?.callId == callId,
+                   call?.generation == answerGeneration {
+                    await calls?.answer(microphone: false, callId: callId, generation: answerGeneration)
+                }
                 if ownsCallAudio(generation) { await calls?.releaseAudio() }
                 guard !Task.isCancelled else { return }
                 microphoneRefused = true
@@ -977,11 +1006,12 @@ final class AppModel {
                 return
             }
             if answer {
-                guard let call, call.state == .incoming, call.callId == callId else {
+                guard let call, let answerGeneration, call.state == .incoming,
+                      call.callId == callId, call.generation == answerGeneration else {
                     if ownsCallAudio(generation) { await calls?.releaseAudio() }
                     return
                 }
-                await calls?.answer(microphone: true)
+                await calls?.answer(microphone: true, callId: callId, generation: answerGeneration)
             } else {
                 guard !isCallActive else {
                     if ownsCallAudio(generation) { await calls?.releaseAudio() }

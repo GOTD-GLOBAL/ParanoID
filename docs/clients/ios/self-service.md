@@ -107,9 +107,26 @@ state inlined verbatim. A wrapper version other than 4 is `unsupportedSnapshot`
 and the retained bytes are left exactly as they are; `token` is empty or 64
 hexadecimal digits; a schema-0 state left by a crash is validated by running
 `upgrade_v2` as a dry run that commits nothing; the wrapper realm must be the
-realm the core state was created for. Every transition goes through one
+realm the core state was created for. Before any connection, `ProofFlow` asks the
+owner to resume valid onboarding checkpoints: commit a schema-0 upgrade and, for
+active registration, prepare any missing own contact material. This uses the
+existing core commands; it creates no replacement identity and does not repair
+invalid/missing storage. Opening itself remains validation-only.
+Every transition goes through one
 `apply`, which commits the candidate **before** it is adopted in memory, handed
 to a listener or acted on.
+
+### Freeze propagation and retry opening
+
+Every operation through `StateOwner.perform` checks for a storage freeze on exit,
+even if its closure caught the commit error. The owner disables generations and
+synchronously notifies the call coordinator before returning to the UI. It does
+not wait for a parked receive or heartbeat; start/restart cannot revive a frozen
+owner. Retry opening clears stale UI failure flags only after an initial runtime
+has been built successfully. A failed-commit runtime stays terminal.
+
+See [review-integration-handoff.md](review-integration-handoff.md) for the F1–F7
+regressions and the separate Mac verification gate.
 
 ## Trust
 
@@ -127,9 +144,11 @@ exactly that key and nothing else — because on a physical iPhone ATS refuses a
 self-signed leaf on a public IP address before the pinning delegate is
 consulted (`NSURLErrorDomain -1200`, stream error -9802), `NSPinnedDomains`
 does not match an IP literal, and a stand on a private LAN address never shows
-it. ATS contributed nothing this client relies on: every session is built by
-`PinnedSessionDelegate`, and `test_ui_contract.py` refuses that key in any
-other shape and any `URLSession` created outside the delegate. The measurement
+it. The currently reviewed session factories install `PinnedSessionDelegate`.
+`test_ui_contract.py` refuses that ATS key in any other shape and invokes the
+finite lexical constructor/wiring allowlist in `pinned_session_contract.py`.
+Negative mutation tests cover known bypass forms; arbitrary Swift data flow,
+macros and other networking APIs still require review. The measurement
 and its threat delta are in
 [ios-client-threats.md](../../security/ios-client-threats.md) and ADR-0014.
 

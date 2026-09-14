@@ -279,6 +279,9 @@ public final class ProofFlow: Sendable {
         // dials anything at all.
         let trust = try await owner.perform(generation) { try $0.updateTrust() }
         guard try await owner.perform(generation, { try $0.hasIdentity() }) else { return .idle }
+        // Finish valid local checkpoints before any request, including when an
+        // active enrollment would otherwise skip the registration branch.
+        try await owner.perform(generation) { try $0.resumeOnboarding() }
         if try await owner.perform(generation, { try !$0.registered() }) {
             let status = try await proof(purpose: ChallengeIntent.registerPurpose,
                                          method: "POST",

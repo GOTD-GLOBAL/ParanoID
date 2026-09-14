@@ -85,6 +85,7 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
 
     private var engine: WebRtcAudioEngine?
     private var engineGeneration: CallGeneration?
+    private var relayRequest: VoiceRelayLane.Request?
     /// How many engines are still closing. A new one is never created beside
     /// an old one (`TextEngine.java:134,84-88`).
     private var mediaClosing = 0
@@ -137,6 +138,7 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     /// reaches the controller only **after** the candidate that carried it is
     /// durable, and an acceptance resolves the send it belongs to.
     func attach() async {
+        await owner.setFreezeHandler { [weak self] in self?.authorizationLost() }
         try? await owner.perform { client in
             client.callListener = { [weak self] event in
                 guard let self else { return }
@@ -212,8 +214,11 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     ///   a refusal the peer is told about — the controller ends the call as
     ///   `reject` — and it is how a denied microphone on an incoming call
     ///   reaches the other phone (`CallController.answer(microphonePermission:)`).
-    func answer(microphone: Bool) async {
-        await owner.onOwner { self.controller.answer(microphonePermission: microphone) }
+    func answer(microphone: Bool, callId: String, generation: CallGeneration) async {
+        await owner.onOwner {
+            self.controller.answer(microphonePermission: microphone,
+                                   callId: callId, generation: generation)
+        }
     }
 
     /// «Отклонить» while ringing, «Завершить» afterwards.
@@ -460,19 +465,14 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
 
     /// Everything this call owned, released (`TextEngine.java:81-91`).
     ///
-    /// The relay lane is deliberately **not** cancelled here. It used to be, in
-    /// a detached task, and that was a race: the next call's `request(under:)`
-    /// is issued from its own detached task, and two unstructured tasks reach
-    /// the same actor in no guaranteed order. A hang-up whose `cancel()` landed
-    /// after the next call's request dropped that request, so the new call sat
-    /// in `authorizing` until its forty-five-second deadline ended it as a
-    /// timeout. Nothing was leaked by removing it: `request(under:)` begins
-    /// with `cancelCurrent()`, so a new call always supersedes the old request,
-    /// and a stale answer can never be delivered into a new call because the
-    /// lane's ticket and the call generation are both re-checked on delivery.
+    /// Cancellation belongs to the request created on this owner, not to the
+    /// lane's current request. Its sticky flag is set before any actor hop;
+    /// an older call's teardown can never cancel its replacement.
     func close() {
         precondition(owner.isOnOwner, "the call coordinator runs on the state owner")
         pendingMedia = nil
+        relayRequest?.cancel()
+        relayRequest = nil
         let owned = engine
         engine = nil
         engineGeneration = nil
@@ -526,13 +526,15 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
             controller.mediaAuthorized(generation, authorized: false)
             return
         }
+        let request = VoiceRelayLane.Request()
+        relayRequest = request
         Task { [weak self] in
             guard let self else { return }
             guard let run = await owner.current else {
                 await owner.onOwner { self.controller.mediaAuthorized(generation, authorized: false) }
                 return
             }
-            await relay.request(under: run) { outcome in
+            await relay.request(under: run, request: request) { outcome in
                 // Delivered on the owner by `StateOwner.deliverRelay`.
                 self.authorized(generation, remoteOffer: remoteOffer, outcome: outcome)
             }

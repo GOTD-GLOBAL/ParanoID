@@ -163,6 +163,24 @@ public final class SelfServiceClient {
         try apply(["op": "upgrade_v2"])
     }
 
+    /// Continues local onboarding from a valid retained snapshot, never creating
+    /// an identity. Opening remains validation-only; the owner calls this before
+    /// networking so the schema-0 checkpoint is upgraded durably, not merely
+    /// accepted by the opening dry run. The core remains the sole validator.
+    public func resumeOnboarding() throws {
+        try healthy()
+        guard !state.isEmpty else { return }
+        if stateVersion == Snapshot.legacyStateVersion {
+            try apply(["op": "upgrade_v2"])
+        }
+        // server_status_v2 and prepare_contact_v2 are separate commits. An
+        // active enrollment alone does not mean the fallback key was saved.
+        // The core preparation is idempotent; apply writes nothing if complete.
+        if try active() {
+            try apply(["op": "prepare_contact_v2"])
+        }
+    }
+
     /// Whether a state exists at all (`SelfServiceClient.java:196`).
     public func hasIdentity() throws -> Bool {
         try healthy()

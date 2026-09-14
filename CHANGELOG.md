@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS review integration corrections — 2026-09-14
+
+- Candidate fixes owner-ordered call termination on storage freeze, call-bound
+  Answer/refusal consent, initial-open retry UI state, interrupted onboarding
+  checkpoints, call-scoped TURN cancellation and remote-video proximity.
+- Adds targeted regressions and a mutation-tested pinned-session placement gate.
+  Linux source checks are not Apple runtime evidence; the
+  [Mac handoff](docs/clients/ios/review-integration-handoff.md) retains that gate.
+  No state format, core, server, Android, release or architecture acceptance change.
+
 ### iOS storage: verify first-key readback — 2026-09-14
 
 - Follow-up candidate verifies newly created Keychain bytes with a separate load

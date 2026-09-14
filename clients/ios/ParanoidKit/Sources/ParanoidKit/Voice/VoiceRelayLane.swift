@@ -87,7 +87,9 @@ extension StateOwner {
     public func deliverRelay(_ outcome: VoiceRelayOutcome,
                              under generation: Generation,
                              to listener: (any RealtimeListener)?,
+                             request: VoiceRelayLane.Request? = nil,
                              _ reply: @Sendable (VoiceRelayOutcome) -> Void) {
+        guard request?.isCancelled != true else { return }
         guard isCurrent(generation) else { return }
         guard !isFrozen else {
             listener?.authorizationLost()
@@ -206,10 +208,12 @@ public actor VoiceRelayLane {
     ///     delivered only while it is still current.
     ///   - reply: invoked at most once, on the state owner. A cancelled or
     ///     superseded request never invokes it.
-    public func request(under generation: Generation, then reply: @escaping Reply) {
+    public func request(under generation: Generation, request: Request = Request(),
+                        then reply: @escaping Reply) {
+        guard !request.isCancelled else { return }
         cancelCurrent()
         issued += 1
-        let pending = Pending(ticket: issued, generation: generation, reply: reply)
+        let pending = Pending(ticket: issued, generation: generation, request: request, reply: reply)
         current = pending
         pending.task = Task { [weak self] in
             guard let self else { return }
@@ -236,9 +240,9 @@ public actor VoiceRelayLane {
     /// `RealtimeLoop.java:128`, decided in one isolated step so that nothing
     /// can replace the request between the test and the delivery.
     private func claim(_ pending: Pending) -> Bool {
-        guard current === pending, !pending.isCancelled else { return false }
+        guard current === pending else { return false }
         current = nil
-        return true
+        return !pending.isCancelled
     }
 
     // MARK: - One request
@@ -364,7 +368,10 @@ public actor VoiceRelayLane {
                                      _ outcome: VoiceRelayOutcome) async {
         guard await claim(pending) else { return }
         await owner.deliverRelay(outcome, under: pending.generation,
-                                 to: listener, pending.reply)
+                                 to: listener, request: pending.request) { result in
+            guard !pending.isCancelled else { return }
+            pending.reply(result)
+        }
     }
 
     // MARK: - One pending request
@@ -382,17 +389,37 @@ public actor VoiceRelayLane {
         /// Set once, from the lane, before anything can read it.
         var task: Task<Void, Never>?
 
+        let request: Request
+
+        init(ticket: UInt64, generation: Generation, request: Request, reply: @escaping Reply) {
+            self.ticket = ticket
+            self.generation = generation
+            self.request = request
+            self.reply = reply
+        }
+
+        var isCancelled: Bool { request.isCancelled }
+        func check() throws { try request.check() }
+        func adopt(_ lane: any VoiceRelayEndpoint) -> Bool { request.adopt(lane) }
+        func release() async { await request.release() }
+        func cancel() {
+            request.cancel()
+            task?.cancel()
+        }
+    }
+
+    /// One call's cancellation authority, created on the call owner before
+    /// crossing to this actor. Cancellation is sticky and synchronous; only
+    /// endpoint disposal is asynchronous. A cancelled late request cannot
+    /// supersede a newer call, and a late teardown cannot cancel that call.
+    public final class Request: @unchecked Sendable {
         private let lock = NSLock()
         private var cancelled = false
         private var lane: (any VoiceRelayEndpoint)?
 
-        init(ticket: UInt64, generation: Generation, reply: @escaping Reply) {
-            self.ticket = ticket
-            self.generation = generation
-            self.reply = reply
-        }
+        public init() {}
 
-        var isCancelled: Bool {
+        public var isCancelled: Bool {
             lock.withLock { cancelled }
         }
 
@@ -430,13 +457,12 @@ public actor VoiceRelayLane {
         /// The close runs in its own task, off the caller, because Android
         /// keeps `disconnect()` off both the state owner and the UI thread
         /// for the same reason.
-        func cancel() {
+        public func cancel() {
             lock.lock()
             cancelled = true
             let lane = self.lane
             self.lane = nil
             lock.unlock()
-            task?.cancel()
             if let lane {
                 Task { await lane.close() }
             }

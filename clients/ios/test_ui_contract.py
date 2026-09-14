@@ -39,8 +39,9 @@ it answers four questions about the working tree:
   screen is being recorded or mirrored.
 * **The Info.plist.** Camera and microphone are declared with a reason,
   ``UIBackgroundModes`` is exactly ``[audio]``, and nothing claims a delivery
-  path this client does not have: no ``voip`` mode, no push environment, no
-  relaxed transport security.
+  path this client does not have: no ``voip`` mode, no push environment. The
+  documented ATS-off setting is paired with a bounded source-only inventory
+  of pinned URLSession constructors (not a Swift semantic or runtime proof).
 
 Run: ``python3 clients/ios/test_ui_contract.py`` → ``OK``.
 """
@@ -208,7 +209,10 @@ class UiContract(unittest.TestCase):
         # runtime that would open a connection.
         self.present('guard snapshotExists || fixture != nil '
                      '|| ServiceTrust.hostedDefault() != nil else {', model, MODEL)
-        decision = model.index('stage = .noStand(nil)\n                return')
+        no_stand_return = re.search(r'stage\s*=\s*\.noStand\(nil\)\s+return\b', model)
+        if no_stand_return is None:
+            self.fail('the no-stand decision must return before storage')
+        decision = no_stand_return.start()
         for later in ('StorageGuard.start(',
                       'SnapshotStore(directory: directory, keyStore: KeychainKey.standard)',
                       'try SelfServiceClient(', 'Runtime(client: client, model: self)'):
@@ -441,9 +445,10 @@ class UiContract(unittest.TestCase):
         # the peer rings again), and a refusal that reached the newer call
         # would reject a ring the user has not seen. Android re-checks it the
         # same way (`MainActivity.java:600`).
-        self.present('if answer, call?.callId == callId { await calls?.answer(microphone: false) }',
-                     intent, 'AppModel.beginCallIntent')
-        self.before('await calls?.answer(microphone: false)', 'microphoneRefused = true',
+        self.assertRegex(intent, r'if answer, let answerGeneration, call\?\.callId == callId,\s*'
+                         r'call\?\.generation == answerGeneration')
+        self.before('await calls?.answer(microphone: false, callId: callId, generation: answerGeneration)',
+                    'microphoneRefused = true',
                     intent, 'AppModel.beginCallIntent')
         self.present('if(permissionAnswer&&engine.calls().snapshot().optString("call_id")'
                      '.equals(permissionCall))engine.calls().answer(false);',
@@ -475,7 +480,8 @@ class UiContract(unittest.TestCase):
                     intent, 'AppModel.beginCallIntent')
         self.before('calls?.prepareAudio()', 'await waitForCallConnection()',
                     intent, 'AppModel.beginCallIntent')
-        for control in ('await calls?.answer(microphone: true)', 'await calls?.start(account:'):
+        for control in ('await calls?.answer(microphone: true, callId: callId, generation: answerGeneration)',
+                        'await calls?.start(account:'):
             self.assertLess(intent.index('calls?.prepareAudio()'), intent.index(control),
                             f'{control!r} runs before the audio session')
         # An incoming ring gets its session when it is shown.
@@ -531,7 +537,7 @@ class UiContract(unittest.TestCase):
                      'AudioSessionController.resume()')
         self.present('try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)',
                      audio, AUDIO)
-        self.present('UIDevice.current.isProximityMonitoringEnabled = proximity', audio, AUDIO)
+        self.present('UIDevice.current.isProximityMonitoringEnabled = policy.proximity', audio, AUDIO)
         # The proximity sensor is local-only and **connected-only**, as on
         # Android (`WebRtcAudioEngine.java:401`,
         # `!speaker && connected && !videoEnabled`): a ringing call must never
@@ -543,12 +549,12 @@ class UiContract(unittest.TestCase):
         # **either** camera: the stage is drawn for either one, and a one-way
         # video call must not dim halfway through (`call-v2.md`, owner request
         # 2026-09-12; `MainActivity.java:533-537`).
-        self.present('let proximity = held && audible && !video && !speaker && !isHeadsetRoute',
+        self.present('let proximity = held && audible && !video && !remoteVideo && !speaker && !headset',
                      audio, AUDIO)
         self.present('boolean earpiece = !speaker && connected && !videoEnabled;',
                      (ANDROID / 'WebRtcAudioEngine.java').read_text(), 'WebRtcAudioEngine.java')
         self.present('let awake = held && (video || remoteVideo)', audio, AUDIO)
-        self.present('UIApplication.shared.isIdleTimerDisabled = awake', audio, AUDIO)
+        self.present('UIApplication.shared.isIdleTimerDisabled = policy.awake', audio, AUDIO)
         self.present('audio.setRemoteVideo(presentation.remoteVideo)', coordinator, COORDINATOR)
         self.present('boolean showStage=live&&(localVideo||remoteVideo);',
                      self.java['MainActivity.java'], 'MainActivity.java')
@@ -774,18 +780,16 @@ class UiContract(unittest.TestCase):
         # its exception list does not accept IP literals, so a pinned server
         # without a domain name cannot be reached with it on. ATS would only
         # have added a CA-chain check this client deliberately does not rely
-        # on: every session is built by PinnedSessionDelegate, which enforces
-        # the SPKI pin, the TLS 1.2 floor, no proxies and no redirects. The
-        # second half of the assertion is what makes the first half safe.
+        # on. The reviewed constructors in PinnedSessionDelegate,
+        # RealtimeTransport and VoiceRelayTransport all pass the pinning
+        # delegate. The bounded lexical inventory below rejects new sites and
+        # changed wiring; it does not prove TLS behavior or arbitrary Swift
+        # semantics. Platform pin/configuration tests remain separate gates.
         ats = plist.get('NSAppTransportSecurity')
         self.assertEqual(ats, {'NSAllowsArbitraryLoads': True},
                          'ATS is off exactly and only as documented; no per-domain exceptions')
-        unpinned = ('URLSession.shared', 'URLSession(configuration: .default',
-                    'URLSession(configuration: .ephemeral', 'URLSessionConfiguration.default')
-        for path, source in self.sources.items():
-            for needle in unpinned:
-                self.assertNotIn(needle, source,
-                                 f'{path}: a session outside PinnedSessionDelegate would rely on ATS')
+        from pinned_session_contract import assert_pinned_session_construction
+        assert_pinned_session_construction(self.sources)
         self.absent('aps-environment', (APP / 'ParanoID.entitlements').read_text(),
                     'ParanoID.entitlements')
 
