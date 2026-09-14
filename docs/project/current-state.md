@@ -6,6 +6,19 @@ last_reviewed: 2026-09-11
 
 # Current project state
 
+## iOS lazy wrapping-key correction — local candidate (2026-09-14)
+
+At Yaroslav's request, the coordinator implemented a separate candidate based on
+PR36 revision d96cea1: no key on Welcome, key acquisition at first commit, strict
+key/file XOR, and no pending-defaults recovery authority. Existing state/codec
+and reinstall-marker meaning are unchanged. Partial first-commit key creation
+can freeze the installation; no key is deleted as rollback. Source-contract
+RED/GREEN and UI checks ran on Linux. Apple XCTest/Keychain/device execution is
+NOT RUN for this correction; Yaroslav will run it on the Mac. Earlier evidence
+below remains revision-scoped, not proof for this candidate. See
+[handoff](../clients/ios/lazy-storage-handoff.md). No merge, ADR acceptance,
+TestFlight or live-server action is implied.
+
 ## APK ceiling removal — local Android candidate (2026-09-13)
 
 Sergey requested removal of the arbitrary APK cap on both components, while

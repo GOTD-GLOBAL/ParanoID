@@ -249,33 +249,16 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   account `paranoid-text-state-v0`, accessible after first unlock on this
   device only, not synchronizable), never regenerated over an existing file
   (`TextEngine.java:206-218`). `InstallMarker` (standard defaults) and
-  `StorageGuard` carry the reinstall rule over two facts about the container,
-  read in opposite directions: `paranoid.install.v1`, that it has been
-  launched, read by its absence; and `paranoid.firstrun.pending.v1`, that it
-  was opened and has not committed a state file yet, read only by its
-  presence. With no marker **and no state file** the stale Keychain key is
-  deleted and the marker is recorded; with no marker and a state file nothing
-  is deleted or recorded at all and the launch freezes, because an uninstall
-  would have taken that file with the container and a deleted wrapping key
-  cannot be undone by anyone. Then Android's exclusive-or
-  (`StorageGuard.java:7-8`) is evaluated: a file without a key freezes, and so
-  does a key without a file — unless the container said, before that key
-  existed, that it has committed nothing, which is an interrupted first run
-  and not evidence of tampering, because this client creates the Keychain
-  item while opening and Android creates its alias at the first commit. The
-  fact is recorded by the launch that finds the container holding neither
-  half and withdrawn by the first commit after the candidate is synced and
-  before the rename, so it is never on disk while false; every silence — a
-  fact never written, not persisted, rolled back, or never written by an
-  earlier build — freezes with the key kept. The one loss that does not
-  close, a withdrawal acknowledged but never persisted followed by the loss
-  of the file before any launch opened it, is disclosed in
-  [ios-client-threats.md](../../docs/security/ios-client-threats.md) and held
-  as a strict expected failure in `SnapshotStoreTests`; so is the restore
-  nothing on the device can refuse — a backup taken during an interrupted
-  first run and restored onto the same device brings the fact back, an
-  encrypted one the `ThisDeviceOnly` key with it, and the excluded file not
-  at all, which is the interrupted-first-run row by the user's own hand.
+  `StorageGuard` keep the original install.v1 reinstall distinction. An absent
+  marker with a surviving file freezes before deletion; absent marker and no
+  file removes a stale reinstall key. Marker-present key/file XOR always
+  freezes, regardless of old pending/commit defaults. Welcome creates no key;
+  the application uses `SnapshotStore(keyStore:)`, acquiring the wrapping key
+  only at first commit. A failed commit after key creation may leave an orphan
+  key and freezes on the next launch; it never deletes the key as rollback.
+  Existing valid state reopens unchanged; earlier eager-key-only installs remain
+  frozen. This correction's Apple runtime checks are NOT RUN here; see the
+  [Mac handoff](../../docs/clients/ios/lazy-storage-handoff.md).
 - `Sources/ParanoidKit/Service/` is the application adapter over the unchanged
   v2 opaque transport, the port of `SelfServiceClient.java`. `Snapshot` is the
   stored version-4 wrapper

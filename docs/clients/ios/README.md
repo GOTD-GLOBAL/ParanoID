@@ -70,32 +70,15 @@ the shared [core contract](../core/self-service.md) and
 - No background delivery, no push, no CallKit: incoming messages and calls
   arrive only while the application is open. The connection screen states
   this in full; the chat list shows the short hint.
-- Reinstalling the application is a clean install with a **new** identity,
-  detected by an install marker, because the Keychain outlives the app
-  container while the state file does not. The container keeps two facts in
-  `UserDefaults`, read in opposite directions: `paranoid.install.v1`, that it
-  has been launched before, read by its absence; and
-  `paranoid.firstrun.pending.v1`, that it was opened and has not committed a
-  state file yet, read only by its presence. With the marker present, a
-  missing or unreadable state file freezes the application as Android does,
-  with one stated exception: a key with no file opens normally only while the
-  pending fact stands — recorded by the launch that found the container
-  holding neither a key nor a file, before that key was created, and
-  withdrawn by the first commit — because that is the key of the container's
-  own interrupted first run (this client creates the Keychain item while
-  opening; Android creates its alias at the first commit). Without the fact a
-  key with no file freezes with the key kept, and every way of losing the
-  fact lands there, so an installation made before the fact existed freezes
-  by construction and no container that held an identity is read as new on
-  anything it fails to say. Keys are never regenerated over an existing file
-  and a stale Keychain key is never reused. The one loss this does not close
-  — the first commit's withdrawal of the fact acknowledged but never
-  persisted, and the file lost before any launch has opened it — and the
-  restore nothing on the device can refuse are disclosed in
-  [ios-client-threats.md](../../security/ios-client-threats.md). This
-  platform note is reported as a doc-to-code discrepancy against
-  [`self-service.md`](../core/self-service.md) and is not an owner-approved
-  change to the fail-closed rule.
+- Reinstalling remains a proposed clean-install distinction using install.v1.
+  Missing marker with a surviving file freezes before key deletion. With the
+  marker present, key/file XOR always freezes; no pending defaults flag excuses
+  missing history. Welcome creates no key; first commit acquires it before the
+  unchanged file commit. Failure after key creation may freeze an incomplete
+  first commit, preserving its key. Existing valid state is unchanged; old
+  eager-key-only installations stay frozen. See [the storage contract](self-service.md)
+  and [correction handoff](lazy-storage-handoff.md); Apple verification of this
+  correction is pending, not inherited from earlier device evidence.
 - Voice relay: `/v2/voice/turn` is used when the server issues credentials; a
   valid authenticated `404 turn_disabled` from the pinned origin is the only
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,

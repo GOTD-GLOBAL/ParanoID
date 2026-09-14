@@ -219,9 +219,10 @@ final class AppModel {
     /// `docs/clients/core/self-service.md`, in the order `StorageGuard`
     /// documents: whether a state file exists is read **before** any key is
     /// created, the install marker decides whether a Keychain item belongs to
-    /// this installation, and only then is a key loaded or created. A launch
-    /// that finds exactly one of the two freezes; it never starts a new
-    /// identity over retained data.
+    /// this installation. The store loads a retained key only beside its file;
+    /// a new key is deferred until first commit, never created on Welcome.
+    /// A launch that finds exactly one half freezes, including old eager-key
+    /// installs; it never starts a new identity over lost retained state.
     func start() {
         guard runtime == nil else { return }
         stage = .opening
@@ -238,8 +239,7 @@ final class AppModel {
             let continuity = try StorageGuard.start(snapshotExists: snapshotExists,
                                                     marker: InstallMarker())
             guard continuity != .frozen else { return freeze(Strings.Status.brokenDetails) }
-            let key = try KeychainKey.standard.loadOrCreate(snapshotExists: snapshotExists)
-            let store = SnapshotStore(directory: directory, key: key)
+            let store = SnapshotStore(directory: directory, keyStore: KeychainKey.standard)
             let saved = try store.load()
             let client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             let built = try Runtime(client: client, model: self)

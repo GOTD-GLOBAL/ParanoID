@@ -18,6 +18,13 @@ public protocol RetainedKey {
     func deleteRetained() throws
 }
 
+/// The storage seam used by SnapshotStore. load() must never create, and
+/// create() must refuse replacement. Errors are not interpreted as absence.
+public protocol WrappingKeyStore: RetainedKey {
+    func load() throws -> SymmetricKey?
+    func create() throws -> SymmetricKey
+}
+
 /// The AES-256 wrapping key of `text-state.enc`, held in the Keychain.
 ///
 /// It is the iOS counterpart of the Android Keystore alias
@@ -40,7 +47,7 @@ public protocol RetainedKey {
 /// - `kSecAttrSynchronizable` = `false`: never iCloud Keychain.
 ///
 /// The key is created once and never regenerated over an existing state file.
-public struct KeychainKey: RetainedKey, Sendable {
+public struct KeychainKey: WrappingKeyStore, Sendable {
     /// The one account this client uses, unchanged from Android.
     public static let account = "paranoid-text-state-v0"
     /// AES-256.

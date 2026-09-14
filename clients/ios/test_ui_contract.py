@@ -209,8 +209,8 @@ class UiContract(unittest.TestCase):
         self.present('guard snapshotExists || fixture != nil '
                      '|| ServiceTrust.hostedDefault() != nil else {', model, MODEL)
         decision = model.index('stage = .noStand(nil)\n                return')
-        for later in ('StorageGuard.start(', 'KeychainKey.standard.loadOrCreate(',
-                      'SnapshotStore(directory: directory, key: key)',
+        for later in ('StorageGuard.start(',
+                      'SnapshotStore(directory: directory, keyStore: KeychainKey.standard)',
                       'try SelfServiceClient(', 'Runtime(client: client, model: self)'):
             self.assertLess(decision, model.index(later),
                             f'{later!r} runs before the stand is known')
