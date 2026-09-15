@@ -1,0 +1,17 @@
+{
+  "ios_deployment_target": "17.0",
+  "ios_sdk": "26.5",
+  "java_home": "/opt/homebrew/opt/openjdk@21",
+  "jdk": "21.0.12.1",
+  "pg_bin": "/opt/homebrew/opt/postgresql@16/bin",
+  "rust": "1.98.1",
+  "rust_targets": [
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "aarch64-apple-darwin"
+  ],
+  "swift": "6.3.3",
+  "webrtc": "150.7871.01",
+  "xcode": "26.6",
+  "xcode_build": "17F113"
+}

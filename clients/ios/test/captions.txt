@@ -1,0 +1,213 @@
+# Every caption this client shows, and where each one comes from.
+#
+# `clients/ios/test_ui_contract.py` reads this file and checks two things:
+#   * the caption is present, character for character, in the Swift sources;
+#   * a caption with an Android origin is present in that Android source too.
+# A caption cannot drift from the phone a fingerprint is compared against, and
+# a screen cannot quietly lose one.
+#
+# Format: `<origin> "<caption>"`, one per line. The caption is the exact text
+# of a Swift string literal, so `\n` is written the way Swift writes it and a
+# significant leading or trailing space is inside the quotes. A fragment of an
+# interpolated caption stands for the whole (`"Сообщение слишком длинное: "`).
+#
+# Origins:
+#   MainActivity.java, TextEngine.java, DialogPolicy.java,
+#   MessagePresentation.java, QrScanActivity.java
+#       clients/android/src/org/paranoid/text/<file>; the wording is Android's
+#       and this client repeats it.
+#   ios
+#       a screen Android does not have (the frozen screen, the stand guard, the
+#       contact-flow alert) or the foreground rule of this client, whose wording
+#       is the approved mock-up's. iOS has no background delivery and no in-app
+#       update check, so «Получать в фоне», «Проверить обновления» and
+#       «Доступна версия …» have no counterpart here and are absent by design.
+
+# --- Strings.swift — every caption of the screens
+MainActivity.java "Чаты"
+MainActivity.java "Контакты"
+MainActivity.java "Мой ID"
+MainActivity.java "Назад в чаты"
+MainActivity.java "Добавить контакт"
+MainActivity.java "Сведения о контакте"
+MainActivity.java "Статус подключения. Подробнее"
+MainActivity.java "Ваш ID.\nВаши разговоры."
+MainActivity.java "Создайте ID на этом телефоне и начните переписку. Номер телефона, email и пароль не нужны."
+MainActivity.java "Создать ID"
+MainActivity.java "Создаём ID…"
+MainActivity.java "Ключи остаются на этом телефоне. Регистрация на общем сервере выполняется автоматически."
+MainActivity.java "Закрытая альфа · только тестовые сообщения. Восстановление ID пока недоступно: не удаляйте приложение с нужными данными."
+MainActivity.java "Открываем данные…"
+MainActivity.java "Открываем сохранённые данные…"
+MainActivity.java "Данные недоступны · подробнее"
+MainActivity.java "Закрытая альфа · тестовые сообщения"
+MainActivity.java "Регистрируем ID · ключи сохранены"
+MainActivity.java "Сервер подключён"
+MainActivity.java "Сообщение в очереди"
+MainActivity.java "Подключение · подробнее"
+MainActivity.java "Есть непринятые сообщения · подробнее"
+MainActivity.java "Сохранённые данные относятся к предыдущей тестовой версии. Эта сборка предназначена для новой установки. Данные не изменены."
+MainActivity.java "Локальные данные недоступны. Ключи и история не сброшены. Не удаляйте приложение."
+TextEngine.java "Сообщение сохранено в очередь"
+TextEngine.java "Отправка не завершена; сохранённая очередь не удалена."
+TextEngine.java "Ошибка локального хранения. Операции остановлены; данные не удалены."
+TextEngine.java "Подключение или проверка контакта не завершены. Повторим подключение автоматически. ID, очередь и история сохранены."
+MainActivity.java "Личные диалоги"
+MainActivity.java "Первый разговор начинается здесь"
+MainActivity.java "Сообщения собеседников появятся здесь автоматически. Чтобы написать первым, добавьте контакт."
+MainActivity.java "Начать переписку"
+MainActivity.java "Вы: "
+MainActivity.java "Проверен"
+MainActivity.java "Блок"
+MainActivity.java "Сканируйте QR собеседника или вставьте его контакт. Входящие сообщения появятся в чатах автоматически."
+MainActivity.java "Пока нет контактов"
+MainActivity.java "Контакт можно добавить по QR или вставить из сообщения собеседника."
+MainActivity.java "Поделитесь контактом"
+MainActivity.java "Собеседник сможет написать вам по этому QR. Для проверки личности сравните отпечатки отдельно."
+MainActivity.java "ВАШ ID"
+MainActivity.java "Создайте ID, чтобы начать"
+MainActivity.java "Поделиться контактом"
+MainActivity.java "Копировать контакт"
+MainActivity.java "Отпечаток контакта"
+MainActivity.java "Появится после регистрации"
+MainActivity.java "Приложение"
+MainActivity.java "О приложении"
+MainActivity.java "\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно."
+ios "Обновления приходят через TestFlight/App Store — отдельной проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
+MainActivity.java "Закрыть"
+MainActivity.java "Отпечаток идентичности"
+MainActivity.java "появится после регистрации"
+MainActivity.java "Закрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+MainActivity.java " · версия "
+MainActivity.java "Сообщение"
+MainActivity.java "Отправить"
+MainActivity.java "Отправить сообщение"
+MainActivity.java "Начните переписку. Сообщения защищены сквозным шифрованием."
+MainActivity.java "Подробнее"
+MainActivity.java "Заблокирован"
+MainActivity.java "Контакт заблокирован. Откройте сведения, чтобы разблокировать."
+MainActivity.java "Локальное хранение недоступно. Сообщения не отправляются."
+MainActivity.java "Сохраняем сообщение…"
+MainActivity.java "Сообщение слишком длинное: "
+MainActivity.java " из 2048 байт."
+ios " из 2048 байт"
+MainActivity.java "Сканировать QR"
+MainActivity.java "Вставить контакт"
+MainActivity.java "Отмена"
+MainActivity.java "Проверка контакта"
+MainActivity.java "Сравните полный отпечаток с экраном собеседника лично или по доверенному каналу. Один пересланный QR не доказывает личность."
+MainActivity.java "Отпечаток совпадает"
+ios "Доверие"
+ios "Шифрование"
+MainActivity.java "Сообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат. Имя контакта хранится только на этом телефоне."
+ios "Отметки доставки"
+MainActivity.java "✓ Сохранено сервером\n✓✓ Доставлено, не прочитано"
+MainActivity.java "Переименовать"
+MainActivity.java "Проверить QR"
+MainActivity.java "Заблокировать контакт"
+MainActivity.java "Разблокировать контакт"
+MainActivity.java "Заблокировать контакт?"
+MainActivity.java "Новые сообщения и подтверждения доставки для этого контакта будут отключены. История останется на телефоне."
+MainActivity.java "Заблокировать"
+MainActivity.java "Имя контакта"
+MainActivity.java "Отображается только на этом телефоне. Оставьте пустым, чтобы вернуть имя по умолчанию."
+MainActivity.java "Сохранить"
+MainActivity.java "Подключение"
+MainActivity.java "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
+ios "Входящие сообщения и звонки приходят, пока приложение открыто. При закрытом или заблокированном iPhone они не доставляются и появятся после открытия."
+ios "Последнее событие"
+ios "Очередь"
+ios "Непринятые сообщения"
+MainActivity.java "Нет"
+MainActivity.java "Повторить подключение"
+ios " сообщений ожидают отправки"
+ios "Входящие приходят, пока приложение открыто"
+TextEngine.java "Не удалось открыть локальное состояние. Данные сохранены; ключи не сбрасываются."
+ios "Переустановка приложения начнёт с нового ID."
+ios "Сообщения не отправляются. Не удаляйте приложение."
+ios "Повторить открытие"
+ios "Стенд не задан. Запустите с параметрами локального сервера."
+MainActivity.java "Контакт скопирован. Сравните отпечаток отдельно."
+MainActivity.java "Нет подключения для звонка. Повторите после восстановления связи."
+MainActivity.java "Для звонка нужен доступ к микрофону. Переписка доступна без него."
+MainActivity.java "Звук защищён сквозным шифрованием. При соединении через ретранслятор оператор ретранслятора видит ваш IP-адрес, время и объём трафика. Если сервер не поддерживает ретрансляцию, используется прямое соединение: собеседник может видеть ваш IP-адрес. В некоторых сетях прямое соединение недоступно."
+ios "Звонок держится, пока приложение открыто"
+MainActivity.java "Видео и звук защищены сквозным шифрованием: сервер и ретранслятор не могут их расшифровать. Камера включается только по вашему нажатию и выключается, когда приложение свёрнуто. Оператор ретранслятора видит IP-адрес, время и объём трафика; при прямом соединении IP-адрес видит собеседник."
+MainActivity.java "Без доступа к камере звонок продолжается как аудио."
+
+# --- Strings.Call — the call screen and the two ways into it
+MainActivity.java "Звонок"
+MainActivity.java "Аудиозвонок"
+MainActivity.java "Видеозвонок"
+MainActivity.java "Позвонить собеседнику?"
+MainActivity.java "Видеозвонок собеседнику?"
+MainActivity.java "Позвонить"
+MainActivity.java "Ответить"
+MainActivity.java "Отклонить"
+MainActivity.java "Завершить"
+MainActivity.java "К переписке"
+MainActivity.java "Выключить микрофон"
+MainActivity.java "Включить микрофон"
+MainActivity.java "Громкая связь"
+MainActivity.java "Телефонный динамик"
+MainActivity.java "Включить камеру"
+MainActivity.java "Выключить камеру"
+MainActivity.java "Сменить камеру"
+# Android hides the whole call window from a capture with FLAG_SECURE
+# (MainActivity.java:478). iOS has no such flag, so this client covers the
+# video stage while the screen is recorded or mirrored, and says why.
+ios "Видео скрыто: идёт запись или трансляция экрана."
+MainActivity.java "До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием."
+MainActivity.java "Восстанавливаем соединение…"
+MainActivity.java "Проверяем доступность…"
+MainActivity.java "Подготавливаем защищённое соединение…"
+MainActivity.java "Вызываем…"
+MainActivity.java "Входящий звонок"
+MainActivity.java "Устанавливаем соединение…"
+MainActivity.java "Видео"
+MainActivity.java "Соединение установлено"
+MainActivity.java "Собеседник занят"
+MainActivity.java "Звонок отклонён"
+MainActivity.java "Нет ответа или связь потеряна"
+MainActivity.java "Не удалось установить связь"
+MainActivity.java "Вызов отменён"
+MainActivity.java "Звонок завершён"
+
+# --- DialogPolicy.swift — the trust label
+DialogPolicy.java "Личность проверена"
+DialogPolicy.java "Личность не проверена"
+
+# --- MessagePresentation.swift — the conversation title and the delivery words
+MessagePresentation.java "Контакт "
+MessagePresentation.java "Доставлено"
+MessagePresentation.java "Сохранено сервером"
+MessagePresentation.java "В очереди"
+MainActivity.java "✓✓"
+MainActivity.java "✓"
+
+# --- ContactFlowError.swift — the refusal shown inside the scanner or the paste sheet
+ios "Понятно"
+ios "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID»."
+ios "Это ваш собственный контакт."
+ios "Контакт уже добавлен."
+ios "Не удалось добавить контакт ("
+
+# --- Qr/ContactQrView.swift — the code, the share and the clipboard
+MainActivity.java "QR моего контакта"
+
+# --- Qr/QrScannerView.swift — the scanner
+QrScanActivity.java "Наведите камеру на публичный QR ParanoID. Снимки не сохраняются."
+QrScanActivity.java "Камера недоступна. Данные не изменены; можно отменить и вставить публичный код."
+
+# --- Qr/ScanDeniedView.swift — the camera was refused
+ios "Нет доступа к камере. Разрешите доступ в Настройках или вставьте контакт текстом."
+ios "Открыть Настройки"
+
+# --- Qr/PasteContactSheet.swift — a contact as text
+MainActivity.java "Вставьте контакт, которым собеседник поделился из раздела «Мой ID»."
+MainActivity.java "Вставьте контакт собеседника"
+MainActivity.java "Продолжить"
+MainActivity.java "Контакт ParanoID"
+
+# --- AppModel.swift — the one status-line predicate
+MainActivity.java "Сообщение сохранено"

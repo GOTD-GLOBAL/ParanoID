@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The wrapping key lives in this application's own keychain group and in
+	     no shared one. Naming it here is what a simulator build needs to reach
+	     the keychain at all: without an entitlement it answers errSecMissingEntitlement
+	     (-34018), and the storage guard then freezes the launch exactly as it
+	     would on a real failure. A device build inherits the same group from its
+	     provisioning profile, so this changes nothing there. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+	</array>
+</dict>
+</plist>
