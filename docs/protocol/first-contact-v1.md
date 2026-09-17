@@ -160,8 +160,14 @@ duplicates are allowed. Sequence is relay ordering, not cryptographic freshness;
 server suppression/reordering is still possible.
 
 At most 64 peers and 16 `network_unverified` peers; no slot multipliers or
-history/session eviction. Per peer: 200 history entries, 400 pending envelopes,
-8 sessions, 1000 accepted replay IDs. Snapshot at most 8 MiB; native request at
+history/session eviction. Per peer: 400 pending envelopes, 8 sessions, 1000
+accepted replay IDs and 1000 retained receipt commitments — the commitments are
+what refuse a further text send once they accumulate. Conversation history has no
+entry ceiling in this candidate
+([RFC-0022](../rfcs/0022-unlimited-conversation-history.md), `proposed`, which
+supersedes the 200-entry development limit of RFC-0008 and is not an accepted
+decision until its ADR); a long history is bounded by the snapshot instead.
+Snapshot at most 8 MiB; native request at
 most 65536 bytes; decoded wire at most 16384; Java sync pages at most 20 events.
 Blocking applies to existing immutable peers and is stored on those peer records;
 there are no delete/readd or independent unknown-account tombstone allocations.

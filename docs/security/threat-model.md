@@ -93,7 +93,7 @@ upgrades trust. No recipient approval, server directory or label inference is us
 | Forged/unknown receipt produces false delivery | Strict same-channel target sender/id/inner digest matched to retained outgoing commitment after server acceptance; unknown target no allocation, no synthetic receipt/receipt loop |
 | Replay, changed immutable ciphertext or conflicting sequence | Non-evicting sender/id + sequence/channel/outer/inner ledger; exact duplicates no-op across reload; conflict before decrypt; monotonic cursor |
 | Network peer launders verification or replaces keys | Unverified enum distinct from explicit QR trust, immutable credential/device/auth/original bundle/fallback, trust-only same-key upgrade |
-| Unknown-sender growth or blocked spam | 16 network-unverified/64 peers; existing 8 MiB snapshot, 200 history, 400 outbox, 8 sessions, 1000 accepted IDs per peer; 16 KiB frame/20-event pages; bounded block suppressing display/receipts |
+| Unknown-sender growth or blocked spam | 16 network-unverified/64 peers; existing 8 MiB snapshot, 400 outbox, 8 sessions, 1000 accepted IDs and 1000 retained receipt commitments per peer — history itself has no entry ceiling in the RFC-0022 candidate, where the snapshot bound and the commitment ledger are what refuse growth; 16 KiB frame/20-event pages; bounded block suppressing display/receipts |
 | Crash or ambiguous persistence publishes non-durable state | Core candidate sealed atomically before UI/network; failure freezes; exact wrapped outbox retry and persistent reopen exercised over real JVM/JNI |
 | Old incompatible client data silently reset | New explicit core3/outer4 validation; unsupported older snapshots preserved and visibly refused; no migration/reset path in this clean candidate |
 
