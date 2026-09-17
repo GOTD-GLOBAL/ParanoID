@@ -234,9 +234,16 @@ task and hands the finished answer back through `perform`.
   before the delivery mark it produces is published. A 409 or a 507 defers that
   envelope and lets the rest of the batch go out; any other status ends the
   pass at once. An idle lane waits on a wake signal instead of polling.
-- **Receipts.** One check appears only after durable server acceptance, two
+- **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
-  anywhere in this client (REQ-MSG-003).
+  anywhere in this client (REQ-MSG-003). The three states are drawn
+  (`ReceiptMark`) rather than typed as «…», «✓» and «✓✓»; the words behind them
+  stay as the accessibility label, so VoiceOver reads the state and not the
+  drawing. The first time a message of this user's reaches the second mark, the
+  chat says once that two marks are delivery and not reading, and «Понятно»
+  retires that sentence for good (`ReceiptHint`, a flag in this application's
+  own defaults). Android still spells the marks as characters; the wording is
+  identical and the divergence is visual only.
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or
