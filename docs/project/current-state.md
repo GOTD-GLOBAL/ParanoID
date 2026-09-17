@@ -6,6 +6,20 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## PR34 v26 source integration candidate
+
+The [integration review](../clients/android/pr34-integration-review.md) records
+local fixes, actual SDK/split-DEX and host test results, and remaining gates.
+
+The [dated v26 publication record](../clients/android/v26-bridge-release.md)
+covers the bridge published on 2026-09-13, including v25 call-owner and split-R8
+fixes absent from main. Its server-blocked statement is historical evidence for
+that operation, not a fresh host status check. This integration retains current
+main's complete evidence (including later iOS/TLS entries) and removes an
+accidentally committed output-truncation placeholder from the PR branch.
+Local integration/testing is not a new APK publication, phone acceptance,
+server deployment, main merge or architecture approval.
+
 ## C1 integrated and verified at host/simulator scope (2026-09-14)
 
 PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b

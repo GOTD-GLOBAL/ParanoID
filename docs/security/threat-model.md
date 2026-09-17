@@ -18,6 +18,12 @@ change.
 
 ## Active scoped analysis
 
+The [PR34 native-exit correction](../clients/android/pr34-integration-review.md)
+removes raw system trace/description from UI exports, moves diagnostic reads and
+acknowledgement off main, and acknowledges only an explicitly dismissed report.
+Existing Java exception reports remain unredacted and explicitly disclosed; no
+automatic upload or general secret-free crash-report guarantee is claimed.
+
 The [same-key renewal proposal](../rfcs/tls-same-key-automation.md#threats-and-alternatives)
 adds unattended dedicated-user lifecycle authority, durable public-certificate
 journals and fail-closed drift recovery. No key export/generation, DB restore/reset,

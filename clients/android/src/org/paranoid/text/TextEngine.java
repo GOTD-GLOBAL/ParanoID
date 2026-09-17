@@ -98,7 +98,10 @@ public final class TextEngine {
                 if(callListener!=null)callListener.changed(view);
                 worker.execute(()->{if(callActive||callDraining)startConnection();else if(listener==null&&!backgroundEnabled&&realtime!=null){stopConnection();}});
             }
-        });
+        // The engine singleton is created lazily by whoever touches it first. After a cold FCM wake that is
+        // the Firebase service thread, not main; v24 pinned the call owner to the constructing thread and the
+        // 1 s tick on main then died with "call owner thread" (owner report 2026-09-13). Pin to main explicitly.
+        },Looper.getMainLooper().getThread());
         ui.post(new Runnable(){public void run(){calls.tick();ui.postDelayed(this,1000);}});
         directory=context.getFilesDir();file=new AtomicFile(new File(directory,"text-state.enc"));
         worker.execute(()->{

@@ -8,6 +8,26 @@ public contract is declared.
 
 ## [Unreleased]
 
+### PR34 integration corrections — 2026-09-17
+
+- Restore complete project evidence lost to a truncation placeholder in PR34.
+- Restrict native exit reports to structured fields, collect off UI, and defer
+  acknowledgement until explicit Copy/Close. Existing Java report limits remain.
+- Verify real DEX definitions and reject secondary split inputs before merging.
+- Correct two pinned Maven repository selectors without changing artifact bytes.
+- This source candidate is not a new v26 publication or a server deployment.
+
+### v26 bridge APK published — 2026-09-13
+
+- Published `0.0.26-update` through the existing in-app feed with the retained
+  signer, within the old clients' size ceiling. It removes the client's fixed
+  ceiling and preserves the v25 cold-push call-owner and Firebase-only R8 fixes.
+- Canonical build and independent artifact review pass; actual old-v25 updater
+  downloads the new feed APK over pinned TLS. Phone acceptance is still pending.
+- Server rollout was stopped at coordinator identity drift. No server update or
+  bypass is implied by APK publication. See the
+  [release evidence](docs/clients/android/v26-bridge-release.md).
+
 ### iOS call-control targeting candidate — 2026-09-14
 
 - Bind End/Reject/Hangup and mute/speaker UI operations to the original call ID
