@@ -1,10 +1,45 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-17
 ---
 
 # Current project state
+
+## PR35 source integration and maintenance gates — 2026-09-17
+
+The APK-cap rollout branch is integrated with main `4830134` in a separate
+review worktree. Both branches' dated Android/iOS/TLS and server evidence remain
+intact. New CI wiring covers the one-off metadata tests and freshly packaged v2
+backup/restore/rollback/interrupt checks on disposable synthetic PostgreSQL data.
+REQ-MSG-004 and REQ-DEPLOY-002/003 remain unchanged; draft RFCs/ADR-0008 are not
+accepted by this source merge. The dated hosted result below is from September 13,
+not a fresh host check or a new deployment. CI and independent review results
+are recorded on PR35 before merge; no new APK, phone or hosted action is implied.
+
+## APK-cap server rollout completed — 2026-09-13
+
+[The actual rollout record](../operations/apk-cap-rollout-2026-09-13.md) supersedes
+the initial blocker below. Message release9f37215d844b21abae3c is active under the
+unchanged coordinator CLI; the actual process binary hash matches the tested kit.
+Original records were preserved during exact maintenance reconciliation. The first
+attempt safely rolled back on the known optional FCM schema; a strict reference
+schema/backup-coverage correction then passed fifteen packaged tests and review.
+The successful update verified encrypted restore of all seven tables, including
+push tokens, before switching. TLS key/certificate/pin, PG identity, unit and
+semantic config were preserved. Live old-v25 updater downloads the unchanged v26
+feed correctly. Phone call/push/reboot acceptance remains unrun; no permanent
+ADR acceptance or generic future drift bypass is claimed.
+
+## APK-cap server deployment blocked — 2026-09-13
+
+The owner authorized server update and bridge publication after PRs32/33 merged.
+The locked native server candidate was built, but original coordinator status
+refused config/certificate/unit identity drift before deployment. Read-only worker
+inspection confirmed unchanged release, PG identifier, TLS key and pin. No drift
+adoption or code switch was attempted. [The blocked-rollout record](../operations/apk-cap-rollout-blocked-2026-09-13.md)
+retains evidence and required reviewed reconciliation. Android delivery is a
+separate operation; it does not prove the server was updated.
 
 ## PR34 v26 source integration candidate
 
