@@ -90,6 +90,14 @@ archive SHA256 `5ef951dbf989f54fa8980ee055301129e875e2fea535c9a214c2f4abd6445d20
 - Root-host read-only proof, original preflight and exact reviewed plan passed;
   runtime mutation used only the original single_host.py CLI update operation.
 
+## Test-count clarification — 2026-09-17
+
+The fifteen dated maintenance tests above comprise fourteen `test_v2_update.py`
+tests and one `test_v2_maintenance_interrupts.py` test (four signal/phase cases).
+This clarifies the original scope; it does not add a retrospective execution claim.
+New PR35 integration checks and their review are recorded separately in
+[the integration handoff](apk-cap-pr35-integration.md).
+
 ## Limits and next steps
 
 No physical-phone call/FCM-wake acceptance or reboot test was performed. Existing

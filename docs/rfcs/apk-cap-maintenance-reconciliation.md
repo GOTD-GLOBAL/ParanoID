@@ -68,6 +68,10 @@ unchanged key/pin/PG/release checks, loaded-unit/network verification, two locks
 explicit annotation and independent source/operation review. Unknown drift,
 unsafe files, partial foreign writes, mismatched before snapshots or a newer
 coordinator transaction must stop. No universal bypass flag or background adopter.
+The proof digest commits to the pinned original state, observed identity, kit hash
+and fixed check-name list after successful guards. It is not a transcript of
+individual observations or independent attestation of execution; safety still
+depends on rerunning those guards under both locks before every write.
 The dedicated root operator remains trusted; this is not protection against root
 compromise. Crash/fault tests use disposable metadata fixtures; no live fault
 injection or database reset. Independent review precedes running write mode.

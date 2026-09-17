@@ -121,4 +121,64 @@ class ReconcileTests(unittest.TestCase):
             current.unlink();current.write_bytes(before);current.chmod(0o666)
             with self.assertRaises(ValueError):r.persist(root/'audit',current,journal,before,after,'c'*64)
 
+class InspectProofTests(unittest.TestCase):
+    """Exercise semantic drift guards without reading any hosted path."""
+    def inspect_fixture(self, change=None):
+        from unittest.mock import Mock, patch
+        old_config = r.canonical({'ip': '127.0.0.1', 'deployment': 'self-service-v2'})
+        old_unit = b'[Service]\nExecStart=synthetic\n'
+        files = {'config.before': old_config, 'unit.before': old_unit,
+                 'config.json': r.canonical({**json.loads(old_config), 'push': {'v': 1, 'provider': 'fcm'}}),
+                 'paranoid-alpha.service': old_unit + r.PUSH_LINE,
+                 'old.crt': b'synthetic-old-cert', 'server.crt': b'synthetic-new-cert',
+                 'network-receipt.json': b'{}'}
+        old = {'phase': 'active', 'transaction': 'cb52e2ed5f6ff678998cb26eb7fa0725',
+               'kit_path': str(r.KIT), 'intent': {'message': {'uid': 1003}, 'kit_sha256': 'kit'},
+               'message_ingress_sha256': 'ingress',
+               'message_result': {'transaction': 'synthetic', 'identity': {k: k for k in r.IDENTITY_FIELDS}}}
+        old['message_result']['identity'].update(config_sha256=r.sha(old_config),
+            unit_sha256=r.sha(old_unit), tls_cert_sha256=r.sha(files['old.crt']))
+        if change:
+            change(files)
+        live = dict(old['message_result']['identity'])
+        live.update(config_sha256=r.sha(files['config.json']),
+                    unit_sha256=r.sha(files['paranoid-alpha.service']),
+                    tls_cert_sha256=r.sha(files['server.crt']))
+        k = Mock()
+        k.decode_json.side_effect = json.loads
+        k.read_file.side_effect = lambda path, **kwargs: files[path.name]
+        k.worker.return_value = {'identity': live}
+        k.require_message_ingress.return_value = 'ingress'
+        before = r.canonical(old)
+        # Synthetic pins let semantic checks reject even a fingerprint-matching
+        # but unauthorized delta; these are not production proof/identity bytes.
+        with patch.object(r, 'STATE_SHA', r.sha(before)), patch.object(r, 'TARGETS', live):
+            result = r.inspect(k, before)
+        k.verify_system_artifacts.assert_called_once_with(old)
+        k.wait_relay_active.assert_called_once_with(old)
+        return result
+
+    def test_exact_config_unit_certificate_delta_passes_original_checks(self):
+        old, live, proof = self.inspect_fixture()
+        self.assertEqual(len(proof), 64)
+        self.assertEqual(live['tls_spki'], old['message_result']['identity']['tls_spki'])
+
+    def test_extra_config_key_rejected_even_when_target_hash_matches(self):
+        def change(files):
+            value = json.loads(files['config.json']); value['unauthorized'] = True
+            files['config.json'] = r.canonical(value)
+        with self.assertRaisesRegex(ValueError, 'config delta'):
+            self.inspect_fixture(change)
+
+    def test_missing_duplicate_or_additional_unit_line_rejected(self):
+        for unit in (b'foreign', b'[Service]\nExecStart=synthetic\n' + r.PUSH_LINE * 2,
+                     b'[Service]\nExecStart=synthetic\n' + r.PUSH_LINE + b'Environment=foreign\n'):
+            with self.subTest(unit=unit), self.assertRaisesRegex(ValueError, 'unit delta'):
+                self.inspect_fixture(lambda files: files.update({'paranoid-alpha.service': unit}))
+
+    def test_wrong_historical_certificate_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'recorded same-key renewal'):
+            self.inspect_fixture(lambda files: files.update({'old.crt': b'foreign-old-cert'}))
+
+
 if __name__ == '__main__': unittest.main()

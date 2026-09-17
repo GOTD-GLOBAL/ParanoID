@@ -152,6 +152,18 @@ retained exact v2 release. `PARANOID_TEST_PACKAGED=1` plus
 `PARANOID_V2_RELEASE=/absolute/final/release` selects a frozen packaged controller.
 These are local/operator tests, not E2EE, phone, reboot or hosted acceptance.
 
+## CI coverage for same-v2 maintenance
+
+`python3 scripts/check-v2-maintenance.py` builds a fresh v2 package and runs the
+real private-PostgreSQL encrypted restore, optional FCM schema/row checks,
+same-data code rollback and signal-interruption suites against its packaged
+controller. CI runs this plus the synthetic one-off reconciliation/recovery tests
+in `native-package`; no one-off helper main function or hosted operation is run.
+The default baseline is the freshly built package, not a historical binary.
+Set `PARANOID_V2_OLD_RELEASE` to a retained package for historical compatibility
+verification. Fresh same-schema fixture coverage must not be called a downgrade
+compatibility test. A CI wiring regression guards these test invocations.
+
 ## Historical fresh self-service v2 candidate
 
 When manifest `schema_contract` is `paranoid-self-service-v2`, this bundle has

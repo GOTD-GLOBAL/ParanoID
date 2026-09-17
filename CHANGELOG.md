@@ -8,6 +8,13 @@ public contract is declared.
 
 ## [Unreleased]
 
+### PR35 integration checks — 2026-09-17
+
+- Integrate the server rollout evidence with current main without dropping later
+  Android/iOS records. Add blocking CI invocations for reconciliation/recovery and
+  real packaged v2 encrypted backup, optional FCM coverage and interruption tests.
+- No new hosted operation, application schema migration or architecture acceptance.
+
 ### Server APK-cap rollout completed — 2026-09-13
 
 - Deployed the reviewed server without the fixed APK ceiling on retained data.

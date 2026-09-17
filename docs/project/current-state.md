@@ -1,10 +1,21 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-17
 ---
 
 # Current project state
+
+## PR35 source integration and maintenance gates — 2026-09-17
+
+The APK-cap rollout branch is integrated with main `4830134` in a separate
+review worktree. Both branches' dated Android/iOS/TLS and server evidence remain
+intact. New CI wiring covers the one-off metadata tests and freshly packaged v2
+backup/restore/rollback/interrupt checks on disposable synthetic PostgreSQL data.
+REQ-MSG-004 and REQ-DEPLOY-002/003 remain unchanged; draft RFCs/ADR-0008 are not
+accepted by this source merge. The dated hosted result below is from September 13,
+not a fresh host check or a new deployment. CI and independent review results
+are recorded on PR35 before merge; no new APK, phone or hosted action is implied.
 
 ## APK-cap server rollout completed — 2026-09-13
 
