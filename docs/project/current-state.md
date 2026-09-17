@@ -6,6 +6,27 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## Message time — local candidate (2026-09-17)
+
+The candidate gives a message the instant the device that wrote or received it
+saw, stored in the core's sealed snapshot and never transmitted
+([RFC-0023](../rfcs/0023-message-time.md), **proposed**). Both clients show it
+under the bubble, put a pill where the day turns and date the conversation rows.
+An entry written before this candidate keeps no time and is shown without one.
+
+The branch stands on the PR45 candidate rather than on `main`, because both
+change the same core files; it cannot merge before PR45 does. As with the
+retired history ceiling, an older build cannot open a snapshot that carries the
+new field, so both alpha phones must be updated together, and acceptance is the
+owner's.
+
+Verified on this Mac: core `clean_first_contact` 20/0 including the two new
+time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,
+`voice_calls` 14/0, `registration` 7/0, `key_vectors` 1/0, `self_service`
+unchanged at 10 passed with the same 14 legacy failures; `fmt` and `clippy`
+clean. **Not run:** any physical device, a signed build, the Android APK, and
+the hosted server. No merge, deployment or ADR acceptance is implied.
+
 ## Chat marks, call rows and unlimited history — local candidate (2026-09-17)
 
 At Yaroslav's request the candidate removes the 200-entry conversation ceiling in

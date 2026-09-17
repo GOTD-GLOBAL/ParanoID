@@ -167,7 +167,11 @@ entry ceiling in this candidate
 ([RFC-0022](../rfcs/0022-unlimited-conversation-history.md), `proposed`, which
 supersedes the 200-entry development limit of RFC-0008 and is not an accepted
 decision until its ADR); a long history is bounded by the snapshot instead.
-Snapshot at most 8 MiB; native request at
+A history entry additionally carries the device-local instant it was written or
+committed at (`local_ms`, core schema 3, absent in older snapshots); it is
+supplied by the client with the operation, never transmitted, and never used for
+ordering, admission or replay ([RFC-0023](../rfcs/0023-message-time.md),
+proposed). Snapshot at most 8 MiB; native request at
 most 65536 bytes; decoded wire at most 16384; Java sync pages at most 20 events.
 Blocking applies to existing immutable peers and is stored on those peer records;
 there are no delete/readd or independent unknown-account tombstone allocations.

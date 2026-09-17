@@ -137,6 +137,10 @@ enum Operation {
     SendV2 {
         account: String,
         text: String,
+        /// The client's own clock at the instant of the tap, in milliseconds
+        /// since the epoch. Absent or zero means the client keeps no time.
+        #[serde(default)]
+        now_ms: u64,
     },
     SendCallV1 {
         account: String,
@@ -144,6 +148,9 @@ enum Operation {
     },
     ReceiveV2 {
         message: Incoming,
+        /// The client's own clock at the instant this event was committed.
+        #[serde(default)]
+        now_ms: u64,
     },
     AcceptedV2 {
         id: String,
@@ -383,7 +390,7 @@ fn add_peer(s: &mut State, contact: ContactV2, trust: Trust) -> Result<()> {
     );
     Ok(())
 }
-fn enqueue(s: &mut State, id: &str, body: Body) -> Result<String> {
+fn enqueue(s: &mut State, id: &str, body: Body, now_ms: u64) -> Result<String> {
     let own = own_id(s)?.to_owned();
     let c = s.conversations.get_mut(id).ok_or("verify_peer_first")?;
     if c.blocked {
@@ -469,11 +476,17 @@ fn enqueue(s: &mut State, id: &str, body: Body) -> Result<String> {
             text,
             accepted: false,
             delivered: false,
+            local_ms: now_ms,
         });
     }
     Ok(mid)
 }
-fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Result<Acceptance> {
+fn receive_candidate(
+    s: &mut State,
+    m: &Incoming,
+    outer_digest: String,
+    now_ms: u64,
+) -> Result<Acceptance> {
     if s.conversations.get(&m.sender).is_some_and(|c| c.blocked) {
         return Err("contact_blocked");
     }
@@ -564,8 +577,9 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
                 text,
                 accepted: true,
                 delivered: true,
+                local_ms: now_ms,
             });
-            enqueue(s, &m.sender, Body::Receipt(target))?;
+            enqueue(s, &m.sender, Body::Receipt(target), 0)?;
             true
         }
         Body::Receipt(target) => {
@@ -618,7 +632,7 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
     snapshot_size(s)?;
     Ok(Acceptance::Accepted(call_event))
 }
-fn receive(s: &mut State, m: Incoming) -> Result<Acceptance> {
+fn receive(s: &mut State, m: Incoming, now_ms: u64) -> Result<Acceptance> {
     if !paranoid_key_protocol::hex32(&m.sender)
         || !canonical_id(&m.id)
         || !(1..=100000).contains(&m.sequence)
@@ -644,7 +658,8 @@ fn receive(s: &mut State, m: Incoming) -> Result<Acceptance> {
     }
     // Deep-copy ALL state, including Account, before transient peer allocation.
     let mut candidate: State = serde_json::from_value(encode(&*s)?).map_err(|_| "invalid_state")?;
-    let result = outer.and_then(|bytes| receive_candidate(&mut candidate, &m, digest(&bytes)));
+    let result =
+        outer.and_then(|bytes| receive_candidate(&mut candidate, &m, digest(&bytes), now_ms));
     match result {
         Ok(accepted @ Acceptance::Accepted(_)) => {
             *s = candidate;
@@ -862,27 +877,31 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
             c.verify(&s.legacy)?;
             add_peer(&mut s, c, Trust::OutOfBandVerified)?;
         }
-        Operation::SendV2 { account, text } => {
+        Operation::SendV2 {
+            account,
+            text,
+            now_ms,
+        } => {
             if s.enrollment.is_none() {
                 return Err("registration_required");
             }
             if text.is_empty() || text.len() > 2048 {
                 return Err("invalid_text");
             }
-            enqueue(&mut s, &account, Body::Text(text))?;
+            enqueue(&mut s, &account, Body::Text(text), now_ms)?;
         }
         Operation::SendCallV1 { account, body } => {
             if s.enrollment.is_none() {
                 return Err("registration_required");
             }
             body.validate()?;
-            enqueue(&mut s, &account, Body::Call(body))?;
+            enqueue(&mut s, &account, Body::Call(body), 0)?;
         }
-        Operation::ReceiveV2 { message } => {
+        Operation::ReceiveV2 { message, now_ms } => {
             if s.enrollment.is_none() {
                 return Err("registration_required");
             }
-            let result = receive(&mut s, message)?;
+            let result = receive(&mut s, message, now_ms)?;
             return reply(s, Some(result));
         }
         Operation::AcceptedV2 { id } => {

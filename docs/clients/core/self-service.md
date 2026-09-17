@@ -165,6 +165,14 @@ retain the inherited bounded-notice behavior and no delivery receipt. Automatic
 later recovery of capacity/decryption failures is not promised. Notices older than
 the bounded ledger may leave aggregate warning counts after recovery.
 
+Each history entry carries `local_ms`: milliseconds since the epoch as the
+client that wrote or received it read **its own** clock. The core reads no clock
+— `send_v2` and `receive_v2` carry `now_ms` and the value is stored verbatim,
+the same trust model as a call control's `sent_ms` — and it never enters an
+envelope, a `PlainV1` body, a receipt or a server row. Zero means unknown, which
+is what every entry written before this candidate has; nothing invents one for
+them (REQ-CLIENT-004, [RFC-0023](../../rfcs/0023-message-time.md), proposed).
+
 Limits: 64 new verified contacts plus a retained legacy conversation, 400 queued
 envelopes, eight sessions and 1000 seen IDs per conversation; 2048 UTF-8 text
 bytes. Conversation history has no entry ceiling (owner decision 2026-09-17; the

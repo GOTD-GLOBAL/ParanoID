@@ -648,9 +648,12 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         LinearLayout lines=column();LinearLayout.LayoutParams lineParams=new LinearLayout.LayoutParams(0,-2,1);lineParams.setMargins(dp(12),0,dp(8),0);row.addView(lines,lineParams);
         TextView title=text(ContactNames.title(this,account),16,colors.text,true);title.setMaxLines(1);title.setEllipsize(TextUtils.TruncateAt.END);lines.addView(title);
         TextView snippet=text(preview,14,colors.muted,false);snippet.setMaxLines(2);snippet.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams snippetParams=full();snippetParams.topMargin=dp(4);lines.addView(snippet,snippetParams);
+        LinearLayout side=column();side.setGravity(Gravity.END);row.addView(side,new LinearLayout.LayoutParams(-2,-2));
+        String when=last==null?"":MessagePresentation.listTime(last.optLong("local_ms",0),System.currentTimeMillis());
+        if(!when.isEmpty()){TextView stamp=text(when,12,colors.muted,false);stamp.setGravity(Gravity.END);side.addView(stamp);}
         String marker=dialog.optBoolean("blocked")?"Блок":dialog.optString("trust").equals("out_of_band_verified")?"Проверен":"";
-        if(!marker.isEmpty()){TextView badge=text(marker,11,colors.muted,false);row.addView(badge);}
-        else if(last!=null&&last.optString("author").equals(dialog.optString("own"))){TextView receipt=text(last.optBoolean("delivered")?"✓✓":last.optBoolean("accepted")?"✓":"…",14,colors.muted,false);receipt.setContentDescription(MessagePresentation.delivery(last));row.addView(receipt);}
+        if(!marker.isEmpty()){TextView badge=text(marker,11,colors.muted,false);badge.setGravity(Gravity.END);side.addView(badge);}
+        else if(last!=null&&last.optString("author").equals(dialog.optString("own"))){TextView receipt=text(last.optBoolean("delivered")?"✓✓":last.optBoolean("accepted")?"✓":"…",14,colors.muted,false);receipt.setGravity(Gravity.END);receipt.setContentDescription(MessagePresentation.delivery(last));side.addView(receipt);}
         container.addView(row,full());
     }
     private void empty(LinearLayout container,String title,String body,Runnable action){
@@ -668,17 +671,39 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         boolean nearBottom=force||history.getHeight()-messageScroll.getHeight()-messageScroll.getScrollY()<dp(100);
         int oldScroll=messageScroll.getScrollY();history.removeAllViews();
         JSONArray rows=MessagePresentation.chatRows(messages,calls);
+        long previousDay=0,nowMs=System.currentTimeMillis();
         if(rows.length()==0){TextView start=text("Начните переписку. Сообщения защищены сквозным шифрованием.",14,colors.muted,false);start.setGravity(Gravity.CENTER);start.setPadding(dp(24),dp(32),dp(24),dp(32));history.addView(start,full());}
         else for(int n=0;n<rows.length();n++){
             JSONObject entry=rows.optJSONObject(n);if(entry==null)continue;
             if(entry.optString("type").equals("call")){callRow(entry.optJSONObject("value"));continue;}
             JSONObject message=entry.optJSONObject("value");if(message==null)continue;
+            // Only a message carries a time, so only a message opens a day; an entry written by a
+            // build that kept none opens nothing and is shown without one (REQ-CLIENT-004).
+            long when=message.optLong("local_ms",0);
+            if(MessagePresentation.startsNewDay(when,previousDay)){
+                String day=MessagePresentation.daySeparator(when,nowMs);
+                if(!day.isEmpty()){
+                    TextView pill=text(day,12,colors.muted,false);pill.setGravity(Gravity.CENTER);
+                    pill.setPadding(dp(10),dp(3),dp(10),dp(3));pill.setBackground(shape(colors.surface,12));
+                    LinearLayout dayRow=row();dayRow.setGravity(Gravity.CENTER);
+                    LinearLayout.LayoutParams dayParams=full();dayParams.topMargin=dp(10);
+                    history.addView(dayRow,dayParams);dayRow.addView(pill,new LinearLayout.LayoutParams(-2,-2));
+                }
+            }
+            if(when>0)previousDay=when;
             boolean mine=message.optString("author").equals(dialog.optString("own"));
             LinearLayout row=row();row.setGravity(mine?Gravity.END:Gravity.START);LinearLayout.LayoutParams rowParams=full();rowParams.topMargin=dp(6);history.addView(row,rowParams);
             LinearLayout bubble=column();bubble.setPadding(dp(14),dp(10),dp(14),dp(8));bubble.setBackground(bubble(mine));
             LinearLayout.LayoutParams bubbleParams=new LinearLayout.LayoutParams(-2,-2);if(mine)bubbleParams.leftMargin=dp(40);else bubbleParams.rightMargin=dp(40);row.addView(bubble,bubbleParams);
             TextView body=text(message.optString("text"),16,colors.text,false);body.setTextIsSelectable(true);body.setMaxWidth(Math.min(dp(440),Math.max(dp(160),getResources().getDisplayMetrics().widthPixels-dp(92))));bubble.addView(body);
-            if(mine){TextView receipt=text((message.optBoolean("delivered")?"✓✓ ":message.optBoolean("accepted")?"✓ ":"… ")+MessagePresentation.delivery(message),11,colors.muted,false);receipt.setGravity(Gravity.END);receipt.setPadding(0,dp(5),0,0);bubble.addView(receipt,full());}
+            String stamp=MessagePresentation.time(when);
+            if(mine){
+                String state=(message.optBoolean("delivered")?"✓✓ ":message.optBoolean("accepted")?"✓ ":"… ")+MessagePresentation.delivery(message);
+                TextView receipt=text(stamp.isEmpty()?state:stamp+" · "+state,11,colors.muted,false);
+                receipt.setGravity(Gravity.END);receipt.setPadding(0,dp(5),0,0);bubble.addView(receipt,full());
+            } else if(!stamp.isEmpty()){
+                TextView at=text(stamp,11,colors.muted,false);at.setPadding(0,dp(5),0,0);bubble.addView(at,full());
+            }
         }
         messageScroll.post(()->{if(nearBottom)messageScroll.scrollTo(0,history.getHeight());else messageScroll.scrollTo(0,oldScroll);});
     }

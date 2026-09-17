@@ -40,6 +40,7 @@ struct DialogsScreen: View {
                         ConversationRow(dialog: dialog,
                                         title: model.title(for: dialog.account),
                                         subtitle: model.preview(for: dialog) ?? Self.preview(dialog),
+                                        time: model.listTime(for: dialog),
                                         trailing: Self.trailing(dialog))
                         .contentShape(Rectangle())
                         .onTapGesture { model.openChat(dialog.account) }
@@ -89,6 +90,9 @@ struct ConversationRow: View {
     /// otherwise the default label (`AppModel.title(for:)`).
     let title: String
     let subtitle: String
+    /// When the last message of this conversation happened, or the empty string
+    /// for a history that carries no time (`AppModel.listTime(for:)`).
+    var time: String = ""
     let trailing: Trailing
 
     var body: some View {
@@ -110,7 +114,27 @@ struct ConversationRow: View {
                     .multilineTextAlignment(.leading)
             }
             Spacer(minLength: 8)
-            switch trailing {
+            VStack(alignment: .trailing, spacing: 4) {
+                if !time.isEmpty {
+                    Text(time)
+                        .font(.system(size: 12))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+                trailingView
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
+        .frame(minHeight: 74)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("dialog-\(dialog.account)")
+    }
+
+    /// The badge or the mark at the end of the row.
+    @ViewBuilder
+    private var trailingView: some View {
+        switch trailing {
             case .none:
                 EmptyView()
             case .badge(let text):
@@ -121,13 +145,7 @@ struct ConversationRow: View {
                 ReceiptMark(mark: mark, size: 13)
                     .foregroundStyle(.secondary)
                     .accessibilityLabel(words)
-            }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 10)
-        .frame(minHeight: 74)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("dialog-\(dialog.account)")
     }
 }
 

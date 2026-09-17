@@ -166,6 +166,21 @@ encryption; container access can expose these rows. Future recovery/deletion
 must explicitly include this store. This describes the proposed candidate, not
 an accepted privacy guarantee or ADR.
 
+## Candidate message time
+
+The candidate stores, for each history entry, the instant the device that wrote
+or received it read its own clock (`local_ms`, core schema 3). It stays inside
+the sealed snapshot, under the same protection as the plaintext beside it, and
+it is never transmitted: no envelope, no `PlainV1` body, no receipt and no
+server row carries it, so neither the peer nor the relay learns anything new.
+
+What changes is what a **compromised or seized device** yields: the snapshot now
+holds a timeline of a conversation as well as its content. A wrong clock on one
+phone mislabels only that phone's copy, because each device stamps its own; no
+device trusts a time it did not read itself. Carrying the sender's instant to
+the receiver would be a separate in-band decision and is not proposed here. This
+describes the proposed candidate, not an accepted privacy guarantee or ADR.
+
 ## Assets
 
 - recovery seed and derived key material;

@@ -84,6 +84,79 @@ public enum MessagePresentation {
         case delivered
     }
 
+    // MARK: - when a message happened (`MessagePresentation.java`, Android v24)
+
+    /// The months as a date is read aloud in Russian, so that a separator never
+    /// depends on the device's locale: the same instant reads the same way on
+    /// both phones.
+    static let monthsGenitive = ["января", "февраля", "марта", "апреля", "мая", "июня",
+                                 "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+
+    /// `14:32` — the time under a bubble, in this phone's own time zone.
+    ///
+    /// An entry written by a build that kept no time answers the empty string,
+    /// and the screens draw nothing for it: a message whose time is unknown is
+    /// shown without one rather than with a guess (REQ-CLIENT-004).
+    public static func time(_ milliseconds: UInt64, calendar: Calendar = .current) -> String {
+        guard milliseconds > 0 else { return "" }
+        let parts = calendar.dateComponents([.hour, .minute], from: date(milliseconds))
+        return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
+    }
+
+    /// Whether a message begins a day the one before it did not, which is where
+    /// the chat draws a separator. An unknown time never begins one.
+    public static func startsNewDay(_ milliseconds: UInt64,
+                                    after previous: UInt64,
+                                    calendar: Calendar = .current) -> Bool {
+        guard milliseconds > 0 else { return false }
+        guard previous > 0 else { return true }
+        return !calendar.isDate(date(previous), inSameDayAs: date(milliseconds))
+    }
+
+    /// The pill between two days: «Сегодня», «Вчера», «15 сентября», and the
+    /// year as well once it is not this one.
+    public static func daySeparator(_ milliseconds: UInt64,
+                                    now: UInt64,
+                                    calendar: Calendar = .current) -> String {
+        guard milliseconds > 0 else { return "" }
+        let when = date(milliseconds)
+        let today = date(now)
+        if calendar.isDate(when, inSameDayAs: today) { return "Сегодня" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+           calendar.isDate(when, inSameDayAs: yesterday) {
+            return "Вчера"
+        }
+        let parts = calendar.dateComponents([.day, .month, .year], from: when)
+        let day = parts.day ?? 1
+        let month = monthsGenitive[max(0, min(11, (parts.month ?? 1) - 1))]
+        let year = parts.year ?? 0
+        let thisYear = calendar.dateComponents([.year], from: today).year ?? year
+        return year == thisYear ? "\(day) \(month)" : "\(day) \(month) \(year)"
+    }
+
+    /// What a conversation row says about when its last event happened:
+    /// the time today, «Вчера» yesterday, and the date before that.
+    public static func listTime(_ milliseconds: UInt64,
+                                now: UInt64,
+                                calendar: Calendar = .current) -> String {
+        guard milliseconds > 0 else { return "" }
+        let when = date(milliseconds)
+        let today = date(now)
+        if calendar.isDate(when, inSameDayAs: today) { return time(milliseconds, calendar: calendar) }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+           calendar.isDate(when, inSameDayAs: yesterday) {
+            return "Вчера"
+        }
+        let parts = calendar.dateComponents([.day, .month, .year], from: when)
+        let stamp = String(format: "%02d.%02d", parts.day ?? 1, parts.month ?? 1)
+        let thisYear = calendar.dateComponents([.year], from: today).year ?? parts.year ?? 0
+        return (parts.year ?? thisYear) == thisYear ? stamp : stamp + ".\(parts.year ?? thisYear)"
+    }
+
+    private static func date(_ milliseconds: UInt64) -> Date {
+        Date(timeIntervalSince1970: Double(milliseconds) / 1000)
+    }
+
     /// The mark of one own message (`MainActivity.java:666`).
     public static func mark(_ message: Message) -> Mark {
         if message.isDelivered { return .delivered }

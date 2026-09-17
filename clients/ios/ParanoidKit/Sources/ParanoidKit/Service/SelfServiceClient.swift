@@ -245,11 +245,24 @@ public final class SelfServiceClient {
         try apply(["op": "block_contact_v2", "account": account, "blocked": blocked])
     }
 
+    /// This device's wall clock in milliseconds since the epoch, read at the
+    /// instant an operation is applied.
+    ///
+    /// The core keeps no clock of its own: a message carries the time of the
+    /// phone that wrote or received it, and that time arrives with the
+    /// operation — the same trust model the call controls already use for
+    /// `sent_ms`. It is stored, never transmitted, and never used to order,
+    /// admit or refuse anything. A test supplies its own.
+    public var wallMillis: () -> UInt64 = {
+        UInt64(max(0, Date().timeIntervalSince1970 * 1000))
+    }
+
     /// Enqueues one text message for `account`
     /// (`SelfServiceClient.java:109-112`).
     public func send(account: String, text: String) throws {
         guard try active() else { throw SelfServiceError.registrationRequired }
-        try apply(["op": "send_v2", "account": account, "text": text])
+        try apply(["op": "send_v2", "account": account, "text": text,
+                   "now_ms": wallMillis()])
     }
 
     /// Enqueues one call control and returns the immutable envelope
@@ -276,7 +289,7 @@ public final class SelfServiceClient {
     /// Commits one received message and, only afterwards, hands any call
     /// control inside it to `callListener` (`SelfServiceClient.java:218-220`).
     public func received(message: [String: Any]) throws {
-        try apply(["op": "receive_v2", "message": message])
+        try apply(["op": "receive_v2", "message": message, "now_ms": wallMillis()])
     }
 
     /// Commits the server's acceptance of `envelope`, after checking that the

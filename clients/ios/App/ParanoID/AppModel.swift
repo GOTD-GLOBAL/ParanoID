@@ -666,6 +666,39 @@ final class AppModel {
                      calls: callLog.records(for: chatAccount ?? ""))
     }
 
+    /// The same rows with a day pill before every message that opens a day the
+    /// one before it did not.
+    ///
+    /// Only messages carry a time, so only a message opens a day; a call row
+    /// stands where its anchor put it and never moves a separator. A message
+    /// written by a build that kept no time opens nothing either — there is no
+    /// day to name for it (`MessagePresentation.startsNewDay`).
+    var chatTimeline: [TimelineRow] {
+        let now = UInt64(max(0, Date().timeIntervalSince1970 * 1000))
+        var timeline: [TimelineRow] = []
+        var previous: UInt64 = 0
+        for row in chatRows {
+            if case .message(let message) = row {
+                if MessagePresentation.startsNewDay(message.localMilliseconds, after: previous) {
+                    let title = MessagePresentation.daySeparator(message.localMilliseconds, now: now)
+                    if !title.isEmpty { timeline.append(TimelineRow(id: "d:" + message.id, kind: .day(title))) }
+                }
+                if message.localMilliseconds > 0 { previous = message.localMilliseconds }
+            }
+            timeline.append(TimelineRow(id: row.id, kind: row))
+        }
+        return timeline
+    }
+
+    /// When the last message of a conversation happened, as its row says it:
+    /// the time today, «Вчера» yesterday, the date before that, and nothing at
+    /// all for a conversation whose history was written without a time.
+    func listTime(for dialog: Dialog) -> String {
+        guard let last = dialog.last else { return "" }
+        return MessagePresentation.listTime(last.localMilliseconds,
+                                            now: UInt64(max(0, Date().timeIntervalSince1970 * 1000)))
+    }
+
     /// The preview of one conversation row: the last call when it is newer than
     /// the last message, and the last message otherwise.
     func preview(for dialog: Dialog) -> String? {
