@@ -8,6 +8,42 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Chat marks, call rows in the chat, and history without a ceiling — 2026-09-17
+
+- **No message ceiling.** The core's 200-entry refusals — on send, on receive
+  after decryption, and in snapshot validation — are removed in both profiles
+  ([RFC-0022](docs/rfcs/0022-unlimited-conversation-history.md)). The 8 MiB
+  snapshot bound, the 400-envelope outbox, the 1000-commitment ledger, the eight
+  sessions, the 64 contacts and the 2048-byte text limit are unchanged. A build
+  older than this one cannot open a snapshot that passed the retired ceiling, and
+  a peer still on the old one silently drops what it cannot store: both phones
+  must be updated together. RFC-0022 is proposed, not accepted.
+- **Delivery marks are drawn, not typed (iOS).** The same three states of
+  REQ-MSG-003 — queued, stored by the server, delivered to the peer's device —
+  are painted as shapes instead of «…», «✓» and «✓✓» inside the bubble, with the
+  existing words kept as the accessibility label. The first time a message of
+  this user's reaches the second mark, the chat says once that two marks are
+  delivery and not reading. No read receipt exists or is implied. Android keeps
+  its typed characters; the wording is identical.
+- **A finished call leaves a row in its conversation (iOS and Android).**
+  Outgoing or incoming with its duration, missed with «Перезвонить», declined,
+  rejected, cancelled, unanswered, busy or failed. It is local bookkeeping
+  derived from the terminal transition each device watched: no new in-band
+  message kind, no core history, no server record, nothing sent to the peer, and
+  each phone keeps its own account of the same call. Rows are anchored to the
+  last message the conversation had when the call ended, because the core stores
+  no time for a message. Android raises a content-free missed-call notification
+  (own channel, id 53) only when no screen is attached; iOS raises none, because
+  this client has no notification path at all.
+- **The iOS application has an icon and a display name** built from the approved
+  mark in `docs/brand`.
+- **The iOS component-boundary CI gate now runs for `feat/ios-*` branches only.**
+  Unconditionally, it failed every pull request touching the core, Android or two
+  clients at once, which is every change of this shape.
+- No wire format, server route, schema column, protocol kind or live action is
+  part of this change. No device acceptance, deployment or ADR acceptance is
+  claimed.
+
 ### iOS call-control targeting candidate — 2026-09-14
 
 - Bind End/Reject/Hangup and mute/speaker UI operations to the original call ID

@@ -78,7 +78,17 @@ jobs:
         # own previous tip would judge other people's merges, so this one step
         # is event-shaped. BASE_SHA is the event payload's base commit, read
         # through the environment rather than interpolated into the script.
-        if: github.event_name == 'pull_request'
+        #
+        # The gate exists to keep an iOS feature branch inside the iOS tree
+        # while that client was being built (clients/ios/test_component_boundary.py:1-13).
+        # The client is merged, and this workflow also runs for pull requests
+        # that touch clients/core/** or docs/**, so an unconditional gate now
+        # fails every legitimate core, Android or cross-client change — the
+        # forbidden list names exactly those components. It is therefore scoped
+        # to branches that declare themselves iOS-only; every other branch is
+        # judged by its own reviewers and by the checks of the components it
+        # actually touches.
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/ios-')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: python3 clients/ios/test_component_boundary.py --base "$BASE_SHA"

@@ -6,6 +6,34 @@ last_reviewed: 2026-09-14
 
 # Current project state
 
+## Chat marks, call rows and unlimited history — local candidate (2026-09-17)
+
+At Yaroslav's request the candidate removes the 200-entry conversation ceiling in
+the core, draws the iOS delivery marks instead of typing them, records a finished
+call as one local row in its conversation on both clients, and gives the iOS
+application an icon and an explicit display name. The reasoning, the compatibility
+consequences and the questions for the decision owner are in
+[RFC-0022](../rfcs/0022-unlimited-conversation-history.md), which is **proposed**:
+removing the ceiling changes which stored snapshots are valid, so an older build
+cannot open a newer state and a peer still on the old build drops what it cannot
+store. Both phones must be updated together, and acceptance is the owner's.
+
+Nothing crosses the wire that did not before: no in-band message kind, no server
+route, no schema column, no change to the sealed snapshot's shape, and no read
+receipt anywhere (REQ-MSG-003 is unchanged). A call row is each device's own
+account of a call it watched, kept beside the local contact names.
+
+Verified on this Mac: core `clean_first_contact` 18/0, `sync_recovery` 6/0,
+`state` 3/0, `realtime_signing` 6/0, `voice_calls` 14/0, `registration` 7/0,
+`key_vectors` 1/0, with `self_service` unchanged at 10 passed and the same 14
+legacy failures listed in `scripts/ci-legacy-client-tests.txt`; ParanoidKit 318/0;
+the unsigned simulator application builds with the new icon; Android host smokes
+(call controller, call log, message presentation, contact names) pass and the
+Android/iOS call-scenario parity gate reports 105/105. **Not run:** any physical
+device, a signed build, the Android APK (no SDK on this machine), the simulator
+text and voice flows, and the hosted server. No merge, deployment, TestFlight or
+ADR acceptance is implied.
+
 ## C1 integrated and verified at host/simulator scope (2026-09-14)
 
 PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b
