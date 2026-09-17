@@ -252,7 +252,6 @@ fn validate(s: &State) -> Result<()> {
         if *id != c.contact.credential.account
             || c.channel != channel(&local_contact(s)?, &c.contact)?
             || c.sessions.len() > 8
-            || c.history.len() > 200
             || c.outbox.len() > 400
             || c.commitments.len() > 1000
             || s.events.values().filter(|e| e.sender == *id).count() > 1000
@@ -398,7 +397,10 @@ fn enqueue(s: &mut State, id: &str, body: Body) -> Result<String> {
     if matches!(body, Body::Call(_)) && c.outbox.len() >= 16 {
         return Err("call_outbox_full");
     }
-    if matches!(body, Body::Text(_)) && (c.history.len() >= 200 || c.commitments.len() >= 1000) {
+    // Owner decision 2026-09-17: conversation history has no entry ceiling. Only
+    // the bounded receipt-commitment ledger still refuses a text send; the whole
+    // sealed snapshot stays bounded by `snapshot_size` (`local_state_full`).
+    if matches!(body, Body::Text(_)) && c.commitments.len() >= 1000 {
         return Err("local_history_full");
     }
     if c.sessions.is_empty() {
@@ -554,9 +556,8 @@ fn receive_candidate(s: &mut State, m: &Incoming, outer_digest: String) -> Resul
                 return Err("invalid_text");
             }
             let c = s.conversations.get_mut(&m.sender).ok_or("invalid_state")?;
-            if c.history.len() >= 200 {
-                return Err("local_history_full");
-            }
+            // Owner decision 2026-09-17: no history ceiling. The snapshot bound in
+            // `snapshot_size` remains the only capacity refusal for stored text.
             c.history.push(Entry {
                 id: m.id.clone(),
                 author: m.sender.clone(),

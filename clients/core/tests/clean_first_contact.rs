@@ -662,28 +662,56 @@ fn budgets_bound_unverified_and_total_peers_without_eviction_and_block_preserves
 // Synthetic local quota prefill exercises defensive boundaries without thousands
 // of network fixture writes. Incoming bytes and Olm decrypt/signatures are real.
 #[test]
-fn post_decrypt_history_and_receipt_outbox_capacity_discard_account_and_ratchets() {
+fn post_decrypt_receipt_outbox_capacity_discards_account_and_ratchets() {
     let a = ready();
     let b = ready();
     let a = send(&pair(&a, &b), &b, "real first");
     let received = receive(&b, incoming(&a, 0, 1));
-    for (field, count, reason) in [
-        ("history", 200, "local_history_full"),
-        ("outbox", 400, "outbox_full"),
-    ] {
-        let mut full = received.clone();
-        let c = &mut full["state"]["conversations"][id(&a)];
-        let base = c[field][0].clone();
-        let rows = c[field].as_array_mut().unwrap();
-        while rows.len() < count {
-            let mut row = base.clone();
-            row["id"] = json!(uuid::Uuid::new_v4().to_string());
-            rows.push(row);
-        }
-        let full = reopen(&full);
-        let next = send(&a, &b, "decrypted before quota");
-        assert_only_notice(&full, &receive(&full, incoming(&next, 1, 2)), reason);
+    let mut full = received.clone();
+    let c = &mut full["state"]["conversations"][id(&a)];
+    let base = c["outbox"][0].clone();
+    let rows = c["outbox"].as_array_mut().unwrap();
+    while rows.len() < 400 {
+        let mut row = base.clone();
+        row["id"] = json!(uuid::Uuid::new_v4().to_string());
+        rows.push(row);
     }
+    let full = reopen(&full);
+    let next = send(&a, &b, "decrypted before quota");
+    assert_only_notice(&full, &receive(&full, incoming(&next, 1, 2)), "outbox_full");
+}
+
+// Owner decision 2026-09-17: conversation history has no ceiling. A snapshot far
+// past the retired 200-entry cap still loads, and real decrypted text is still
+// committed and visible instead of becoming a capacity notice.
+#[test]
+fn history_past_the_retired_cap_loads_and_still_accepts_decrypted_text() {
+    let a = ready();
+    let b = ready();
+    let a = send(&pair(&a, &b), &b, "real first");
+    let received = receive(&b, incoming(&a, 0, 1));
+    let mut full = received.clone();
+    let c = &mut full["state"]["conversations"][id(&a)];
+    let base = c["history"][0].clone();
+    let rows = c["history"].as_array_mut().unwrap();
+    while rows.len() < 250 {
+        let mut row = base.clone();
+        row["id"] = json!(uuid::Uuid::new_v4().to_string());
+        rows.push(row);
+    }
+    let full = reopen(&full);
+    let next = send(&a, &b, "past the retired cap");
+    let after = receive(&full, incoming(&next, 1, 2));
+    assert_eq!(after["acceptance"], "accepted");
+    let dialog = after["dialogs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["account"] == json!(id(&a)))
+        .unwrap();
+    let messages = dialog["messages"].as_array().unwrap();
+    assert_eq!(messages.len(), 251);
+    assert_eq!(messages.last().unwrap()["text"], "past the retired cap");
 }
 
 #[test]
