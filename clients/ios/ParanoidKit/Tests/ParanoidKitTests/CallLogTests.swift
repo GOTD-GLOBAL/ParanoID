@@ -138,6 +138,29 @@ final class CallLogTests: XCTestCase {
         XCTAssertEqual(rows.map(\.id), ["m:m1", "c:c1"])
     }
 
+    func testUnavailableHistoryAnchorSurvivesReloadAndStandsAtTheEnd() {
+        let anchor = CallLog.anchor(messages: nil)
+        XCTAssertEqual(anchor, "unavailable")
+        var log = CallLog(defaults: suite)
+        log.record(Self.record(id: "c1", account: "peer", kind: .missed, after: anchor))
+        let calls = CallLog(defaults: suite).records(for: "peer")
+        XCTAssertEqual(calls.first?.afterMessageId, "unavailable")
+        XCTAssertEqual(ChatRow.rows(messages: [Self.message("m1")], calls: calls).map(\.id),
+                       ["m:m1", "c:c1"])
+    }
+
+    func testObservedEmptyHistoryAnchorStillOpensTheChat() {
+        let anchor = CallLog.anchor(messages: [])
+        XCTAssertNil(anchor)
+        let calls = [Self.record(id: "c1", account: "peer", kind: .missed, after: anchor)]
+        XCTAssertEqual(ChatRow.rows(messages: [Self.message("m1")], calls: calls).map(\.id),
+                       ["c:c1", "m:m1"])
+    }
+
+    func testAvailableHistoryAnchorUsesTheLastMessage() {
+        XCTAssertEqual(CallLog.anchor(messages: [Self.message("m1"), Self.message("m2")]), "m2")
+    }
+
     func testAConversationWithoutCallsIsItsMessagesUnchanged() {
         let messages = [Self.message("m1"), Self.message("m2")]
         XCTAssertEqual(ChatRow.rows(messages: messages, calls: []).map(\.id), ["m:m1", "m:m2"])

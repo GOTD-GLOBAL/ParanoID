@@ -81,7 +81,9 @@ It confirmed the source corrections, not runtime Mac/device behavior or an
 independent rerun of the coordinator's test results.
 
 The proposed iOS pre-load incoming-call trigger cited CallKit/VoIP, which this
-client does not implement: it is not a reproduced iOS defect. The claimed
+client does not implement: that trigger was not reproduced. This did **not**
+resolve the underlying nil-anchor ambiguity. Yaroslav correctly returned that
+cross-platform inconsistency; the subsequent iOS follow-up below closes it. The claimed
 unlimited single-peer flood also omitted the retained 1000-event replay budget;
 it is not established as described. Aggregate snapshot exhaustion remains a
 real documented limitation, not authority to change quotas or evict history.
@@ -106,3 +108,39 @@ Physical-phone calls, UI call rows, missed-notification runtime, hosted server,
 TestFlight, signing/export of iOS and permanent decision acceptance are NOT RUN.
 The existing attached emulator was inventoried only; no retained app data was
 read, reset or overwritten.
+
+## Contributor Mac receipt and iOS anchor follow-up
+
+Source: Yaroslav, project Telegram thread, 2026-09-17; reported execution, not
+coordinator-run Mac tests. At `2ee749d`: core fmt/clippy and all 55 selected
+tests pass; self_service remains 10 pass/14 known legacy failures. ParanoidKit
+318/0 and unsigned simulator build pass on the corrected accessibility source.
+iOS UI contracts 21, targeting 4, storage 5, docs consistency and 105/105 parity
+labels pass; Android host smokes and UI contracts 11 pass.
+
+At `ed4e2f8`, Yaroslav reports `test_sim_text.py --scenario text` PASS on
+iPhone 17 Pro simulator/iOS 26.5, local stand using server binary `a4a65d12…`
+(abbreviated identity supplied; full binary provenance not independently
+verified). The simulator test now asserts accessibility **words**, no early
+Delivered state before the peer cycle and no duplicate bubble/status after
+a double tap: 15 screenshots, 6 stored envelopes, 0 plaintext rows in the
+cluster, peer history 3 messages. This closes the reported simulator
+text-flow accessibility-label gate, not physical VoiceOver speech, call rows
+or cross-device calls. The macOS server O_TMPFILE build blocker is reported
+as pre-existing; no server fix or current-server runtime claim follows.
+
+The follow-up based on `ed4e2f8` uses `CallLog.anchor(messages:)`: unavailable
+or frozen history yields the same `unavailable` sentinel as Android; an
+observed empty array yields nil; available history yields its last ID. Three
+new XCTest cases cover sentinel persistence/order, observed-empty placement
+and latest-message selection. A source-wiring regression was RED before the
+fix; afterwards all five Linux source gates pass (UI 22, targeting 4, storage 5,
+parity labels 105/105, docs consistency), Markdown has zero errors. The temporary
+ad-hoc verification script passed and was removed. Swift compilation/execution
+of these **new** tests remains the Mac owner
+next gate; prior 318/0 is not evidence for them. Existing nil-anchor rows are
+not rewritten because their original availability cannot be recovered.
+
+Both local names and call-log UserDefaults backup exposure are now explicit
+in client docs, source comments and RFC-0022 question 4 for the owner. No
+file-store migration, physical-device install, feed, merge or ADR acceptance.

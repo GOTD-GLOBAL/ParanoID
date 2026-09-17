@@ -62,6 +62,23 @@ the flag lives on the inode: setting it on the committed name alone would
 cover the first commit only, and a later iCloud restore would hand back a stale
 ratchet while the Keychain key still worked.
 
+### Local names and call-log backup limitation
+
+`ContactNames` (`paranoid.contact-names.v1`) and `CallLog`
+(`paranoid.call-log.v1`) currently use standard UserDefaults. Neither store has
+application-level encryption or explicit backup exclusion. Peer IDs, locally
+assigned names, call outcomes, durations and message anchors can therefore be
+carried in an OS backup/restore; "local-only" means not sent by the messenger
+to its peer/server, **not** excluded from the phone backup. The encrypted
+snapshot's backup exclusion does not cover these preferences. Android disables
+application backup in its manifest; the platforms differ here. No physical
+backup/restore experiment is claimed.
+
+Moving both stores into backup-excluded container files, including migration
+and failure semantics, versus retaining and explicitly accepting this limitation
+is an unresolved owner privacy decision, tracked with the RFC-0022 questions.
+No storage migration or acceptance is authorized by documenting the limitation.
+
 ### Install marker and lazy wrapping key
 
 The application creates no wrapping key on Welcome or empty-state load. The

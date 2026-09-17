@@ -148,6 +148,11 @@ server transport integrity is not a production secure-update claim.
 
 ## Candidate local call-log metadata
 
+Local contact names already use the same preference-storage boundary. The
+[iOS client limitation](../clients/ios/self-service.md#local-names-and-call-log-backup-limitation)
+and RFC-0022 question 4 cover both stores; backup-excluded file migration is
+proposed for owner disposition, not implemented or accepted.
+
 PR45 adds local call outcomes, peer account IDs, durations and message anchors
 in Android app-private SharedPreferences and iOS UserDefaults. These are not
 message plaintext or recordings and are not sent to a peer/server, but they

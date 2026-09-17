@@ -10,7 +10,8 @@ import Foundation
 /// records is what this device itself watched happen.
 ///
 /// Two consequences follow from where it lives, and both are the same ones the
-/// local contact names have: it disappears with the application's container,
+/// local contact names have: container deletion removes it (OS backup restore
+/// can restore these non-excluded UserDefaults),
 /// and it is this phone's account of the call, not a shared one. The peer keeps
 /// its own, derived from its own side of the same controls, and the two can
 /// legitimately differ — a caller that gave up before the ring was answered
@@ -25,6 +26,14 @@ public struct CallLog: Equatable {
     /// local log alone and has nothing to do with the message history, which
     /// has no ceiling.
     public static let perAccountLimit = 500
+
+    /// Match Android: nil input is unavailable history, an empty array is an
+    /// observed empty chat. The non-UUID sentinel sorts at the end permanently;
+    /// it never invents a message timestamp or a recovered ordering fact.
+    public static func anchor(messages: [Message]?) -> String? {
+        guard let messages else { return "unavailable" }
+        return messages.last?.id
+    }
 
     private var records: [String: [CallRecord]]
     private let defaults: UserDefaults?

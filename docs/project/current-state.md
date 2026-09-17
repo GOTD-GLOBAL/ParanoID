@@ -44,6 +44,16 @@ restore the iOS receipt accessibility element. The changed iOS view needs a new
 Mac/VoiceOver check. No phone, feed publication, deployment or ADR acceptance
 follows; the APK remains a versionCode22 review candidate, not a release.
 
+### Mac receipt and iOS anchor parity follow-up
+
+Yaroslav reports ParanoidKit 318/0 and unsigned simulator build on `2ee749d`,
+then simulator text-flow PASS on `ed4e2f8` with the delivery accessibility
+labels checked at runtime. The [dated receipt and scope](../clients/pr45-validation.md#contributor-mac-receipt-and-ios-anchor-follow-up)
+separate contributor execution from coordinator checks. The next iOS patch
+aligns unavailable/empty call anchors with Android and adds three XCTest cases;
+these new tests still need a Mac run. Names/log backup exposure is documented
+for owner disposition in RFC-0022, with no storage migration or live action.
+
 ## C1 integrated and verified at host/simulator scope (2026-09-14)
 
 PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b

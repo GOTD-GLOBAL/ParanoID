@@ -111,3 +111,8 @@ own message. The 8 MiB snapshot refusal keeps its own test.
 3. Is eviction or archival now on the roadmap, given that history shares the
    8 MiB snapshot budget with every other conversation and the commitment
    and replay ledgers still impose their own limits?
+4. For the accompanying local call-log UI, should iOS call records **and local
+   contact names** move from UserDefaults to backup-excluded container files,
+   with reviewed migration/failure behavior, or is the documented OS-backup
+   exposure acceptable for this alpha? See the [client limitation](../clients/ios/self-service.md#local-names-and-call-log-backup-limitation).
+   This is an unresolved privacy/storage decision, not a migration approval.

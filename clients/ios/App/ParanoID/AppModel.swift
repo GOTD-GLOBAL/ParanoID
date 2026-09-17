@@ -655,7 +655,7 @@ final class AppModel {
     /// which is how a call keeps its place in a history the core stores no time
     /// for (`ChatRow.rows(messages:calls:)`).
     func callFinished(_ termination: CallTermination) {
-        let anchor = view.dialog(termination.account)?.messages.last?.id
+        let anchor = CallLog.anchor(messages: isBroken ? nil : view.dialog(termination.account)?.messages)
         callLog.record(termination.record(afterMessageId: anchor))
     }
 

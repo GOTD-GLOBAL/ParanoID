@@ -44,6 +44,13 @@ public contract is declared.
   part of this change. No device acceptance, deployment or ADR acceptance is
   claimed.
 
+### PR45 iOS anchor parity follow-up — 2026-09-17
+
+- Distinguish unavailable/frozen history from an observed empty chat on iOS,
+  matching Android's local `unavailable` anchor. Add persistence/order tests.
+- Document OS-backup exposure of iOS local contact names and call logs; file
+  migration remains an owner decision, not an implemented storage change.
+
 ### PR45 validation fixes — 2026-09-17
 
 - Compile every Android application source against the real SDK before the

@@ -125,6 +125,15 @@ def parse_captions(text):
 
 
 class UiContract(unittest.TestCase):
+    def test_call_anchor_distinguishes_unavailable_history(self):
+        model = (HERE / MODEL).read_text()
+        finished = model.split('func callFinished(_ termination: CallTermination) {', 1)[1].split('\n    }', 1)[0]
+        self.assertIn('CallLog.anchor(messages:', finished)
+        self.assertIn('isBroken ? nil : view.dialog(termination.account)?.messages', finished)
+        log = (KIT / 'Presentation/CallLog.swift').read_text()
+        self.assertIn('guard let messages else { return "unavailable" }', log)
+        self.assertIn('return messages.last?.id', log)
+
     def test_receipt_mark_is_an_accessible_labeled_element(self):
         source = (APP / 'Screens/ReceiptMark.swift').read_text()
         mark = source.split('struct ReceiptMark: View {', 1)[1].split('struct ReceiptHintCard:', 1)[0]
