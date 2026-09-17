@@ -45,6 +45,8 @@ public final class TextEngine {
     private long drainGeneration;
     private final java.util.Map<String,CallController.Completion> callCompletions=new java.util.HashMap<>();
     private String lastCallState="idle";
+    /** Worker-owned status retained across local call-log-only repaints. */
+    private String lastPublishedStatus="Открываем сохранённые данные…";
     private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
@@ -97,6 +99,48 @@ public final class TextEngine {
                 tones.changed(view);
                 if(callListener!=null)callListener.changed(view);
                 worker.execute(()->{if(callActive||callDraining)startConnection();else if(listener==null&&!backgroundEnabled&&realtime!=null){stopConnection();}});
+            }
+            /**
+             * One call ended. The row is this phone's own account of it: nothing is sent, nothing
+             * reaches the core or the snapshot, and the peer keeps its own record of the same call.
+             * The anchor is read on the worker, where the client lives, so the row lands after the
+             * message the conversation actually had when the call ended.
+             */
+            public void finished(JSONObject termination){
+                String account=termination.optString("account");
+                String kind=MessagePresentation.callKind(termination.optBoolean("outgoing"),
+                    termination.optBoolean("connected"),termination.optString("reason"));
+                boolean missed=MessagePresentation.callMissed(kind);
+                if(account.isEmpty())return;
+                worker.execute(()->{
+                    // A non-message sentinel sorts at the end if history is unavailable.
+                    // Empty means we actually observed an empty conversation.
+                    String anchor="unavailable";
+                    try{
+                        if(!broken&&client!=null){
+                            org.json.JSONArray dialogs=client.publicView().optJSONArray("dialogs");
+                            for(int n=0;dialogs!=null&&n<dialogs.length();n++){
+                                JSONObject dialog=dialogs.optJSONObject(n);
+                                if(dialog==null||!account.equals(dialog.optString("account")))continue;
+                                org.json.JSONArray messages=dialog.optJSONArray("messages");
+                                if(messages!=null&&messages.length()==0)anchor="";
+                                if(messages!=null&&messages.length()>0)anchor=messages.optJSONObject(messages.length()-1).optString("id","unavailable");
+                            }
+                        }
+                    }catch(Throwable unreadable){/* A log row is never worth failing a call over. */}
+                    final JSONObject row;
+                    try{
+                        row=new JSONObject().put("id",termination.optString("call_id")).put("kind",kind)
+                            .put("video",termination.optBoolean("video"))
+                            .put("duration_seconds",termination.optLong("duration_seconds"))
+                            .put("after_message_id",anchor);
+                    }catch(org.json.JSONException invalidRow){return; /* Local logging must not fail the call. */}
+                    if(!CallLog.record(context,account,row))return;
+                    // Recheck on the UI owner: a chat may have opened and cleared the notice
+                    // while this worker was recording the call.
+                    if(missed)ui.post(()->{if(listener==null)VoiceCallService.missed(context);});
+                    publish(lastPublishedStatus);
+                });
             }
         // The engine singleton is created lazily by whoever touches it first. After a cold FCM wake that is
         // the Firebase service thread, not main; v24 pinned the call owner to the constructing thread and the
@@ -294,6 +338,7 @@ public final class TextEngine {
     }
 
     private void publish(String status) {
+        lastPublishedStatus=status;
         JSONObject display=new JSONObject();
         try {
             if(client!=null && client.broken())broken=true;

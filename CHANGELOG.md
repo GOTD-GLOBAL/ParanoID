@@ -8,6 +8,70 @@ public contract is declared.
 
 ## [Unreleased]
 
+### PR45 current-main integration — 2026-09-17
+
+- Preserve PR34 cold-push owner, split-R8/DEX and crash-report fixes while adding
+  PR45 call rows; retain PR35 server maintenance gates and dated evidence.
+- Gate Android call-log/presentation/UI/crash-exit checks in CI and verify the
+  declared-iOS-branch condition plus inherited no-iOS-diff boundary shortcut.
+- Record the successful contributor Mac anchor tests and the new local Android
+  build separately. The inherited versionCode26 build is review-only, not a new
+  device release or republished v26. [Evidence](docs/clients/pr45-main-integration.md).
+
+### Chat marks, call rows in the chat, and history without a ceiling — 2026-09-17
+
+- **No message ceiling.** The core's 200-entry refusals — on send, on receive
+  after decryption, and in snapshot validation — are removed in both profiles
+  ([RFC-0022](docs/rfcs/0022-unlimited-conversation-history.md)). The 8 MiB
+  snapshot bound, the 400-envelope outbox, the 1000-commitment ledger, the eight
+  sessions, the 64 contacts and the 2048-byte text limit are unchanged. A build
+  older than this one cannot open a snapshot that passed the retired ceiling, and
+  a peer still on the old one silently drops what it cannot store: both phones
+  must be updated together. RFC-0022 is proposed, not accepted.
+- **Delivery marks are drawn, not typed (iOS).** The same three states of
+  REQ-MSG-003 — queued, stored by the server, delivered to the peer's device —
+  are painted as shapes instead of «…», «✓» and «✓✓» inside the bubble, with the
+  existing words kept as the accessibility label. The first time a message of
+  this user's reaches the second mark, the chat says once that two marks are
+  delivery and not reading. No read receipt exists or is implied. Android keeps
+  its typed characters; the wording is identical.
+- **A finished call leaves a row in its conversation (iOS and Android).**
+  Outgoing or incoming with its duration, missed with «Перезвонить», declined,
+  rejected, cancelled, unanswered, busy or failed. It is local bookkeeping
+  derived from the terminal transition each device watched: no new in-band
+  message kind, no core history, no server record, nothing sent to the peer, and
+  each phone keeps its own account of the same call. Rows are anchored to the
+  last message the conversation had when the call ended, because the core stores
+  no time for a message. Android raises a content-free missed-call notification
+  (own channel, id 53) only when no screen is attached; iOS raises none, because
+  this client has no notification path at all.
+- **The iOS application has an icon and a display name** built from the approved
+  mark in `docs/brand`.
+- **The iOS component-boundary CI gate now runs for `feat/ios-*` branches only.**
+  Unconditionally, it failed every pull request touching the core, Android or two
+  clients at once, which is every change of this shape.
+- No wire format, server route, schema column, protocol kind or live action is
+  part of this change. No device acceptance, deployment or ADR acceptance is
+  claimed.
+
+### PR45 iOS anchor parity follow-up — 2026-09-17
+
+- Distinguish unavailable/frozen history from an observed empty chat on iOS,
+  matching Android's local `unavailable` anchor. Add persistence/order tests.
+- Document OS-backup exposure of iOS local contact names and call logs; file
+  migration remains an owner decision, not an implemented storage change.
+
+### PR45 validation fixes — 2026-09-17
+
+- Compile every Android application source against the real SDK before the
+  native build; handle checked JSON exceptions missed by host-only tests.
+- Correct two pre-existing Maven download sources without changing pinned bytes.
+- Keep the previous connection/error status on call-log repaints, place unknown
+  history anchors at the end and recheck foreground state before missed notices.
+- Keep iOS delivery accessibility labels exposed instead of hiding their element.
+  New Mac/VoiceOver verification remains required.
+- Record [verification scope and remaining gates](docs/clients/pr45-validation.md).
+
 ### PR35 integration checks — 2026-09-17
 
 - Integrate the server rollout evidence with current main without dropping later

@@ -37,6 +37,17 @@ class FirebaseDependencyTest(unittest.TestCase):
         # Every artifact is either an AAR (classes + manifest) or a plain JAR; nothing else is accepted.
         self.assertTrue(all(n.endswith((".aar", ".jar")) for n in names))
 
+    def test_error_prone_uses_maven_central(self):
+        # Google's Android repository returns 404 for this Maven Central artifact.
+        artifact = next(row for row in self.dep.ARTIFACTS
+                        if row[0] == "error_prone_annotations-2.26.0.jar")
+        self.assertEqual(artifact[1], "central")
+
+    def test_listenablefuture_uses_maven_central(self):
+        artifact = next(row for row in self.dep.ARTIFACTS
+                        if row[0] == "listenablefuture-1.0.jar")
+        self.assertEqual(artifact[1], "central")
+
     def test_real_archives_extract_repeatably_and_tamper_is_refused(self):
         if not self.archives.is_dir() or not any(self.archives.glob("*.aar")):
             self.skipTest("Firebase archives not downloaded yet")

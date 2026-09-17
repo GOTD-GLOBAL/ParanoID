@@ -2,6 +2,22 @@ import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
+    def test_missed_notice_rechecks_foreground_on_ui_delivery(self):
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        self.assertIn('if(missed)ui.post(()->{if(listener==null)VoiceCallService.missed(context);});',engine)
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        opened=ui[ui.index('private void openChat('):ui.index('private void restoreDraft(')]
+        self.assertIn('VoiceCallService.clearMissed(this)',opened)
+
+    def test_call_repaint_preserves_status_and_unknown_anchor(self):
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        finished=engine.split('public void finished(JSONObject termination){',1)[1].split('ui.post(new Runnable()',1)[0]
+        self.assertIn('publish(lastPublishedStatus)',finished)
+        self.assertIn('String anchor="unavailable";',finished)
+        self.assertIn('anchor="";',finished)
+        publish=engine.split('private void publish(String status) {',1)[1]
+        self.assertIn('lastPublishedStatus=status;',publish)
+
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)

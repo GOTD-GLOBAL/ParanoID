@@ -99,7 +99,7 @@ upgrades trust. No recipient approval, server directory or label inference is us
 | Forged/unknown receipt produces false delivery | Strict same-channel target sender/id/inner digest matched to retained outgoing commitment after server acceptance; unknown target no allocation, no synthetic receipt/receipt loop |
 | Replay, changed immutable ciphertext or conflicting sequence | Non-evicting sender/id + sequence/channel/outer/inner ledger; exact duplicates no-op across reload; conflict before decrypt; monotonic cursor |
 | Network peer launders verification or replaces keys | Unverified enum distinct from explicit QR trust, immutable credential/device/auth/original bundle/fallback, trust-only same-key upgrade |
-| Unknown-sender growth or blocked spam | 16 network-unverified/64 peers; existing 8 MiB snapshot, 200 history, 400 outbox, 8 sessions, 1000 accepted IDs per peer; 16 KiB frame/20-event pages; bounded block suppressing display/receipts |
+| Unknown-sender growth or blocked spam | 16 network-unverified/64 peers; existing 8 MiB snapshot, 400 outbox, 8 sessions, 1000 accepted IDs and 1000 retained receipt commitments per peer — history itself has no entry ceiling in the RFC-0022 candidate, where the snapshot bound and the commitment ledger are what refuse growth; 16 KiB frame/20-event pages; bounded block suppressing display/receipts |
 | Crash or ambiguous persistence publishes non-durable state | Core candidate sealed atomically before UI/network; failure freezes; exact wrapped outbox retry and persistent reopen exercised over real JVM/JNI |
 | Old incompatible client data silently reset | New explicit core3/outer4 validation; unsupported older snapshots preserved and visibly refused; no migration/reset path in this clean candidate |
 
@@ -174,6 +174,26 @@ server transport integrity is not a production secure-update claim.
 - Remain recoverable from operational failure without inventing hidden account
   recovery that contradicts paranoid mode.
 - Make security-relevant state and failures understandable to users and operators.
+
+## Candidate local call-log metadata
+
+Local contact names already use the same preference-storage boundary. The
+[iOS client limitation](../clients/ios/self-service.md#local-names-and-call-log-backup-limitation)
+and RFC-0022 question 4 cover both stores; backup-excluded file migration is
+proposed for owner disposition, not implemented or accepted.
+
+PR45 adds local call outcomes, peer account IDs, durations and message anchors
+in Android app-private SharedPreferences and iOS UserDefaults. These are not
+message plaintext or recordings and are not sent to a peer/server, but they
+are sensitive relationship metadata **outside the encrypted core snapshot**.
+The candidate keeps at most 500 rows per peer; existing core contact admission
+bounds the normal peer set. No new account-delete or recovery path is introduced.
+Android disables application backup in its manifest. No equivalent backup
+exclusion or physical backup/restore verification is claimed here for iOS
+UserDefaults. Platform sandbox/data protection is not application-level log
+encryption; container access can expose these rows. Future recovery/deletion
+must explicitly include this store. This describes the proposed candidate, not
+an accepted privacy guarantee or ADR.
 
 ## Assets
 

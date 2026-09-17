@@ -343,6 +343,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
 
     private void openChat(String account){
+        // The missed-call notice has done its job once the chat it points at is open.
+        VoiceCallService.clearMissed(this);
         selectedAccount=account;restoreDraft();renderedHistory="";show("chat");renderHistory(true);
     }
     private void restoreDraft(){restoringDraft=true;draft.setText(drafts.text(selectedAccount));draft.setSelection(draft.length());restoringDraft=false;}
@@ -619,7 +621,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
 
     private void renderLists()throws Exception{
-        JSONArray all=latest.optJSONArray("dialogs");String signature=all==null?"[]":all.toString();
+        JSONArray all=latest.optJSONArray("dialogs");
+        // The call log changes no message, so its revision has to be part of the signature or a new
+        // call row would wait for an unrelated message before it appeared (CallLog.revision).
+        String signature=(all==null?"[]":all.toString())+"|"+CallLog.revision(this);
         if(signature.equals(renderedDialogs))return;renderedDialogs=signature;contactList.removeAllViews();dialogList.removeAllViews();
         if(all==null||all.length()==0){
             empty(dialogList,"Первый разговор начинается здесь","Сообщения собеседников появятся здесь автоматически. Чтобы написать первым, добавьте контакт.",this::addContact);
@@ -630,6 +635,11 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             JSONObject last=messages!=null&&messages.length()>0?messages.getJSONObject(messages.length()-1):null;
             String preview=last==null?"Начать переписку":MessagePresentation.preview(last.optString("text"));
             if(last!=null&&last.optString("author").equals(dialog.optString("own")))preview="Вы: "+preview;
+            // A call that happened after the newest message is what the row should say.
+            JSONArray calls=CallLog.records(this,account);
+            JSONObject lastCall=calls.length()>0?calls.optJSONObject(calls.length()-1):null;
+            if(lastCall!=null&&lastCall.optString("after_message_id","").equals(last==null?"":last.optString("id")))
+                preview=MessagePresentation.callLine(lastCall.optString("kind"),lastCall.optBoolean("video"),lastCall.optLong("duration_seconds"));
             conversationRow(dialogList,dialog,preview,last);
             conversationRow(contactList,dialog,DialogPolicy.trustLabel(dialog),null);
         }
@@ -653,13 +663,18 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private void renderHistory(boolean force){
         JSONObject dialog=selectedDialog();if(dialog==null)return;
         boolean blocked=dialog.optBoolean("blocked");chatTrust.setText(DialogPolicy.trustLabel(dialog)+(blocked?" · Заблокирован":" · Подробнее"));
-        JSONArray messages=dialog.optJSONArray("messages");String signature=selectedAccount+":"+(messages==null?"[]":messages.toString());
+        JSONArray messages=dialog.optJSONArray("messages");
+        JSONArray calls=CallLog.records(this,selectedAccount);
+        String signature=selectedAccount+":"+(messages==null?"[]":messages.toString())+"|"+CallLog.revision(this);
         if(!force&&signature.equals(renderedHistory))return;renderedHistory=signature;
         boolean nearBottom=force||history.getHeight()-messageScroll.getHeight()-messageScroll.getScrollY()<dp(100);
         int oldScroll=messageScroll.getScrollY();history.removeAllViews();
-        if(messages==null||messages.length()==0){TextView start=text("Начните переписку. Сообщения защищены сквозным шифрованием.",14,colors.muted,false);start.setGravity(Gravity.CENTER);start.setPadding(dp(24),dp(32),dp(24),dp(32));history.addView(start,full());}
-        else for(int n=0;n<messages.length();n++){
-            JSONObject message=messages.optJSONObject(n);if(message==null)continue;
+        JSONArray rows=MessagePresentation.chatRows(messages,calls);
+        if(rows.length()==0){TextView start=text("Начните переписку. Сообщения защищены сквозным шифрованием.",14,colors.muted,false);start.setGravity(Gravity.CENTER);start.setPadding(dp(24),dp(32),dp(24),dp(32));history.addView(start,full());}
+        else for(int n=0;n<rows.length();n++){
+            JSONObject entry=rows.optJSONObject(n);if(entry==null)continue;
+            if(entry.optString("type").equals("call")){callRow(entry.optJSONObject("value"));continue;}
+            JSONObject message=entry.optJSONObject("value");if(message==null)continue;
             boolean mine=message.optString("author").equals(dialog.optString("own"));
             LinearLayout row=row();row.setGravity(mine?Gravity.END:Gravity.START);LinearLayout.LayoutParams rowParams=full();rowParams.topMargin=dp(6);history.addView(row,rowParams);
             LinearLayout bubble=column();bubble.setPadding(dp(14),dp(10),dp(14),dp(8));bubble.setBackground(bubble(mine));
@@ -668,6 +683,27 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             if(mine){TextView receipt=text((message.optBoolean("delivered")?"✓✓ ":message.optBoolean("accepted")?"✓ ":"… ")+MessagePresentation.delivery(message),11,colors.muted,false);receipt.setGravity(Gravity.END);receipt.setPadding(0,dp(5),0,0);bubble.addView(receipt,full());}
         }
         messageScroll.post(()->{if(nearBottom)messageScroll.scrollTo(0,history.getHeight());else messageScroll.scrollTo(0,oldScroll);});
+    }
+    /**
+     * What one finished call left in the conversation. It is a line and not a bubble because nobody
+     * wrote it: the core stores no call history and the peer keeps its own account of the same call
+     * (CallLog). A missed call is the one outcome that asks something of the reader, so it is the
+     * one that carries «Перезвонить».
+     */
+    private void callRow(JSONObject call){
+        if(call==null)return;
+        String kind=call.optString("kind");
+        boolean missed=MessagePresentation.callMissed(kind);
+        LinearLayout row=row();row.setGravity(Gravity.CENTER);LinearLayout.LayoutParams rowParams=full();rowParams.topMargin=dp(6);history.addView(row,rowParams);
+        LinearLayout pill=row();pill.setGravity(Gravity.CENTER_VERTICAL);pill.setPadding(dp(14),dp(8),dp(14),dp(8));pill.setBackground(shape(colors.surface,18));
+        row.addView(pill,new LinearLayout.LayoutParams(-2,-2));
+        TextView line=text(MessagePresentation.callLine(kind,call.optBoolean("video"),call.optLong("duration_seconds")),13,missed?colors.danger:colors.muted,false);
+        pill.addView(line);
+        if(missed){
+            Button back=secondary(MessagePresentation.callBack(),()->requestCall(false));
+            back.setPadding(dp(10),dp(4),dp(4),dp(4));back.setMinHeight(0);back.setMinimumHeight(0);
+            pill.addView(back);
+        }
     }
     private Drawable bubble(boolean outgoing){GradientDrawable shape=shape(outgoing?colors.outgoing:colors.incoming,17);float r=dp(17),small=dp(6);shape.setCornerRadii(outgoing?new float[]{r,r,r,r,small,small,r,r}:new float[]{r,r,r,r,r,r,small,small});return shape;}
 

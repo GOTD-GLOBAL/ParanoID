@@ -997,6 +997,18 @@ final class CallTestPorts: CallController.SendPort, CallController.MediaPort, Ca
         self.presentation = presentation
     }
 
+    /// Every call this side finished, in order. It is
+    /// `CallControllerSmoke.Port.terminations`.
+    private(set) var terminations: [CallTermination] = []
+
+    func finished(_ termination: CallTermination) {
+        terminations.append(termination)
+    }
+
+    /// The last call this side finished. It is
+    /// `CallControllerSmoke.Port.lastTermination()`.
+    var lastTermination: CallTermination? { terminations.last }
+
     /// The next control this side enqueued, or `nil` when it enqueued none.
     func take() -> CallTestSent? {
         pending.isEmpty ? nil : pending.removeFirst()

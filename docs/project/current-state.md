@@ -6,6 +6,69 @@ last_reviewed: 2026-09-17
 
 # Current project state
 
+## PR45 current-main integration candidate — 2026-09-17
+
+The [integration record](../clients/pr45-main-integration.md) combines PR45
+`ee8d043` with main `6b428c8` after PR34/35. Cold-push main-thread ownership,
+Firebase-only R8/DEX guards, structured crash reports and maintenance gates are
+preserved. Local retained-signer Android build and supported core tests pass;
+legacy keeps exactly 14 known failures. iOS/core sources remain identical to
+Yaroslav's Mac-verified `ee8d043`. The local APK inherits versionCode26 only for
+review: it is not the published v26 and must not be delivered under that number.
+RFC-0022 owner disposition, physical-device checks and main merge remain gates.
+No feed, phone, live server or architecture acceptance action occurred.
+
+## Chat marks, call rows and unlimited history — local candidate (2026-09-17)
+
+At Yaroslav's request the candidate removes the 200-entry conversation ceiling in
+the core, draws the iOS delivery marks instead of typing them, records a finished
+call as one local row in its conversation on both clients, and gives the iOS
+application an icon and an explicit display name. The reasoning, the compatibility
+consequences and the questions for the decision owner are in
+[RFC-0022](../rfcs/0022-unlimited-conversation-history.md), which is **proposed**:
+removing the ceiling changes which stored snapshots are valid, so an older build
+cannot open a newer state and a peer still on the old build drops what it cannot
+store. Both phones must be updated together, and acceptance is the owner's.
+
+Nothing crosses the wire that did not before: no in-band message kind, no server
+route, no schema column, no change to the sealed snapshot's shape, and no read
+receipt anywhere (REQ-MSG-003 is unchanged). A call row is each device's own
+account of a call it watched, kept beside the local contact names.
+
+Verified on this Mac: core `clean_first_contact` 18/0, `sync_recovery` 6/0,
+`state` 3/0, `realtime_signing` 6/0, `voice_calls` 14/0, `registration` 7/0,
+`key_vectors` 1/0, with `self_service` unchanged at 10 passed and the same 14
+legacy failures listed in `scripts/ci-legacy-client-tests.txt`; ParanoidKit 318/0;
+the unsigned simulator application builds with the new icon; Android host smokes
+(call controller, call log, message presentation, contact names) pass and the
+Android/iOS call-scenario parity gate reports 105/105. **Not run:** any physical
+device, a signed build, the Android APK (no SDK on this machine), the simulator
+text and voice flows, and the hosted server. No merge, deployment, TestFlight or
+ADR acceptance is implied.
+
+### Coordinator validation follow-up
+
+The [Linux validation and fixes](../clients/pr45-validation.md) record the
+real Android35 compile failure, its correction and a retained-signer local APK
+build, separate from Yaroslav's Mac receipt above. Core gates pass; local fixes
+also preserve call-repaint status, recheck missed-notice foreground state and
+restore the iOS receipt accessibility element. The subsequent Mac receipts below
+close compilation and simulator accessibility-label gates; physical VoiceOver
+speech remains unverified. No phone, feed publication, deployment or ADR acceptance
+follows; that earlier APK was a versionCode22 review candidate, not a release.
+
+### Mac receipt and iOS anchor parity follow-up
+
+Yaroslav reports ParanoidKit 318/0 and unsigned simulator build on `2ee749d`,
+then simulator text-flow PASS on `ed4e2f8` with the delivery accessibility
+labels checked at runtime. The [dated receipt and scope](../clients/pr45-validation.md#contributor-mac-receipt-and-ios-anchor-follow-up)
+separate contributor execution from coordinator checks. The iOS patch aligns
+unavailable/empty call anchors with Android and adds three XCTest cases.
+Yaroslav's subsequent `ee8d043` Mac receipt reports CallLogTests 16/0, full
+ParanoidKit 321/0 and unsigned simulator build PASS; see the validation record.
+Names/log backup exposure remains documented for owner disposition in RFC-0022,
+with no storage migration or live action.
+
 ## PR35 source integration and maintenance gates — 2026-09-17
 
 The APK-cap rollout branch is integrated with main `4830134` in a separate

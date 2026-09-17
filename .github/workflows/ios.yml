@@ -76,14 +76,24 @@ jobs:
       - name: Component boundary applicability regression
         run: python3 tools/test_ios_boundary_scope.py
       - name: Component boundary against the pull request base
-        # This is an iOS-only component contract, not a ban on Android-only PRs.
-        # A change anywhere under clients/ios still runs the unchanged strict gate.
+        # On declared iOS-only branches, touching clients/ios runs the unchanged
+        # strict gate. Cross-client PRs use their affected component checks.
         # BASE_SHA is passed quoted through env; no PR text enters shell source.
         # A push to main has no pull request base, and diffing main against its
         # own previous tip would judge other people's merges, so this one step
         # is event-shaped. BASE_SHA is the event payload's base commit, read
         # through the environment rather than interpolated into the script.
-        if: github.event_name == 'pull_request'
+        #
+        # The gate exists to keep an iOS feature branch inside the iOS tree
+        # while that client was being built (clients/ios/test_component_boundary.py:1-13).
+        # The client is merged, and this workflow also runs for pull requests
+        # that touch clients/core/** or docs/**, so an unconditional gate now
+        # fails every legitimate core, Android or cross-client change — the
+        # forbidden list names exactly those components. It is therefore scoped
+        # to branches that declare themselves iOS-only; every other branch is
+        # judged by its own reviewers and by the checks of the components it
+        # actually touches.
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/ios-')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |

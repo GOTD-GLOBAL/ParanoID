@@ -62,6 +62,23 @@ the flag lives on the inode: setting it on the committed name alone would
 cover the first commit only, and a later iCloud restore would hand back a stale
 ratchet while the Keychain key still worked.
 
+### Local names and call-log backup limitation
+
+`ContactNames` (`paranoid.contact-names.v1`) and `CallLog`
+(`paranoid.call-log.v1`) currently use standard UserDefaults. Neither store has
+application-level encryption or explicit backup exclusion. Peer IDs, locally
+assigned names, call outcomes, durations and message anchors can therefore be
+carried in an OS backup/restore; "local-only" means not sent by the messenger
+to its peer/server, **not** excluded from the phone backup. The encrypted
+snapshot's backup exclusion does not cover these preferences. Android disables
+application backup in its manifest; the platforms differ here. No physical
+backup/restore experiment is claimed.
+
+Moving both stores into backup-excluded container files, including migration
+and failure semantics, versus retaining and explicitly accepting this limitation
+is an unresolved owner privacy decision, tracked with the RFC-0022 questions.
+No storage migration or acceptance is authorized by documenting the limitation.
+
 ### Install marker and lazy wrapping key
 
 The application creates no wrapping key on Welcome or empty-state load. The
@@ -234,9 +251,16 @@ task and hands the finished answer back through `perform`.
   before the delivery mark it produces is published. A 409 or a 507 defers that
   envelope and lets the rest of the batch go out; any other status ends the
   pass at once. An idle lane waits on a wake signal instead of polling.
-- **Receipts.** One check appears only after durable server acceptance, two
+- **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
-  anywhere in this client (REQ-MSG-003).
+  anywhere in this client (REQ-MSG-003). The three states are drawn
+  (`ReceiptMark`) rather than typed as «…», «✓» and «✓✓»; the words behind them
+  stay as the accessibility label, so VoiceOver reads the state and not the
+  drawing. The first time a message of this user's reaches the second mark, the
+  chat says once that two marks are delivery and not reading, and «Понятно»
+  retires that sentence for good (`ReceiptHint`, a flag in this application's
+  own defaults). Android still spells the marks as characters; the wording is
+  identical and the divergence is visual only.
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or

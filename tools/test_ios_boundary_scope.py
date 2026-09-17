@@ -18,6 +18,15 @@ def boundary_step():
 
 
 class BoundaryScope(unittest.TestCase):
+    def test_workflow_limits_strict_gate_to_declared_ios_prs(self):
+        text = (ROOT / '.github/workflows/ios.yml').read_text()
+        step = text.split('      - name: Component boundary against the pull request base', 1)[1]
+        conditions = [line.strip() for line in step.splitlines() if line.strip().startswith('if:')]
+        self.assertEqual(conditions, ["if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/ios-')"])
+        self.assertIn('python3 tools/test_ios_boundary_scope.py', text)
+        # This source contract checks applicability; cases below execute the real
+        # shell body for an applicable iOS-only branch, not the GitHub evaluator.
+
     def run_case(self, changes, base_missing=False):
         with tempfile.TemporaryDirectory(prefix='paranoid-ci-boundary-') as tmp:
             root = Path(tmp)

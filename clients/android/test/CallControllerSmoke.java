@@ -41,6 +41,14 @@ public final class CallControllerSmoke {
         public void mediaVideo(boolean value){if(value&&!engine)throw new IllegalStateException("no media engine");video=value;videoCalls++;}
         public void mediaClose(){closes++;engine=false;}
         public void changed(JSONObject value){view=new JSONObject(value.toString());}
+        final List<JSONObject> terminations=new ArrayList<>();
+        public void finished(JSONObject termination){terminations.add(new JSONObject(termination.toString()));}
+        JSONObject lastTermination(){
+            // A plain throw, not check(...): the parity gate reads every check label as a scenario
+            // the iOS tests must name, and a helper's own precondition is not one.
+            if(terminations.isEmpty())throw new AssertionError("expected a terminal record");
+            return terminations.get(terminations.size()-1);
+        }
         Sent take(){check(!sent.isEmpty(),"expected outgoing control");return sent.remove(0);}
     }
     static final class Pair {
@@ -206,5 +214,31 @@ public final class CallControllerSmoke {
         Pair large=new Pair();large.ready();large.a.localDescription(large.a.snapshot().getLong("generation"),repeat('x',12289),FP,U,P);check(!large.a.active(),"12288-byte SDP limit");
         Pair fits=new Pair();fits.ready();fits.a.localDescription(fits.a.snapshot().getLong("generation"),repeat('x',12288),FP,U,P);check(fits.a.active(),"12288-byte SDP accepted");
     }
-    public static void main(String[] args){videoConsentAndSignaling();relayAuthorityBeforeCapture();permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: video consent/signaling, consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
+    /** REQ-CALL-004: every call ends with exactly one terminal record, and it carries what the view drops. */
+    static void terminalRecord(){
+        Pair answered=new Pair();answered.connect();
+        answered.time.advance(192_000);
+        answered.a.hangup();
+        answered.deliver(answered.b,A,answered.pa.take());
+        JSONObject out=answered.pa.lastTermination();
+        check(answered.pa.terminations.size()==1,"one call leaves exactly one terminal record");
+        check(out.getBoolean("outgoing")&&out.getBoolean("connected"),"the record keeps the direction the view cannot");
+        check(out.getLong("duration_seconds")==192,"the record keeps the connected duration the ended view reports as zero");
+        check(answered.a.snapshot().getLong("elapsed_ms")==0,"the ended view reports no duration, which is why the record exists");
+        check(out.getString("reason").equals("hangup")&&out.getString("call_id").length()==36,"the record names the call and how it ended");
+        JSONObject peer=answered.pb.lastTermination();
+        check(!peer.getBoolean("outgoing")&&peer.getBoolean("connected"),"the callee records the same call as incoming");
+
+        Pair refused=new Pair();refused.ring();refused.b.reject();
+        refused.deliver(refused.a,B,refused.pb.take());
+        check(refused.pb.lastTermination().getString("reason").equals("reject")&&!refused.pb.lastTermination().getBoolean("connected"),"a refused ring is recorded unconnected on the phone that refused it");
+        check(refused.pa.lastTermination().getString("reason").equals("reject"),"the caller records the refusal it was told about");
+
+        Pair unanswered=new Pair();unanswered.ring();
+        unanswered.time.advance(45_001);unanswered.a.tick();unanswered.b.tick();
+        check(!unanswered.pa.terminations.isEmpty(),"a caller whose ring expired records its own call");
+        check(unanswered.pa.lastTermination().getString("reason").equals("timeout")&&unanswered.pa.lastTermination().getLong("duration_seconds")==0,"a ring nobody answered is recorded with no duration");
+        check(!unanswered.pb.terminations.isEmpty()&&!unanswered.pb.lastTermination().getBoolean("outgoing"),"the callee records the unanswered ring as its own incoming call");
+    }
+    public static void main(String[] args){terminalRecord();videoConsentAndSignaling();relayAuthorityBeforeCapture();permissionAndFreshness();lifecycleAndCommit();wrongContextsAndReplay();heartbeatAndAuthority();crossingAndClock();answerBindingAndTerminal();engineLimitsAndCallbacks();delayedCompletionIsolation();cancelBeforeReadyDelivery();System.out.println("CallControllerSmoke PASS: terminal records, video consent/signaling, consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel");}
 }

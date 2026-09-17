@@ -254,3 +254,26 @@ REQ-CALL-002/003 therefore still need the rest of the joint test on physical
 phones, which is
 [stage2-voice.md](../../project/evidence/ios-client-20260913/stage2-voice.md)
 and is `PARTLY RUN`.
+
+## Call rows in the chat
+
+A finished call leaves one row in the conversation it belonged to, and nothing
+else changes. `CallController` publishes the terminal facts the public view
+cannot carry — the direction the call was placed in and how long media was
+actually connected, both read before the live call is cleared — and the screens
+keep them in `CallLog`, the application's own defaults, beside the contact names.
+
+The core is not involved and neither is the server: a call still creates no
+history entry, no receipt and no commitment (`docs/protocol/voice-v1.md:27-31`),
+nothing is sent to the peer, and the peer keeps its own account of the same call
+from its own side of the same controls. The two accounts legitimately differ —
+a caller that gave up before the ring was answered writes «Вызов отменён» while
+the callee writes «Пропущенный звонок».
+
+Because the core stores no time for a message, a row cannot be sorted into the
+history by a clock this client would have to invent (REQ-CLIENT-004). Each row
+therefore carries the identifier of the last message that existed when the call
+ended and is drawn there; a call recorded before any message opens the chat, and
+a call whose anchor is gone stands at the end rather than disappearing. A missed
+row carries «Перезвонить»; this client raises no notification of any kind, so a
+call that arrives while the application is closed is seen when it is opened.

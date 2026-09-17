@@ -127,6 +127,12 @@ test. Every other `Result` cell in both stages stays `NOT RUN`.
 
 ## Requirements
 
+> Since 2026-09-17 the three delivery states are **drawn** rather than typed into
+> the bubble (`ReceiptMark`): the evidence rows below name `✓` and `✓✓` because
+> that is what was on the screen when each run happened, and the states, their
+> order and their words — «В очереди», «Сохранено сервером», «Доставлено» — are
+> unchanged. No read receipt exists in this client (REQ-MSG-003).
+
 | Requirement | What must hold for iOS (source) | What was actually run | Status |
 | --- | --- | --- | --- |
 | REQ-CLIENT-001 | Supported clients include iOS ([requirements](../../product/requirements.md)) | A Release build for a device links and passes the bundle gate **unsigned** (`test_app_bundle.py`, `CLAIMED`). On 2026-09-13 two builds signed with team `5RPGVC566Q` (`xcodebuild -allowProvisioningUpdates` with the team on the command line, installed with `xcrun devicectl`) ran on an iPhone 16 Pro Max, iOS 26.6.1, Developer Mode enabled: a Debug build for the local-stand session (it takes the DEBUG-only `PARANOID_REALM`/`PARANOID_PIN` environment channel, because `devicectl` relays no launch arguments) and a Release build for the hosted server. No archive, no `.ipa` export and no TestFlight upload: the export-compliance gate is closed and `build.sh`'s signed-archive gate did not run | SHOWN (phone, local stand and hosted); acceptance waits for the joint tests |

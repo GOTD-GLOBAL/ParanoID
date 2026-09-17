@@ -7,6 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_android_call_rows_and_preserved_main_fixes_gate_in_ci(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        for name in ('test_call_log.py', 'test_message_presentation.py',
+                     'test_ui_contract.py', 'test_crash_exit.py'):
+            self.assertIn('python3 clients/android/' + name, supported)
+
     def test_v2_backup_and_one_off_recovery_are_blocking_ci_gates(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
         package = workflow.split('  native-package:\n', 1)[1].split('  postgres-http:\n', 1)[0]

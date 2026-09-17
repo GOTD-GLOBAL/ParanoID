@@ -31,6 +31,13 @@ public final class CallController {
         void mediaVideo(boolean enabled);
         void mediaClose();
         void changed(JSONObject publicView);
+        /**
+         * One call ended, with the facts the public view cannot carry: the direction it was placed
+         * in and how long it was actually connected. Called on the owner thread, once per call,
+         * immediately after the terminal view is published. Ignoring it is the default, because a
+         * call log is a screen's business and not the protocol's.
+         */
+        default void finished(JSONObject termination){}
     }
     private static final long TTL=45_000, HEARTBEAT=10_000, SILENCE=30_000,
         DISCONNECTED=10_000, MAX_CALL=900_000, CLOCK_SKEW=5_000;
@@ -308,10 +315,21 @@ public final class CallController {
     private void finish(String endReason,boolean tellPeer){
         Call c=call;if(c==null)return;
         JSONObject end=tellPeer&&online?body(c,"end",c.nextSequence++,"","","","",endReason):null;
+        // Read while the call is still here: `call` is cleared on the next line and the published
+        // view then reports zero seconds for every call that ever connected (snapshot()).
+        JSONObject termination=termination(c,endReason);
         call=null;generation++;lastAccount=c.account;lastCallId=c.id;state="ended";reason=endReason;
         remember(c.account,c.id);
-        try{port.mediaClose();}finally{publish();}
+        try{port.mediaClose();}finally{publish();port.finished(termination);}
         if(end!=null)try{port.send(c.account,end,accepted->{own();});}catch(RuntimeException ignored){/* Terminal already applied. */}
+    }
+    /** The terminal facts of one call: direction, whether media ever connected, and for how long. */
+    private JSONObject termination(Call c,String endReason){
+        long seconds=c.connectedAt<0?0:Math.max(0,(clock.monotonicMillis()-c.connectedAt)/1000);
+        try{return new JSONObject().put("call_id",c.id).put("account",c.account).put("outgoing",c.outgoing)
+            .put("connected",c.connectedAt>=0).put("video",c.localVideo||c.remoteVideo)
+            .put("duration_seconds",seconds).put("reason",endReason);
+        }catch(Exception failure){throw new IllegalStateException("call termination",failure);}
     }
     private JSONObject body(Slot s,String kind,int seq,String sdp,String fp,String ufrag,String pwd,String endReason){
         long wall=clock.wallMillis();

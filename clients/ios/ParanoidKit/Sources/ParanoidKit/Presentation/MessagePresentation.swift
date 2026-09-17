@@ -65,11 +65,29 @@ public enum MessagePresentation {
         return message.isAccepted ? "Сохранено сервером" : "В очереди"
     }
 
-    /// The same three states as the ticks Android draws
-    /// (`MainActivity.java:569,592`).
-    public static func receipt(_ message: Message) -> String {
-        if message.isDelivered { return "✓✓" }
-        return message.isAccepted ? "✓" : "…"
+    /// The mark under an own bubble, as a state rather than a character
+    /// (`MainActivity.java:569,592`, Android v23).
+    ///
+    /// The ladder itself is unchanged and stays the founder-confirmed one of
+    /// REQ-MSG-003: queued, stored by the server, delivered to the peer's
+    /// device, and nothing above it — this client has no read receipt to show.
+    /// What changed is only the drawing: the screens paint a shape for each
+    /// case instead of typing «…», «✓» and «✓✓» into the bubble, and the words
+    /// of ``delivery(_:)`` stay as the accessibility label so VoiceOver still
+    /// reads the state out loud.
+    public enum Mark: String, Sendable, Equatable, CaseIterable {
+        /// Not yet stored by the server.
+        case queued
+        /// One mark: durable server acceptance.
+        case stored
+        /// Two marks: the peer's device acknowledged it. Never "read".
+        case delivered
+    }
+
+    /// The mark of one own message (`MainActivity.java:666`).
+    public static func mark(_ message: Message) -> Mark {
+        if message.isDelivered { return .delivered }
+        return message.isAccepted ? .stored : .queued
     }
 
     /// `\s` as `java.util.regex` defines it: the six ASCII characters, and no

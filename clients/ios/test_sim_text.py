@@ -32,9 +32,10 @@ One run does, in order:
    identities;
 4. `text`: «Создать ID» → «Мой ID» with the QR and the account → «Вставить
    контакт» with the peer's contact → «Отпечаток совпадает» → the chat → one
-   tap on «Отправить» → `✓` → the peer answers → its bubble and `✓✓` → a
+   tap on «Отправить» → «Сохранено сервером» → the peer answers → its bubble
+   and «Доставлено» → a
    double tap on «Отправить» → exactly one bubble, one envelope on the server
-   and one `✓✓` → «Заблокировать контакт» and back;
+   and one «Доставлено» → «Заблокировать контакт» and back;
 5. `reinstall`: uninstall again, launch again, «Создать ID» again — no freeze
    over the retained Keychain key, and an account that is not the first one's.
 
@@ -469,9 +470,10 @@ CHECKS = {
         '«Создать ID» registers and «Мой ID» shows the contact QR and a 64-digit account',
         'the pasted contact is the peer\'s own text and the fingerprint on «Проверка контакта» is '
         'the one that peer\'s core published',
-        'one tap on «Отправить» is one envelope: ✓ after the server stored it, ✓✓ after the peer '
+        'one tap on «Отправить» is one envelope: «Сохранено сервером» after the server stored it, '
+        '«Доставлено» after the peer '
         'acknowledged it',
-        'a double tap on «Отправить» draws one bubble, reaches the peer once and carries one ✓✓',
+        'a double tap on «Отправить» draws one bubble, reaches the peer once and carries one «Доставлено»',
         '«Заблокировать контакт» disables the composer and «Разблокировать контакт» restores it',
         '«Переименовать» names the contact on this phone only: the local name replaces the '
         'default label and an empty field restores it',

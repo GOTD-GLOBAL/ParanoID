@@ -385,9 +385,8 @@ fn receive(s: &mut Client, m: Incoming) -> Result<()> {
             if p.body.is_empty() || p.body.len() > 2048 {
                 return Err("invalid_text");
             }
-            if s.history.len() >= 200 {
-                return Err("local_history_full");
-            }
+            // Owner decision 2026-09-17: no history ceiling in the legacy profile
+            // either; the 8 MiB state bound stays the only capacity refusal.
             s.history.push(Entry {
                 id: p.id.clone(),
                 author: peer.device,
@@ -610,7 +609,7 @@ pub fn command(state: &str, request: &str) -> Result<String> {
             s.peer = Some(peer);
         }
         Request::Send { text } => {
-            if text.is_empty() || text.len() > 2048 || s.history.len() >= 200 {
+            if text.is_empty() || text.len() > 2048 {
                 return Err("invalid_text_or_full_history");
             }
             let id = encrypt(&mut s, "text", text.clone())?;

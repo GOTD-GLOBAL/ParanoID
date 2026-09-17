@@ -633,6 +633,14 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
         Task { @MainActor in model?.callChanged(presentation) }
     }
 
+    /// One call ended. The screens keep their own log of it; nothing here
+    /// reaches the core, the snapshot or the peer.
+    func finished(_ termination: CallTermination) {
+        precondition(owner.isOnOwner, "the call coordinator runs on the state owner")
+        let model = self.model
+        Task { @MainActor in model?.callFinished(termination) }
+    }
+
     private func announce(_ text: String) {
         let model = self.model
         Task { @MainActor in model?.showNotice(text) }

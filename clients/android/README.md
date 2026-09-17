@@ -14,7 +14,9 @@ Android/aiortc direct and isolated TURN relay media pass. App UI acceptance and 
 The native messenger uses real chat lists/bubbles, a stable keyboard-aware
 composer, genuine delivered indicators, own-ID QR/share and explicit contact
 verification/blocking. Unknown senders remain visibly unverified and replyable.
-No simulated calls, read receipts or message timestamps are shown.
+No simulated calls, read receipts or message timestamps are shown. A finished call leaves
+one local row in its conversation (`CallLog`), built from the terminal transition this phone
+watched; nothing about it is sent or stored outside the phone.
 
 Reused pinned TLS and five-minute signed sessions support bounded long polling.
 Network waits use separate lanes; native state remains single-owner and durable

@@ -320,6 +320,58 @@ final class CallControllerTests: XCTestCase {
                       "post-ready pre-offer end closes readiness without capture")
     }
 
+    // MARK: - terminalRecord
+
+    /// `CallControllerSmoke.terminalRecord`.
+    ///
+    /// The published view cannot carry the two facts a call log needs: it reads
+    /// its elapsed time off the live call, and a call that has ended has none.
+    /// This is the contract of the record that is published instead.
+    func testTerminalRecord() throws {
+        let answered = CallPair()
+        answered.connect()
+        answered.time.advance(millis: 192_000)
+        answered.alice.hangup()
+        answered.deliver(to: answered.bob, from: CallPair.alice, try take(answered.alicePorts))
+        let record = try XCTUnwrap(answered.alicePorts.lastTermination)
+        XCTAssertEqual(answered.alicePorts.terminations.count, 1,
+                       "one call leaves exactly one terminal record")
+        XCTAssertTrue(record.outgoing && record.connected,
+                      "the record keeps the direction the view cannot")
+        XCTAssertEqual(record.durationSeconds, 192,
+                       "the record keeps the connected duration the ended view reports as zero")
+        XCTAssertEqual(answered.alice.presentation.elapsedMillis, 0,
+                       "the ended view reports no duration, which is why the record exists")
+        XCTAssertTrue(record.reason == .hangup && record.callId.count == 36,
+                      "the record names the call and how it ended")
+        let callee = try XCTUnwrap(answered.bobPorts.lastTermination)
+        XCTAssertTrue(!callee.outgoing && callee.connected,
+                      "the callee records the same call as incoming")
+
+        let refused = CallPair()
+        refused.ring()
+        refused.bob.reject()
+        refused.deliver(to: refused.alice, from: CallPair.bob, try take(refused.bobPorts))
+        let refusal = try XCTUnwrap(refused.bobPorts.lastTermination)
+        XCTAssertTrue(refusal.reason == .reject && !refusal.connected,
+                      "a refused ring is recorded unconnected on the phone that refused it")
+        XCTAssertEqual(try XCTUnwrap(refused.alicePorts.lastTermination).reason, .reject,
+                       "the caller records the refusal it was told about")
+
+        let unanswered = CallPair()
+        unanswered.ring()
+        unanswered.time.advance(millis: CallController.ttlMillis + 1)
+        unanswered.alice.tick()
+        unanswered.bob.tick()
+        XCTAssertFalse(unanswered.alicePorts.terminations.isEmpty,
+                       "a caller whose ring expired records its own call")
+        let expired = try XCTUnwrap(unanswered.alicePorts.lastTermination)
+        XCTAssertTrue(expired.reason == .timeout && expired.durationSeconds == 0,
+                      "a ring nobody answered is recorded with no duration")
+        XCTAssertFalse(try XCTUnwrap(unanswered.bobPorts.lastTermination).outgoing,
+                       "the callee records the unanswered ring as its own incoming call")
+    }
+
     // MARK: - engineLimitsAndCallbacks
 
     /// `CallControllerSmoke.engineLimitsAndCallbacks`

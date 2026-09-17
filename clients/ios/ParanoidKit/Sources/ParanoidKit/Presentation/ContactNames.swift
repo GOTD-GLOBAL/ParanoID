@@ -16,10 +16,11 @@ import Foundation
 /// - **Nothing a peer chose can reach it.** The only writer is the person
 ///   holding the phone, through «Переименовать»; the core publishes no name
 ///   and this type reads none.
-/// - **It disappears with the container.** The defaults die with the
-///   application, so a reinstall — which starts a new identity anyway
-///   (`InstallMarker`) — starts with the default labels again, and the name
-///   is not carried to another device.
+/// - **Container deletion removes it, but backup restore can carry it.**
+///   Standard UserDefaults has no explicit backup exclusion here. A fresh
+///   install without restored preferences starts with default labels; OS
+///   backup/restore may carry names to another device. This is not covered
+///   by the encrypted snapshot's backup exclusion.
 ///
 /// The value semantics are what the screens need: the table is held here, a
 /// rename mutates it and writes it through in the same call, so a model that

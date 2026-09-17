@@ -9,7 +9,8 @@ import android.os.*;
 /** Microphone (and, after an explicit camera toggle, camera) service starts only from a visible explicit call/answer action. */
 public final class VoiceCallService extends Service {
     private static final String CHANNEL="paranoid-voice",INCOMING="paranoid-call-incoming-v2",LEGACY_INCOMING="paranoid-call-incoming",STOP="global.paranoid.messenger.END_CALL";
-    private static final int ACTIVE_ID=51,INCOMING_ID=52;
+    private static final String MISSED="paranoid-call-missed";
+    private static final int ACTIVE_ID=51,INCOMING_ID=52,MISSED_ID=53;
     private static Runnable pending;
     private static boolean running,videoActive;
     private static final String VIDEO="global.paranoid.messenger.CALL_VIDEO";
@@ -58,6 +59,26 @@ public final class VoiceCallService extends Service {
         }catch(RuntimeException ignored){/* Never grant microphone access from a notification failure. */}
     }
     public static void clearIncoming(Context context){context.getSystemService(NotificationManager.class).cancel(INCOMING_ID);}
+    /**
+     * A call that was never answered here. Its own channel and id: 52 is cancelled on every
+     * non-incoming state (TextEngine), so a missed notice posted there would be erased instantly.
+     * It carries no name and no number — the same privacy shape as the message notice — and it is
+     * dismissed by opening a chat.
+     */
+    public static void missed(Context context){
+        try{
+            NotificationManager manager=context.getSystemService(NotificationManager.class);
+            NotificationChannel channel=new NotificationChannel(MISSED,"Пропущенные звонки",NotificationManager.IMPORTANCE_DEFAULT);
+            channel.setDescription("Без имени звонившего");channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            manager.createNotificationChannel(channel);
+            manager.notify(MISSED_ID,new Notification.Builder(context,MISSED).setSmallIcon(android.R.drawable.sym_call_missed)
+                .setContentTitle("Пропущенный звонок ParanoID").setContentText("Откройте приложение, чтобы перезвонить")
+                .setCategory(Notification.CATEGORY_MISSED_CALL).setContentIntent(open(context))
+                .setAutoCancel(true).setVisibility(Notification.VISIBILITY_PRIVATE).build());
+        }catch(RuntimeException ignored){/* A notification failure never changes call state. */}
+    }
+    /** The chat was opened; the missed notice has done its job. */
+    public static void clearMissed(Context context){context.getSystemService(NotificationManager.class).cancel(MISSED_ID);}
     @Override public int onStartCommand(Intent intent,int flags,int startId){
         if(intent!=null&&VIDEO.equals(intent.getAction())){
             if(!running){stopSelf();return START_NOT_STICKY;}

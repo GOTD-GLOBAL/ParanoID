@@ -138,3 +138,30 @@ alignment gates; independent final code review remains pending.
 Physical OPPO audio, Bluetooth, mobile handover, Doze and
 force-stop remain NOT RUN. Production media uses no arbitrary public STUN/TURN;
 new public relay operation needs separate reviewed authorization.
+
+## Call rows in the chat
+
+`CallController.Port.finished` publishes the terminal facts of one call —
+direction, whether media ever connected, and for how long — captured before the
+live call is cleared, because the published view reports zero seconds once it is.
+`TextEngine` writes one row per call into `CallLog` (app-private preferences,
+keyed by account, never in `text-state.enc`, never sent) and `MainActivity` draws
+it between the bubbles, anchored to the last message the conversation had when
+the call ended. The chat list shows the same line when the call is newer than the
+last message.
+
+A missed call raises a notification of its own — channel `paranoid-call-missed`,
+id 53, because id 52 is cancelled on every non-incoming state — only when no
+screen is attached. It carries no name and no number, the same privacy shape as
+the message notice, and opening a chat clears it.
+
+The core still writes no call history and the server is told nothing about an
+outcome; each phone keeps its own account of the same call.
+
+The SDK-specific validation and subsequent fixes are recorded in
+[PR45 validation](../pr45-validation.md). `test_sdk_compile.py` compiles all
+application sources against Android35 without host `org.json`; `build.sh` runs
+it and the call-log smoke before packaging. Missed notices recheck foreground
+state on the UI queue, and call-log repaints retain the last connection/error
+status. An unavailable history anchor sorts after messages, not as an empty
+conversation before them.

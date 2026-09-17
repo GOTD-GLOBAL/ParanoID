@@ -165,9 +165,12 @@ retain the inherited bounded-notice behavior and no delivery receipt. Automatic
 later recovery of capacity/decryption failures is not promised. Notices older than
 the bounded ledger may leave aggregate warning counts after recovery.
 
-Limits: 64 new verified contacts plus a retained legacy conversation, 200 history
-entries, 400 queued envelopes, eight sessions and 1000 seen IDs per conversation;
-2048 UTF-8 text bytes. Core snapshots are at most 8 MiB. Oversized candidate
+Limits: 64 new verified contacts plus a retained legacy conversation, 400 queued
+envelopes, eight sessions and 1000 seen IDs per conversation; 2048 UTF-8 text
+bytes. Conversation history has no entry ceiling (owner decision 2026-09-17; the
+retired ceiling was 200 entries). Core snapshots are at most 8 MiB, and a commit
+that would exceed that bound is refused as `local_state_full` before persistence,
+so a very long history eventually reaches the snapshot bound instead. Oversized candidate
 snapshots are refused before persistence, not written and then made unreadable.
 No eviction/deletion, account recovery, multi-device, attachments, push or iOS is
 implemented. Large-history catch-up may take multiple foreground polling cycles.

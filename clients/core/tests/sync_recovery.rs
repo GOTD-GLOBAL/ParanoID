@@ -207,18 +207,24 @@ fn event(outgoing: &Value, sender: &str, sequence: i64) -> Value {
     json!({"id":outgoing["id"],"ciphertext":outgoing["ciphertext"],"sender":sender,"sequence":sequence})
 }
 
+// Owner decision 2026-09-17: the local history has no ceiling, so a conversation
+// far past the retired 200-entry cap keeps accepting text and still applies a
+// later delivery receipt to an older own message.
 #[test]
-fn full_history_defers_text_but_accepts_a_later_delivery_receipt() {
+fn history_past_the_retired_cap_accepts_text_and_a_later_delivery_receipt() {
     let (mut a, mut b) = paired();
     b = call(&b["state"], json!({"op":"send","text":"needs receipt"}));
     let own_id = b["outbox"][0]["id"].clone();
-    a = call(&a["state"], json!({"op":"send","text":"overflow text"}));
+    a = call(
+        &a["state"],
+        json!({"op":"send","text":"text past the retired cap"}),
+    );
     a = call(
         &a["state"],
         json!({"op":"receive","message":event(&b["outbox"][0],"bob",1)}),
     );
     let history = b["state"]["history"].as_array_mut().unwrap();
-    while history.len() < 200 {
+    while history.len() < 250 {
         history.push(json!({"id":uuid::Uuid::new_v4().to_string(),"author":"bob","text":"old test entry","accepted":true,"delivered":false}));
     }
     let before = b["state"].clone();
@@ -226,14 +232,12 @@ fn full_history_defers_text_but_accepts_a_later_delivery_receipt() {
         &before,
         json!({"op":"receive","message":event(&a["outbox"][0],"alice",2)}),
     );
-    assert_eq!(
-        b["state"]["rejected_events"][0]["reason"],
-        "local_history_full"
-    );
-    assert_eq!(b["messages"].as_array().unwrap().len(), 200);
-    assert!(b["state"]["account"] == before["account"]);
-    assert!(b["state"]["sessions"] == before["sessions"]);
-    assert!(b["outbox"] == before["outbox"]);
+    assert_eq!(b["cursor"], 2);
+    assert_eq!(b["rejected_count"], 0);
+    assert!(b["state"]["rejected_events"].as_array().unwrap().is_empty());
+    assert_eq!(b["messages"].as_array().unwrap().len(), 251);
+    // The candidate is committed now, so the Olm account and session state are
+    // expected to move; only the refusal path leaves them byte-identical.
     b = call(
         &b["state"],
         json!({"op":"receive","message":event(&a["outbox"][1],"alice",3)}),
@@ -246,7 +250,7 @@ fn full_history_defers_text_but_accepts_a_later_delivery_receipt() {
         .find(|m| m["id"] == own_id)
         .unwrap();
     assert_eq!(original["delivered"], true);
-    assert_eq!(b["messages"].as_array().unwrap().len(), 200);
+    assert_eq!(b["messages"].as_array().unwrap().len(), 251);
 }
 
 #[test]
