@@ -113,15 +113,19 @@ class SafeV2Update(unittest.TestCase):
         with alpha.lock(self.root), alpha.database(self.root):
             self.add_push_fixture()
         original = alpha.command
+        corrupted = []
         def corrupt_restore(args, **kwargs):
             result = original(args, **kwargs)
             if str(args[0]).endswith('/pg_restore') and '--exit-on-error' in args:
                 restored = args[args.index('-d') + 1]
-                self.assertNotEqual(restored, 'postgres')
+                self.assertTrue(restored.startswith('verify_v2_'))
                 alpha.sql(self.root, 'DELETE FROM ss_push_tokens', restored)
+                corrupted.append(restored)
             return result
-        with patch.object(alpha, 'command', side_effect=corrupt_restore), self.assertRaises(RuntimeError):
+        with patch.object(alpha, 'command', side_effect=corrupt_restore), self.assertRaisesRegex(
+                RuntimeError, 'restored v2 schema or rows differ'):
             alpha.switch_v2_offline(self.root, candidate, self.identifier)
+        self.assertEqual(len(corrupted), 1, 'restore corruption hook must execute exactly once')
         self.assertEqual(self.old_pointer, (self.root / 'current').readlink())
         with alpha.lock(self.root), alpha.database(self.root):
             self.assertEqual(alpha.sql(self.root, 'SELECT count(*) FROM ss_push_tokens').strip(), b'1')

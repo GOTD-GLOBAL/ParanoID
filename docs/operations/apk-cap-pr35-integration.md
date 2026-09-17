@@ -93,6 +93,22 @@ Full privileged rollback-helper entrypoint fault injection is not added: generic
 atomic helper tests and restored-identity tests are not that end-to-end claim.
 No root/main invocation or live replay is part of these tests.
 
+## Final integration review
+
+A second fresh `claude-opus-5` review of exact `e007e287` returned **APPROVE**,
+with no blockers. It verified fixed CI commands, isolation, strict package
+verification, semantic drift guards and the test-count/proof clarifications.
+Its suggested lost-row test tightening is applied: require the exact row/schema
+mismatch diagnostic and prove the corruption hook executed once on `verify_v2_*`.
+The 15-minute native-package timeout is retained pending actual CI duration;
+no failed job is waived. The exact final review report is recorded on PR35.
+
+The final clean `e007e287` packaged build also passed all 16 maintenance tests
+and the four signal cases with the retained historical v2 release selected.
+Manifest source_dirty is false; all eight member hashes and packaged `alpha.py`
+were independently checked against source. These are local compatibility results,
+not a new hosted deployment or rollout acceptance.
+
 ## Rollout and rollback
 
 Merging source triggers CI, not deployment. The September13 hosted receipt remains
