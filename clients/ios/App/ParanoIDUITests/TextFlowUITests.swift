@@ -13,8 +13,11 @@ import XCTest
 ///
 /// - **The peer is real.** The other side is a second `service-bridge` — the
 ///   same shipped Swift classes over the same Rust core — talking to the same
-///   unchanged server. Nothing here is stubbed, so a `✓` means the server
-///   stored the envelope and a `✓✓` means that peer's core acknowledged it.
+///   unchanged server. Nothing here is stubbed, so «Сохранено сервером» means
+///   the server stored the envelope and «Доставлено» means that peer's core
+///   acknowledged it. Those words are the accessibility label of the bubble —
+///   the marks themselves are drawn (`ReceiptMark`) and carry no text, so what
+///   this test reads is exactly what VoiceOver reads.
 /// - **The two sides take turns.** The harness cannot guess when the screen
 ///   is the one to photograph or when the peer should answer, so the test asks
 ///   it, through the file rendezvous below, and waits for the answer. Every
@@ -97,17 +100,18 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertEqual(trust.label, "Личность проверена · Подробнее")
         try fixture.shot("07-chat")
 
-        // One tap on «Отправить»: one envelope, one `✓` when the server has
-        // stored it.
+        // One tap on «Отправить»: one envelope, «Сохранено сервером» when the
+        // server has stored it.
         try fixture.compose(app, fixture.firstText)
         let send = app.buttons["send"]
         XCTAssertTrue(send.isEnabled, "«Отправить» is disabled for a text that fits")
         send.tap()
-        let sent = try fixture.bubble(app, fixture.firstText, marked: "✓", "the first message")
+        let sent = try fixture.bubble(app, fixture.firstText, marked: "Сохранено сервером",
+                                      "the first message")
         // The peer has not been asked to run a cycle yet, so nothing can have
-        // acknowledged this message: a `✓✓` here would be one the client drew
-        // of its own accord.
-        XCTAssertFalse(sent.label.contains("✓✓"),
+        // acknowledged this message: «Доставлено» here would be one the client
+        // drew of its own accord.
+        XCTAssertFalse(sent.label.contains("Доставлено"),
                        "the first message was double-checked before the peer acknowledged it")
         XCTAssertNotEqual(app.descendants(matching: .any)["compose-field"].value as? String,
                           fixture.firstText, "the composer was not cleared by the tap")
@@ -122,7 +126,7 @@ final class TextFlowUITests: XCTestCase {
             .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.replyText)).firstMatch
         XCTAssertTrue(reply.waitForExistence(timeout: Timeout.delivery),
                       "the peer's reply never arrived: " + Diagnosis.of(app))
-        _ = try fixture.bubble(app, fixture.firstText, marked: "✓✓", "the first message")
+        _ = try fixture.bubble(app, fixture.firstText, marked: "Доставлено", "the first message")
         try fixture.shot("09-delivered")
 
         // Two taps in one gesture: the guard is `Drafts.begin`, which is
@@ -130,13 +134,14 @@ final class TextFlowUITests: XCTestCase {
         // send in flight.
         try fixture.compose(app, fixture.doubleText)
         send.doubleTap()
-        let doubled = try fixture.bubble(app, fixture.doubleText, marked: "✓", "the double-tapped message")
+        let doubled = try fixture.bubble(app, fixture.doubleText, marked: "Сохранено сервером",
+                                         "the double-tapped message")
         try fixture.exactlyOne(app, fixture.doubleText, "after the second tap")
         XCTAssertEqual(try fixture.ask("peer-expect", fixture.doubleText), "1",
                        "a double tap put more than one envelope on the server")
-        _ = try fixture.bubble(app, fixture.doubleText, marked: "✓✓", "the double-tapped message")
-        XCTAssertEqual(doubled.label.components(separatedBy: "✓✓").count - 1, 1,
-                       "the double-tapped message carries more than one ✓✓")
+        _ = try fixture.bubble(app, fixture.doubleText, marked: "Доставлено", "the double-tapped message")
+        XCTAssertEqual(doubled.label.components(separatedBy: "Доставлено").count - 1, 1,
+                       "the double-tapped message carries more than one «Доставлено»")
         try fixture.exactlyOne(app, fixture.doubleText, "after the peer acknowledged it")
         try fixture.shot("10-double-tap")
 
@@ -348,7 +353,7 @@ private struct Fixture {
     /// The bubbles this device wrote that say `text`.
     ///
     /// A message is two accessibility elements, not one: `MessageBubble`
-    /// combines its children, which gives the bubble — «<текст>, ✓ Сохранено
+    /// combines its children, which gives the bubble — «<текст>, Сохранено
     /// сервером» — and the selectable `Text` inside it stays an element of
     /// its own, whose label is the message and nothing else. Counting the
     /// first of the two is counting bubbles; counting both would count every
