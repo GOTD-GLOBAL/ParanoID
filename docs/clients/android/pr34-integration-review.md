@@ -92,6 +92,24 @@ with the separate in-call diagnostic-journal candidate.
 - Existing PR CI's legacy job genuinely failed: 10 passed, 14 failed, raw exit101.
   Its Rust source is unchanged by PR34; do not report that job green or disable it.
 
+## CI scope correction after main integration
+
+The first refreshed run exposed two previously hidden scope mismatches. The
+Java `Thread` constructor regression is Android-specific, not a missing Swift
+actor test. Move its unchanged assertions into `CallOwnerThreadSmoke.java`;
+`test_call_controller.py` still compiles and executes both suites. Cross-platform
+parity again covers all 94 shared labels without inserting fake Swift assertions.
+
+The iOS workflow runs shared checks for documentation changes, but its strict
+component-isolation script was originally for an iOS implementation branch.
+Invoke that unchanged strict script when the committed diff touches any
+`clients/ios/` path, including deletions/renames; otherwise report
+`NOT_APPLICABLE`, not an iOS-boundary PASS. All other iOS checks still run.
+`tools/test_ios_boundary_scope.py` executes the actual workflow shell block and
+actual strict script in temporary Git repositories: Android-only is outside
+scope, iOS-only passes, mixed iOS/Android fails, and an unresolved base fails.
+These four regressions run in CI. No workflow permission is broadened.
+
 ## Remaining gates
 
 Independent final correction review and fresh CI must refer to the new candidate,
