@@ -1,0 +1,20 @@
+// Application identity and platform pins of the ParanoID iOS client
+// (RFC-0021, draft ADR-0014). Attached to the project-level configurations
+// of ParanoID.xcodeproj; the two test bundles override the bundle identifier
+// with a `.tests` / `.uitests` suffix in project.pbxproj.
+
+// Same bundle identity as the Android v15 package (owner decision, ADR-0014).
+PRODUCT_BUNDLE_IDENTIFIER = global.paranoid.messenger
+
+// Mirrors "ios_deployment_target" in ../../toolchain.json.
+IPHONEOS_DEPLOYMENT_TARGET = 17.0
+
+// The Apple team comes only from the environment (`PARANOID_IOS_TEAM_ID`,
+// see ../../README.md "Secrets and outputs"); it is never written here. An
+// unset variable leaves the setting empty, which is fine for simulator builds
+// with CODE_SIGNING_ALLOWED=NO and makes a device build fail loudly.
+DEVELOPMENT_TEAM = $(PARANOID_IOS_TEAM_ID)
+
+// ParanoidCore.xcframework carries an arm64-only simulator slice
+// (../../build-core.sh), so an x86_64 simulator build cannot link.
+EXCLUDED_ARCHS[sdk=iphonesimulator*] = x86_64

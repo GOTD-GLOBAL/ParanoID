@@ -1,0 +1,4 @@
+module ParanoidCoreFFI {
+    header "paranoid_core.h"
+    export *
+}

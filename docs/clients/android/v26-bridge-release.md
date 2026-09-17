@@ -6,6 +6,11 @@ last_reviewed: 2026-09-13
 
 # v26 bridge release: published, server rollout blocked
 
+This is the dated 2026-09-13 operation record, not a fresh server-status check.
+The [PR34 integration review](pr34-integration-review.md) records subsequent
+source corrections and their separate verification scope. Its candidate bytes
+are not the historical signed APK described below.
+
 ## Scope and provenance
 
 Sergey Maltsev authorized server update and a legacy-compatible Android bridge

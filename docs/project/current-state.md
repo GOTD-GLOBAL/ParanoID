@@ -1,19 +1,93 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-11
+last_reviewed: 2026-09-14
 ---
 
 # Current project state
 
-## Android v26 bridge published — 2026-09-13
+## PR34 v26 source integration candidate
 
-[The v26 release record](../clients/android/v26-bridge-release.md) records the real
-signed bridge, preservation of released v25 call/R8 fixes, canonical build and
-independent artifact checks. Live feed advertises version26; the old v25 updater
-successfully downloaded and hashed it over pinned TLS. No physical-phone result
-is claimed. Server rollout remains blocked by original coordinator identity drift;
-no server code/config/TLS/DB change or journal bypass was performed.
+The [integration review](../clients/android/pr34-integration-review.md) records
+local fixes, actual SDK/split-DEX and host test results, and remaining gates.
+
+The [dated v26 publication record](../clients/android/v26-bridge-release.md)
+covers the bridge published on 2026-09-13, including v25 call-owner and split-R8
+fixes absent from main. Its server-blocked statement is historical evidence for
+that operation, not a fresh host status check. This integration retains current
+main's complete evidence (including later iOS/TLS entries) and removes an
+accidentally committed output-truncation placeholder from the PR branch.
+Local integration/testing is not a new APK publication, phone acceptance,
+server deployment, main merge or architecture approval.
+
+## C1 integrated and verified at host/simulator scope (2026-09-14)
+
+PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b
+and dad2f7d. The coordinator verified that clients/ios, .github and CHANGELOG.md
+are unchanged from tested dad2f7d; the only manual conflict resolution joined
+the C1 and PR42 documentation sections. No runtime resolution was introduced.
+Yaroslav's [complete dad2f7d Mac receipt](evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+reports C1 **7/0 GREEN**, full package **300/0**, lazy-key **14/0**, storage
+**25/0**, signed-simulator app **64/0**; the old cb52330 baseline executed
+**7 tests / 13 expected assertion failures / 0 unexpected**, Swift exit 1,
+harness exit 0. This closes C1 at that scope, not a real iPhone tap-race claim.
+All five named CI checks passed on 96298cd; informational legacy remains failed.
+[Final integration review](evidence/ios-client-20260913/pr36-review-96298cd.md)
+and [C1 handoff](../clients/ios/call-controls-handoff.md) distinguish contributor
+execution from coordinator source checks. PR36 main merge is still Sergey's
+explicit decision; ADR0014, physical-device acceptance, export/TestFlight and
+all live operations remain separate gates. None is authorized by this receipt.
+
+## iOS PR41 integrated; Mac package/simulator verified (2026-09-14)
+
+Yaroslav's [exact aab9e5d receipt](evidence/ios-client-20260913/mac-receipt-pr41-aab9e5d.md)
+reports package compilation and full suite **293/0**, lazy-key **14/0**, storage
+**25/0** and signed-simulator ParanoIDTests **64/0**. This closes the test-fixture
+Swift6 compile error; the [earlier e642907 failure](evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
+remains historical evidence, not erased or described as a passing package run.
+The coordinator verified PR41 merged into the iOS feature branch as cb52330,
+with an identical tree to aab9e5d and both receipt SHAs retained in history.
+All five named CI checks passed on cb52330; informational legacy history failed.
+[Handoff and review disposition](../clients/ios/review-integration-handoff.md).
+PR36 remains open. The [full cb52330 re-review](evidence/ios-client-20260913/pr36-review-cb52330.md)
+found C1/P2 in End/Reject and mute/speaker targeting. That historical finding
+is now closed by PR43 and the dad2f7d receipt described above; prior
+storage/Answer corrections remain closed at their own verified scope.
+Main integration and permanent ADR acceptance remain separate owner gates.
+No new device, export/TestFlight or live action
+is implied. The new receipt is contributor execution, not a coordinator Mac run.
+
+## iOS review integration corrections — local candidate (2026-09-14)
+
+Yaroslav requested coordinator implementation of F1–F7 from the full PR36 review
+on f1fbdb2, followed by his Mac verification. The separate candidate covers
+owner-ordered freeze notification, call-bound Answer consent, safe initial-open
+retry, valid onboarding checkpoint completion, call-scoped TURN cancellation,
+remote-video proximity and the pinned-session source gate. The scope remains
+iOS/tests/documentation only; RFC-0021 and ADR-0014 stay proposed.
+[Handoff and exact verification scope](../clients/ios/review-integration-handoff.md)
+separate coordinator Linux source checks from contributor Mac execution on
+aab9e5d, applicable to the identical cb52330 tree.
+No device, main merge, TestFlight or live-server action is implied.
+
+## iOS lazy wrapping-key correction — local candidate (2026-09-14)
+
+At Yaroslav's request, the coordinator implemented a separate candidate based on
+PR36 revision d96cea1: no key on Welcome, key acquisition at first commit, strict
+key/file XOR, and no pending-defaults recovery authority. Existing state/codec
+and reinstall-marker meaning are unchanged. Partial first-commit key creation
+can freeze the installation; no key is deleted as rollback. Source-contract
+RED/GREEN and UI checks ran on Linux. Yaroslav reported Mac execution of exact `0709212`: package 273/0,
+lazy-key 9/0, storage 25/0 and signed-simulator Keychain 11/0, with baseline RED.
+The [receipt](evidence/ios-client-20260913/lazy-storage-mac-0709212.md) records the
+initial missing-notices failure and setup. The subsequent key-readback/direct-commit follow-up `628958b` also has a
+[separate Mac receipt](evidence/ios-client-20260913/lazy-storage-mac-628958b.md):
+lazy-key 14/0, storage 25/0, full package 278/0 and signed simulator Keychain 11/0.
+Reviewed storage findings are closed at that host/simulator scope. The receipt
+commit is docs-only; physical device, upgrade and power loss remain NOT RUN. Earlier evidence
+below remains revision-scoped, not proof for this candidate. See
+[handoff](../clients/ios/lazy-storage-handoff.md). No merge, ADR acceptance,
+TestFlight or live-server action is implied.
 
 ## APK ceiling removal — local Android candidate (2026-09-13)
 
@@ -75,6 +149,252 @@ were preserved. Android `PinnedTls` on the JVM accepts the actual renewed
 endpoint; physical phones and iOS were not tested. This retained 90-day renewal
 is not automation: another renewal is needed before December 12. Key rotation
 and any contact/channel migration still require a separate RFC.
+
+## Native iOS client candidate — 2026-09-13
+
+A second client exists as a pull request: a native SwiftUI application over the
+**unchanged** shared Rust core, reached through a C-ABI bridge crate beside it.
+[RFC-0021](../rfcs/0021-ios-client.md) and
+[ADR-0014](../decisions/0014-ios-client.md) are `proposed`, not accepted;
+`server/`, `clients/core/src/`, `clients/android/`, `key-protocol/` and
+`deploy/` are untouched and a boundary gate enforces it.
+
+**CLAIMED (simulator, host or local stand — the unchanged server binary against
+a private PostgreSQL 16 on the build Mac).** Registration, QR contact exchange,
+E2EE text with one-check and two-check receipts, block and unblock, the
+first-contact story for a receiver with zero contacts, a reinstall that starts
+a new identity, the injected transport and storage faults, the nine pinned-TLS
+leaf checks, the call state machine against the Android smoke scenarios
+(`94/94` labels), the TURN credential lane over a real pinned socket, and two
+simulators placing and answering calls in both directions over direct ICE with
+about 2300 RTP packets per side per call. Since 2026-09-14 the lanes also
+**reconnect when the network changes**, which they did not before: a change of
+the default path mints a generation with the lanes left enabled, cancels what
+is on the socket and relaunches them, so a long poll over an interface the
+device no longer has ends there instead of at its own 30-second bound plus the
+backoff after it, while a change seen with the lanes stopped starts nothing;
+«Повторить подключение» does the same restart unless a call is live or the
+client is already connected, where it keeps Android's harmless half; and a
+start or a restart says «Подключение · подробнее» rather than leaving the
+previous caption standing, inventing no connected state. It is the port of
+`TextEngine.watchNetwork()` and `RealtimeLoop.restart()` (Android's own fix of
+2026-09-12, `2cdb850`), it adds no dependency, no background mode and no
+`URLSession` outside the pinning delegate, and it is `CLAIMED`: a real path
+change was never produced, because a simulator has no network of its own — the
+rule was driven through the shipped watcher, runner and policy instead
+([evidence](evidence/ios-client-20260913/README.md)). The 261 package tests
+pass, six of them the reconnect rule's and five the storage and camera answers
+to the review of 2026-09-14, with fifteen more in the application bundle and
+eleven on the signed simulator's real Keychain; the
+application test bundles and the local-stand scripts were run by the steps that
+delivered them, and their output stays under `clients/ios/out/`, which is not
+committed.
+
+**SHOWN (physical phone).** On 2026-09-13 a signed Debug build ran on an
+iPhone 16 Pro Max (iOS 26.6.1, Developer Mode on, team `5RPGVC566Q`, bundle
+`global.paranoid.messenger`, installed with `xcodebuild` and `devicectl`)
+against the local stand, bound to the Mac's LAN address so the phone could
+reach it: identity creation on the device, the client's own QR, a contact read
+off the Mac screen with the real camera, the fingerprint sheet, two texts
+device→peer and one peer→device with receipts, and a call to a simulator that
+connected and carried video from the device (the simulator has no camera;
+whether audio was heard is not recorded). Two defects surfaced there, neither
+on the device: an empty entitlements file made the simulator's Keychain answer
+`errSecMissingEntitlement` (fixed by declaring `keychain-access-groups`), and
+the fixture peer kept its key in memory only (a persistent peer replaced it —
+harness, not product). Later that day a Release build signed with the same
+team reached the hosted alpha, once App Transport Security was switched off:
+the iPhone registered, paired the owner's Android from his QR image (scanned
+off a screen) and sent one text the hosted server accepted — one check.
+Delivery to the owner's Android was still pending because his phone had not
+polled, and no reply exists. That pairing and that one accepted text were the
+only contact with the owner's Android until the joint session below.
+
+**SHOWN (joint, reported) — the owner's Android on the hosted alpha,
+2026-09-14.** Yaroslav (contributor, iPhone 16 Pro Max on iOS 26.6.1, the
+signed Release build of branch head `adb56be`) and Sergey (owner, Android)
+held an **unscheduled** session on the hosted alpha at `157.180.49.125:38443`.
+Yaroslav scanned Sergey's QR with the iPhone camera and the contact was
+paired. Text went both ways: Yaroslav's message reached Sergey and **both**
+checks appeared on the iPhone — the first time this client has seen the second
+check, which is the acknowledgement from a real Android client — and Sergey's
+reply appeared on the iPhone. Sergey then called the iPhone from his Android,
+Yaroslav answered and they spoke, so audio carried both ways, and both sides
+turned their cameras on and each saw the other. That call is the first this
+client has carried against the Android client rather than a simulator, and the
+first picture it has received from a real camera over call-v2. The contributor
+is the only participant this record has: every result of that session is **his
+report**, given immediately afterwards, not an observation by whoever writes
+this file and not a recording, which is why the stage files mark those rows
+`SHOWN (joint, reported)` rather than `SHOWN`. No owner "go" permalink exists
+for it, because the session was not planned. Sergey did not scan Yaroslav's
+QR, so the Android side of the pairing and the fingerprint compared aloud stay
+`NOT RUN`, and so does the outgoing direction — this client dialling an
+Android — which has been exercised only against a simulator on the local
+stand.
+
+**NOT RUN, with reasons.** No archive, no `.ipa` export and no TestFlight
+upload: the device installs above were direct `xcodebuild` installs,
+`build.sh`'s signed-archive gate did not run, there is no owner "go" for an
+upload, and the
+[export-compliance gate](../clients/ios/export-compliance.md) is closed —
+`ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple
+applies the requirement to TestFlight too. The Data Protection class on the
+device was not measured, no real screen recording was made over the call stage,
+a screen lock during dialling moves to the joint test, and no relayed call was
+placed, so all of those stay `NOT RUN`. The open item of 2026-09-13/14 — after
+a network drop on the phone the application stayed at «Нет подключения» while
+the server answered from the Mac and the pinned key was unchanged — now has a
+cause and a fix (the connectivity restart above), but what stays `NOT RUN` is
+the proof: no real change of network path was ever produced, on a simulator or
+a phone, and no device log was ever collected for that drop.
+Interoperability with the Android client on its own hardware is shown
+only as far as the reported joint session above reaches; everything beyond it
+rests on the protocol comparison, which ran with both stacks as processes on
+the build Mac, where the real Android facade is compiled and agrees with the
+Swift client on identities, text with receipts, call-v2 bodies, the sealed
+snapshot codec and a QR contact, with twenty-one malformed bodies refused
+identically by both sides.
+The expectations are recomputed in Python from the protocol documents, so an
+agreement cannot come from the two clients sharing one core. `build.sh` runs
+that comparison and its Java host side as ordinary steps.
+`.github/workflows/ios.yml` ran on
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36), opened
+as a draft on 2026-09-14: `ios-static` passed, the docs workflow passed, and
+the server workflow's `client-core-and-tls` and `native-package` passed.
+Question 6 answered "no macOS runner", so nothing needing Xcode, a simulator,
+a phone or the local stand is in it, and every such check was run locally on
+the pinned build Mac. The two joint-test scenarios with the owner,
+[stage 1](evidence/ios-client-20260913/stage1-text.md) and
+[stage 2](evidence/ios-client-20260913/stage2-voice.md), are **partly run**:
+the session of 2026-09-14 turned stage 1 steps 4, 5 and 6 and stage 2 steps 4,
+8 and 9 into `SHOWN (joint, reported)`. Every other `Result` cell stays
+`NOT RUN` with its reason — stage 1 step 3 (Sergey scanning Yaroslav's QR and
+the fingerprint compared aloud) and steps 7-15 (closed-application delivery,
+screen lock, Wi-Fi to LTE, blocking, renaming, ten-minute idle), and stage 2
+steps 1-3, 5-7 and 10-17 (the outgoing call, the two-minute hold, hang-up
+behaviour, mute, speaker, screen recording, lock while dialling and during a
+call, background and closed-application calls, LTE, busy). Stage 1 steps 1, 2,
+4 and the first half of 5 were also exercised solo on 2026-09-13 against the
+hosted server with the owner's QR image, and stage 1 records that as a pre-run,
+not as the test.
+
+**Open since the joint session: the iPhone does not connect.** Measured on
+2026-09-14 at 07:06 (Europe/Moscow) and posted to
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864):
+after that session the phone shows «Нет подключения» and has not recovered;
+relaunching the application does not clear it. A Debug build was installed on
+the same device and launched with its console attached — the first direct read
+of this client's failure, since device logs otherwise need root on the build
+Mac — and the log says, four times in 45 seconds:
+`realtime: lane failed: NSURLError Code=-1001 "The request timed out." URL: https://157.180.49.125:38443/v2/messages?after=1259&limit=20`.
+The pinned handshake did **not** fail (`PinnedSessionDelegate` logged no
+refusal and the connection was established) and App Transport Security is not
+involved (that was `adb56be`); the route is alive — the same URL unsigned
+answers `401` from the build Mac in 0.19 s and `/health` in 0.2 s with the pin
+unchanged, which is also why Safari on the phone reaches `/health`, a route
+that needs neither a signature nor the database. What hangs is the **signed**
+read for that account, on the first cycle of a generation, which asks for
+`messages` rather than `events` (`ReceiveLane`, mirroring
+`RealtimeLoop.java:254`), so the lane never reaches the long poll and never
+publishes a connected state. The client gives that request 8 s
+(`RealtimeTransport.readTimeout`) while the server's own budget for a
+non-`/v2/events` route is 10 s before it answers `408 request_timeout`; that is
+**not** an iOS divergence, because
+`clients/android/src/org/paranoid/text/RealtimeTransport.java:36` sets exactly
+`path.startsWith("/v2/events?") ? 30000 : 8000` for both clients, and this
+branch does not change it. This is a **different** failure from the
+connectivity-change parity gap above, whose fix is now in the branch: that gap
+left a lane parked after a network change, while this symptom was a signed read
+that did not return while the server was otherwise healthy, which no
+client-side restart fixes and which the fix does not address.
+
+**Hosted accounts spent: three.** `hosted_registrations` is 3: a
+`service-bridge` registration from the build Mac on 2026-09-13, made while
+diagnosing the phone's TLS failure to prove the client stack registers on the
+hosted server while the phone could not; the physical iPhone's registration
+once App Transport Security was switched off, which is the contributor's own
+account and is still in use; and a diagnostic registration from the build Mac
+on 2026-09-14 at 08:26:45.596+03:00 (`POST /v2/registration/commit`, 200 in
+50.7 ms, its challenge at 08:26:45.396+03:00, 200 in 198.0 ms), public account
+id `240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`, opened
+to answer the owner agent's request for a comparative signed read while
+diagnosing the hosted server's intermittent failure (issue #38). That third
+account is diagnostic: no messages, no contacts, and no relation to the
+contributor's own account or to the owner's — it exists only to measure the
+hosted server from a second identity. A third exists at all because the
+2026-09-13 Mac account is permanently unreachable: that fixture kept its
+wrapping key in process memory only, so its state file no longer opens and the
+account is registered but dead. The diagnostic account is persistent instead —
+its wrapping key is kept beside its state in
+`clients/ios/out/evidence/hosted-probe-20260914/` (build output, not
+committed; key file mode 0600) — so this diagnosis needs no further
+registration. All three fall under the owner's answer to RFC-0021 question 4
+(as many accounts as the tests need, no fixed budget). The joint session of
+2026-09-14 consumed none: it used the account the iPhone registered on
+2026-09-13. The phone's failure was a defect that only the hosted server could
+show: ATS refused the self-signed leaf on a public IP before the pinning
+delegate ran (`NSURLErrorDomain -1200`), which a LAN stand never shows and
+`NSPinnedDomains` cannot exempt for an IP literal.
+`adb56be` sets `NSAllowsArbitraryLoads = YES`, `test_ui_contract.py` holds the
+contract "exactly that key and no `URLSession` outside `PinnedSessionDelegate`",
+and [the trust delta](../security/ios-client-threats.md) and ADR-0014 record
+why that removes nothing. Before those registrations the only contact this
+branch had with the hosted alpha was a single TLS handshake with no HTTP
+request, which confirmed that the pin this client carries still equals the
+live SubjectPublicKeyInfo digest after the owner renewed the certificate **with
+the same key** on 2026-09-13; the renewed leaf is valid to
+2026-12-12T07:38:09Z. A same-key renewal must repeat before that date — the
+[same-key automation](../operations/tls-auto-renewal.md) installed on the host
+on 2026-09-13 does that — and a key *change* needs its own deploy-trust RFC,
+because the pin feeds the first-contact channel transcript and would invalidate
+enrolled contacts, not only the transport. The server has no account-deletion
+path, so every future registration is permanent and is counted in the evidence
+directory.
+
+**Calls are call-v2, not voice v1.** RFC-0021 was drafted against voice v1;
+`main` moved to [call-v2](../protocol/call-v2.md) under RFC-0019 while the
+client was being written, and the client follows `main`: two media sections,
+audio then video, both `a=sendrecv`, H.264 first with VP8 as the mandatory
+fallback, camera on/off as a track flag plus an informative `media` control and
+never a renegotiation, and a 9000-byte description cap below the measured
+10040-byte frame2 ceiling. call-v2 rejects v1 bodies, so this client cannot
+call an Android build older than v16 — and the call carried on 2026-09-14
+therefore places the owner's Android at v16 or later; the exact version was
+not asked for and is not recorded.
+
+**Two differences from Android are permanent, not defects.** Delivery is
+foreground-only — no APNs, no PushKit, no background refresh, no CallKit — so a
+call placed to a locked or closed iPhone ends in the caller's expected
+45-second `timeout`, and threat-model boundary 8 stays unused by this client.
+And screen capture is not parity: Android's `FLAG_SECURE` has no iOS
+equivalent, so the client covers the video stage while the screen is recorded,
+mirrored or AirPlayed, while a screenshot and the app-switcher snapshot cannot
+be refused at all. Both are written into
+[the iOS trust delta](../security/ios-client-threats.md).
+
+**Governance.** The owner delegated technical decision authority to the
+contributor and recorded it at
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919);
+the owner's agents answered RFC-0021 questions 5 and 10 in the same issue on
+2026-09-12. The delegation settles technical choices; it does not waive
+independent review, does not turn a `CLAIMED` row into evidence and is not the
+ADR acceptance the human decision owner still has to give. The doc-to-code
+discrepancies found while writing this client are **not** corrected in the
+client pull request; they go to a separate docs-only change. Seven of them —
+A.3, A.4, A.5, A.7, A.8, A.12 and B.5 — are carried as recorded waivers in
+[protocol-sources.md](../clients/ios/protocol-sources.md), one per affected
+row. That is the number this repository can show: the full findings report
+("Findings from iOS-client preparation",
+[issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)) is not a file
+in this repository, so any larger count of it cannot be checked from here and
+is not claimed here.
+
+**CI note.** The `Server transport` workflow runs on `clients/**`, so this
+branch triggers it, and its `legacy-client-history` job is **deliberately red**
+and informational (the fourteen archived failures are retained on purpose).
+That workflow being non-green is therefore not a signal about this client, and
+"all checks green" is never the right phrase for this repository.
 
 ## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
 
@@ -303,11 +623,81 @@ passes independent44-input artifact correspondence. Fresh Fable exact-source
 closure succeeded and closed VOICE-PUB-01; it requires the reviewed bytes committed
 and refreshed CI correspondence. [Current evidence](evidence/voice-relay-client-20260910/README.md)
 retains failures and separate scopes. Earlier15-second incoming failures
-remain unexplained. All supported CI ga
+remain unexplained. All supported CI gates pass on the preceding exact commits;
+the separate legacy job retains exactly14 historical failures.
+Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
+platform worker rejection; those operations were not retried. No live deployment
+is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint
+below retains its original artifact and test scope.
 
-... [OUTPUT TRUNCATED - 5,132 chars omitted out of 55,060 total] ...
+## Voice relay foundation — 2026-09-10
 
-nt-5609070441)
+PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit
+`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. This separate server branch starts
+from that commit under the [component policy](component-boundaries.md).
+[REQ-CALL-006](../product/voice-relay.md) now has a default-disabled authenticated
+issuer, strict local secret loader, locked binding recheck, quotas and a versioned
+offline coturn/controller package. Fourteen focused issuer tests, two quota unit
+tests, controller/package tests and native offline build checks pass. The full
+server matrix passes85 tests with one pre-existing APK-environment skip; the
+text/JNI/pinned-TLS regression passes24 warm samples, P50 102.04/P95 144.30 ms.
+[Durable evidence](evidence/voice-turn-20260910/README.md) separates these results
+from the pending final independent review.
+
+The actual direct-ICE client checkpoint is in [draft PR20](https://github.com/GOTD-GLOBAL/ParanoID/pull/20);
+its relay integration will depend on this exact foundation commit. A successful
+direct-ICE final review does not cover this extension. Required retained-allocation
+expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection.
+[The runbook](../../deploy/turn/README.md) retains the exact proposed network
+scope and rollback; no public TURN/firewall/DNS or existing-server changes were
+authorized or performed. RFC-0018/ADR-0012 remain proposed.
+
+## Voice implementation after verified PR18 merge
+
+GitHub independently reports PR18 MERGED at `2026-09-09T22:01:42Z`, merge
+commit `366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The clean feature worktree
+`feat/voice-calls-20260909` starts from that exact commit. The owner's
+[voice scope](../product/voice-calls.md) now authorizes local actual 1:1 voice
+implementation, real tests, retained-signer APK and a GitHub PR for issue19.
+[RFC-0017](../rfcs/0017-voice-calls.md) and [ADR-0011](../decisions/0011-voice-calls.md)
+remain proposed. Fresh independent design review and exact-doc closure succeeded
+before runtime implementation. Strict encrypted controls, post-commit dispatch,
+the volatile consent/lifecycle controller, Android call UI/microphone service
+and pinned WebRTC/Opus adapter are implemented. The [durable evidence](evidence/voice-calls-20260909/README.md)
+records 62 supported native tests including 14 voice tests, actual old/current
+Java/JNI compatibility and controller/adapter checks passing. Twenty simulated
+maximum calls exchange 3700 real Olm controls without consuming the text Event
+ledger; this is signaling evidence, not decoded audio.
+
+Real Android M150/aiortc direct and isolated local TURN relay media pass with
+decoded synthetic tones in both directions, mute/unmute and complete capture/route
+cleanup. Exact captured SDP also passes real native/Olm validation and binding
+substitution rejection. These are separate media and encrypted-control fixtures;
+the owned Android v8→v9 in-place update also retains identity/contact/history and
+passes new delivered text, microphone denial and incoming-without-capture checks.
+Actual TLS retry/revocation and authenticated resume RED/GREEN pass. Full app
+acceptance passes 14 steps, first microphone grant and deferred SDK mute corrections
+pass, and actual process restart preserves identity/contact/history without media
+resurrection. Final text regression passes 24 warm samples at P50 105.92 ms and
+P95 122.99 ms. The final fixture5 app run repeats all 14 steps and visually
+verifies corrected call-dialog system-bar insets. The retained-signer ARM64
+`org.paranoid.devtext` version9, `0.0.9-voice`, is now built and verified:
+SHA256 `4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f`,
+15,712,851 bytes. The [artifact/source record](evidence/voice-calls-20260909/signed-apk-artifact.json)
+retains the frozen uncommitted feature-source manifest; post-build documentation
+updates leave packaged code unchanged. Fresh independent exact-source final
+Fable review remains required before candidate handoff.
+Working v8 text/identity/pins/history remain protected. Live TURN/firewall/DNS
+or existing-server changes need separate concrete reviewed authorization. See
+[the current gates](../operations/voice-calls-local.md). Physical OPPO audio,
+Bluetooth, Doze/force-stop, public relay and production claims remain unverified.
+
+## Owner phone feedback and PR 18 merge direction
+
+After receiving v8, Sergey reports: "Работает отлично. Текст летает туда сюда".
+This is qualitative owner-observed responsive bidirectional phone messaging,
+not an instrumented latency measurement or proof of background/Doze/audio behavior.
+[The GitHub record](https://github.com/GOTD-GLOBAL/ParanoID/issues/16#issuecomment-5609070441)
 retains that distinction. It supersedes only the earlier absence of phone-text
 feedback, not the other NOT-RUN limits below.
 

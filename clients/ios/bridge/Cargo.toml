@@ -1,0 +1,16 @@
+[package]
+name = "paranoid-ios-bridge"
+version = "0.0.1"
+edition = "2021"
+publish = false
+
+[lib]
+name = "paranoid_ios_bridge"
+# `rlib` exists only for `tests/abi.rs`, `cargo clippy --all-targets` and the
+# host `cargo test` run; the xcframework is assembled from the `staticlib`
+# (`libparanoid_ios_bridge.a`) alone.
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+paranoid-client-core = { path = "../../core" }
+serde_json = "1"

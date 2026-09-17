@@ -1,0 +1,84 @@
+name: iOS client
+on:
+  pull_request:
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
+  push:
+    branches: [main]
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
+permissions:
+  contents: read
+jobs:
+  ios-static:
+    # Everything an Ubuntu runner can honestly prove about this client, and
+    # nothing else. The simulator calls, the local stand and any device run
+    # need macOS, an iOS SDK and a paired phone; there is no macOS runner, so
+    # they stay local and are recorded as such in docs/clients/ios/.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      # notices.py resolves the graph through a plain `cargo`; pin the rustup
+      # proxy to the same toolchain the explicit `+1.98.1` lines use, so one
+      # run cannot mix two cargos over one Cargo.lock.
+      RUSTUP_TOOLCHAIN: "1.98.1"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          # The boundary gate needs the pull request base commit and a merge
+          # base with it. The default depth of 1 has neither, and the gate
+          # exits 2 rather than passing vacuously, so shallow would be red.
+          fetch-depth: 0
+      - name: Exact Rust toolchain and the three Apple targets
+        # test_toolchain.py holds this runner to toolchain.json's rust_targets,
+        # so all three are installed here, not only the one `check` uses.
+        run: |
+          rustup toolchain install 1.98.1 --profile minimal --component clippy
+          rustup +1.98.1 target add aarch64-apple-ios aarch64-apple-ios-sim aarch64-apple-darwin
+      - name: Shared core type-checks for the iOS device triple, unchanged
+        # `check` type-checks the real locked graph for aarch64-apple-ios
+        # without linking, which is the whole of what a Linux runner can say:
+        # no Apple SDK, no WebRTC.xcframework, no staticlib, no app. It also
+        # extracts every crate source that the notices step then reads offline.
+        run: cargo +1.98.1 check --locked --target aarch64-apple-ios --manifest-path clients/ios/bridge/Cargo.toml
+      - name: Bridge lint and host tests
+        # The rlib half of the bridge exists for exactly this: clippy over all
+        # targets and the ABI test compiled for the host triple.
+        run: |
+          cargo +1.98.1 clippy --locked --manifest-path clients/ios/bridge/Cargo.toml --all-targets -- -D warnings
+          cargo +1.98.1 test --locked --manifest-path clients/ios/bridge/Cargo.toml
+      - name: Locked pins and source-only contracts
+        # --no-xcode drops only the xcodebuild/xcrun and PostgreSQL checks that
+        # no Linux runner can answer; the Rust, target and OpenSSL pins still
+        # gate, and a missing tool is a failure there, never a skip. The WebRTC
+        # gate runs against a synthetic archive, so the pinned 150.7871.01
+        # release is never downloaded here.
+        run: |
+          python3 clients/ios/test_bridge_lock.py
+          python3 clients/ios/test_toolchain.py --no-xcode
+          python3 clients/ios/test_webrtc_dependency.py --offline
+          python3 clients/ios/test_ui_contract.py
+          python3 clients/ios/test_storage_bootstrap_contract.py
+          python3 clients/ios/test_freeze_open_contract.py
+          python3 clients/ios/test_interrupted_onboarding_contract.py
+          python3 clients/ios/test_call_review_regressions.py
+          python3 clients/ios/test_call_control_targeting.py
+          python3 clients/ios/test_call_control_baseline_harness.py
+          python3 clients/ios/test_pinned_session_contract.py
+          python3 clients/ios/test_call_controller_parity.py
+          python3 clients/ios/test_docs_consistency.py
+      - name: Third-party notices for the whole locked iOS graph
+        # The full run: the graph is walked and every licence text is read and
+        # written. A linked crate with no packaged licence text and no pinned
+        # copy under clients/ios/licenses fails this step with the crate named.
+        run: |
+          python3 clients/ios/notices.py --offline
+          python3 clients/ios/test_notices.py
+      - name: Component boundary against the pull request base
+        # A push to main has no pull request base, and diffing main against its
+        # own previous tip would judge other people's merges, so this one step
+        # is event-shaped. BASE_SHA is the event payload's base commit, read
+        # through the environment rather than interpolated into the script.
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: python3 clients/ios/test_component_boundary.py --base "$BASE_SHA"

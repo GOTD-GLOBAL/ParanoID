@@ -132,3 +132,29 @@ packet tests are NOT RUN; no deployment or permanent decision approval is implie
 [Exact owner authority and REQ-DEPLOY-003](operations/voice-single-host.md) track
 one unified installer on the existing host, preserved state and mandatory missing
 runtime/review gates. No relay deployment has occurred.
+
+## iOS client candidate
+
+[RFC-0021](rfcs/0021-ios-client.md) and [proposed ADR-0014](decisions/0014-ios-client.md)
+propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
+The [iOS component documentation](clients/ios/README.md) records the intended
+differences from Android, the [requirement-to-test mapping](clients/ios/verification.md)
+(rows `CLAIMED` on simulators, the host or the local stand; rows `SHOWN` on a
+physical iPhone against the local stand since 2026-09-13; the joint tests with
+the owner partly run, their covered rows `SHOWN (joint, reported)` and the rest
+`NOT RUN`), the
+[rule-to-source table](clients/ios/protocol-sources.md)
+used to write behaviour from the protocol documents and the core, and the
+[device evidence](project/evidence/ios-client-20260913/README.md). A signed
+build ran on an iPhone 16 Pro Max on 2026-09-13; three hosted accounts exist
+(one from the build Mac on 2026-09-13, now registered but unreachable because
+its wrapping key was kept in memory only; one from the phone the same day,
+which is the contributor's own; and one diagnostic account from the build Mac
+on 2026-09-14, with no messages and no contacts, opened to read the hosted
+server from a second identity while issue #38 is diagnosed — all three under
+the owner's answer to RFC-0021 question 4, no fixed budget), and the phone
+sent one text to the owner's Android that the hosted server accepted. On
+2026-09-14 an unscheduled session with the owner carried text both ways and
+one call he placed to the iPhone, with both cameras on, reported by the
+contributor and not captured. No TestFlight build, completed joint owner test,
+owner "go" permalink for that session or architecture acceptance is implied.

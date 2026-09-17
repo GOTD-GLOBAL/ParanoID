@@ -11,6 +11,7 @@ python3 test_webrtc_dependency.py
 python3 firebase_dependency.py
 python3 test_firebase_dependency.py
 python3 test_call_controller.py
+python3 test_crash_exit.py
 python3 test_voice_relay.py
 TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 PLATFORM="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
@@ -67,11 +68,15 @@ for aar in sorted(Path("out/deps/fcm-archives").glob("*.aar")):
     with zipfile.ZipFile(aar) as z:
         if "proguard.txt" in z.namelist(): (p/(aar.stem+".pro")).write_bytes(z.read("proguard.txt"))'
 rm -rf out/dex out/dex-fcm out/dex-app && mkdir -p out/dex out/dex-fcm out/dex-app
-# (1) R8 shrinks ONLY the Firebase closure; app/WebRTC/ZXing are --classpath so their references keep
-#     the needed library members alive. (2) d8 dexes app/WebRTC/ZXing untouched (JNI class lookup by
+# (1) R8 shrinks ONLY Firebase. --classpath resolves types; it is NOT a keep root.
+#     Explicit API/manifest keep rules and consumer rules retain required members.
+#     (2) d8 dexes app/WebRTC/ZXing untouched (JNI class lookup by
 #     name). (3) d8 merges both dex files into one classes.dex (must stay single-dex, <64K methods).
 java -cp "$TOOLS/lib/d8.jar" com.android.tools.r8.R8 --release --lib "$PLATFORM" --classpath out/classes --classpath out/deps/webrtc-classes.jar --classpath out/deps/zxing-core-3.5.3.jar --min-api 26 --output out/dex-fcm --pg-conf proguard.pro $(for f in out/r8-rules/*.pro; do printf -- '--pg-conf %s ' "$f"; done) out/deps/fcm-jars/*.jar > out/r8.log 2>&1 || { grep -v "^Warning\|^Info\|does not match anything\|^  \|^}$" out/r8.log; exit 1; }
 "$TOOLS/d8" --release --lib "$PLATFORM" --min-api 26 --output out/dex-app $(find out/classes -name '*.class') out/deps/zxing-core-3.5.3.jar out/deps/webrtc-classes.jar
+# The packager intentionally supports one DEX. Reject split INPUTS before merging
+# rather than silently dropping their second file. API26 itself supports multidex.
+test ! -e out/dex-app/classes2.dex && test ! -e out/dex-fcm/classes2.dex
 "$TOOLS/d8" --release --lib "$PLATFORM" --min-api 26 --output out/dex out/dex-app/classes.dex out/dex-fcm/classes.dex
 test -s out/dex/classes.dex && test ! -e out/dex/classes2.dex
 python3 test_dex_shrink.py
