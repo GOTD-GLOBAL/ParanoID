@@ -1,10 +1,10 @@
 name: Server transport
 on:
   pull_request:
-    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
   push:
     branches: [main]
-    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
 permissions:
   contents: read
 jobs:
@@ -43,6 +43,12 @@ jobs:
           python3 deploy/test_single_host_credentials.py
           python3 deploy/test_single_host_rehearsal.py
           python3 deploy/test_single_host_vm.py
+          python3 deploy/test_reconcile_apk_cap_20260913.py
+          python3 deploy/test_restore_active_after_rollback.py
+      - name: Packaged v2 encrypted backup, optional FCM schema and interrupt gates
+        # Fresh disposable PG only; fixed command, no untrusted event interpolation.
+        # One-off live helpers are never executed here.
+        run: python3 scripts/check-v2-maintenance.py
       - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
         # test_integration.py needs an explicitly provisioned user manager; never discover it here.
         run: python3 deploy/test_native.py
@@ -107,6 +113,10 @@ jobs:
         run: |
           python3 clients/android/dependencies.py
           python3 clients/android/test_call_controller.py
+          python3 clients/android/test_call_log.py
+          python3 clients/android/test_message_presentation.py
+          python3 clients/android/test_ui_contract.py
+          python3 clients/android/test_crash_exit.py
           python3 clients/android/test_voice_relay.py
           javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke

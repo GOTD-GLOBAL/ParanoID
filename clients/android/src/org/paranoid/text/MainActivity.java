@@ -108,14 +108,16 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateLockScreen(engine.calls().snapshot().optString("state"));
         String install=UpdateController.installStatus(this,getIntent());
         if(install!=null){updateController.showStatus(install);show("identity");}
-        String crash=CrashLog.take(this);
-        if(crash!=null){
+        CrashLog.load(this,this::runOnUiThread,report->{
+            if(report==null||isFinishing()||isDestroyed())return;
+            String crash=report.text;
             android.widget.TextView text=new android.widget.TextView(this);text.setText(crash);text.setTextIsSelectable(true);text.setTextSize(11);
             android.widget.ScrollView scroll=new android.widget.ScrollView(this);scroll.addView(text);int pad=(int)(12*getResources().getDisplayMetrics().density);scroll.setPadding(pad,pad,pad,0);
-            new android.app.AlertDialog.Builder(this).setTitle("Приложение аварийно завершилось").setView(scroll)
-                .setPositiveButton("Скопировать",(d,w)->{getSystemService(android.content.ClipboardManager.class).setPrimaryClip(android.content.ClipData.newPlainText("ParanoID crash",crash));CrashLog.clear(this);})
-                .setNegativeButton("Закрыть",(d,w)->CrashLog.clear(this)).setCancelable(false).show();
-        }
+            new android.app.AlertDialog.Builder(this).setTitle("Отчёт о завершении приложения")
+                .setMessage("Проверьте текст перед копированием: отчёт Java может содержать технические данные приложения.").setView(scroll)
+                .setPositiveButton("Скопировать",(d,w)->{getSystemService(android.content.ClipboardManager.class).setPrimaryClip(android.content.ClipData.newPlainText("ParanoID crash",crash));CrashLog.acknowledge(this,report);})
+                .setNegativeButton("Закрыть",(d,w)->CrashLog.acknowledge(this,report)).setCancelable(false).show();
+        });
     }
     @Override protected void onNewIntent(Intent intent){
         super.onNewIntent(intent);

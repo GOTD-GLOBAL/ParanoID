@@ -55,9 +55,10 @@ fields, floats, numeric strings or trailing input:
 GET `/v2/updates/android` returns the exact validated metadata bytes as
 `application/json`. GET `/v2/updates/android/apk/<apk_sha256>` returns the exact
 validated APK bytes as `application/vnd.android.package-archive`, with length.
-Both verify actual APK hash/length BEFORE returning success. Bytes are read once
-from checked descriptors, bounded, checked for in-read metadata changes, then
-that buffer is returned; no reopen-for-streaming substitution window exists.
+Both verify actual APK hash/length BEFORE returning success. Metadata remains
+memory-bounded. APK bytes are copied in fixed-size chunks from checked descriptors
+into an anonymous private disk snapshot, with in-read metadata checks; responses
+stream that verified snapshot, never reopen a mutable publication pathname.
 Only the CURRENT manifest digest is served: after a feed change, an old check
 may receive 404 and must check again. No history/browser/static-files service.
 

@@ -18,6 +18,12 @@ change.
 
 ## Active scoped analysis
 
+The [PR34 native-exit correction](../clients/android/pr34-integration-review.md)
+removes raw system trace/description from UI exports, moves diagnostic reads and
+acknowledgement off main, and acknowledges only an explicitly dismissed report.
+Existing Java exception reports remain unredacted and explicitly disclosed; no
+automatic upload or general secret-free crash-report guarantee is claimed.
+
 The [same-key renewal proposal](../rfcs/tls-same-key-automation.md#threats-and-alternatives)
 adds unattended dedicated-user lifecycle authority, durable public-certificate
 journals and fail-closed drift recovery. No key export/generation, DB restore/reset,
@@ -109,6 +115,29 @@ Human residual risk/decision owner: martadvix-web; ADR-0009 stays proposed.
 Current local implementation/test status is in [current-state](../project/current-state.md)
 and the candidate evidence record. Existing historical asymmetric RED is separately
 reported; no historical hosted message recovery or live data change is performed.
+
+## Optional push-table backup coverage (2026-09-13)
+
+[The bounded backup/recovery correction](../rfcs/apk-cap-push-backup-recovery.md)
+keeps exact complete schema comparison while recognizing the already existing
+RFC-0020 table. Exact optional DDL is applied only to an empty reference DB;
+existing token rows gain explicit ordered digest/count comparison after encrypted
+restore. Unknown schemas remain rejected, tokens never enter logs, and current
+messages are never replaced by an old backup. Completed-rollback acknowledgment
+is separately pinned to exact failed/predecessor records plus live identity and
+unchanged original guards; failed history is preserved, not relabeled success.
+
+## One-off maintenance reconciliation (2026-09-13)
+
+[The scoped reconciliation RFC](../rfcs/apk-cap-maintenance-reconciliation.md)
+addresses the risk of laundering unexpected runtime drift into a trusted baseline.
+Exact old-state and target hashes, before-config/unit/certificate comparisons,
+unchanged key/pin/PG/release, original worker/network/unit checks and two locks
+precede metadata-only adoption. Original raw records are retained as atomic0400
+before-images; annotations do not reinterpret old approval. No runtime/data files
+change and unknown/third-state inputs fail closed. Preparation/replace interruption
+is tested locally, not by injecting faults into the hosted installation. Root
+remains trusted; this is not a universal automatic maintenance-adoption mechanism.
 
 ## Android APK ceiling removal candidate (2026-09-13)
 

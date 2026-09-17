@@ -1,10 +1,10 @@
 name: iOS client
 on:
   pull_request:
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
   push:
     branches: [main]
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml"]
+    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
 permissions:
   contents: read
 jobs:
@@ -73,7 +73,12 @@ jobs:
         run: |
           python3 clients/ios/notices.py --offline
           python3 clients/ios/test_notices.py
+      - name: Component boundary applicability regression
+        run: python3 tools/test_ios_boundary_scope.py
       - name: Component boundary against the pull request base
+        # On declared iOS-only branches, touching clients/ios runs the unchanged
+        # strict gate. Cross-client PRs use their affected component checks.
+        # BASE_SHA is passed quoted through env; no PR text enters shell source.
         # A push to main has no pull request base, and diffing main against its
         # own previous tip would judge other people's merges, so this one step
         # is event-shaped. BASE_SHA is the event payload's base commit, read
@@ -91,4 +96,11 @@ jobs:
         if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/ios-')
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: python3 clients/ios/test_component_boundary.py --base "$BASE_SHA"
+        run: |
+          set -euo pipefail
+          base="$(git merge-base "$BASE_SHA" HEAD)"
+          if git diff --quiet --no-renames "$base" HEAD -- clients/ios/; then
+            printf '%s\n' 'NOT_APPLICABLE: no iOS component changes; shared checks still ran'
+          else
+            python3 clients/ios/test_component_boundary.py --base "$BASE_SHA"
+          fi

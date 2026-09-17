@@ -74,6 +74,12 @@ class FirebaseDependencyTest(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 self.dep.prepare(root)
 
+    def test_central_only_artifacts_use_the_verified_repository(self):
+        sources = {row[0]: row[1] for row in self.dep.ARTIFACTS}
+        for name in ("error_prone_annotations-2.26.0.jar", "listenablefuture-1.0.jar"):
+            with self.subTest(name=name):
+                self.assertEqual(sources[name], "central", "Google Maven returns HTTP404 for this pinned artifact")
+
     def test_native_payload_is_refused(self):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as aar:

@@ -43,6 +43,19 @@ Separate server/client PRs and a legacy-compatible bridge precede larger release
 This ADR remains draft: Telegram implementation direction is not permanent
 architecture approval, release/merge permission or phone acceptance.
 
+## Scoped maintenance reconciliation proposal (2026-09-13)
+
+The owner explicitly requested checking/fixing the observed server-package blocker
+and completing deployment. [The one-off operational RFC](../rfcs/apk-cap-maintenance-reconciliation.md)
+records exact evidence-bound reconciliation of already performed FCM enable and
+same-key TLS renewal, original before-image preservation, annotations, crash
+recovery and unchanged original preflight. It adds no generic drift bypass,
+permanent architecture acceptance or permission to alter live trust/data.
+This ADR remains draft; the operation requires fresh independent review.
+The subsequent [optional push-schema backup correction](../rfcs/apk-cap-push-backup-recovery.md)
+records the actual safe rollout failure and a bounded fix preserving complete
+schema comparison, token backup verification and failed-transaction evidence.
+
 ## Consequences, review and rollback
 
 The updater adds supply-chain, untrusted metadata/APK and URI-provider boundaries.

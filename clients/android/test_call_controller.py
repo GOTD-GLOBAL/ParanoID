@@ -8,5 +8,6 @@ with tempfile.TemporaryDirectory(prefix="paranoid-call-state-") as directory:
     cp = str(root / "out/deps/json-20240303.jar")
     subprocess.run(["javac", "--release", "8", "-Xlint:-options", "-encoding", "UTF-8", "-cp", cp,
                     "-d", directory, str(root / "src/org/paranoid/text/CallController.java"),
-                    str(root / "test/CallControllerSmoke.java")], check=True)
+                    str(root / "test/CallControllerSmoke.java"), str(root / "test/CallOwnerThreadSmoke.java")], check=True)
     subprocess.run(["java", "-cp", directory + ":" + cp, "CallControllerSmoke"], check=True)
+    subprocess.run(["java", "-cp", directory + ":" + cp, "CallOwnerThreadSmoke"], check=True)
