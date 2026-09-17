@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options of the ParanoID iOS client (RFC-0021, draft ADR-0014).
+
+  This file is the template, and it deliberately carries no `teamID`: the
+  Apple team comes only from `PARANOID_IOS_TEAM_ID` in the build environment
+  (see ../README.md "Secrets and outputs"). `clients/ios/build.sh` writes the
+  resolved copy — this dictionary plus that one key — to the git-ignored
+  `clients/ios/out/ExportOptions.plist` and hands *that* to
+  `xcodebuild -exportArchive`, so the team identifier never enters git.
+
+  `destination` is `export`: the archive is written to disk and nothing is
+  uploaded. Uploading to TestFlight is a separate owner-authorized step.
+  `manageAppVersionAndBuildNumber` is false so that the exported build keeps
+  the CFBundleShortVersionString / CFBundleVersion pair the project pins and
+  `test_app_bundle.py` checks; Xcode must not renumber it behind our back.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>destination</key>
+	<string>export</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>generateAppStoreInformation</key>
+	<false/>
+	<key>stripSwiftSymbols</key>
+	<true/>
+	<key>uploadSymbols</key>
+	<true/>
+</dict>
+</plist>

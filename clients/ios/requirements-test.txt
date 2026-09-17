@@ -1,0 +1,11 @@
+# Host-only test dependencies of the iOS client. Nothing here ships, nothing
+# here is imported by a harness that runs in CI, and no production code of this
+# repository imports a third-party Python package at all.
+#
+# `cryptography` is needed by exactly one file — `clients/ios/test/turn_stub.py`,
+# which verifies the client's Ed25519 session signature itself instead of
+# trusting it — and it is installed into the git-ignored virtualenv
+# `clients/ios/out/venv-turn` by `clients/ios/test_voice_relay_lane.py`. It is
+# never installed into the system interpreter, and the pin is exact so that two
+# runs on two machines verify with the same implementation.
+cryptography==46.0.3

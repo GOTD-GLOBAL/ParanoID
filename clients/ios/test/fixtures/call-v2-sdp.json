@@ -1,0 +1,154 @@
+{
+  "answer": {
+    "fingerprint": "5da3f5451ec69a382577f007505663bc938e23b02289900ba93155f2e2f7e490",
+    "sdp": "v=0\r\no=- 5438246166415369721 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS voice\r\nm=audio 62534 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:1 1 udp 2122194687 127.0.0.1 40001 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2 1 udp 2122063615 127.0.0.1 40002 typ host generation 0 network-id 3 network-cost 10\r\na=candidate:3 1 udp 2121932543 127.0.0.1 40003 typ host generation 0 network-id 7 network-cost 50\r\na=candidate:4 1 udp 2122265343 127.0.0.1 40004 typ host generation 0 network-id 2 network-cost 50\r\na=candidate:5 1 udp 2122134271 127.0.0.1 40005 typ host generation 0 network-id 4 network-cost 10\r\na=candidate:6 1 udp 2122003199 127.0.0.1 40006 typ host generation 0 network-id 8 network-cost 50\r\na=ice-ufrag:Ab1x\r\na=ice-pwd:Ab1xCd2yEf3zGh4iJk5lMn6o\r\na=ice-options:trickle renomination\r\na=fingerprint:sha-256 5D:A3:F5:45:1E:C6:9A:38:25:77:F0:07:50:56:63:BC:93:8E:23:B0:22:89:90:0B:A9:31:55:F2:E2:F7:E4:90\r\na=setup:active\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=sendrecv\r\na=msid:voice voice\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=ssrc:3256335034 cname:/9cT1RTiHSefYI8G\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 109 114 115\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Ab1x\r\na=ice-pwd:Ab1xCd2yEf3zGh4iJk5lMn6o\r\na=ice-options:trickle renomination\r\na=fingerprint:sha-256 5D:A3:F5:45:1E:C6:9A:38:25:77:F0:07:50:56:63:BC:93:8E:23:B0:22:89:90:0B:A9:31:55:F2:E2:F7:E4:90\r\na=setup:active\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=sendrecv\r\na=msid:voice video\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 H264/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c34\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:98 H264/90000\r\na=rtcp-fb:98 goog-remb\r\na=rtcp-fb:98 transport-cc\r\na=rtcp-fb:98 ccm fir\r\na=rtcp-fb:98 nack\r\na=rtcp-fb:98 nack pli\r\na=fmtp:98 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e034\r\na=rtpmap:99 rtx/90000\r\na=fmtp:99 apt=98\r\na=rtpmap:100 VP8/90000\r\na=rtcp-fb:100 goog-remb\r\na=rtcp-fb:100 transport-cc\r\na=rtcp-fb:100 ccm fir\r\na=rtcp-fb:100 nack\r\na=rtcp-fb:100 nack pli\r\na=rtpmap:101 rtx/90000\r\na=fmtp:101 apt=100\r\na=rtpmap:109 red/90000\r\na=rtpmap:114 rtx/90000\r\na=fmtp:114 apt=109\r\na=rtpmap:115 ulpfec/90000\r\na=ssrc-group:FID 60033843 3573756201\r\na=ssrc:60033843 cname:/9cT1RTiHSefYI8G\r\na=ssrc:3573756201 cname:/9cT1RTiHSefYI8G\r\n",
+    "setup": "active",
+    "sha256": "f5fb19d4a6a8a2384a0b96f968d83b9830513f4ba8fd94d3d40829d1bbff4e0f"
+  },
+  "codec_preferences": "audio: opus only; video: H.264 first, VP8 fallback, rtx/red/ulpfec/flexfec-03 helpers",
+  "configuration": "unifiedPlan, maxBundle, rtcpMux require, tcp disabled, gatherOnce, pool 0, no ICE servers",
+  "ice_pwd": "Ab1xCd2yEf3zGh4iJk5lMn6o",
+  "ice_ufrag": "Ab1x",
+  "note": "The two descriptions libwebrtc 150.7871.01 produced in the simulator spike, line for line, with the five kinds of per-run transport identifier the spike masked out of its evidence replaced by the synthetic values in `substitutions`. Nothing else is changed: the section order, every m= line, every a=rtpmap, every extension and every codec are what libwebrtc wrote. The DTLS fingerprints are the spike's own, which is why `fingerprint` differs between offer and answer. `spike_survey` is what the spike measured on the unmasked text, so `sdp_bytes` there is not the byte count of the text below.",
+  "offer": {
+    "fingerprint": "b67f2a6e53e423bc6028004183517a49d9e9d78be878dfe22a0475b76d1b8da3",
+    "sdp": "v=0\r\no=- 7943162697319495012 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0 1\r\na=extmap-allow-mixed\r\na=msid-semantic: WMS voice\r\nm=audio 58619 UDP/TLS/RTP/SAVPF 111\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=candidate:1 1 udp 2122194687 127.0.0.1 40001 typ host generation 0 network-id 1 network-cost 50\r\na=candidate:2 1 udp 2122063615 127.0.0.1 40002 typ host generation 0 network-id 3 network-cost 10\r\na=candidate:3 1 udp 2121932543 127.0.0.1 40003 typ host generation 0 network-id 7 network-cost 50\r\na=candidate:4 1 udp 2122265343 127.0.0.1 40004 typ host generation 0 network-id 2 network-cost 50\r\na=candidate:5 1 udp 2122134271 127.0.0.1 40005 typ host generation 0 network-id 4 network-cost 10\r\na=candidate:6 1 udp 2122003199 127.0.0.1 40006 typ host generation 0 network-id 8 network-cost 50\r\na=ice-ufrag:Ab1x\r\na=ice-pwd:Ab1xCd2yEf3zGh4iJk5lMn6o\r\na=ice-options:trickle renomination\r\na=fingerprint:sha-256 B6:7F:2A:6E:53:E4:23:BC:60:28:00:41:83:51:7A:49:D9:E9:D7:8B:E8:78:DF:E2:2A:04:75:B7:6D:1B:8D:A3\r\na=setup:actpass\r\na=mid:0\r\na=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=sendrecv\r\na=msid:voice voice\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:111 opus/48000/2\r\na=rtcp-fb:111 transport-cc\r\na=fmtp:111 minptime=10;useinbandfec=1\r\na=ssrc:3876811107 cname:p0ox+ZKvWlvkHFD4\r\na=ssrc:3876811107 msid:voice voice\r\nm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 109 114 115\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\na=ice-ufrag:Ab1x\r\na=ice-pwd:Ab1xCd2yEf3zGh4iJk5lMn6o\r\na=ice-options:trickle renomination\r\na=fingerprint:sha-256 B6:7F:2A:6E:53:E4:23:BC:60:28:00:41:83:51:7A:49:D9:E9:D7:8B:E8:78:DF:E2:2A:04:75:B7:6D:1B:8D:A3\r\na=setup:actpass\r\na=mid:1\r\na=extmap:14 urn:ietf:params:rtp-hdrext:toffset\r\na=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time\r\na=extmap:13 urn:3gpp:video-orientation\r\na=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01\r\na=extmap:5 http://www.webrtc.org/experiments/rtp-hdrext/playout-delay\r\na=extmap:6 http://www.webrtc.org/experiments/rtp-hdrext/video-content-type\r\na=extmap:7 http://www.webrtc.org/experiments/rtp-hdrext/video-timing\r\na=extmap:8 http://www.webrtc.org/experiments/rtp-hdrext/color-space\r\na=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid\r\na=extmap:10 urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id\r\na=extmap:11 urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id\r\na=sendrecv\r\na=msid:voice video\r\na=rtcp-mux\r\na=rtcp-rsize\r\na=rtpmap:96 H264/90000\r\na=rtcp-fb:96 goog-remb\r\na=rtcp-fb:96 transport-cc\r\na=rtcp-fb:96 ccm fir\r\na=rtcp-fb:96 nack\r\na=rtcp-fb:96 nack pli\r\na=fmtp:96 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=640c34\r\na=rtpmap:97 rtx/90000\r\na=fmtp:97 apt=96\r\na=rtpmap:98 H264/90000\r\na=rtcp-fb:98 goog-remb\r\na=rtcp-fb:98 transport-cc\r\na=rtcp-fb:98 ccm fir\r\na=rtcp-fb:98 nack\r\na=rtcp-fb:98 nack pli\r\na=fmtp:98 level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e034\r\na=rtpmap:99 rtx/90000\r\na=fmtp:99 apt=98\r\na=rtpmap:100 VP8/90000\r\na=rtcp-fb:100 goog-remb\r\na=rtcp-fb:100 transport-cc\r\na=rtcp-fb:100 ccm fir\r\na=rtcp-fb:100 nack\r\na=rtcp-fb:100 nack pli\r\na=rtpmap:101 rtx/90000\r\na=fmtp:101 apt=100\r\na=rtpmap:109 red/90000\r\na=rtpmap:114 rtx/90000\r\na=fmtp:114 apt=109\r\na=rtpmap:115 ulpfec/90000\r\na=ssrc-group:FID 814216750 711362476\r\na=ssrc:814216750 cname:p0ox+ZKvWlvkHFD4\r\na=ssrc:814216750 msid:voice video\r\na=ssrc:711362476 cname:p0ox+ZKvWlvkHFD4\r\na=ssrc:711362476 msid:voice video\r\n",
+    "setup": "actpass",
+    "sha256": "9c9d1286eff32d450cce62593f368303e8c5069ef66d41c44415a5d05e00e28b"
+  },
+  "protocol": "docs/protocol/call-v2.md",
+  "source": "clients/ios/App/ParanoIDTests/SdpCompatibilityTests.swift",
+  "spike_evidence": "clients/ios/out/evidence/sdp-spike.json",
+  "spike_survey": {
+    "answer": {
+      "acceptance": "accepted",
+      "blocked_directions": 0,
+      "candidate_limit": 16,
+      "candidates": 6,
+      "crypto": 0,
+      "ice_pwd_length": 24,
+      "ice_ufrag_length": 4,
+      "lines": 90,
+      "sdp_bytes": 3660,
+      "sdp_cap": 9000,
+      "sdp_core_limit": 12288,
+      "sdp_frame_ceiling": 10040,
+      "sections": [
+        {
+          "candidates": 6,
+          "codecs": [
+            "opus/48000/2"
+          ],
+          "kind": "audio",
+          "payload_types": [
+            "111"
+          ],
+          "port": 62534,
+          "rtcp_mux": 1,
+          "sendrecv": 1,
+          "transport": "UDP/TLS/RTP/SAVPF"
+        },
+        {
+          "candidates": 0,
+          "codecs": [
+            "h264/90000",
+            "rtx/90000",
+            "h264/90000",
+            "rtx/90000",
+            "vp8/90000",
+            "rtx/90000",
+            "red/90000",
+            "rtx/90000",
+            "ulpfec/90000"
+          ],
+          "kind": "video",
+          "payload_types": [
+            "96",
+            "97",
+            "98",
+            "99",
+            "100",
+            "101",
+            "109",
+            "114",
+            "115"
+          ],
+          "port": 9,
+          "rtcp_mux": 1,
+          "sendrecv": 1,
+          "transport": "UDP/TLS/RTP/SAVPF"
+        }
+      ]
+    },
+    "offer": {
+      "acceptance": "accepted",
+      "blocked_directions": 0,
+      "candidate_limit": 16,
+      "candidates": 6,
+      "crypto": 0,
+      "ice_pwd_length": 24,
+      "ice_ufrag_length": 4,
+      "lines": 93,
+      "sdp_bytes": 3768,
+      "sdp_cap": 9000,
+      "sdp_core_limit": 12288,
+      "sdp_frame_ceiling": 10040,
+      "sections": [
+        {
+          "candidates": 6,
+          "codecs": [
+            "opus/48000/2"
+          ],
+          "kind": "audio",
+          "payload_types": [
+            "111"
+          ],
+          "port": 58619,
+          "rtcp_mux": 1,
+          "sendrecv": 1,
+          "transport": "UDP/TLS/RTP/SAVPF"
+        },
+        {
+          "candidates": 0,
+          "codecs": [
+            "h264/90000",
+            "rtx/90000",
+            "h264/90000",
+            "rtx/90000",
+            "vp8/90000",
+            "rtx/90000",
+            "red/90000",
+            "rtx/90000",
+            "ulpfec/90000"
+          ],
+          "kind": "video",
+          "payload_types": [
+            "96",
+            "97",
+            "98",
+            "99",
+            "100",
+            "101",
+            "109",
+            "114",
+            "115"
+          ],
+          "port": 9,
+          "rtcp_mux": 1,
+          "sendrecv": 1,
+          "transport": "UDP/TLS/RTP/SAVPF"
+        }
+      ]
+    }
+  },
+  "substitutions": {
+    "a=candidate address and port": "127.0.0.1 and 40001..40006",
+    "a=candidate foundation": "1..6, in the order the spike emitted them",
+    "a=ice-pwd": "Ab1xCd2yEf3zGh4iJk5lMn6o",
+    "a=ice-ufrag": "Ab1x",
+    "c= address": "0.0.0.0",
+    "o= address": "127.0.0.1"
+  },
+  "validator": "clients/core/src/voice_v1.rs",
+  "webrtc": "150.7871.01"
+}
