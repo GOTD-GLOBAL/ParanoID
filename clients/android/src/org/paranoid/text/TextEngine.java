@@ -45,6 +45,8 @@ public final class TextEngine {
     private long drainGeneration;
     private final java.util.Map<String,CallController.Completion> callCompletions=new java.util.HashMap<>();
     private String lastCallState="idle";
+    /** The status line a call-driven repaint carries; a call changes no message and no connection. */
+    private static final String lastCallStatus="Готово. Только тестовые сообщения.";
     private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
@@ -97,6 +99,40 @@ public final class TextEngine {
                 tones.changed(view);
                 if(callListener!=null)callListener.changed(view);
                 worker.execute(()->{if(callActive||callDraining)startConnection();else if(listener==null&&!backgroundEnabled&&realtime!=null){stopConnection();}});
+            }
+            /**
+             * One call ended. The row is this phone's own account of it: nothing is sent, nothing
+             * reaches the core or the snapshot, and the peer keeps its own record of the same call.
+             * The anchor is read on the worker, where the client lives, so the row lands after the
+             * message the conversation actually had when the call ended.
+             */
+            public void finished(JSONObject termination){
+                String account=termination.optString("account");
+                String kind=MessagePresentation.callKind(termination.optBoolean("outgoing"),
+                    termination.optBoolean("connected"),termination.optString("reason"));
+                boolean missed=MessagePresentation.callMissed(kind);
+                if(account.isEmpty())return;
+                worker.execute(()->{
+                    String anchor="";
+                    try{
+                        if(!broken&&client!=null){
+                            org.json.JSONArray dialogs=client.publicView().optJSONArray("dialogs");
+                            for(int n=0;dialogs!=null&&n<dialogs.length();n++){
+                                JSONObject dialog=dialogs.optJSONObject(n);
+                                if(dialog==null||!account.equals(dialog.optString("account")))continue;
+                                org.json.JSONArray messages=dialog.optJSONArray("messages");
+                                if(messages!=null&&messages.length()>0)anchor=messages.optJSONObject(messages.length()-1).optString("id","");
+                            }
+                        }
+                    }catch(Throwable unreadable){/* A log row is never worth failing a call over. */}
+                    JSONObject row=new JSONObject().put("id",termination.optString("call_id")).put("kind",kind)
+                        .put("video",termination.optBoolean("video"))
+                        .put("duration_seconds",termination.optLong("duration_seconds"))
+                        .put("after_message_id",anchor);
+                    if(!CallLog.record(context,account,row))return;
+                    if(missed&&listener==null)ui.post(()->VoiceCallService.missed(context));
+                    publish(lastCallStatus);
+                });
             }
         });
         ui.post(new Runnable(){public void run(){calls.tick();ui.postDelayed(this,1000);}});

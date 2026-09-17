@@ -20,6 +20,103 @@ public final class MessagePresentation {
     public static String delivery(JSONObject message){
         return message.optBoolean("delivered")?"Доставлено":message.optBoolean("accepted")?"Сохранено сервером":"В очереди";
     }
+    /** The mark drawn under an own bubble: "queued", "stored" or "delivered" (iOS MessagePresentation.Mark). */
+    public static String mark(JSONObject message){
+        return message.optBoolean("delivered")?"delivered":message.optBoolean("accepted")?"stored":"queued";
+    }
+
+    // --- what one finished call leaves in the chat (iOS CallRecord) --------
+
+    /**
+     * The outcome of one call from the terminal facts this device saw. The seven wire reasons are
+     * the closed set of voice-v1.md:53, and the same reason means different things on the two sides:
+     * `reject` is "you declined" for the phone that pressed it and "they declined" for the other,
+     * and a caller giving up is a missed call for the callee. No call row is ever sent or stored
+     * outside this phone.
+     */
+    public static String callKind(boolean outgoing,boolean connected,String reason){
+        if(connected)return outgoing?"outgoing":"incoming";
+        if(reason==null)return "failed";
+        switch(reason){
+            case "reject": return outgoing?"rejected":"declined";
+            case "cancel": case "hangup": return outgoing?"cancelled":"missed";
+            case "timeout": return outgoing?"unanswered":"missed";
+            case "busy": return outgoing?"busy":"missed";
+            case "failed": case "unavailable": return "failed";
+            default: return "failed";
+        }
+    }
+    /** The one outcome a missed-call notice is raised for. */
+    public static boolean callMissed(String kind){return "missed".equals(kind);}
+    /** What the row says happened. */
+    public static String callTitle(String kind,boolean video){
+        switch(kind){
+            case "outgoing": return video?"Исходящий видеозвонок":"Исходящий звонок";
+            case "incoming": return video?"Входящий видеозвонок":"Входящий звонок";
+            case "missed": return video?"Пропущенный видеозвонок":"Пропущенный звонок";
+            case "declined": return "Вы отклонили звонок";
+            case "rejected": return "Собеседник отклонил звонок";
+            case "cancelled": return "Вызов отменён";
+            case "unanswered": return "Нет ответа";
+            case "busy": return "Собеседник занят";
+            default: return "Связь не установилась";
+        }
+    }
+    /** `3:12`, the way the call screen counts. */
+    public static String callDuration(long seconds){
+        return String.format(java.util.Locale.ROOT,"%d:%02d",seconds/60,seconds%60);
+    }
+    /** The whole line: what happened and, for an answered call, how long it lasted. */
+    public static String callLine(String kind,boolean video,long seconds){
+        String title=callTitle(kind,video);
+        return seconds>0?title+" · "+callDuration(seconds):title;
+    }
+    /** The action offered on a missed row. */
+    public static String callBack(){return "Перезвонить";}
+
+    /**
+     * The conversation as the chat draws it: the core's messages in their own order, with each call
+     * standing after the message it followed. The core keeps no time for a message, so a call is
+     * anchored to the last message that existed when it ended rather than sorted by a clock this
+     * client would have to invent. A call recorded before any message opens the chat; a call whose
+     * anchor is gone stands at the end rather than disappearing.
+     */
+    public static org.json.JSONArray chatRows(org.json.JSONArray messages,org.json.JSONArray calls){
+        org.json.JSONArray rows=new org.json.JSONArray();
+        if(calls==null||calls.length()==0){
+            for(int n=0;n<(messages==null?0:messages.length());n++)rows.put(row("message",messages.optJSONObject(n)));
+            return rows;
+        }
+        java.util.Set<String> known=new java.util.HashSet<>();
+        for(int n=0;n<(messages==null?0:messages.length());n++){
+            JSONObject message=messages.optJSONObject(n);
+            if(message!=null)known.add(message.optString("id"));
+        }
+        java.util.Map<String,java.util.List<JSONObject>> byAnchor=new java.util.HashMap<>();
+        java.util.List<JSONObject> leading=new java.util.ArrayList<>(),trailing=new java.util.ArrayList<>();
+        for(int n=0;n<calls.length();n++){
+            JSONObject call=calls.optJSONObject(n);if(call==null)continue;
+            String anchor=call.optString("after_message_id","");
+            if(anchor.isEmpty())leading.add(call);
+            else if(known.contains(anchor)){
+                java.util.List<JSONObject> list=byAnchor.get(anchor);
+                if(list==null){list=new java.util.ArrayList<>();byAnchor.put(anchor,list);}
+                list.add(call);
+            } else trailing.add(call);
+        }
+        for(JSONObject call:leading)rows.put(row("call",call));
+        for(int n=0;n<(messages==null?0:messages.length());n++){
+            JSONObject message=messages.optJSONObject(n);if(message==null)continue;
+            rows.put(row("message",message));
+            java.util.List<JSONObject> after=byAnchor.get(message.optString("id"));
+            if(after!=null)for(JSONObject call:after)rows.put(row("call",call));
+        }
+        for(JSONObject call:trailing)rows.put(row("call",call));
+        return rows;
+    }
+    private static JSONObject row(String type,JSONObject value){
+        return new JSONObject().put("type",type).put("value",value==null?new JSONObject():value);
+    }
     public static final class Ticket {
         public final String account,text;
         private final long revision;
