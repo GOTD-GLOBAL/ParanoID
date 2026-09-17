@@ -63,7 +63,7 @@ public final class VoiceCallService extends Service {
      * A call that was never answered here. Its own channel and id: 52 is cancelled on every
      * non-incoming state (TextEngine), so a missed notice posted there would be erased instantly.
      * It carries no name and no number — the same privacy shape as the message notice — and it is
-     * dismissed by opening the application.
+     * dismissed by opening a chat.
      */
     public static void missed(Context context){
         try{

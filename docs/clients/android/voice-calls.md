@@ -157,3 +157,11 @@ the message notice, and opening a chat clears it.
 
 The core still writes no call history and the server is told nothing about an
 outcome; each phone keeps its own account of the same call.
+
+The SDK-specific validation and subsequent fixes are recorded in
+[PR45 validation](../pr45-validation.md). `test_sdk_compile.py` compiles all
+application sources against Android35 without host `org.json`; `build.sh` runs
+it and the call-log smoke before packaging. Missed notices recheck foreground
+state on the UI queue, and call-log repaints retain the last connection/error
+status. An unavailable history anchor sorts after messages, not as an empty
+conversation before them.

@@ -62,8 +62,9 @@ owner rather than for an implementer:
 2. **A mixed pair loses messages silently.** A sender on this build can push a
    receiver still on the old one past its ceiling. That receiver rejects the
    message after decrypting it, sends no receipt, and advances its cursor past
-   the event; the sender sees two marks it never earned and the text is not
-   shown. Both phones must be updated together.
+   the event; the sender remains at server acceptance (one mark), not peer
+   delivery, and the text is not shown on the old receiver. Both phones must
+   be updated together.
 3. **The binding constraint moves.** 64 conversations of 200 maximal messages
    already exceed the 8 MiB snapshot bound, so a heavy account now meets the
    commitment ledger or the snapshot bound rather than a count of entries. The
@@ -107,5 +108,6 @@ own message. The 8 MiB snapshot refusal keeps its own test.
    updated together?
 2. Should the 1000-commitment bound move with this, given it shares the
    `local_history_full` error and caps an effective conversation length anyway?
-3. Is eviction or archival now on the roadmap, given that the 8 MiB snapshot
-   bound becomes the only ceiling?
+3. Is eviction or archival now on the roadmap, given that history shares the
+   8 MiB snapshot budget with every other conversation and the commitment
+   and replay ledgers still impose their own limits?

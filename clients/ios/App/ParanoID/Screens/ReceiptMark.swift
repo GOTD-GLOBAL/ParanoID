@@ -40,7 +40,9 @@ struct ReceiptMark: View {
                     .frame(width: size * 1.7, height: size * 0.85)
             }
         }
-        .accessibilityHidden(true)
+        // Expose one element whose callers supply the delivery-state label.
+        // Hiding the mark also hides that label from combined message/list rows.
+        .accessibilityElement(children: .ignore)
     }
 
     /// One or two ticks in the box they are given.
@@ -81,6 +83,7 @@ struct ReceiptHintCard: View {
             HStack(spacing: 8) {
                 ReceiptMark(mark: .delivered, size: 13)
                     .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
                 Text(Strings.Chat.receiptHint)
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)

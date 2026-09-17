@@ -146,6 +146,21 @@ server transport integrity is not a production secure-update claim.
   recovery that contradicts paranoid mode.
 - Make security-relevant state and failures understandable to users and operators.
 
+## Candidate local call-log metadata
+
+PR45 adds local call outcomes, peer account IDs, durations and message anchors
+in Android app-private SharedPreferences and iOS UserDefaults. These are not
+message plaintext or recordings and are not sent to a peer/server, but they
+are sensitive relationship metadata **outside the encrypted core snapshot**.
+The candidate keeps at most 500 rows per peer; existing core contact admission
+bounds the normal peer set. No new account-delete or recovery path is introduced.
+Android disables application backup in its manifest. No equivalent backup
+exclusion or physical backup/restore verification is claimed here for iOS
+UserDefaults. Platform sandbox/data protection is not application-level log
+encryption; container access can expose these rows. Future recovery/deletion
+must explicitly include this store. This describes the proposed candidate, not
+an accepted privacy guarantee or ADR.
+
 ## Assets
 
 - recovery seed and derived key material;

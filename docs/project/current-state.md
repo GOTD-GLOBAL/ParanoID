@@ -34,6 +34,16 @@ device, a signed build, the Android APK (no SDK on this machine), the simulator
 text and voice flows, and the hosted server. No merge, deployment, TestFlight or
 ADR acceptance is implied.
 
+### Coordinator validation follow-up
+
+The [Linux validation and fixes](../clients/pr45-validation.md) record the
+real Android35 compile failure, its correction and a retained-signer local APK
+build, separate from Yaroslav's Mac receipt above. Core gates pass; local fixes
+also preserve call-repaint status, recheck missed-notice foreground state and
+restore the iOS receipt accessibility element. The changed iOS view needs a new
+Mac/VoiceOver check. No phone, feed publication, deployment or ADR acceptance
+follows; the APK remains a versionCode22 review candidate, not a release.
+
 ## C1 integrated and verified at host/simulator scope (2026-09-14)
 
 PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b

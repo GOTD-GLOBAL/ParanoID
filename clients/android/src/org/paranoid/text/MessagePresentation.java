@@ -115,7 +115,8 @@ public final class MessagePresentation {
         return rows;
     }
     private static JSONObject row(String type,JSONObject value){
-        return new JSONObject().put("type",type).put("value",value==null?new JSONObject():value);
+        try{return new JSONObject().put("type",type).put("value",value==null?new JSONObject():value);}
+        catch(org.json.JSONException impossible){throw new IllegalStateException("chat row",impossible);}
     }
     public static final class Ticket {
         public final String account,text;

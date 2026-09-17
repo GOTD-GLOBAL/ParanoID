@@ -44,6 +44,17 @@ public contract is declared.
   part of this change. No device acceptance, deployment or ADR acceptance is
   claimed.
 
+### PR45 validation fixes — 2026-09-17
+
+- Compile every Android application source against the real SDK before the
+  native build; handle checked JSON exceptions missed by host-only tests.
+- Correct two pre-existing Maven download sources without changing pinned bytes.
+- Keep the previous connection/error status on call-log repaints, place unknown
+  history anchors at the end and recheck foreground state before missed notices.
+- Keep iOS delivery accessibility labels exposed instead of hiding their element.
+  New Mac/VoiceOver verification remains required.
+- Record [verification scope and remaining gates](docs/clients/pr45-validation.md).
+
 ### iOS call-control targeting candidate — 2026-09-14
 
 - Bind End/Reject/Hangup and mute/speaker UI operations to the original call ID

@@ -10,7 +10,10 @@ python3 webrtc_dependency.py
 python3 test_webrtc_dependency.py
 python3 firebase_dependency.py
 python3 test_firebase_dependency.py
+# Compile against Android's checked org.json API before expensive native gates.
+python3 test_sdk_compile.py
 python3 test_call_controller.py
+python3 test_call_log.py
 python3 test_voice_relay.py
 TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 PLATFORM="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"

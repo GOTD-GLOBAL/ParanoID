@@ -125,6 +125,16 @@ def parse_captions(text):
 
 
 class UiContract(unittest.TestCase):
+    def test_receipt_mark_is_an_accessible_labeled_element(self):
+        source = (APP / 'Screens/ReceiptMark.swift').read_text()
+        mark = source.split('struct ReceiptMark: View {', 1)[1].split('struct ReceiptHintCard:', 1)[0]
+        self.assertNotIn('.accessibilityHidden(true)', mark)
+        self.assertIn('.accessibilityElement(children: .ignore)', mark)
+        self.assertIn('.accessibilityLabel(MessagePresentation.delivery(message))',
+                      (APP / 'Screens/Chat.swift').read_text())
+        self.assertIn('.accessibilityLabel(words)',
+                      (APP / 'Screens/Dialogs.swift').read_text())
+
     @classmethod
     def setUpClass(cls):
         # A missing tree is a failure, never a vacuous pass.

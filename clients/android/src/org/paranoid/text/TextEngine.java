@@ -45,8 +45,8 @@ public final class TextEngine {
     private long drainGeneration;
     private final java.util.Map<String,CallController.Completion> callCompletions=new java.util.HashMap<>();
     private String lastCallState="idle";
-    /** The status line a call-driven repaint carries; a call changes no message and no connection. */
-    private static final String lastCallStatus="Готово. Только тестовые сообщения.";
+    /** Worker-owned status retained across local call-log-only repaints. */
+    private String lastPublishedStatus="Открываем сохранённые данные…";
     private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
@@ -113,7 +113,9 @@ public final class TextEngine {
                 boolean missed=MessagePresentation.callMissed(kind);
                 if(account.isEmpty())return;
                 worker.execute(()->{
-                    String anchor="";
+                    // A non-message sentinel sorts at the end if history is unavailable.
+                    // Empty means we actually observed an empty conversation.
+                    String anchor="unavailable";
                     try{
                         if(!broken&&client!=null){
                             org.json.JSONArray dialogs=client.publicView().optJSONArray("dialogs");
@@ -121,17 +123,23 @@ public final class TextEngine {
                                 JSONObject dialog=dialogs.optJSONObject(n);
                                 if(dialog==null||!account.equals(dialog.optString("account")))continue;
                                 org.json.JSONArray messages=dialog.optJSONArray("messages");
-                                if(messages!=null&&messages.length()>0)anchor=messages.optJSONObject(messages.length()-1).optString("id","");
+                                if(messages!=null&&messages.length()==0)anchor="";
+                                if(messages!=null&&messages.length()>0)anchor=messages.optJSONObject(messages.length()-1).optString("id","unavailable");
                             }
                         }
                     }catch(Throwable unreadable){/* A log row is never worth failing a call over. */}
-                    JSONObject row=new JSONObject().put("id",termination.optString("call_id")).put("kind",kind)
-                        .put("video",termination.optBoolean("video"))
-                        .put("duration_seconds",termination.optLong("duration_seconds"))
-                        .put("after_message_id",anchor);
+                    final JSONObject row;
+                    try{
+                        row=new JSONObject().put("id",termination.optString("call_id")).put("kind",kind)
+                            .put("video",termination.optBoolean("video"))
+                            .put("duration_seconds",termination.optLong("duration_seconds"))
+                            .put("after_message_id",anchor);
+                    }catch(org.json.JSONException invalidRow){return; /* Local logging must not fail the call. */}
                     if(!CallLog.record(context,account,row))return;
-                    if(missed&&listener==null)ui.post(()->VoiceCallService.missed(context));
-                    publish(lastCallStatus);
+                    // Recheck on the UI owner: a chat may have opened and cleared the notice
+                    // while this worker was recording the call.
+                    if(missed)ui.post(()->{if(listener==null)VoiceCallService.missed(context);});
+                    publish(lastPublishedStatus);
                 });
             }
         });
@@ -327,6 +335,7 @@ public final class TextEngine {
     }
 
     private void publish(String status) {
+        lastPublishedStatus=status;
         JSONObject display=new JSONObject();
         try {
             if(client!=null && client.broken())broken=true;
