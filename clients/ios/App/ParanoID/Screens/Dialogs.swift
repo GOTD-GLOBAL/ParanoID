@@ -8,7 +8,7 @@ import SwiftUI
 /// from this phone alone: the contact's name — the one typed here through
 /// «Переименовать», or else the first six characters of the account — the last
 /// message as a preview, prefixed «Вы: » when this device wrote it, and either
-/// a badge («Проверен», «Блок») or the delivery tick of the last own message.
+/// a badge («Проверен», «Блок») or the delivery mark of the last own message.
 /// Nothing on this screen is a name a peer chose, and nothing is a time the
 /// core does not keep.
 ///
@@ -39,7 +39,7 @@ struct DialogsScreen: View {
                     ForEach(model.view.dialogs) { dialog in
                         ConversationRow(dialog: dialog,
                                         title: model.title(for: dialog.account),
-                                        subtitle: Self.preview(dialog),
+                                        subtitle: model.preview(for: dialog) ?? Self.preview(dialog),
                                         trailing: Self.trailing(dialog))
                         .contentShape(Rectangle())
                         .onTapGesture { model.openChat(dialog.account) }
@@ -52,7 +52,9 @@ struct DialogsScreen: View {
         .accessibilityIdentifier("dialogs")
     }
 
-    /// The preview line of a row (`MainActivity.java:555-556`).
+    /// The preview line of a row (`MainActivity.java:555-556`), for a
+    /// conversation whose last event is a message. A call that happened after
+    /// it takes the line instead (`AppModel.preview(for:)`).
     static func preview(_ dialog: Dialog) -> String {
         guard let last = dialog.last else { return Strings.Dialogs.startConversation }
         let text = MessagePresentation.preview(last.text)
@@ -65,7 +67,7 @@ struct DialogsScreen: View {
         if dialog.isBlocked { return .badge(Strings.Dialogs.blockedBadge) }
         if dialog.isVerified { return .badge(Strings.Dialogs.verifiedBadge) }
         guard let last = dialog.last, dialog.isOwn(last) else { return .none }
-        return .receipt(MessagePresentation.receipt(last), MessagePresentation.delivery(last))
+        return .receipt(MessagePresentation.mark(last), MessagePresentation.delivery(last))
     }
 }
 
@@ -77,8 +79,9 @@ struct ConversationRow: View {
         case none
         /// «Проверен» or «Блок».
         case badge(String)
-        /// The tick and the words behind it, for VoiceOver.
-        case receipt(String, String)
+        /// The mark of the last own message and the words behind it, which is
+        /// what VoiceOver reads (`ReceiptMark`).
+        case receipt(MessagePresentation.Mark, String)
     }
 
     let dialog: Dialog
@@ -115,8 +118,7 @@ struct ConversationRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             case .receipt(let mark, let words):
-                Text(mark)
-                    .font(.system(size: 15))
+                ReceiptMark(mark: mark, size: 13)
                     .foregroundStyle(.secondary)
                     .accessibilityLabel(words)
             }

@@ -137,6 +137,12 @@ public final class CallController {
     public protocol Observer: AnyObject {
         /// The public view changed. Invoked on the state owner.
         func changed(_ presentation: CallPresentation)
+        /// One call ended, with the facts the public view cannot carry: the
+        /// direction it was placed in and how long it was actually connected.
+        /// Invoked on the state owner, once per call, immediately after the
+        /// terminal view is published. Ignoring it is the default, because a
+        /// call log is a screen's business and not the protocol's.
+        func finished(_ termination: CallTermination)
     }
 
     // MARK: - What is held
@@ -1143,6 +1149,19 @@ public final class CallController {
                                sentMillis: clock.wallMillis())
             call.nextSequence += 1
         }
+        // Read while the call is still here: `live` is cleared two lines below
+        // and the published view would then report zero seconds for every call
+        // that ever connected (`presentation`).
+        let termination = CallTermination(
+            callId: call.identity.callId,
+            account: call.account,
+            outgoing: call.outgoing,
+            connected: call.connectedAt != nil,
+            video: call.localVideo || call.remoteVideo,
+            durationSeconds: call.connectedAt.map {
+                Int64(clock.now().nanoseconds(since: $0) / 1_000_000_000)
+            } ?? 0,
+            reason: reason)
         live = nil
         generationCounter += 1
         lastAccount = call.account
@@ -1152,6 +1171,9 @@ public final class CallController {
         remember(account: call.account, callId: call.identity.callId)
         media.close()
         publish()
+        // After the view, so a screen that draws the row has already seen the
+        // call end, and before the last control, which can change nothing.
+        observer?.finished(termination)
         if let end {
             // The call is already terminal here: the completion of this last
             // control can neither revive it nor end it again.

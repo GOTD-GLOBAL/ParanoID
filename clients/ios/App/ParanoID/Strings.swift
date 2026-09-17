@@ -1,3 +1,4 @@
+import ParanoidKit
 import Foundation
 
 /// Every Russian caption of this client, in one place.
@@ -164,6 +165,52 @@ enum Strings {
 
     // MARK: - chat (`MainActivity.java:216-236,341-352,577-595`)
 
+    // MARK: - what a finished call leaves in the chat (`CallRecord`)
+
+    enum CallRow {
+        static let outgoing = "Исходящий звонок"
+        static let outgoingVideo = "Исходящий видеозвонок"
+        static let incoming = "Входящий звонок"
+        static let incomingVideo = "Входящий видеозвонок"
+        static let missed = "Пропущенный звонок"
+        static let missedVideo = "Пропущенный видеозвонок"
+        static let declined = "Вы отклонили звонок"
+        static let rejected = "Собеседник отклонил звонок"
+        static let cancelled = "Вызов отменён"
+        static let unanswered = "Нет ответа"
+        static let busy = "Собеседник занят"
+        static let failed = "Связь не установилась"
+        static let callBack = "Перезвонить"
+
+        /// What the row says happened.
+        static func title(kind: CallRecord.Kind, video: Bool) -> String {
+            switch kind {
+            case .outgoing: return video ? outgoingVideo : outgoing
+            case .incoming: return video ? incomingVideo : incoming
+            case .missed: return video ? missedVideo : missed
+            case .declined: return declined
+            case .rejected: return rejected
+            case .cancelled: return cancelled
+            case .unanswered: return unanswered
+            case .busy: return busy
+            case .failed: return failed
+            }
+        }
+
+        /// `3:12`, the way the call screen counts (`MainActivity.callLabel`).
+        static func duration(seconds: Int64) -> String {
+            String(format: "%d:%02d", seconds / 60, seconds % 60)
+        }
+
+        /// The whole line: what happened and, when the call was answered, how
+        /// long it lasted.
+        static func line(kind: CallRecord.Kind, video: Bool, seconds: Int64) -> String {
+            let title = title(kind: kind, video: video)
+            guard seconds > 0 else { return title }
+            return title + " · " + duration(seconds: seconds)
+        }
+    }
+
     enum Chat {
         static let placeholder = "Сообщение"
         static let send = "Отправить"
@@ -174,6 +221,12 @@ enum Strings {
         static let blockedHint = "Контакт заблокирован. Откройте сведения, чтобы разблокировать."
         static let brokenHint = "Локальное хранение недоступно. Сообщения не отправляются."
         static let savingHint = "Сохраняем сообщение…"
+
+        /// Shown once, under the first own message that reaches the second
+        /// mark. It is the sentence the contact sheet carries
+        /// (`Details.receiptsBody`), in the place it is about.
+        static let receiptHint = "Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает."
+        static let receiptHintAction = "Понятно"
 
         /// `MainActivity.java:350`.
         static func tooLong(bytes: Int) -> String {

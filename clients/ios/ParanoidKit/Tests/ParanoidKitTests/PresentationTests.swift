@@ -124,16 +124,25 @@ final class PresentationTests: XCTestCase {
         XCTAssertFalse(MessagePresentation.canSend(limit + " "))
     }
 
-    func testDeliveryAndReceiptSayTheSameThreeThings() {
+    func testDeliveryAndMarkSayTheSameThreeThings() {
         let queued = Self.message(accepted: false, delivered: false)
         let stored = Self.message(accepted: true, delivered: false)
         let done = Self.message(accepted: true, delivered: true)
         XCTAssertEqual(MessagePresentation.delivery(queued), "В очереди")
         XCTAssertEqual(MessagePresentation.delivery(stored), "Сохранено сервером")
         XCTAssertEqual(MessagePresentation.delivery(done), "Доставлено")
-        XCTAssertEqual(MessagePresentation.receipt(queued), "…")
-        XCTAssertEqual(MessagePresentation.receipt(stored), "✓")
-        XCTAssertEqual(MessagePresentation.receipt(done), "✓✓")
+        XCTAssertEqual(MessagePresentation.mark(queued), .queued)
+        XCTAssertEqual(MessagePresentation.mark(stored), .stored)
+        XCTAssertEqual(MessagePresentation.mark(done), .delivered)
+        // REQ-MSG-003 has three states and no fourth: nothing this client can
+        // draw or read out means the peer opened the conversation.
+        XCTAssertEqual(MessagePresentation.Mark.allCases.count, 3)
+        for mark in MessagePresentation.Mark.allCases {
+            XCTAssertFalse(mark.rawValue.contains("read"))
+        }
+        for message in [queued, stored, done] {
+            XCTAssertFalse(MessagePresentation.delivery(message).contains("рочитано"))
+        }
     }
 
     // MARK: - the double-tap guard

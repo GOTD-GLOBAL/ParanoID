@@ -135,6 +135,15 @@ final class AppModel {
     /// table itself is read from and written to the application's own
     /// defaults, and it never reaches the snapshot, the core or the network.
     private(set) var contactNames = ContactNames()
+    /// Whether this phone still owes its owner the sentence that two marks are
+    /// not "read" (`ReceiptHint`). Like the names, it lives in the
+    /// application's own defaults and reaches neither the snapshot nor the
+    /// network.
+    private(set) var receiptHint = ReceiptHint()
+    /// The calls this phone has had (`CallLog`). Like the names and the hint it
+    /// lives in the application's own defaults: the core keeps no call history
+    /// and the server is told nothing about an outcome.
+    private(set) var callLog = CallLog()
     /// The last published call view, or `nil` while this run has never had a
     /// call. It carries no SDP, no ICE credential and neither nonce
     /// (`CallPresentation`).
@@ -638,6 +647,49 @@ final class AppModel {
     /// вернуть имя по умолчанию.»
     func rename(account: String, to name: String) {
         contactNames.rename(name, for: account)
+    }
+
+    /// One finished call, from the call controller's terminal transition.
+    ///
+    /// The row is anchored to the last message the conversation has right now,
+    /// which is how a call keeps its place in a history the core stores no time
+    /// for (`ChatRow.rows(messages:calls:)`).
+    func callFinished(_ termination: CallTermination) {
+        let anchor = view.dialog(termination.account)?.messages.last?.id
+        callLog.record(termination.record(afterMessageId: anchor))
+    }
+
+    /// The open conversation as the chat draws it: the core's messages with
+    /// this phone's calls standing where they happened.
+    var chatRows: [ChatRow] {
+        ChatRow.rows(messages: chat?.messages ?? [],
+                     calls: callLog.records(for: chatAccount ?? ""))
+    }
+
+    /// The preview of one conversation row: the last call when it is newer than
+    /// the last message, and the last message otherwise.
+    func preview(for dialog: Dialog) -> String? {
+        guard let call = callLog.records(for: dialog.account).last else { return nil }
+        // A call recorded after the newest message is what the row should say;
+        // an older one stays in the chat and out of the list.
+        guard call.afterMessageId == dialog.last?.id else { return nil }
+        return Strings.CallRow.line(kind: call.kind, video: call.video,
+                                    seconds: call.durationSeconds)
+    }
+
+    /// Whether the open conversation shows the sentence about the second mark.
+    ///
+    /// It is earned rather than scheduled: the chat says it the first time a
+    /// message of this user's is actually acknowledged by the peer's device, so
+    /// the marks it explains are on the screen while it is read.
+    var showsReceiptHint: Bool {
+        receiptHint.isPending && ReceiptHint.isEarned(chat)
+    }
+
+    /// «Понятно» under that sentence. It does not come back, including after a
+    /// relaunch.
+    func dismissReceiptHint() {
+        receiptHint.dismiss()
     }
 
     /// «Копировать контакт» (`MainActivity.java:177,521`).

@@ -6,10 +6,20 @@ import SwiftUI
 /// `MainActivity.java:216-236,577-595`).
 ///
 /// The history is exactly what the core committed: a bubble per entry, the
-/// device's own on the right, and under each own bubble the tick and the word
-/// behind it — «В очереди», «Сохранено сервером», «Доставлено». There is no
+/// device's own on the right, and under each own bubble the mark of its state
+/// — queued, stored by the server, delivered to the peer's device
+/// (``ReceiptMark``). The words behind the three states — «В очереди»,
+/// «Сохранено сервером», «Доставлено» — stay as the accessibility label, and
+/// the first time a message of this user's reaches the second mark the chat
+/// says once that two marks are not "read" (``ReceiptHintCard``). There is no
 /// time on a bubble because the core keeps none, and there is no read receipt
 /// because the protocol has none.
+///
+/// Between the bubbles stand the calls this phone has had with this contact
+/// (``CallRowView``, ``ParanoidKit/ChatRow``). They are not messages and never
+/// become any: the core writes no call history and the server is told nothing
+/// about an outcome — each device keeps its own account of the calls it
+/// watched, anchored to the message it followed.
 ///
 /// The composer is where the double-tap guard is visible: the button is
 /// disabled the instant a send starts, the text is captured and cleared in the
@@ -90,7 +100,7 @@ struct ChatScreen: View {
         ScrollViewReader { scroll in
             ScrollView {
                 LazyVStack(spacing: 6) {
-                    if dialog?.messages.isEmpty != false {
+                    if model.chatRows.isEmpty {
                         Text(Strings.Chat.empty)
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
@@ -98,9 +108,21 @@ struct ChatScreen: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 32)
                     }
-                    ForEach(dialog?.messages ?? []) { message in
-                        MessageBubble(message: message, isOwn: dialog?.isOwn(message) == true)
-                            .id(message.id)
+                    ForEach(model.chatRows) { row in
+                        switch row {
+                        case .message(let message):
+                            MessageBubble(message: message, isOwn: dialog?.isOwn(message) == true)
+                                .id(message.id)
+                        case .call(let record):
+                            CallRowView(record: record) {
+                                model.requestCall(video: record.video)
+                            }
+                            .id(record.id)
+                        }
+                    }
+                    if model.showsReceiptHint {
+                        ReceiptHintCard { model.dismissReceiptHint() }
+                            .padding(.top, 6)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .bottom)
@@ -177,10 +199,9 @@ struct MessageBubble: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
                 if isOwn {
-                    Text(MessagePresentation.receipt(message) + " "
-                         + MessagePresentation.delivery(message))
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.white.opacity(0.75))
+                    ReceiptMark(mark: MessagePresentation.mark(message))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .accessibilityLabel(MessagePresentation.delivery(message))
                 }
             }
             .padding(.horizontal, 14)
