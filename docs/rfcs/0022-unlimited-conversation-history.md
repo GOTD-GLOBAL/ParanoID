@@ -28,9 +28,21 @@ The owner's direction on 2026-09-17 is that there is no message ceiling.
 Remove the per-conversation history ceiling in both profiles. The refusals that
 bound network and replay state stay exactly as they are: 400 queued envelopes,
 1000 receipt commitments, 1000 seen identifiers, eight sessions, 64 contacts,
-2048 UTF-8 bytes of text. The 8 MiB whole-snapshot bound stays and becomes the
-only capacity refusal a long history can reach (`snapshot_size`,
-`local_state_full`).
+2048 UTF-8 bytes of text.
+
+Two refusals still stand between a conversation and unbounded growth, and this
+RFC keeps both. A text send is refused once 1000 retained receipt commitments
+have accumulated for that peer — the `local_history_full` code now means exactly
+that and nothing else — and a commit whose snapshot would exceed 8 MiB is refused
+as `local_state_full` (`snapshot_size`). What this RFC removes is the ceiling on
+the **count of stored entries**, not every bound; question 2 below is whether the
+commitment ledger should move with it.
+
+This supersedes the 200-entry development limit of
+[RFC-0008](0008-executable-text-development-slice.md) for the conversation
+history. RFC-0008 is not rewritten and every other budget it names is unchanged.
+`docs/protocol/first-contact-v1.md` and `docs/security/threat-model.md` describe
+this candidate and say that it is proposed rather than accepted.
 
 No wire format, no server route, no schema column and no sealed-snapshot field
 changes. The snapshot's *contents* may now be larger than a previous build was
@@ -53,11 +65,11 @@ owner rather than for an implementer:
    the event; the sender sees two marks it never earned and the text is not
    shown. Both phones must be updated together.
 3. **The binding constraint moves.** 64 conversations of 200 maximal messages
-   already exceed the 8 MiB snapshot bound, so a heavy account now meets
-   `local_state_full` instead of `local_history_full`. That refusal arrives on a
-   commit rather than on a message, which is a worse moment; bounding it belongs
-   to a separate decision about eviction or archival, which
-   `docs/protocol/first-contact-v1.md` still forbids.
+   already exceed the 8 MiB snapshot bound, so a heavy account now meets the
+   commitment ledger or the snapshot bound rather than a count of entries. The
+   snapshot refusal arrives on a commit rather than on a message, which is a
+   worse moment; bounding it belongs to a separate decision about eviction or
+   archival, which `docs/protocol/first-contact-v1.md` still forbids.
 
 ## Cost this does not remove
 
