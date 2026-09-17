@@ -470,6 +470,7 @@ CHECKS = {
         '«Создать ID» registers and «Мой ID» shows the contact QR and a 64-digit account',
         'the pasted contact is the peer\'s own text and the fingerprint on «Проверка контакта» is '
         'the one that peer\'s core published',
+        'the bubble carries the time this phone wrote it and the chat names the day («Сегодня»); '
         'one tap on «Отправить» is one envelope: «Сохранено сервером» after the server stored it, '
         '«Доставлено» after the peer '
         'acknowledged it',

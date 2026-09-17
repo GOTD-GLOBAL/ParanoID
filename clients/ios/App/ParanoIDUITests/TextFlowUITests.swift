@@ -108,6 +108,15 @@ final class TextFlowUITests: XCTestCase {
         send.tap()
         let sent = try fixture.bubble(app, fixture.firstText, marked: "Сохранено сервером",
                                       "the first message")
+        // The bubble also carries the instant this phone wrote it, and the chat
+        // names the day it belongs to (RFC-0023). Both are read here off the
+        // accessibility tree, which is what a screen reader gets.
+        XCTAssertNotNil(sent.label.range(of: "[0-9]{2}:[0-9]{2}", options: .regularExpression),
+                        "the first message carries no time: «\(sent.label)»")
+        let today = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == %@", "Сегодня")).firstMatch
+        XCTAssertTrue(today.waitForExistence(timeout: Timeout.screen),
+                      "the day this conversation started is not named: " + Diagnosis.of(app))
         // The peer has not been asked to run a cycle yet, so nothing can have
         // acknowledged this message: «Доставлено» here would be one the client
         // drew of its own accord.
