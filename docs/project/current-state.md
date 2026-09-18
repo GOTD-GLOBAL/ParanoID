@@ -45,6 +45,27 @@ earpiece. The tests measure the state machine and that each synthesised wave is
 a file the platform accepts; audibility on a device is unverified, as is
 behaviour against a real peer.
 
+## Android v27 published — 2026-09-18
+
+[The v27 release receipt](../clients/android/v27-release.md) records the actual
+retained-signer publication of version27 / `0.0.27-timeout` from source abc998f
+(main after PR48 plus packaging metadata). Both the old v25 and current updater
+downloaded the live artifact with the expected digest. The downloaded APK also
+passed package/version/signer/alignment checks. No phone installation or issue38
+resolution is claimed; no server runtime/config/data change was performed.
+The source-preparation entry below is superseded by this dated receipt.
+
+## Android v27 release preparation — 2026-09-18
+
+Sergey requested merging PR48 and publishing a new in-app Android update. PR48
+merged as `408911f32833b2e3e62411bafff0adcdcfe90daf`; this release branch adds only
+version27 / `0.0.27-timeout` packaging and matching version assertions. Runtime
+code and shared core are the merged main, including PR45/46 UI/history/time and
+PR48 response timeout changes. The observed existing feed is version26.
+Retained signer/package, strict TLS, native installer consent and phone data
+remain protected. Build, independent artifact review and verified publication
+are separate gates; this source preparation is not a publication receipt.
+
 ## iPhone local metadata out of the OS backup — local candidate (2026-09-18)
 
 At Yaroslav's request the candidate takes the iPhone's local contact names and

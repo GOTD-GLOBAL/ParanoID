@@ -38,6 +38,13 @@ public contract is declared.
   assert who may drive a tone and when it must stop. No protocol, core, server
   or Android behaviour changes.
 
+### Android v27 packaging — 2026-09-18
+
+- Published `0.0.27-timeout`, version code27, from merged main after PR48 plus
+  packaging metadata, with retained package/signer and current shared-core/UI.
+  Old/current updater downloads and downloaded-artifact checks passed; physical
+  phone acceptance remains separate. See the [release receipt](docs/clients/android/v27-release.md).
+
 ### iPhone local metadata out of the OS backup — 2026-09-18
 
 - **Local metadata files are excluded after successful migration.** The local contact
