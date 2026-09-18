@@ -6,6 +6,38 @@ last_reviewed: 2026-09-17
 
 # Current project state
 
+## Message time — local candidate (2026-09-17)
+
+The candidate gives a message the instant the device that wrote or received it
+saw, stored in the core's sealed snapshot and never transmitted
+([RFC-0023](../rfcs/0023-message-time.md), **proposed**). Both clients show it
+under the bubble, put a pill where the day turns and date the conversation rows.
+An entry written before this candidate keeps no time and is shown without one.
+
+PR45 has merged into main. The PR46 integration work now includes main
+`de439206172e36dcb6da0c55e6a886900d53f309`, preserving the current Android
+push/crash/packaging fixes and server maintenance gates. An older build cannot
+open a snapshot carrying the new field. Sergey selected device-local time and
+accepted coordinated alpha updates on 2026-09-17; the provenance and remaining
+ADR boundary are in [RFC-0023](../rfcs/0023-message-time.md#owner-direction-and-remaining-decision-boundary).
+This does not implement the separate long-lived-history or iOS metadata-backup
+follow-ups.
+
+Original contributor Mac receipt for `7093845`: core `clean_first_contact` 20/0 including the two new
+time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,
+`voice_calls` 14/0, `registration` 7/0, `key_vectors` 1/0, `self_service`
+unchanged at 10 passed with the same 14 legacy failures; `fmt` and `clippy`
+clean. **Not run:** any physical device, a signed build, the Android APK, and
+the hosted server. No merge, deployment or ADR acceptance is implied.
+
+The [2026-09-18 coordinator integration record](../clients/pr46-integration.md)
+adds actual Linux core, SDK/APK and source-gate evidence, including duplicate/
+receipt timestamp preservation and backwards-clock checks. The Android time test
+now gates both CI and APK build. Its retained-signer local versionCode26 APK is
+review-only, not the published v26 and not authorized for delivery. Original Mac
+results, Linux source checks and still-unrun phone/iOS runtime gates remain
+separate.
+
 ## PR45 current-main integration candidate — 2026-09-17
 
 The [integration record](../clients/pr45-main-integration.md) combines PR45

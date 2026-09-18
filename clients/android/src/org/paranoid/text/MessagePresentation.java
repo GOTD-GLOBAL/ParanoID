@@ -25,6 +25,62 @@ public final class MessagePresentation {
         return message.optBoolean("delivered")?"delivered":message.optBoolean("accepted")?"stored":"queued";
     }
 
+    // --- when a message happened (iOS MessagePresentation) ----------------
+
+    /** The months as a date is read aloud in Russian, so a separator never depends on the locale. */
+    static final String[] MONTHS_GENITIVE={"января","февраля","марта","апреля","мая","июня",
+        "июля","августа","сентября","октября","ноября","декабря"};
+
+    /**
+     * `14:32` — the time under a bubble, in this phone's own time zone. An entry written by a build
+     * that kept no time answers the empty string and the screens draw nothing: a message whose time
+     * is unknown is shown without one rather than with a guess (REQ-CLIENT-004).
+     */
+    public static String time(long milliseconds){
+        if(milliseconds<=0)return "";
+        java.util.Calendar when=calendar(milliseconds);
+        return String.format(java.util.Locale.ROOT,"%02d:%02d",
+            when.get(java.util.Calendar.HOUR_OF_DAY),when.get(java.util.Calendar.MINUTE));
+    }
+    /** Whether a message begins a day the one before it did not. An unknown time never begins one. */
+    public static boolean startsNewDay(long milliseconds,long previous){
+        if(milliseconds<=0)return false;
+        if(previous<=0)return true;
+        return !sameDay(calendar(previous),calendar(milliseconds));
+    }
+    /** The pill between two days: «Сегодня», «Вчера», «15 сентября», with the year once it differs. */
+    public static String daySeparator(long milliseconds,long now){
+        if(milliseconds<=0)return "";
+        java.util.Calendar when=calendar(milliseconds),today=calendar(now);
+        if(sameDay(when,today))return "Сегодня";
+        java.util.Calendar yesterday=calendar(now);yesterday.add(java.util.Calendar.DAY_OF_YEAR,-1);
+        if(sameDay(when,yesterday))return "Вчера";
+        String date=when.get(java.util.Calendar.DAY_OF_MONTH)+" "+MONTHS_GENITIVE[when.get(java.util.Calendar.MONTH)];
+        return when.get(java.util.Calendar.YEAR)==today.get(java.util.Calendar.YEAR)?date:date+" "+when.get(java.util.Calendar.YEAR);
+    }
+    /** A call preview has no wall-clock time; never borrow the preceding message's. */
+    public static String listTime(long milliseconds,long now,boolean isCallPreview){
+        return isCallPreview?"":listTime(milliseconds,now);
+    }
+    /** What a message preview says: the time today, «Вчера» yesterday, an older date otherwise. */
+    public static String listTime(long milliseconds,long now){
+        if(milliseconds<=0)return "";
+        java.util.Calendar when=calendar(milliseconds),today=calendar(now);
+        if(sameDay(when,today))return time(milliseconds);
+        java.util.Calendar yesterday=calendar(now);yesterday.add(java.util.Calendar.DAY_OF_YEAR,-1);
+        if(sameDay(when,yesterday))return "Вчера";
+        String stamp=String.format(java.util.Locale.ROOT,"%02d.%02d",
+            when.get(java.util.Calendar.DAY_OF_MONTH),when.get(java.util.Calendar.MONTH)+1);
+        return when.get(java.util.Calendar.YEAR)==today.get(java.util.Calendar.YEAR)?stamp:stamp+"."+when.get(java.util.Calendar.YEAR);
+    }
+    private static java.util.Calendar calendar(long milliseconds){
+        java.util.Calendar value=java.util.Calendar.getInstance();value.setTimeInMillis(milliseconds);return value;
+    }
+    private static boolean sameDay(java.util.Calendar a,java.util.Calendar b){
+        return a.get(java.util.Calendar.YEAR)==b.get(java.util.Calendar.YEAR)
+            &&a.get(java.util.Calendar.DAY_OF_YEAR)==b.get(java.util.Calendar.DAY_OF_YEAR);
+    }
+
     // --- what one finished call leaves in the chat (iOS CallRecord) --------
 
     /**
@@ -76,7 +132,7 @@ public final class MessagePresentation {
 
     /**
      * The conversation as the chat draws it: the core's messages in their own order, with each call
-     * standing after the message it followed. The core keeps no time for a message, so a call is
+     * standing after the message it followed. The call log keeps no wall-clock time, so a call is
      * anchored to the last message that existed when it ended rather than sorted by a clock this
      * client would have to invent. A call recorded before any message opens the chat; a call whose
      * anchor is gone stands at the end rather than disappearing.

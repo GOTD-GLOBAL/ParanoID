@@ -182,6 +182,22 @@ MessagePresentation.java "Контакт "
 MessagePresentation.java "Доставлено"
 MessagePresentation.java "Сохранено сервером"
 MessagePresentation.java "В очереди"
+
+# --- when a message happened (MessagePresentation, both clients)
+MessagePresentation.java "Сегодня"
+MessagePresentation.java "Вчера"
+MessagePresentation.java "января"
+MessagePresentation.java "февраля"
+MessagePresentation.java "марта"
+MessagePresentation.java "апреля"
+MessagePresentation.java "мая"
+MessagePresentation.java "июня"
+MessagePresentation.java "июля"
+MessagePresentation.java "августа"
+MessagePresentation.java "сентября"
+MessagePresentation.java "октября"
+MessagePresentation.java "ноября"
+MessagePresentation.java "декабря"
 ios "Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает."
 
 # --- CallRow — what a finished call leaves in the chat

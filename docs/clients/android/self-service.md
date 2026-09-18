@@ -61,7 +61,11 @@ URL/pin/service-JSON form. Dialogs use account IDs, with full fingerprint compar
 before pinning a contact. There is no public user directory or claimed nickname
 lookup. Legacy root-unbound history remains visible read-only until its matching
 contact QR establishes a real account route. One check is server persistence;
-two require the peer's encrypted authenticated receipt, never reading.
+two require the peer's encrypted authenticated receipt, never reading. Under each
+bubble stands the instant this phone wrote or received the message, with a pill
+where the day turns and the same instant on the conversation row; the core stores
+it, nothing transmits it, and an entry written before this candidate has none
+([RFC-0023](../../rfcs/0023-message-time.md), proposed).
 
 The process-wide worker retains existing encrypted atomic storage, fsync/readback,
 `text-state.enc`, `paranoid-text-state-v0` Keystore alias, package and signing key.

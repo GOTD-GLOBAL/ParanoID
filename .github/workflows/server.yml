@@ -115,6 +115,7 @@ jobs:
           python3 clients/android/test_call_controller.py
           python3 clients/android/test_call_log.py
           python3 clients/android/test_message_presentation.py
+          python3 clients/android/test_message_time.py
           python3 clients/android/test_ui_contract.py
           python3 clients/android/test_crash_exit.py
           python3 clients/android/test_voice_relay.py

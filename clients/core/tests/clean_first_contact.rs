@@ -51,6 +51,30 @@ fn incoming(a: &Value, n: usize, seq: i64) -> Value {
 fn receive(b: &Value, m: Value) -> Value {
     call(&b["state"], json!({"op":"receive_v2","message":m})).unwrap()
 }
+fn send_at(a: &Value, b: &Value, text: &str, now_ms: u64) -> Value {
+    call(
+        &a["state"],
+        json!({"op":"send_v2","account":id(b),"text":text,"now_ms":now_ms}),
+    )
+    .unwrap()
+}
+fn receive_at(b: &Value, m: Value, now_ms: u64) -> Value {
+    call(
+        &b["state"],
+        json!({"op":"receive_v2","message":m,"now_ms":now_ms}),
+    )
+    .unwrap()
+}
+fn messages<'a>(view: &'a Value, account: &str) -> &'a Vec<Value> {
+    view["dialogs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|d| d["account"] == json!(account))
+        .unwrap()["messages"]
+        .as_array()
+        .unwrap()
+}
 fn reopen(a: &Value) -> Value {
     call(&a["state"], json!({"op":"view"})).unwrap()
 }
@@ -945,4 +969,103 @@ fn zero_contact_plaintext_reply_receipts_and_clean_reopen() {
         b["dialogs"][0]["messages"]
     );
     assert_eq!(upgraded["state"]["version"], 3);
+}
+
+// Owner decision 2026-09-17: a message carries the time of the device that wrote
+// or received it. The core reads no clock of its own — the client passes the
+// instant with the operation, exactly as it already does for a call control —
+// and nothing about it crosses the wire.
+#[test]
+fn message_time_is_the_clock_the_client_passed_and_never_reaches_the_wire() {
+    let a = ready();
+    let b = ready();
+    let sent_at = 1_700_000_000_000u64;
+    let received_at = 1_700_000_005_000u64;
+    let a = send_at(&pair(&a, &b), &b, "first", sent_at);
+    assert_eq!(messages(&a, id(&b))[0]["local_ms"], json!(sent_at));
+
+    // The envelope is unchanged: three members and not one more.
+    let envelope = a["outbox"][0].as_object().unwrap();
+    let mut members: Vec<&str> = envelope.keys().map(String::as_str).collect();
+    members.sort_unstable();
+    assert_eq!(members, ["ciphertext", "id", "recipient"]);
+
+    // The receiver stamps with its own clock, not the sender's.
+    let b = receive_at(&b, incoming(&a, 0, 1), received_at);
+    assert_eq!(messages(&b, id(&a))[0]["local_ms"], json!(received_at));
+
+    // It survives a reopen, which is what a relaunch does.
+    assert_eq!(
+        messages(&reopen(&b), id(&a))[0]["local_ms"],
+        json!(received_at)
+    );
+}
+
+#[test]
+fn message_time_survives_acceptance_receipts_and_duplicate_replay() {
+    let a = ready();
+    let b = ready();
+    let sent_at = 1_700_000_000_000;
+    let received_at = sent_at + 5_000;
+    let a = send_at(&pair(&a, &b), &b, "timed", sent_at);
+    let original = incoming(&a, 0, 1);
+    let b = receive_at(&b, original.clone(), received_at);
+    let before = reopen(&b);
+    let replay = receive_at(&before, original, received_at + 90_000);
+    assert_eq!(
+        replay["state"], before["state"],
+        "replay cannot restamp history"
+    );
+    let a = call(
+        &a["state"],
+        json!({"op":"accepted_v2","id":a["outbox"][0]["id"]}),
+    )
+    .unwrap();
+    assert_eq!(messages(&a, id(&b))[0]["local_ms"], json!(sent_at));
+    let a = receive_at(&a, incoming(&b, 0, 1), received_at + 10_000);
+    let rows = messages(&a, id(&b));
+    assert_eq!(rows.len(), 1, "receipt is not a timed text row");
+    assert_eq!(rows[0]["local_ms"], json!(sent_at));
+    assert_eq!(rows[0]["delivered"], true);
+    assert_eq!(messages(&reopen(&a), id(&b))[0]["local_ms"], json!(sent_at));
+}
+
+#[test]
+fn backwards_local_clock_does_not_reorder_or_reject_messages() {
+    let a = ready();
+    let b = ready();
+    let a = send_at(&pair(&a, &b), &b, "first", 2_000);
+    let a = send_at(&a, &b, "second", 1_000);
+    let b = receive_at(&b, incoming(&a, 0, 1), 4_000);
+    let b = receive_at(&b, incoming(&a, 1, 2), 3_000);
+    let rows = messages(&b, id(&a));
+    assert_eq!(rows[0]["text"], "first");
+    assert_eq!(rows[0]["local_ms"], 4_000);
+    assert_eq!(rows[1]["text"], "second");
+    assert_eq!(rows[1]["local_ms"], 3_000);
+    assert_eq!(b["state"]["cursor"], 2);
+}
+
+// A conversation written by a build that kept no time still opens, and every
+// entry of it is simply without one: nothing is invented for it (REQ-CLIENT-004).
+#[test]
+fn a_history_written_without_a_time_opens_and_stays_untimed() {
+    let a = ready();
+    let b = ready();
+    let a = send_at(&pair(&a, &b), &b, "first", 1_700_000_000_000);
+    let mut older = a.clone();
+    for entry in older["state"]["conversations"][id(&b)]["history"]
+        .as_array_mut()
+        .unwrap()
+    {
+        entry.as_object_mut().unwrap().remove("local_ms");
+    }
+    let older = reopen(&older);
+    assert!(messages(&older, id(&b))[0].get("local_ms").is_none());
+
+    // And a message sent after that still gets its own.
+    let next = send_at(&older, &b, "second", 1_700_000_009_000);
+    let rows = messages(&next, id(&b));
+    assert!(rows[0].get("local_ms").is_none());
+    assert_eq!(rows[1]["local_ms"], json!(1_700_000_009_000u64));
 }

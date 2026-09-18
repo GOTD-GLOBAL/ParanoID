@@ -75,6 +75,22 @@ struct Entry {
     text: String,
     accepted: bool,
     delivered: bool,
+    /// Milliseconds since the epoch, as the **client** read its own clock when
+    /// this entry was written: the instant of the send on the phone that sent
+    /// it, and the instant of the commit on the phone that received it. The
+    /// core never reads a clock of its own — the value arrives with the
+    /// operation, the same trust model as a call control's `sent_ms` — and it
+    /// is stored verbatim, never transmitted and never used for any ordering,
+    /// replay or security decision.
+    ///
+    /// Zero means unknown, which is what every entry written before this build
+    /// has: a history without a time stays without one, because inventing one
+    /// is exactly what REQ-CLIENT-004 forbids.
+    #[serde(default, skip_serializing_if = "is_unset")]
+    local_ms: u64,
+}
+fn is_unset(value: &u64) -> bool {
+    *value == 0
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -177,9 +193,13 @@ enum Request {
     },
     Send {
         text: String,
+        #[serde(default)]
+        now_ms: u64,
     },
     Receive {
         message: Incoming,
+        #[serde(default)]
+        now_ms: u64,
     },
     Accepted {
         id: String,
@@ -308,7 +328,7 @@ fn encrypt(s: &mut Client, kind: &str, body: String) -> Result<String> {
     });
     Ok(id)
 }
-fn receive(s: &mut Client, m: Incoming) -> Result<()> {
+fn receive(s: &mut Client, m: Incoming, now_ms: u64) -> Result<()> {
     let peer = s.peer.clone().ok_or("verify_peer_first")?;
     if m.sender != peer.device
         || m.sequence < 1
@@ -393,6 +413,7 @@ fn receive(s: &mut Client, m: Incoming) -> Result<()> {
                 text: p.body,
                 accepted: true,
                 delivered: true,
+                local_ms: now_ms,
             });
             // This receipt is queued inside the SAME candidate snapshot. The platform
             // must persist that snapshot before transmitting any outbox entry.
@@ -608,7 +629,7 @@ pub fn command(state: &str, request: &str) -> Result<String> {
             validate_peer(&s, &peer, verified)?;
             s.peer = Some(peer);
         }
-        Request::Send { text } => {
+        Request::Send { text, now_ms } => {
             if text.is_empty() || text.len() > 2048 {
                 return Err("invalid_text_or_full_history");
             }
@@ -619,12 +640,13 @@ pub fn command(state: &str, request: &str) -> Result<String> {
                 text,
                 accepted: false,
                 delivered: false,
+                local_ms: now_ms,
             });
         }
-        Request::Receive { message } => {
+        Request::Receive { message, now_ms } => {
             let sequence = message.sequence;
             let id = message.id.clone();
-            if let Err(reason) = receive(&mut s, message) {
+            if let Err(reason) = receive(&mut s, message, now_ms) {
                 let skippable = matches!(
                     reason,
                     "invalid_ciphertext"

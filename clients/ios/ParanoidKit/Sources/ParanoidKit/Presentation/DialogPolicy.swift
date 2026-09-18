@@ -1,12 +1,14 @@
 import Foundation
 
 /// One message of one conversation, as the core publishes it in
-/// `view.dialogs[].messages[]` (`clients/core/src/lib.rs:72-78`).
+/// `view.dialogs[].messages[]` (`Entry` in `clients/core/src/lib.rs`).
 ///
-/// It is the decoded form of the five members Android reads off the same
+/// It is the decoded form of the members Android reads off the same
 /// `JSONObject` (`MainActivity.java:585-592`): who wrote it, what it says and
-/// the two acceptance flags behind `✓` and `✓✓`. Nothing else is kept —
-/// there is no timestamp in the core's history, so no screen invents one.
+/// the two acceptance flags behind the marks, and the instant this phone saw
+/// it. That instant is this device's own clock, stored by the core verbatim and
+/// never transmitted; an entry written before this build has none, and no
+/// screen invents one for it.
 public struct Message: Identifiable, Equatable, Sendable {
     /// The envelope identifier the core minted for this message.
     public let id: String
@@ -16,15 +18,21 @@ public struct Message: Identifiable, Equatable, Sendable {
     public let text: String
     /// The server stored the envelope (`✓`).
     public let isAccepted: Bool
-    /// The peer acknowledged it (`✓✓`).
+    /// The peer acknowledged it (two marks).
     public let isDelivered: Bool
+    /// When the phone that wrote or received this message saw it, in
+    /// milliseconds since the epoch, or `0` for an entry written by a build
+    /// that kept no time. Nothing invents one for those (REQ-CLIENT-004).
+    public let localMilliseconds: UInt64
 
-    public init(id: String, author: String, text: String, isAccepted: Bool, isDelivered: Bool) {
+    public init(id: String, author: String, text: String, isAccepted: Bool,
+                isDelivered: Bool, localMilliseconds: UInt64 = 0) {
         self.id = id
         self.author = author
         self.text = text
         self.isAccepted = isAccepted
         self.isDelivered = isDelivered
+        self.localMilliseconds = localMilliseconds
     }
 
     /// Reads one history entry; `nil` when it is not one.
@@ -37,7 +45,8 @@ public struct Message: Identifiable, Equatable, Sendable {
                        author: author,
                        text: text,
                        isAccepted: raw["accepted"] as? Bool ?? false,
-                       isDelivered: raw["delivered"] as? Bool ?? false)
+                       isDelivered: raw["delivered"] as? Bool ?? false,
+                       localMilliseconds: (raw["local_ms"] as? NSNumber)?.uint64Value ?? 0)
     }
 }
 

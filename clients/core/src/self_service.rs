@@ -58,9 +58,16 @@ enum Operation {
     SendV2 {
         account: String,
         text: String,
+        /// The client's own clock at the instant of the tap, in milliseconds
+        /// since the epoch; absent or zero means the client keeps no time.
+        #[serde(default)]
+        now_ms: u64,
     },
     ReceiveV2 {
         message: Incoming,
+        /// The client's own clock at the instant this event was committed.
+        #[serde(default)]
+        now_ms: u64,
     },
     ContactTextV2 {
         text: String,
@@ -543,13 +550,21 @@ pub(super) fn command(state: &str, request: &str) -> Result<String> {
                 }
             }
         }
-        Operation::SendV2 { account, text } => {
+        Operation::SendV2 {
+            account,
+            text,
+            now_ms,
+        } => {
             if s.enrollment.is_none() {
                 return Err("registration_required");
             }
-            apply_conversation(&mut s, account, json!({"op":"send","text":text}))?;
+            apply_conversation(
+                &mut s,
+                account,
+                json!({"op":"send","text":text,"now_ms":now_ms}),
+            )?;
         }
-        Operation::ReceiveV2 { message } => {
+        Operation::ReceiveV2 { message, now_ms } => {
             let sender = message.sender.clone();
             if !s.conversations.contains_key(&sender)
                 && !legacy_credential(&s).is_some_and(|c| c.account == sender)
@@ -591,7 +606,11 @@ pub(super) fn command(state: &str, request: &str) -> Result<String> {
                 return reply(s);
             }
             let m = json!({"id":message.id,"sender":message.sender,"sequence":message.sequence,"ciphertext":message.ciphertext});
-            apply_conversation(&mut s, &sender, json!({"op":"receive","message":m}))?;
+            apply_conversation(
+                &mut s,
+                &sender,
+                json!({"op":"receive","message":m,"now_ms":now_ms}),
+            )?;
             let verified = if legacy_credential(&s).is_some_and(|c| c.account == sender) {
                 s.legacy.seen.contains_key(&message.id)
             } else {

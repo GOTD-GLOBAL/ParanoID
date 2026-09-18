@@ -251,6 +251,12 @@ task and hands the finished answer back through `perform`.
   before the delivery mark it produces is published. A 409 or a 507 defers that
   envelope and lets the rest of the batch go out; any other status ends the
   pass at once. An idle lane waits on a wake signal instead of polling.
+- **Time.** Under every bubble stands the instant this phone wrote or received
+  the message, in its own time zone (`14:32`), with a pill where the day turns
+  («Сегодня», «Вчера», «12 сентября») and the same instant on the conversation
+  row (the time today, «Вчера», then `12.09`). The core stores it and never
+  sends it; an entry written before this build has none and is shown without one
+  ([RFC-0023](../../rfcs/0023-message-time.md), proposed).
 - **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
   anywhere in this client (REQ-MSG-003). The three states are drawn

@@ -8,6 +8,30 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Message time — 2026-09-17
+
+- **A message says when it happened.** A history entry gains `local_ms`: the
+  instant the phone that wrote or received it read **its own** clock. The core
+  reads no clock — `send_v2` and `receive_v2` carry `now_ms`, the value is stored
+  verbatim, the same trust model the call controls already use — and it never
+  enters an envelope, a `PlainV1` body, a receipt or a server row. The peer and
+  the server learn nothing new ([RFC-0023](docs/rfcs/0023-message-time.md),
+  proposed).
+- **On both clients:** the time under every bubble in the phone's own time zone,
+  a pill where the day turns («Сегодня», «Вчера», «12 сентября»), and the date on
+  a conversation row (the time today, «Вчера», then `12.09`). An entry written
+  before this candidate has no time and is shown without one; nothing is invented
+  for it (REQ-CLIENT-004).
+- **Compatibility:** an older build cannot open a snapshot that carries the new
+  field, the same alpha break as the retired history ceiling. Both phones must be
+  updated together. A build of this generation opens an older snapshot unchanged.
+- Call previews do not borrow a preceding message's date; Android pre-epoch
+  clocks become unknown timestamps rather than breaking native request parsing.
+  The time smoke now gates CI and APK builds. [Integration evidence](docs/clients/pr46-integration.md)
+  separates the Linux result from the still-required final Mac run.
+- No wire format, server route, schema column or protocol kind changes. No
+  device acceptance, deployment or ADR acceptance is claimed.
+
 ### PR45 current-main integration — 2026-09-17
 
 - Preserve PR34 cold-push owner, split-R8/DEX and crash-report fixes while adding

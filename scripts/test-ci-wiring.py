@@ -7,6 +7,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_message_time_gates_ci_and_android_build(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        self.assertIn('python3 clients/android/test_message_time.py', supported)
+        build = (ROOT / 'clients/android/build.sh').read_text()
+        self.assertIn('python3 test_message_time.py', build)
+
     def test_android_call_rows_and_preserved_main_fixes_gate_in_ci(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
         supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]

@@ -12,8 +12,10 @@ import SwiftUI
 /// «Сохранено сервером», «Доставлено» — stay as the accessibility label, and
 /// the first time a message of this user's reaches the second mark the chat
 /// says once that two marks are not "read" (``ReceiptHintCard``). There is no
-/// time on a bubble because the core keeps none, and there is no read receipt
-/// because the protocol has none.
+/// read receipt because the protocol has none. Under each bubble stands the
+/// time the phone that wrote or received it saw — the core stores it and never
+/// sends it — and a message written before this build, which has no time, is
+/// shown without one rather than with a guess.
 ///
 /// Between the bubbles stand the calls this phone has had with this contact
 /// (``CallRowView``, ``ParanoidKit/ChatRow``). They are not messages and never
@@ -108,8 +110,11 @@ struct ChatScreen: View {
                             .padding(.horizontal, 24)
                             .padding(.vertical, 32)
                     }
-                    ForEach(model.chatRows) { row in
-                        switch row {
+                    ForEach(model.chatTimeline) { row in
+                        switch row.kind {
+                        case .day(let title):
+                            DaySeparator(title: title)
+                                .id(row.id)
                         case .message(let message):
                             MessageBubble(message: message, isOwn: dialog?.isOwn(message) == true)
                                 .id(message.id)
@@ -198,10 +203,19 @@ struct MessageBubble: View {
                     .foregroundStyle(isOwn ? Color.white : Color.primary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .textSelection(.enabled)
-                if isOwn {
-                    ReceiptMark(mark: MessagePresentation.mark(message))
-                        .foregroundStyle(Color.white.opacity(0.85))
-                        .accessibilityLabel(MessagePresentation.delivery(message))
+                HStack(spacing: 5) {
+                    let time = MessagePresentation.time(message.localMilliseconds)
+                    if !time.isEmpty {
+                        Text(time)
+                            .font(.system(size: 11))
+                            .monospacedDigit()
+                            .foregroundStyle(isOwn ? Color.white.opacity(0.75) : Color.secondary)
+                    }
+                    if isOwn {
+                        ReceiptMark(mark: MessagePresentation.mark(message))
+                            .foregroundStyle(Color.white.opacity(0.85))
+                            .accessibilityLabel(MessagePresentation.delivery(message))
+                    }
                 }
             }
             .padding(.horizontal, 14)
