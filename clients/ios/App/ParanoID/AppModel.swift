@@ -195,12 +195,6 @@ final class AppModel {
         localMetadataLoaded = true
     }
 
-    /// The sounds a call makes (`CallTones`, Android's `CallTones.java`). It
-    /// is driven from ``callChanged(_:)`` by the published controller view, the
-    /// way Android drives it from `TextEngine`, so a sound can only follow a
-    /// state the controller authenticated.
-    private let tones = CallTones()
-
     private let drafts = MessagePresentation.Drafts()
     private var runtime: Runtime?
     private var reload: Task<Void, Never>?
@@ -1109,8 +1103,14 @@ final class AppModel {
             }
             // Before the first `knock`, and before Answer: the `audio`
             // background mode holds nothing without a live session.
-            calls?.prepareAudio()
-            guard await waitForCallConnection() else {
+            let deadline = ContinuousClock.now.advanced(by: Self.callIntentWindow)
+            guard await calls?.prepareAudio() == true else {
+                if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                guard !Task.isCancelled else { return }
+                showNotice(Strings.Notice.audioUnavailable)
+                return
+            }
+            guard await waitForCallConnection(until: deadline) else {
                 if ownsCallAudio(generation) { await calls?.releaseAudio() }
                 guard !Task.isCancelled else { return }
                 showNotice(Strings.Notice.callOffline)
@@ -1162,13 +1162,12 @@ final class AppModel {
 
     /// Waits for the realtime lane to say it is connected, for at most
     /// ``callIntentWindow`` (`MainActivity.java:405,415-418`).
-    private func waitForCallConnection() async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: AppModel.callIntentWindow)
+    private func waitForCallConnection(until deadline: ContinuousClock.Instant) async -> Bool {
         while !isConnected {
             guard !Task.isCancelled, !isBroken, ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: AppModel.callIntentPoll)
         }
-        return !Task.isCancelled && !isBroken
+        return !Task.isCancelled && !isBroken && ContinuousClock.now < deadline
     }
 
     /// The call view changed. It is published from the state owner and arrives
@@ -1178,10 +1177,6 @@ final class AppModel {
     /// why it is not `fileprivate` like the lanes' own publication.
     func callChanged(_ presentation: CallPresentation) {
         call = presentation
-        // The ring, the ringback and the busy tone, from the same view the
-        // screen is drawn from and nothing else (`TextEngine.java:92-102`).
-        tones.changed(state: presentation.state, callId: presentation.callId,
-                      reason: presentation.reason)
         let live = presentation.state != .idle && presentation.state != .ended
         // One call raises the screen once; «К переписке» may then put it away
         // without it coming back (`MainActivity.java:519`).

@@ -157,29 +157,36 @@ confirmation, so it is read before a microphone is asked for and never after. A
 refused microphone cancels the intent, tells the peer only when it was an
 Answer for the call the dialog was raised for, and shows the Settings hint.
 
-`AudioSessionController` owns the one `AVAudioSession` of the process, which is
-the part of Android's engine that iOS keeps outside libwebrtc. A call needs the
-session running **before there is any media at all**, because the `audio`
-background mode holds nothing without one. libwebrtc is put into manual audio
-with the audio unit off, `.playAndRecord` / `.voiceChat` / `.allowBluetoothHFP`
-is activated, and one silent looped WAVE of zeroes keeps it alive; only
-`connected` hands the audio unit to libwebrtc and stops the loop.
+`AudioSessionController` serializes session policy and consumes the same
+ordered controller presentation as the UI. [RFC-0025](../../rfcs/0025-ios-call-tone-lifecycle.md)
+records the revised candidate: foreground incoming alerts use `ambient/default`
+without recording mode; Call/Answer awaits actual `playAndRecord/voiceChat/HFP`
+readiness before its first control, inside the shared ten-second setup window.
+Only connected media can enable libwebrtc's audio unit.
 
-`CallTones` gives a call the three sounds Android has, driven by the same
-published controller view and applied on every transition: a ring while a call
-is coming in, a ringback while the peer's phone is ringing, and a two-second
-busy tone when an outgoing call ends in `busy`, `reject` or `timeout`. They play
-into the session `AudioSessionController` already holds, so they follow the
-call's own route, and nothing sounds once the call is `connected`. Two
-differences from Android are deliberate. The ring is **synthesised** rather than
-the user's own ringtone, because iOS exposes no API that reads it and
-`AudioServicesPlaySystemSound` ignores both the call route and the silent
-switch; the waves are built in code for the reason the silent keep-alive is, so
-that no sound asset enters the bundle or the third-party notices. And an
-incoming call rings **only while the application is open**: this client has no
-push and no CallKit, so a closed or locked phone is not reached at all, which
-the caption contract already tells the user. Android rings from a background
-notification, and that difference is about delivery, not about sound.
+`CallTones` selects incoming ring, outgoing ringback and the caller's busy tail
+for `busy`, `reject` or `timeout` from outgoing ringing. Player construction,
+play and stop run on `QueuedCallToneOutput`, never MainActor or the state owner.
+Session switching waits for stop acknowledgement, and tone start waits for
+activation. Epoch/deadline checks reject delayed starts and completions; a
+candidate remains muted until `play()` succeeds. `confirmedStart` is that API
+result, not proof that a human heard it. A silent keep-alive cannot stall already
+active connected media; audible output must stop first.
+
+An incoming ring is synthesized, honors the system silent behavior of ambient
+output and pauses while the app is inactive, without renewing its original
+60-second maximum. Haptics follow OS feedback settings, not a claimed reading of
+the silent switch. There is no push/CallKit/background incoming delivery. This
+intentionally drops the old pre-Answer recording-category keep-alive rather
+than claiming background ringing or exact Android ringer-mode parity.
+
+Busy has an exact two-second waveform and policy deadline and may retain only
+an already-owned caller output route. Capture/engine teardown is not delayed
+for it; release waits for player stop, and an old expiry cannot release a new
+call. Physical OS failures, speaker/headset routing, silent-switch/haptic
+behavior and audibility require Mac/device verification, not waveform parsing.
+[The handoff](call-tones-handoff.md) separates the original Mac results from
+the new tests that still need execution.
 
 `Громкая связь` is `overrideOutputAudioPort(.speaker)` and yields to a wired or
 Bluetooth headset already carrying the call. The proximity sensor runs only

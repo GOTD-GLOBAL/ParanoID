@@ -513,15 +513,18 @@ class UiContract(unittest.TestCase):
         # and only then the first control.
         self.before('await AppModel.requestMicrophone()', 'calls?.prepareAudio()',
                     intent, 'AppModel.beginCallIntent')
-        self.before('calls?.prepareAudio()', 'await waitForCallConnection()',
+        self.before('calls?.prepareAudio()', 'await waitForCallConnection(until: deadline)',
                     intent, 'AppModel.beginCallIntent')
         for control in ('await calls?.answer(microphone: true, callId: callId, generation: answerGeneration)',
                         'await calls?.start(account:'):
             self.assertLess(intent.index('calls?.prepareAudio()'), intent.index(control),
                             f'{control!r} runs before the audio session')
-        # An incoming ring gets its session when it is shown.
-        self.present('if presentation.state == .incoming, previous != .incoming { audio.begin() }',
-                     coordinator, COORDINATOR)
+        # The authenticated publication reaches the shared audio policy BEFORE
+        # the independent UI hop. Incoming uses output-only ambient, not call capture.
+        self.present('audio.callChanged(presentation)', coordinator, COORDINATOR)
+        self.before('audio.callChanged(presentation)',
+                    'Task { @MainActor in model?.callChanged(presentation) }', coordinator, COORDINATOR)
+        self.present('static let incomingCategory = AVAudioSession.Category.ambient', audio, AUDIO)
         # A live call keeps the lanes it is signalled over: every published
         # call state reaches the foreground policy, including `ended`, which
         # opens its teardown window (`LifecyclePolicy`).
@@ -532,13 +535,13 @@ class UiContract(unittest.TestCase):
         # libwebrtc is in manual audio and silent until the call is connected.
         self.present('session.useManualAudio = true', audio, AUDIO)
         self.present('session.isAudioEnabled = false', audio, AUDIO)
-        self.present('RTCAudioSession.sharedInstance().isAudioEnabled = true', audio, AUDIO)
-        enable = audio[audio.index('    func enableAudio() {'):audio.index('    /// «Громкая связь»')]
-        self.present('guard held, !audible else { return }', enable,
-                     'AudioSessionController.enableAudio()')
-        # `connected` is the only thing that arms the proximity sensor, so the
-        # route is re-applied from here too.
-        self.present('applyRoute()', enable, 'AudioSessionController.enableAudio()')
+        self.present('RTCAudioSession.sharedInstance().isAudioEnabled = enabled', audio, AUDIO)
+        self.present('guard !enabled || (held && !incomingOnly) else { return }', audio, AUDIO)
+        tones = self.sources[TONES]
+        self.present('guard wantedMode == .call, !interrupted, !terminal else { return }', tones, TONES)
+        self.present('session.media(capture && mode == .call && !terminal && !interrupted)', tones, TONES)
+        self.present('audio.quiesceMedia()', coordinator, COORDINATOR)
+        self.present('audible = enabled\n        applyRoute()', audio, AUDIO)
         self.present('case .connected:\n            // Only here does libwebrtc get the audio unit',
                      coordinator, COORDINATOR)
         # The category is the one a call needs, and the silent loop holds the
@@ -547,33 +550,24 @@ class UiContract(unittest.TestCase):
         self.present('static let mode = AVAudioSession.Mode.voiceChat', audio, AUDIO)
         self.present('static let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP]',
                      audio, AUDIO)
-        self.present('player.numberOfLoops = -1', audio, AUDIO)
-        self.present('player.volume = 0', audio, AUDIO)
-        # The three call sounds are synthesised in `CallTones` and driven by
-        # the published controller view. What stays forbidden is a sound the
-        # call cannot carry properly: `AudioServicesPlaySystemSound` ignores
-        # the call route and the silent switch, a sound loaded from a file
-        # would be an asset in the bundle and in the third-party notices, and
-        # `RingtoneManager` is Android's.
+        playback = self.sources['App/ParanoID/Voice/CallTonePlayback.swift']
+        self.present('candidate.numberOfLoops = pattern == .busy ? 0 : -1', playback, 'CallTonePlayback')
+        self.present('candidate.volume = 0', playback, 'CallTonePlayback')
+        # No player may bypass the owned session/output executor; synthetic
+        # waves need no ringtone asset or system-sound routing shortcut.
         for name, text in self.sources.items():
-            for token in ('AVAudioPlayer(contentsOf:', 'RingtoneManager',
-                          'AudioServicesPlaySystemSound'):
+            for token in ('AVAudioPlayer(contentsOf:', 'RingtoneManager', 'AudioServicesPlaySystemSound'):
                 self.absent(token, text, name)
-        tones = self.sources[TONES]
-        # Driven by the controller view, exactly as Android drives it, and
-        # never by a screen or a timer of the interface.
-        self.present('func changed(state next: CallController.State, callId id: String, '
-                     'reason: CallBody.EndReason?)', tones, TONES)
-        self.present('tones.changed(state: presentation.state, callId: presentation.callId,',
-                     model, MODEL)
-        # The ringback belongs to an outgoing call that is still ringing, so
-        # nothing sounds once the call is connected.
-        self.present('if next == .outgoing, outgoing { startRingback() } else { stopRingback() }',
-                     tones, TONES)
-        # The busy tone answers only the three ends Android answers.
+        self.absent('AVAudioPlayer(', tones, TONES)
+        self.absent('tones.changed(', model, MODEL)
+        self.present('toneDriver.changed(state: presentation.state, callId: presentation.callId, reason: presentation.reason)',
+                     audio, AUDIO)
+        self.present('if outgoing { wantedSound = .ringback }', tones, TONES)
         self.present('reason == .busy || reason == .reject || reason == .timeout', tones, TONES)
-        # A ring that is never answered stops by itself, as `MAX_RING_MS` does.
         self.present('static let maximumRingSeconds', tones, TONES)
+        self.present('output.stop(token: token)', tones, TONES)
+        self.present('guard session.activate(mode)', tones, TONES)
+        self.present('output.start(pattern, token: token', tones, TONES)
         # An interruption or a media-services reset ends the call; a route
         # change does not.
         self.present('controller.mediaState(generation, .failed)', coordinator, COORDINATOR)
@@ -583,12 +577,9 @@ class UiContract(unittest.TestCase):
         # «Ответить» after a cellular call would hand libwebrtc the audio unit
         # of a session the system had already deactivated.
         self.present('case .ended: resume()', audio, AUDIO)
-        resume = audio[audio.index('    private func resume() {'):
-                       audio.index('    /// Releases the session')]
-        self.present('guard held else { return }', resume, 'AudioSessionController.resume()')
-        self.present('try session.setActive(true)', resume, 'AudioSessionController.resume()')
-        self.present('if !audible { resumeKeepAlive() }', resume,
-                     'AudioSessionController.resume()')
+        self.present('toneDriver.setInterrupted(false)', audio, AUDIO)
+        self.present('toneDriver.setInterrupted(true)', audio, AUDIO)
+        self.present('toneDriver.mediaServicesReset()', audio, AUDIO)
         self.present('try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)',
                      audio, AUDIO)
         self.present('UIDevice.current.isProximityMonitoringEnabled = policy.proximity', audio, AUDIO)
@@ -615,8 +606,8 @@ class UiContract(unittest.TestCase):
         self.present('boolean showStage=live&&(localVideo||remoteVideo);',
                      self.java['MainActivity.java'], 'MainActivity.java')
         # Cleanup hands the route back before it hands the session back.
-        end = audio[audio.index('    func end() {'):audio.index('    /// Whether a wired')]
-        self.before('try? session.overrideOutputAudioPort(.none)', 'try? session.setActive(false)',
+        end = audio[audio.index('    private func deactivateToneMode()'):audio.index('    /// Whether a wired')]
+        self.before('try? session.overrideOutputAudioPort(.none)', 'try session.setActive(false)',
                     end, 'AudioSessionController.end()')
 
     def test_ten_seconds_of_waiting_and_then_the_connection_sentence(self):
@@ -625,13 +616,13 @@ class UiContract(unittest.TestCase):
         self.present('static let callIntentPoll = Duration.milliseconds(100)', model, MODEL)
         wait = model[model.index('    private func waitForCallConnection('):
                      model.index('    /// The call view changed')]
-        self.present('while !isConnected {', wait, 'AppModel.waitForCallConnection()')
-        self.present('ContinuousClock.now < deadline', wait, 'AppModel.waitForCallConnection()')
+        self.present('while !isConnected {', wait, 'AppModel.waitForCallConnection(until: deadline)')
+        self.present('ContinuousClock.now < deadline', wait, 'AppModel.waitForCallConnection(until: deadline)')
         intent = model[model.index('    private func beginCallIntent('):
                        model.index('    /// Drops the pending intent')]
         self.present('showNotice(Strings.Notice.callOffline)', intent, 'AppModel.beginCallIntent')
         # A missed window gives the session back and sends nothing.
-        offline = intent[intent.index('guard await waitForCallConnection() else {'):]
+        offline = intent[intent.index('guard await waitForCallConnection(until: deadline) else {'):]
         self.before('calls?.releaseAudio()', 'showNotice(Strings.Notice.callOffline)',
                     offline, 'AppModel.beginCallIntent')
 

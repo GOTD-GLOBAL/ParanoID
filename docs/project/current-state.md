@@ -6,44 +6,28 @@ last_reviewed: 2026-09-18
 
 # Current project state
 
-## A call makes a sound on the iPhone — local candidate (2026-09-18)
+## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
 
-At Yaroslav's request the candidate gives the iOS client the three call sounds
-Android has had since 2026-09-12: a ring while a call is coming in, a ringback
-while the peer's phone is ringing, and a two-second busy tone when an outgoing
-call that was still ringing ends in `busy`, `reject` or `timeout`. Before this,
-placing a call was up to forty-five seconds of silence with only «Вызываем…» on
-screen. `CallTones` is driven from the published controller view and is
-idempotent per call and state, the way `TextEngine` drives `CallTones.java`, so
-a sound can only follow a state the controller authenticated. Nothing sounds
-once the call is connected; a ring nobody answers stops after a minute. No
-microphone is opened, no authority is held, and the tones play into the session
-the call already owns, so they follow its route.
+At Yaroslav's request PR50's initial tone player was corrected after review.
+[RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md), proposed, records the policy:
+ordered authenticated presentations drive a queue-confined session/tone policy;
+player I/O has its own executor, muted startup and generation/deadline fences.
+Incoming uses foreground-only ambient, not a pre-Answer recording session.
+Caller ringback and a bounded terminal busy tail use an already-owned call
+route; capture is revoked separately. Call/Answer awaits actual audio readiness
+within the shared setup deadline. SDK interruption/reset recovery balances the
+pinned WebRTC activation count rather than assuming activation is idempotent.
 
-Two differences from Android are deliberate and recorded in the source and in
-the client document. The ring is synthesised rather than the user's own
-ringtone, because iOS exposes no API that reads it and the system-sound API
-ignores both the call route and the silent switch; the waves are built in code
-so that no sound asset enters the bundle or the third-party notices. And an
-incoming call rings **only while the application is open**, because this client
-has no push and no CallKit, which the caption contract already states to the
-user. That difference is about delivery, not about sound.
+The [handoff](../clients/ios/call-tones-handoff.md) describes new failure, held-
+player, timer, cancellation, coalesced-interruption and readiness regressions.
+Linux source checks can verify wiring, not Swift execution or audibility. A
+fresh Mac compile/full app test and bundle are required for this corrected tree;
+no physical phone, silent-switch/headset/haptic or real-peer result is claimed.
+No merge, publication, deployment or RFC/ADR acceptance has occurred.
 
-This reverses a decision the source contract enforced: `test_ui_contract.py`
-required that no tone player exist anywhere in this client. The rule is
-**narrowed rather than removed** — a sound loaded from a bundled file, the
-Android ringtone API and the system-sound API all stay refused — and new rules
-were added for who may drive a tone and when it must stop. The justification on
-record covered only the incoming ringtone, never the ringback or the busy tone.
-
-Mac evidence on this candidate: ParanoidKit **362/0** (unchanged; the work is
-app-target only); the application test target **68/0** on the simulator,
-including **12/12** new `CallTonesTests`; all fourteen `ios-static` source gates
-green; the freshly rebuilt device bundle **23 checks, 1 skipped**. What is not
-claimed: nothing here proves a person hears these tones through a real phone's
-earpiece. The tests measure the state machine and that each synthesised wave is
-a file the platform accepts; audibility on a device is unverified, as is
-behaviour against a real peer.
+Historical contributor receipt on `4db2f8c` (same initial iOS source as its
+pre-merge branch): package 362/0, app68/0 with tones12/12, fresh bundle23/1 and
+source gates green. That receipt does **not** cover the revised lifecycle.
 
 ## Android v27 published — 2026-09-18
 

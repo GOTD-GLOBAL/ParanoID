@@ -8,35 +8,20 @@ public contract is declared.
 
 ## [Unreleased]
 
-### A call makes a sound on the iPhone — 2026-09-18
+### iOS call tones and lifecycle review corrections — 2026-09-18
 
-- **The caller hears the line.** Placing a call used to be up to forty-five
-  seconds of silence with only «Вызываем…» on screen. The iPhone now gives a
-  call the three sounds Android has had since 2026-09-12: a ring while a call is
-  coming in, a ringback while the peer's phone is ringing, and a two-second busy
-  tone when an outgoing call that was still ringing ends in `busy`, `reject` or
-  `timeout`. Nothing sounds once the call is connected, and a ring nobody
-  answers stops after a minute, as Android's `MAX_RING_MS` does.
-- **Driven by the call, not by a screen.** `CallTones` is applied from the
-  published controller view and is idempotent per call and state, the way
-  `TextEngine` drives `CallTones.java`, so a sound can only follow a state the
-  controller authenticated. It opens no microphone, holds no authority and plays
-  into the session the call already owns, so it follows the call's own route.
-- **The waves are synthesised in code**, not shipped as sound files, for the
-  reason the silent keep-alive is: an asset would be one more file in the
-  third-party notices and one more thing a build could lose.
-- **Two differences from Android are deliberate and written down.** The ring is
-  not the user's own ringtone, because iOS exposes no API that reads it and the
-  system-sound API ignores both the call route and the silent switch. And an
-  incoming call rings **only while the application is open**: this client has no
-  push and no CallKit, so a closed or locked phone is not reached at all, which
-  the caption contract already tells the user. That difference is about
-  delivery, not about sound.
-- The source contract that forbade any tone player in this client is **narrowed
-  rather than removed**: a sound loaded from a bundled file, the Android
-  ringtone API and the system-sound API all stay refused, and the new rules
-  assert who may drive a tone and when it must stop. No protocol, core, server
-  or Android behaviour changes.
+- Add synthesized incoming ring, caller ringback and exact two-second busy
+  pattern for busy/reject/timeout from outgoing ringing.
+- Move player I/O off MainActor/state owner; fence delayed starts/completions and
+  timers, wait for stop before switching session, and check actual play success.
+- Use foreground ambient incoming alerts; preserve explicit Call/Answer capture
+  consent. A terminal busy tail retains output only, not microphone capture.
+- Await real audio readiness before controls, with cancellation and the shared
+  setup deadline. Recover counted SDK leases after failed deactivation,
+  interruption or reset, including coalesced callbacks and missing end events.
+- Add deterministic policy/backend/readiness tests. Native validation of this
+  revision remains pending; [RFC-0025](docs/rfcs/0025-ios-call-tone-lifecycle.md)
+  is proposed, not accepted. No phone audibility or deployment claim.
 
 ### Android v27 packaging — 2026-09-18
 
