@@ -112,7 +112,8 @@ install automatically. Cache files are disposable, not messaging data.
   was changed, no pin was replaced and no trust-all or cleartext fallback was added.
 - No HTTP redirect, proxy, cache, cookies or updater authentication fields. A global
   CookieHandler causes a fail-closed error. The app installs no global Authenticator.
-  Connection/read timeout 8 seconds; streaming deadline 60 seconds (checked per
+  Connection timeout 8 seconds, response read timeout 15 seconds (issue #39);
+  streaming deadline 60 seconds (checked per
   read, therefore up to one read timeout beyond the deadline); bounded streaming
   works with fixed-length and chunked responses. Non-identity encoding is rejected.
 

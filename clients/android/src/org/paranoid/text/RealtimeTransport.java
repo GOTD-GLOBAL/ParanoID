@@ -33,7 +33,7 @@ public final class RealtimeTransport implements AutoCloseable {
             c=(HttpsURLConnection)new URL(realm+path).openConnection(Proxy.NO_PROXY);
             synchronized(active){if(closed)throw new IOException("transport closed");active.add(c);}
             c.setSSLSocketFactory(factory);c.setInstanceFollowRedirects(false);
-            c.setConnectTimeout(8000);c.setReadTimeout(path.startsWith("/v2/events?")?30000:8000);
+            c.setConnectTimeout(8000);c.setReadTimeout(path.startsWith("/v2/events?")?30000:15000);
             c.setRequestMethod(method);c.setRequestProperty("Accept","application/json");
             if(authorization!=null)c.setRequestProperty("Authorization",authorization);
             if(method.equals("POST")) {

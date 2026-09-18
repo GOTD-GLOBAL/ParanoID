@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android response timeout — 2026-09-18
+
+- Ordinary self-service v2 reads now wait 15 seconds, above the server 10-second
+  handler bound: registration/auth, text, TURN and updates. Connect remains
+  8 seconds; realtime events remain 30; legacy v1 KeyTransport remains 8.
+  TLS, retry identity and persistence are unchanged. This fixes premature client
+  timeout, not the unproven cause of hosted issue #38.
+
 ### Message time — 2026-09-17
 
 - **A message says when it happened.** A history entry gains `local_ms`: the

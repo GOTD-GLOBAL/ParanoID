@@ -150,8 +150,14 @@ healthy pooled transport. Explicit cancellation may close a waiting connection.
 Client pools contain at most two concurrent sockets per realm; idle sockets are
 closed promptly. V2 HTTP/1 header-read timeout is eight seconds, bounded separately
 from an authenticated long-poll response; no endless idle-header permit retention.
-No infinite socket or session lifetime. Client read timeout must exceed the 25-
-second handler bound; connection expiry/cancellation uses a new signed request.
+No infinite socket or session lifetime. For self-service v2, clients configure
+response read timeouts above the applicable handler deadline: 15 seconds for
+ordinary routes (10-second handler), 30 seconds for GET `/v2/events` (25-second
+handler). Connection establishment keeps its separate 8-second timeout. These
+are socket read bounds, not total operation or download deadlines. Connection
+expiry/cancellation uses a new signed request. A message retry preserves its
+immutable message ID and ciphertext; no timeout permits weaker TLS or
+authentication.
 Connection limits remain shared availability risks, not guaranteed fairness.
 
 ## Discovery, rollback and required evidence

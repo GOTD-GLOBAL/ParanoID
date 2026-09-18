@@ -32,7 +32,7 @@ final class VoiceRelayTransport implements AutoCloseable {
         }
         try {
             connection.setSSLSocketFactory(factory);connection.setInstanceFollowRedirects(false);
-            connection.setUseCaches(false);connection.setConnectTimeout(8000);connection.setReadTimeout(8000);
+            connection.setUseCaches(false);connection.setConnectTimeout(8000);connection.setReadTimeout(15000);
             connection.setRequestMethod("GET");connection.setRequestProperty("Authorization",authorization);
             connection.setRequestProperty("Accept","application/json");
             connection.setRequestProperty("Cache-Control","no-store");

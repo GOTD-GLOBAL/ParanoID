@@ -6,6 +6,16 @@ last_reviewed: 2026-09-17
 
 # Current project state
 
+## Android response timeout candidate — 2026-09-18
+
+Issue #39: ordinary self-service v2 reads use 15 seconds, events 30 seconds and
+connect 8 seconds. Key/auth, TURN and update transports are included. Real
+loopback pinned-TLS tests fail on the old 8-second reads and pass for delayed
+9-second replies and 10-second HTTP 408 responses. Existing pooling, independent
+lanes and redirect refusal pass. This is local JVM evidence, not phone, APK
+publication, merge or hosted rollout. Issue #38 remains separate; raising this
+bound does not establish or repair its network-drop cause.
+
 ## Message time — local candidate (2026-09-17)
 
 The candidate gives a message the instant the device that wrote or received it
