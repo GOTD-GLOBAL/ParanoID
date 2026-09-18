@@ -6,6 +6,16 @@ last_reviewed: 2026-09-17
 
 # Current project state
 
+## Android v27 published — 2026-09-18
+
+[The v27 release receipt](../clients/android/v27-release.md) records the actual
+retained-signer publication of version27 / `0.0.27-timeout` from source abc998f
+(main after PR48 plus packaging metadata). Both the old v25 and current updater
+downloaded the live artifact with the expected digest. The downloaded APK also
+passed package/version/signer/alignment checks. No phone installation or issue38
+resolution is claimed; no server runtime/config/data change was performed.
+The source-preparation entry below is superseded by this dated receipt.
+
 ## Android v27 release preparation — 2026-09-18
 
 Sergey requested merging PR48 and publishing a new in-app Android update. PR48
