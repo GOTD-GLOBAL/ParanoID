@@ -92,11 +92,6 @@ final class AudioSessionController: @unchecked Sendable {
     ///   type's own queue, never on the main thread and never on the owner.
     init(events: @escaping @Sendable (Interruption) -> Void) {
         self.events = events
-        subscribe()
-        Task { @MainActor [weak self] in
-            let active = UIApplication.shared.applicationState == .active
-            self?.setForeground(active)
-        }
     }
 
     private final class ToneSessionPort: CallToneSessionPort {
@@ -107,13 +102,19 @@ final class AudioSessionController: @unchecked Sendable {
         func media(_ enabled: Bool) { owner?.setMediaForTones(enabled) }
     }
 
-    private func setForeground(_ value: Bool) {
-        queue.async { [self] in foreground = value; toneDriver.setForeground(value) }
+    private func setForeground(_ value: Bool, cancelPreparation: Bool = false) {
+        queue.async { [self] in
+            foreground = value; toneDriver.setForeground(value)
+            if cancelPreparation { toneDriver.cancelPreparationForBackground() }
+        }
     }
 
     /// Ordered on the same queue as session policy, not via an independent UI hop.
     func callChanged(_ presentation: CallPresentation) {
         queue.async { [self] in
+            // The coordinator has assigned its controller before publishing or
+            // preparing audio. Register callbacks only after that construction.
+            subscribe()
             if presentation.state == .incoming,
                presentedState != .incoming || presentedCallId != presentation.callId { speaker = false }
             presentedState = presentation.state; presentedCallId = presentation.callId
@@ -136,7 +137,7 @@ final class AudioSessionController: @unchecked Sendable {
     /// Fire-and-forget preparation retained for platform tests. The application
     /// uses prepareForCall() to await real readiness before sending controls.
     func begin() {
-        queue.async { [self] in toneDriver.prepareCall() }
+        queue.async { [self] in subscribe(); toneDriver.prepareCall() }
     }
 
     /// Call/Answer waits for real session readiness, not merely enqueuing begin().
@@ -151,6 +152,7 @@ final class AudioSessionController: @unchecked Sendable {
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
                 queue.async { [self] in
                     guard reply.isPending else { return }
+                    subscribe()
                     toneDriver.prepareCall { value in reply.finish(value) }
                 }
             }
@@ -353,12 +355,20 @@ final class AudioSessionController: @unchecked Sendable {
     private func subscribe() {
         guard observers.isEmpty else { return }
         let centre = NotificationCenter.default
-        for (name, active) in [(UIApplication.didBecomeActiveNotification, true),
-                               (UIApplication.willResignActiveNotification, false),
-                               (UIApplication.didEnterBackgroundNotification, false)] {
+        // Fail quiet until the main actor confirms current visibility. The
+        // controller can be constructed long before its first audio request.
+        foreground = false
+        toneDriver.setForeground(false)
+        for (name, active, background) in [(UIApplication.didBecomeActiveNotification, true, false),
+                                           (UIApplication.willResignActiveNotification, false, false),
+                                           (UIApplication.didEnterBackgroundNotification, false, true)] {
             observers.append(centre.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.setForeground(active)
+                self?.setForeground(active, cancelPreparation: background)
             })
+        }
+        Task { @MainActor [weak self] in
+            let state = UIApplication.shared.applicationState
+            self?.setForeground(state == .active, cancelPreparation: state == .background)
         }
         observers.append(centre.addObserver(forName: AVAudioSession.interruptionNotification,
                                             object: nil, queue: nil) { [weak self] note in

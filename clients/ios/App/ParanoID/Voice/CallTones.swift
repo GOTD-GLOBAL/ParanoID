@@ -145,11 +145,19 @@ final class CallTones: @unchecked Sendable {
         if recovering { interrupted = false; capture = false }
         let changed = foreground != value
         foreground = value
-        if !value && (state == .idle || state == .ended) && !terminal {
+        if (changed && wantedMode == .incoming) || recovering { reconcile() }
+    }
+
+    /// Inactive permission alerts only pause incoming output; actual background
+    /// also abandons a pre-call preparation that has no live call behind it.
+    func cancelPreparationForBackground() {
+        dispatchPrecondition(condition: .onQueue(queue))
+        if state == .incoming && wantedMode == .call && !capture {
+            resolvePrepared(false); restoreIncoming()
+        } else if (state == .idle || state == .ended) && !terminal {
             wantedMode = nil; wantedSound = nil; deadline = nil; capture = false
-            resolvePrepared(false)
-            reconcile()
-        } else if (changed && wantedMode == .incoming) || recovering { reconcile() }
+            resolvePrepared(false); session.media(false); reconcile()
+        }
     }
 
     func setInterrupted(_ value: Bool) {

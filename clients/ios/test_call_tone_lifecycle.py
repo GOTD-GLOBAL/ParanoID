@@ -45,4 +45,11 @@ class ToneLifecycleContract(unittest.TestCase):
         self.assertIn('guard !terminal else',apply)
         self.assertLess(apply.index('guard !terminal else'),apply.index('guard session.activate(mode)'))
 
+    def test_session_observers_wait_until_coordinator_construction_finishes(self):
+        audio=(VOICE/'AudioSessionController.swift').read_text()
+        initializer=audio.split('init(events:',1)[1].split('private final class ToneSessionPort',1)[0]
+        self.assertNotIn('subscribe()',initializer)
+        changed=audio.split('func callChanged(',1)[1].split('func restoreIncoming()',1)[0]
+        self.assertIn('subscribe()',changed)
+
 if __name__=='__main__': unittest.main()

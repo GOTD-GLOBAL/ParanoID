@@ -288,6 +288,16 @@ final class CallTonesTests: XCTestCase {
         }
     }
 
+    func testInactivePermissionOverlayDoesNotCancelPreparationButBackgroundDoes() {
+        let f = Fixture()
+        f.queue.sync { f.tones.prepareCall() }; f.drain()
+        f.queue.sync { f.tones.setForeground(false) }; f.drain()
+        XCTAssertEqual(f.session.leases, 1, "inactive is not background")
+        f.queue.sync { f.tones.cancelPreparationForBackground() }; f.drain()
+        XCTAssertEqual(f.session.leases, 0)
+        XCTAssertNil(f.started)
+    }
+
     func testTerminalToneNeverEnablesCaptureAndQuiesceIsImmediate() {
         let f = Fixture(); f.changed(.starting); f.changed(.outgoing)
         f.queue.sync { f.tones.quiesceMedia() }; f.changed(.ended, reason: .busy)
