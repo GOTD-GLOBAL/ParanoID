@@ -27,7 +27,21 @@ preferences, naming no contact and no call. Android is unaffected, its manifest
 already disabling application backup, and no core, protocol, server, route or
 snapshot behaviour changes.
 
-Mac evidence on this candidate: ParanoidKit **344/0**; the UI-contract,
+The first revision of this candidate was reviewed on 2026-09-18 and changed
+before merge. The review found five ways a failure of the store destroyed or
+dropped the table it held: a failed directory sync deleted the committed file, a
+transient read failure became an empty table that then overwrote the real one, a
+preference was retired against bytes nobody had parsed, the read ceiling sat
+below the largest admissible call log so that log would never migrate, and a
+save that succeeded after a failed migration left the old copy behind. All five
+are fixed, and the reviewer's five regressions are in the suite: run against the
+previous revision they are **5 tests, 5 failures**, including `7428417` bytes
+against the old `4194304` ceiling. A sixth was found here while fixing them —
+the candidate took its backup flag only after the rows were already written, so
+an interruption in between left them in a file a backup would take — and it is
+closed by flagging the candidate while it is still empty.
+
+Mac evidence on this candidate: ParanoidKit **358/0**; the UI-contract,
 storage-bootstrap, documents-against-evidence and component-boundary source
 gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
 is the owner gate). No physical backup/restore experiment on a device is

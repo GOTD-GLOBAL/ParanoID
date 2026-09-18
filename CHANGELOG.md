@@ -16,12 +16,21 @@ public contract is declared.
   backup on their own inode ([RFC-0024](docs/rfcs/0024-local-metadata-at-rest.md),
   proposed). Peer accounts, typed names, call outcomes, durations and message
   anchors are no longer reproduced by a restore onto another device.
-- **Commit rules are the state file's:** the flag is set on the candidate before
-  the rename, the committed file is read back byte for byte and its flag read
-  back too, and a file that cannot be proven excluded is removed rather than left
-  for the next backup. A phone updating from an earlier build migrates each
-  preference once and clears it only after that proof, so an interrupted
-  migration repeats instead of losing the table.
+- **Commit rules are the state file's:** the candidate is created empty and
+  flagged before a single row is written and before the rename, the committed
+  file is read back byte for byte and its flag read back too, and a file that
+  cannot be verified or proven excluded is removed rather than left for the next
+  backup. A phone updating from an earlier build migrates each preference once
+  and clears it only after that proof, so an interrupted migration repeats
+  instead of losing the table.
+- **No failure of this store destroys the table.** A file that exists and will
+  not open seals the store instead of becoming an empty table that the next
+  write replaces; a committed, verified, provably excluded file is kept even when
+  the directory sync that follows fails; a preference is retired only against a
+  read that both parses and proves the exclusion; and the read ceiling clears the
+  largest admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no
+  legal table is refused migration and left in the backup-eligible preference.
+  These five rules come from the PR47 review and each has a regression behind it.
 - **Not encryption.** The bytes stay plain JSON inside the container under
   `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
   them is RFC-0024 question 2, open.

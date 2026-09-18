@@ -66,13 +66,22 @@ ratchet while the Keychain key still worked.
 
 `ContactNames` and `CallLog` live in `Application Support/paranoid/` as
 `contact-names.v1.json` and `call-log.v1.json`, owner-only,
-`.completeUntilFirstUserAuthentication`, 4 MiB read ceiling, each excluded from
+`.completeUntilFirstUserAuthentication`, 16 MiB read ceiling, each excluded from
 OS backup ([RFC-0024](../../rfcs/0024-local-metadata-at-rest.md), proposed).
 They use the state file's commit sequence for the reason it has one: the flag
-lives on the inode, so it is set on the candidate before the rename, and it is
-read back from the committed name afterwards. A file that cannot be proven
-excluded is removed rather than left for the next backup. One
-`LocalMetadataStore` implements this for both.
+lives on the inode, so it is set on the candidate before the rename — and here
+while that candidate is still empty, so no interruption leaves rows in an
+unflagged file — and it is read back from the committed name afterwards. A file
+that cannot be verified or proven excluded is removed rather than left for the
+next backup. One `LocalMetadataStore` implements this for both.
+
+Failure never destroys the table. A file that exists and will not open seals the
+store rather than becoming an empty table that the next write replaces; a
+committed, verified, provably excluded file is kept even when the directory sync
+that follows fails; and the preference behind a file is retired only against a
+read that both parses and proves the exclusion. The ceiling clears the largest
+admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no legal table
+is refused migration and left in the backup-eligible preference.
 
 Peer IDs, locally assigned names, call outcomes, durations and message anchors
 are therefore no longer carried in an OS backup/restore. They remain plain JSON

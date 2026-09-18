@@ -44,15 +44,25 @@ Both tables move out of `UserDefaults` into files in
 from OS backup on its own inode.
 
 - `contact-names.v1.json` and `call-log.v1.json`, owner-only, data protection
-  `completeUntilFirstUserAuthentication`, 4 MiB read ceiling.
+  `completeUntilFirstUserAuthentication`, 16 MiB read ceiling.
 - The commit sequence is the snapshot's, for the reason the snapshot has it:
-  write the candidate, **set the backup flag on the candidate before the
-  rename** because the flag lives on the inode the rename moves, `F_FULLFSYNC`,
-  `rename(2)`, read the committed file back and compare it byte for byte, read
-  the flag back from the committed name, `F_FULLFSYNC` the directory.
-- A file that cannot be proven excluded is **removed**, not kept. A table this
-  build promised to withhold from a backup is not left behind for the next one.
+  remove any candidate an interrupted run left, create the candidate **empty**,
+  **set the backup flag on it before a single row is written and before the
+  rename** because the flag lives on the inode the rename moves, write the
+  table, `F_FULLFSYNC`, `rename(2)`, read the committed file back and compare it
+  byte for byte, read the flag back from the committed name, `F_FULLFSYNC` the
+  directory.
+- A file that cannot be verified or cannot be proven excluded is **removed**,
+  not kept. A table this build promised to withhold from a backup is not left
+  behind for the next one.
 - One shared `LocalMetadataStore` implements this once for both tables.
+
+The ceiling is set by the largest table the product itself admits, not by a
+guess: core contact admission stops at 64 conversations
+(`clients/core/src/clean_service.rs:365`) and the log keeps 500 rows per
+conversation, which encodes to about 7.1 MiB. A ceiling below that would refuse
+a legal table, so the pre-upgrade log would never migrate and would stay in the
+backup-eligible preference for ever — the opposite of this RFC's purpose.
 
 ### Migration
 
@@ -73,6 +83,27 @@ chat, shows the messages the core committed and places calls, with the table
 live in memory for the rest of the run. This is deliberately **not** the
 snapshot's rule, where a failed commit is terminal — the snapshot holds the
 ratchet, and these hold labels.
+
+But a convenience may not destroy itself, and three rules exist because the
+first implementation of this RFC broke exactly that (PR47 review, 2026-09-18):
+
+- **A file that exists and will not open is not an empty table.** When the read
+  fails and no preference stands behind it, the store *seals*: every later write
+  and the removal are refused for the life of that instance, so the empty table
+  its caller had to start from never replaces the one nobody could read. A later
+  load that succeeds unseals it. Where a preference does stand behind the file —
+  only possible while a migration is unfinished — that preference is the
+  authority and is used instead.
+- **A committed, byte-exact, provably excluded file is kept even if the
+  directory sync then fails.** That sync makes the rename durable; losing it
+  answers `false` and keeps both the file and the preference, because the
+  preference is the copy that would survive a power loss there. It is never a
+  reason to delete the only copy that is left.
+- **A preference dies only against proof.** It is retired after a full commit,
+  or after a read that both parses for its caller and proves the file excluded —
+  never merely because some bytes came back. A file that this build cannot parse
+  counts as absent, so a corrupt file beside a good preference is replaced by it
+  rather than mistaken for an empty table.
 
 ## What this is not
 

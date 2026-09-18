@@ -59,13 +59,30 @@ public struct ContactNames: Equatable {
     ///   scratch directory so that a run leaves nothing behind.
     public init(store: LocalMetadataStore? = ContactNames.applicationStore()) {
         self.store = store
-        guard let data = store?.load(migrating: Self.carriedForward),
-              let decoded = try? JSONDecoder().decode([String: String].self, from: data)
-        else {
+        // The store is told what a table looks like, so that a file it can read
+        // but this build cannot parse is treated as absent rather than as an
+        // empty table: a preference left by an interrupted migration is then
+        // still used, and the corrupt file is written over instead of trusted.
+        var parsed: [String: String]?
+        let data = store?.load(migrating: Self.carriedForward, validate: { bytes in
+            parsed = Self.table(from: bytes)
+            return parsed != nil
+        })
+        if let parsed {
+            names = Self.sanitize(parsed)
+            return
+        }
+        // Anything that arrives here came from the preference, which the store
+        // does not parse.
+        guard let data, let carried = Self.table(from: data) else {
             names = [:]
             return
         }
-        names = Self.sanitize(decoded)
+        names = Self.sanitize(carried)
+    }
+
+    private static func table(from data: Data) -> [String: String]? {
+        try? JSONDecoder().decode([String: String].self, from: data)
     }
 
     /// Anything that is not a name this build would agree to store is dropped

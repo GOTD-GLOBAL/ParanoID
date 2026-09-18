@@ -185,7 +185,8 @@ path below is closed, container access is not, and acceptance of the rule
 remains owner disposition.
 
 PR45 adds local call outcomes, peer account IDs, durations and message anchors
-in Android app-private SharedPreferences and iOS UserDefaults. These are not
+in Android app-private SharedPreferences and, since RFC-0024, iOS
+backup-excluded container files rather than UserDefaults. These are not
 message plaintext or recordings and are not sent to a peer/server, but they
 are sensitive relationship metadata **outside the encrypted core snapshot**.
 The candidate keeps at most 500 rows per peer; existing core contact admission

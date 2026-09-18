@@ -53,16 +53,25 @@ public struct CallLog: Equatable {
     public init(store: LocalMetadataStore? = CallLog.applicationStore()) {
         self.store = store
         // The preference held the same JSON this file does, so the migration
-        // carries the bytes across without reinterpreting them.
-        guard let data = store?.load(migrating: { $0.data(forKey: Self.defaultsKey) }),
-              let stored = try? JSONDecoder().decode([String: [CallRecord]].self, from: data)
-        else {
+        // carries the bytes across without reinterpreting them. The store is
+        // told what a log looks like so that a file it can read but this build
+        // cannot parse counts as absent, not as a phone that never called.
+        var parsed: [String: [CallRecord]]?
+        let data = store?.load(migrating: { $0.data(forKey: Self.defaultsKey) }, validate: { bytes in
+            parsed = Self.log(from: bytes)
+            return parsed != nil
+        })
+        guard let stored = parsed ?? data.flatMap(Self.log(from:)) else {
             records = [:]
             return
         }
         // Anything unreadable is dropped on the way in rather than shown: a log
         // is a convenience, and a corrupt one must never stop a chat opening.
         records = stored.filter { !$0.key.isEmpty }
+    }
+
+    private static func log(from data: Data) -> [String: [CallRecord]]? {
+        try? JSONDecoder().decode([String: [CallRecord]].self, from: data)
     }
 
     /// This conversation's rows, oldest first.
