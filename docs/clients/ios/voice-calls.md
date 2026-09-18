@@ -163,9 +163,23 @@ session running **before there is any media at all**, because the `audio`
 background mode holds nothing without one. libwebrtc is put into manual audio
 with the audio unit off, `.playAndRecord` / `.voiceChat` / `.allowBluetoothHFP`
 is activated, and one silent looped WAVE of zeroes keeps it alive; only
-`connected` hands the audio unit to libwebrtc and stops the loop. There is **no
-ringtone**: Android rings from a background notification and this client has no
-background.
+`connected` hands the audio unit to libwebrtc and stops the loop.
+
+`CallTones` gives a call the three sounds Android has, driven by the same
+published controller view and applied on every transition: a ring while a call
+is coming in, a ringback while the peer's phone is ringing, and a two-second
+busy tone when an outgoing call ends in `busy`, `reject` or `timeout`. They play
+into the session `AudioSessionController` already holds, so they follow the
+call's own route, and nothing sounds once the call is `connected`. Two
+differences from Android are deliberate. The ring is **synthesised** rather than
+the user's own ringtone, because iOS exposes no API that reads it and
+`AudioServicesPlaySystemSound` ignores both the call route and the silent
+switch; the waves are built in code for the reason the silent keep-alive is, so
+that no sound asset enters the bundle or the third-party notices. And an
+incoming call rings **only while the application is open**: this client has no
+push and no CallKit, so a closed or locked phone is not reached at all, which
+the caption contract already tells the user. Android rings from a background
+notification, and that difference is about delivery, not about sound.
 
 `Громкая связь` is `overrideOutputAudioPort(.speaker)` and yields to a wired or
 Bluetooth headset already carrying the call. The proximity sensor runs only

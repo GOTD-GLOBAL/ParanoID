@@ -712,6 +712,19 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   start after the toggle downgrades the call to audio and never ends it; and
   the two configurations are the ones the protocol demands. Every address in
   the file is RFC 5737 documentation space.
+- `ParanoID/Voice/CallTones.swift` is `clients/android/src/org/paranoid/text/CallTones.java`:
+  the three sounds a call makes, driven by the published controller view and
+  applied on every transition, idempotent per `(state, callId)`. A ring while a
+  call is coming in, a ringback while the peer's phone is ringing, and a
+  two-second busy tone when an outgoing call that was still ringing ends in
+  `busy`, `reject` or `timeout`. Nothing sounds once the call is `connected`,
+  and a ring that is never answered stops after a minute, as `MAX_RING_MS`
+  does. The waves are synthesised in code rather than shipped as assets, for
+  the reason the silent keep-alive is: an asset would be one more file in the
+  third-party notices. Two differences from Android are deliberate and written
+  down in the source — the ring is not the user's own ringtone, because iOS
+  exposes no API that reads it, and an incoming call rings only while the
+  application is open, because this client has no push and no CallKit.
 - `ParanoID/Voice/AudioSessionController.swift` is the part of Android's
   engine that iOS keeps outside libwebrtc: the process has exactly one
   `AVAudioSession`, and a call needs it **running before there is any media at

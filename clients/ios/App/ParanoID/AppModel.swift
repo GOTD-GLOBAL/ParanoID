@@ -195,6 +195,12 @@ final class AppModel {
         localMetadataLoaded = true
     }
 
+    /// The sounds a call makes (`CallTones`, Android's `CallTones.java`). It
+    /// is driven from ``callChanged(_:)`` by the published controller view, the
+    /// way Android drives it from `TextEngine`, so a sound can only follow a
+    /// state the controller authenticated.
+    private let tones = CallTones()
+
     private let drafts = MessagePresentation.Drafts()
     private var runtime: Runtime?
     private var reload: Task<Void, Never>?
@@ -1172,6 +1178,10 @@ final class AppModel {
     /// why it is not `fileprivate` like the lanes' own publication.
     func callChanged(_ presentation: CallPresentation) {
         call = presentation
+        // The ring, the ringback and the busy tone, from the same view the
+        // screen is drawn from and nothing else (`TextEngine.java:92-102`).
+        tones.changed(state: presentation.state, callId: presentation.callId,
+                      reason: presentation.reason)
         let live = presentation.state != .idle && presentation.state != .ended
         // One call raises the screen once; «К переписке» may then put it away
         // without it coming back (`MainActivity.java:519`).

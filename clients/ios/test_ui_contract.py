@@ -68,6 +68,7 @@ CHAT = 'App/ParanoID/Screens/Chat.swift'
 CALL = 'App/ParanoID/Screens/CallScreen.swift'
 COORDINATOR = 'App/ParanoID/Voice/CallCoordinator.swift'
 AUDIO = 'App/ParanoID/Voice/AudioSessionController.swift'
+TONES = 'App/ParanoID/Voice/CallTones.swift'
 ENGINE = 'App/ParanoID/Voice/WebRtcAudioEngine.swift'
 EXTRACT = 'ParanoidKit/Sources/ParanoidKit/Voice/SdpExtract.swift'
 
@@ -548,12 +549,31 @@ class UiContract(unittest.TestCase):
                      audio, AUDIO)
         self.present('player.numberOfLoops = -1', audio, AUDIO)
         self.present('player.volume = 0', audio, AUDIO)
-        # No ringtone: Android rings from a notification this client has not
-        # got, so there is no tone player anywhere here.
+        # The three call sounds are synthesised in `CallTones` and driven by
+        # the published controller view. What stays forbidden is a sound the
+        # call cannot carry properly: `AudioServicesPlaySystemSound` ignores
+        # the call route and the silent switch, a sound loaded from a file
+        # would be an asset in the bundle and in the third-party notices, and
+        # `RingtoneManager` is Android's.
         for name, text in self.sources.items():
-            for token in ('AVAudioPlayer(contentsOf:', 'RingtoneManager', 'CallTones',
+            for token in ('AVAudioPlayer(contentsOf:', 'RingtoneManager',
                           'AudioServicesPlaySystemSound'):
                 self.absent(token, text, name)
+        tones = self.sources[TONES]
+        # Driven by the controller view, exactly as Android drives it, and
+        # never by a screen or a timer of the interface.
+        self.present('func changed(state next: CallController.State, callId id: String, '
+                     'reason: CallBody.EndReason?)', tones, TONES)
+        self.present('tones.changed(state: presentation.state, callId: presentation.callId,',
+                     model, MODEL)
+        # The ringback belongs to an outgoing call that is still ringing, so
+        # nothing sounds once the call is connected.
+        self.present('if next == .outgoing, outgoing { startRingback() } else { stopRingback() }',
+                     tones, TONES)
+        # The busy tone answers only the three ends Android answers.
+        self.present('reason == .busy || reason == .reject || reason == .timeout', tones, TONES)
+        # A ring that is never answered stops by itself, as `MAX_RING_MS` does.
+        self.present('static let maximumRingSeconds', tones, TONES)
         # An interruption or a media-services reset ends the call; a route
         # change does not.
         self.present('controller.mediaState(generation, .failed)', coordinator, COORDINATOR)

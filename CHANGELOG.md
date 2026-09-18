@@ -8,6 +8,36 @@ public contract is declared.
 
 ## [Unreleased]
 
+### A call makes a sound on the iPhone — 2026-09-18
+
+- **The caller hears the line.** Placing a call used to be up to forty-five
+  seconds of silence with only «Вызываем…» on screen. The iPhone now gives a
+  call the three sounds Android has had since 2026-09-12: a ring while a call is
+  coming in, a ringback while the peer's phone is ringing, and a two-second busy
+  tone when an outgoing call that was still ringing ends in `busy`, `reject` or
+  `timeout`. Nothing sounds once the call is connected, and a ring nobody
+  answers stops after a minute, as Android's `MAX_RING_MS` does.
+- **Driven by the call, not by a screen.** `CallTones` is applied from the
+  published controller view and is idempotent per call and state, the way
+  `TextEngine` drives `CallTones.java`, so a sound can only follow a state the
+  controller authenticated. It opens no microphone, holds no authority and plays
+  into the session the call already owns, so it follows the call's own route.
+- **The waves are synthesised in code**, not shipped as sound files, for the
+  reason the silent keep-alive is: an asset would be one more file in the
+  third-party notices and one more thing a build could lose.
+- **Two differences from Android are deliberate and written down.** The ring is
+  not the user's own ringtone, because iOS exposes no API that reads it and the
+  system-sound API ignores both the call route and the silent switch. And an
+  incoming call rings **only while the application is open**: this client has no
+  push and no CallKit, so a closed or locked phone is not reached at all, which
+  the caption contract already tells the user. That difference is about
+  delivery, not about sound.
+- The source contract that forbade any tone player in this client is **narrowed
+  rather than removed**: a sound loaded from a bundled file, the Android
+  ringtone API and the system-sound API all stay refused, and the new rules
+  assert who may drive a tone and when it must stop. No protocol, core, server
+  or Android behaviour changes.
+
 ### iPhone local metadata out of the OS backup — 2026-09-18
 
 - **Local metadata files are excluded after successful migration.** The local contact
