@@ -1,0 +1,13 @@
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS real pinned TLS reused; blocked receive independent of send; redirects refused
+PASS voice delayed 200
+PASS update delayed 200
+PASS key delayed 200
+PASS realtime delayed 200
+PASS voice delayed 408
+PASS key delayed 408
+PASS update delayed 408
+PASS realtime delayed 408

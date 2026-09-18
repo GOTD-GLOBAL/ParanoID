@@ -1,0 +1,19 @@
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS real pinned TLS reused; blocked receive independent of send; redirects refused
+FAIL java.lang.AssertionError: realtime gave up before the server reply
+FAIL java.lang.AssertionError: key gave up before the server reply
+FAIL java.lang.AssertionError: voice gave up before the server reply
+FAIL java.lang.AssertionError: update gave up before the server reply
+Exception in thread "main" java.lang.AssertionError: delayed response failures: 4
+	at org.paranoid.text.ResponseTimeoutSmoke.main(ResponseTimeoutSmoke.java:64)
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/android-response-timeout/clients/android/test_realtime_transport.py", line 29, in <module>
+    main()
+  File "/home/codex/projects/paranoid-worktrees/android-response-timeout/clients/android/test_realtime_transport.py", line 26, in main
+    subprocess.run(['java', '-cp', str(tmp)+':'+cp, 'org.paranoid.text.ResponseTimeoutSmoke', str(tmp/'server.p12')], check=True, timeout=65)
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['java', '-cp', '/tmp/paranoid-pool-ivgp1qj3:/home/codex/projects/paranoid-worktrees/android-response-timeout/clients/android/out/deps/json-20240303.jar', 'org.paranoid.text.ResponseTimeoutSmoke', '/tmp/paranoid-pool-ivgp1qj3/server.p12']' returned non-zero exit status 1.

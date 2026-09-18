@@ -27,6 +27,18 @@ adopting an entire future OSS foundation is not this overnight implementation.
 No permanent owner message permalink was supplied and none is invented. Human
 risk/decision owner remains martadvix-web. This proposal is not ADR acceptance.
 
+## Response timeout correction — 2026-09-18
+
+Sergey Maltsev explicitly requested in Telegram: «до 15 секунд поднимай».
+Issue #39 records the 8-second Android read versus 10-second server-handler gap.
+The bounded correction uses ordinary v2 read 15 seconds, events 30 seconds,
+connect 8 seconds, including key/auth, TURN and update adapters. Legacy v1 keeps
+its existing profile. Server deadlines, signed transcripts, retry idempotency
+and TLS trust are unchanged. Longer waits may delay offline feedback; this does
+not fix or diagnose issue #38. Local pinned-TLS regression evidence precedes
+review. No permanent ADR acceptance, merge or deployment follows from this task
+authorization; no Telegram permalink is available.
+
 ## Concrete change
 
 [The exact contract](../protocol/realtime-v1.md) adds five-minute public session
