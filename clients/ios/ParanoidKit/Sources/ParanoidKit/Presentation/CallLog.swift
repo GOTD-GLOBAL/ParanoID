@@ -2,23 +2,28 @@ import Foundation
 
 /// The calls this phone has had, and where they stand in a conversation.
 ///
-/// It is the call-shaped sibling of ``ContactNames``: the application's own
-/// defaults, keyed by account, never part of the sealed snapshot, never sent to
-/// the peer or the server. The core is deliberately not involved — a call
+/// It is the call-shaped sibling of ``ContactNames``: a file of the
+/// application's own, keyed by account, never part of the sealed snapshot,
+/// never sent to the peer or the server. The core is deliberately not involved — a call
 /// creates no history entry and no receipt commitment there
 /// (`docs/protocol/voice-v1.md:27-31`), and this does not change that. What it
 /// records is what this device itself watched happen.
 ///
 /// Two consequences follow from where it lives, and both are the same ones the
-/// local contact names have: container deletion removes it (OS backup restore
-/// can restore these non-excluded UserDefaults),
+/// local contact names have: container deletion removes it and no OS backup
+/// carries it, because the file is excluded from backup on its inode
+/// (`LocalMetadataStore`, RFC-0024),
 /// and it is this phone's account of the call, not a shared one. The peer keeps
 /// its own, derived from its own side of the same controls, and the two can
 /// legitimately differ — a caller that gave up before the ring was answered
 /// wrote «Вызов отменён» while the callee wrote «Пропущенный звонок».
 public struct CallLog: Equatable {
-    /// The defaults key the whole log lives under, versioned so a later rule
-    /// can be told apart from this one.
+    /// The file the whole log lives in, beside the state file and versioned so
+    /// a later rule can be told apart from this one.
+    public static let fileName = "call-log.v1.json"
+
+    /// The preference this log used to live in. A phone updating from an
+    /// earlier build still has it; it is read once, migrated, and cleared.
     public static let defaultsKey = "paranoid.call-log.v1"
 
     /// How many rows are kept per conversation. A phone that never stops
@@ -36,21 +41,37 @@ public struct CallLog: Equatable {
     }
 
     private var records: [String: [CallRecord]]
-    private let defaults: UserDefaults?
+    private let store: LocalMetadataStore?
 
-    /// - Parameter defaults: the standard suite in the application; the tests
-    ///   pass a scratch suite so that a run leaves nothing behind.
-    public init(defaults: UserDefaults? = .standard) {
-        self.defaults = defaults
-        guard let data = defaults?.data(forKey: Self.defaultsKey),
-              let stored = try? JSONDecoder().decode([String: [CallRecord]].self, from: data)
-        else {
+    /// The application's log, in the backup-excluded container file.
+    public static func applicationStore() -> LocalMetadataStore? {
+        LocalMetadataStore.applicationSupport(name: fileName, legacyKey: defaultsKey)
+    }
+
+    /// - Parameter store: the application's file; the tests pass one in a
+    ///   scratch directory so that a run leaves nothing behind.
+    public init(store: LocalMetadataStore? = CallLog.applicationStore()) {
+        self.store = store
+        // The preference held the same JSON this file does, so the migration
+        // carries the bytes across without reinterpreting them. The store is
+        // told what a log looks like so that a file it can read but this build
+        // cannot parse counts as absent, not as a phone that never called.
+        var parsed: [String: [CallRecord]]?
+        let data = store?.load(migrating: { $0.data(forKey: Self.defaultsKey) }, validate: { bytes in
+            parsed = Self.log(from: bytes)
+            return parsed != nil
+        })
+        guard let stored = parsed ?? data.flatMap(Self.log(from:)) else {
             records = [:]
             return
         }
         // Anything unreadable is dropped on the way in rather than shown: a log
         // is a convenience, and a corrupt one must never stop a chat opening.
         records = stored.filter { !$0.key.isEmpty }
+    }
+
+    private static func log(from data: Data) -> [String: [CallRecord]]? {
+        try? JSONDecoder().decode([String: [CallRecord]].self, from: data)
     }
 
     /// This conversation's rows, oldest first.
@@ -91,11 +112,11 @@ public struct CallLog: Equatable {
     }
 
     private func write() {
-        guard let defaults else { return }
+        guard let store else { return }
         if records.isEmpty {
-            defaults.removeObject(forKey: Self.defaultsKey)
+            store.clear()
         } else if let data = try? JSONEncoder().encode(records) {
-            defaults.set(data, forKey: Self.defaultsKey)
+            store.save(data)
         }
     }
 }

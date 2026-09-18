@@ -132,18 +132,19 @@ final class AppModel {
     /// The names typed for contacts **on this phone**
     /// (`ContactNames`, Android v22). It is a stored property so that a rename
     /// is published to the screens the same way every other change is; the
-    /// table itself is read from and written to the application's own
-    /// defaults, and it never reaches the snapshot, the core or the network.
-    private(set) var contactNames = ContactNames()
+    /// table itself is read from and written to a backup-excluded file of the
+    /// application's own, and it never reaches the snapshot, the core or the
+    /// network. Before successful bootstrap it has no persistent store.
+    private(set) var contactNames = ContactNames(store: nil)
     /// Whether this phone still owes its owner the sentence that two marks are
-    /// not "read" (`ReceiptHint`). Like the names, it lives in the
+    /// not "read" (`ReceiptHint`). Unlike the metadata tables, it lives in the
     /// application's own defaults and reaches neither the snapshot nor the
     /// network.
     private(set) var receiptHint = ReceiptHint()
-    /// The calls this phone has had (`CallLog`). Like the names and the hint it
-    /// lives in the application's own defaults: the core keeps no call history
-    /// and the server is told nothing about an outcome.
-    private(set) var callLog = CallLog()
+    /// The calls this phone has had (`CallLog`). Like the names it lives in a
+    /// backup-excluded file of the application's own: the core keeps no call
+    /// history and the server is told nothing about an outcome.
+    private(set) var callLog = CallLog(store: nil)
     /// The last published call view, or `nil` while this run has never had a
     /// call. It carries no SDP, no ICE credential and neither nonce
     /// (`CallPresentation`).
@@ -175,8 +176,23 @@ final class AppModel {
     /// Bootstrap seam for isolated app tests; nil keeps the device storage path.
     private let openClient: (() throws -> sending SelfServiceClient)?
 
-    init(openClient: (() throws -> sending SelfServiceClient)? = nil) {
+    /// Stored as a factory, never invoked by construction or screen reads.
+    /// Tests inject private suites/directories without touching the app container.
+    private let loadLocalMetadata: () -> (ContactNames, CallLog)
+    private var localMetadataLoaded = false
+
+    init(openClient: (() throws -> sending SelfServiceClient)? = nil,
+         loadLocalMetadata: @escaping () -> (ContactNames, CallLog) = { (ContactNames(), CallLog()) }) {
         self.openClient = openClient
+        self.loadLocalMetadata = loadLocalMetadata
+    }
+
+    private func loadLocalMetadataOnce() {
+        guard !localMetadataLoaded else { return }
+        let (names, calls) = loadLocalMetadata()
+        contactNames = names
+        callLog = calls
+        localMetadataLoaded = true
     }
 
     private let drafts = MessagePresentation.Drafts()
@@ -264,6 +280,9 @@ final class AppModel {
                 client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             }
             let built = try Runtime(client: client, model: self)
+            // No migration until stand, continuity and runtime construction succeeded.
+            // Every noStand/frozen early exit leaves both stores in-memory only.
+            loadLocalMetadataOnce()
             runtime = built
             // Only a successfully rebuilt initial runtime clears a bootstrap
             // failure. A failed commit retains its runtime and cannot get here.
@@ -642,7 +661,7 @@ final class AppModel {
     ///
     /// It is the one action of this client that reaches no core, no snapshot
     /// and no connection: the name is written to this application's own
-    /// defaults and the screens re-read it from there. An empty or blank name
+    /// backup-excluded file and the screens re-read it from there. An empty or blank name
     /// clears it, and the default label comes back — «Оставьте пустым, чтобы
     /// вернуть имя по умолчанию.»
     func rename(account: String, to name: String) {

@@ -62,22 +62,55 @@ the flag lives on the inode: setting it on the committed name alone would
 cover the first commit only, and a later iCloud restore would hand back a stale
 ratchet while the Keychain key still worked.
 
-### Local names and call-log backup limitation
+### Local names and call log at rest
 
-`ContactNames` (`paranoid.contact-names.v1`) and `CallLog`
-(`paranoid.call-log.v1`) currently use standard UserDefaults. Neither store has
-application-level encryption or explicit backup exclusion. Peer IDs, locally
-assigned names, call outcomes, durations and message anchors can therefore be
-carried in an OS backup/restore; "local-only" means not sent by the messenger
-to its peer/server, **not** excluded from the phone backup. The encrypted
-snapshot's backup exclusion does not cover these preferences. Android disables
-application backup in its manifest; the platforms differ here. No physical
-backup/restore experiment is claimed.
+`ContactNames` and `CallLog` live in `Application Support/paranoid/` as
+`contact-names.v1.json` and `call-log.v1.json`, owner-only,
+`.completeUntilFirstUserAuthentication`, 16 MiB read ceiling, each excluded from
+OS backup ([RFC-0024](../../rfcs/0024-local-metadata-at-rest.md), proposed).
+They use the state file's commit sequence for the reason it has one: the flag
+lives on the inode, so it is set on the candidate before the rename — and here
+while that candidate is still empty, so no interruption leaves rows in an
+unflagged file — and it is read back from the committed name afterwards. A file
+whose readback differs or whose backup flag is explicitly false is removed.
+A throwing verification or directory sync preserves the remaining copy and
+reports failure. One `LocalMetadataStore` implements this for both.
 
-Moving both stores into backup-excluded container files, including migration
-and failure semantics, versus retaining and explicitly accepting this limitation
-is an unresolved owner privacy decision, tracked with the RFC-0022 questions.
-No storage migration or acceptance is authorized by documenting the limitation.
+An inconclusive I/O failure does not delete the retained table. A file that exists and will not open seals the
+store rather than becoming an empty table that the next write replaces; a
+committed, verified, provably excluded file is kept even when the directory sync
+that follows fails; and the preference behind a file is retired only against a
+read that both parses and proves the exclusion. The ceiling clears the largest
+admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no legal table
+is refused migration and left in the backup-eligible preference.
+
+After successful migration the current files are excluded and legacy preference
+removal is requested. Failed/deferred migration can leave old preferences
+eligible for backup; asynchronous UserDefaults removal is not proof of durable
+backup erasure. Historical OS backups are not changed. The files remain plain
+JSON inside the container: this is backup exclusion, **not** application-level
+encryption. Android disables application backup in its manifest. No physical
+backup/restore experiment is claimed; host tests cover inode flags and injected
+failure paths, including explicit false flags versus throwing flag queries.
+
+A phone updating from an earlier build migrates each preference once: the file
+is written first and the preference cleared only after that file is committed,
+read back byte for byte and proven excluded, so an interrupted migration
+repeats instead of losing the table. Failure never reaches a screen — the table
+stays in memory for the run and the chat opens either way, unlike the snapshot,
+where a failed commit is terminal.
+
+`AppModel` initially holds in-memory-only names and calls. It loads/migrates
+persistent metadata once after successful stand/bootstrap/runtime construction,
+before exposing the running UI. A no-stand or failed bootstrap leaves those
+files and preferences untouched; screen reads never trigger the migration.
+[The bootstrap follow-up](../pr47-bootstrap-followup.md) records its verification
+limits and the pending Mac app tests.
+
+`ReceiptHint` (`paranoid.receipt-hint.v1`) stays in UserDefaults: one boolean
+that names no contact and no call. Whether these files should additionally be
+sealed, and with which key, is RFC-0024 question 2 and remains open; acceptance
+of the storage rule is the decision owner's.
 
 ### Install marker and lazy wrapping key
 

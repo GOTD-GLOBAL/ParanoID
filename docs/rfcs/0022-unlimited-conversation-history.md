@@ -114,5 +114,6 @@ own message. The 8 MiB snapshot refusal keeps its own test.
 4. For the accompanying local call-log UI, should iOS call records **and local
    contact names** move from UserDefaults to backup-excluded container files,
    with reviewed migration/failure behavior, or is the documented OS-backup
-   exposure acceptable for this alpha? See the [client limitation](../clients/ios/self-service.md#local-names-and-call-log-backup-limitation).
+   exposure acceptable for this alpha? See [iOS local metadata at rest](../clients/ios/self-service.md#local-names-and-call-log-at-rest),
+   now proposed for closure by [RFC-0024](0024-local-metadata-at-rest.md).
    This is an unresolved privacy/storage decision, not a migration approval.

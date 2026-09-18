@@ -261,7 +261,8 @@ A finished call leaves one row in the conversation it belonged to, and nothing
 else changes. `CallController` publishes the terminal facts the public view
 cannot carry — the direction the call was placed in and how long media was
 actually connected, both read before the live call is cleared — and the screens
-keep them in `CallLog`, the application's own defaults, beside the contact names.
+keep them in `CallLog`, a backup-excluded file of the application's own, beside
+the contact names ([RFC-0024](../../rfcs/0024-local-metadata-at-rest.md)).
 
 The core is not involved and neither is the server: a call still creates no
 history entry, no receipt and no commitment (`docs/protocol/voice-v1.md:27-31`),

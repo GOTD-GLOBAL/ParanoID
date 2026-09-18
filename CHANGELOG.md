@@ -8,6 +8,49 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iPhone local metadata out of the OS backup — 2026-09-18
+
+- **Local metadata files are excluded after successful migration.** The local contact
+  names and the call log move from `UserDefaults`, which iCloud and encrypted
+  local backups include, into `Application Support/paranoid/` files excluded from
+  backup on their own inode ([RFC-0024](docs/rfcs/0024-local-metadata-at-rest.md),
+  proposed). Peer accounts, typed names, call outcomes, durations and message
+  anchors in successfully migrated files are excluded. Failed/deferred migration
+  can retain legacy preferences; historical backups are not erased.
+- **Commit rules are the state file's:** the candidate is created empty and
+  flagged before a single row is written and before the rename, the committed
+  file is read back byte for byte and its flag read back too. A proven byte
+  mismatch or false flag allows removal; throwing verification or directory
+  sync preserves the remaining file. A phone updating migrates each preference once
+  and clears it only after that proof, so an interrupted migration repeats
+  instead of losing the table.
+- **Inconclusive I/O does not delete the retained table.** A file that exists and will
+  not open seals the store instead of becoming an empty table that the next
+  write replaces; a committed, verified, provably excluded file is kept even when
+  the directory sync that follows fails; a preference is retired only against a
+  read that both parses and proves the exclusion; and the read ceiling clears the
+  largest admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no
+  legal table is refused migration and left in the backup-eligible preference.
+  These five rules come from the PR47 review and each has a regression behind it.
+- **Three more of the same class, found by an adversarial pass over that fix.**
+  A verification that merely throws after the rename no longer deletes the
+  committed file — by then the copy it replaced is already unlinked, and an
+  unanswered question is not proof; a preference is never written back over a
+  file that will not open, because it may be older than that file; and emptying
+  a table retires the preference first, since it is the backup-eligible copy a
+  later launch would resurrect the table from.
+- **No metadata migration before bootstrap permission.** Names and calls start
+  in memory and acquire persistent stores once after successful bootstrap.
+  Screen reads and `.noStand` do not migrate preferences. New app-level tests
+  require a Mac run; source-only verification is recorded separately.
+- **Not encryption.** The bytes stay plain JSON inside the container under
+  `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
+  them is RFC-0024 question 2, open.
+- Android is unaffected (its manifest already disables application backup), and
+  no core, protocol, server, route or snapshot behaviour changes. No physical
+  backup/restore experiment on a device is claimed; the evidence is the host
+  suite. Acceptance of the storage rule remains the decision owner's.
+
 ### Android response timeout — 2026-09-18
 
 - Ordinary self-service v2 reads now wait 15 seconds, above the server 10-second

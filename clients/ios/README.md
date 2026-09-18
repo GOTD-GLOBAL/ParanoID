@@ -501,10 +501,12 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   телефоне. Оставьте пустым, чтобы вернуть имя по умолчанию.» — and the four
   places a contact is named (the dialogs list, the contacts list, the chat
   title, the details sheet) ask `AppModel.title(for:)` rather than deriving a
-  label from the account. The table lives under one versioned key,
-  `paranoid.contact-names.v1`, in the application's own user defaults: it is
-  not in the encrypted state file, it is never sent to the peer or the server,
-  and it dies with the container, exactly as the install marker does. A name
+  label from the account. The table lives in one versioned file,
+  `contact-names.v1.json`, beside the state file and excluded from OS backup on
+  its inode (RFC-0024): it is not in the encrypted state file, it is never sent
+  to the peer or the server, no backup carries it to another device, and it
+  dies with the container. A phone updating from the build that kept it in
+  `paranoid.contact-names.v1` migrates that preference once. A name
   is normalized the way Java normalizes it — one line, Unicode separators
   collapsed, ISO controls and `Cf` characters dropped, 40 code points — and an
   empty or blank one clears it. `ContactNamesTests` measures the reset and the
