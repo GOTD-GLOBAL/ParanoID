@@ -1,7 +1,7 @@
 import Foundation
 
 /// One message of one conversation, as the core publishes it in
-/// `view.dialogs[].messages[]` (`clients/core/src/lib.rs:72-78`).
+/// `view.dialogs[].messages[]` (`Entry` in `clients/core/src/lib.rs`).
 ///
 /// It is the decoded form of the members Android reads off the same
 /// `JSONObject` (`MainActivity.java:585-592`): who wrote it, what it says and

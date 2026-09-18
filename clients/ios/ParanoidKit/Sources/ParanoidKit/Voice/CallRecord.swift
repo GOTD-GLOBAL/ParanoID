@@ -47,7 +47,7 @@ public struct CallRecord: Equatable, Sendable, Codable, Identifiable {
     /// never reached media.
     public let durationSeconds: Int64
     /// The message this row stands after, so the chat keeps one order without
-    /// inventing a clock: the core stores no time for a message, so a call is
+    /// inventing a clock: the call log stores no wall-clock time, so a call is
     /// anchored to the last message that existed when it ended. `nil` means the
     /// conversation had no messages yet; "unavailable" means its history was
     /// unavailable and keeps the row in the trailing fallback on both clients.

@@ -58,7 +58,11 @@ public final class MessagePresentation {
         String date=when.get(java.util.Calendar.DAY_OF_MONTH)+" "+MONTHS_GENITIVE[when.get(java.util.Calendar.MONTH)];
         return when.get(java.util.Calendar.YEAR)==today.get(java.util.Calendar.YEAR)?date:date+" "+when.get(java.util.Calendar.YEAR);
     }
-    /** What a conversation row says: the time today, «Вчера» yesterday, the date before that. */
+    /** A call preview has no wall-clock time; never borrow the preceding message's. */
+    public static String listTime(long milliseconds,long now,boolean isCallPreview){
+        return isCallPreview?"":listTime(milliseconds,now);
+    }
+    /** What a message preview says: the time today, «Вчера» yesterday, an older date otherwise. */
     public static String listTime(long milliseconds,long now){
         if(milliseconds<=0)return "";
         java.util.Calendar when=calendar(milliseconds),today=calendar(now);
@@ -128,7 +132,7 @@ public final class MessagePresentation {
 
     /**
      * The conversation as the chat draws it: the core's messages in their own order, with each call
-     * standing after the message it followed. The core keeps no time for a message, so a call is
+     * standing after the message it followed. The call log keeps no wall-clock time, so a call is
      * anchored to the last message that existed when it ended rather than sorted by a clock this
      * client would have to invent. A call recorded before any message opens the chat; a call whose
      * anchor is gone stands at the end rather than disappearing.

@@ -38,7 +38,8 @@ that wrote or received it read its own clock**.
   sees exactly what it saw before.
 - The clients read it as: the time under a bubble (`14:32`), a pill where the
   day turns («Сегодня», «Вчера», «12 сентября»), and the date on a conversation
-  row (the time today, «Вчера», then `12.09`).
+  row (the time today, «Вчера», then `12.09`). A call preview has no timestamp
+  of its own and therefore shows no date borrowed from the previous message.
 
 What this deliberately is **not**: the sender's time on the receiver's screen.
 A receiver stamps with its own clock, so the two devices can disagree by
@@ -61,9 +62,10 @@ time.
 The sealed snapshot now holds a timeline: not what was said and to whom, which
 it already held, but when. On a compromised or seized device that is more
 information than before. It stays inside the same encrypted state file, with the
-same protection, and it never leaves the phone. The local call log added in PR45
-already records call times in application storage, and this entry is stricter:
-it lives in the core's sealed snapshot rather than beside it.
+same protection, and it is not transmitted to the peer or relay. The local call
+log added in PR45 stores outcomes, durations and message anchors, not wall-clock
+times. This candidate therefore adds a new durable message timeline; the call
+log is not evidence of an existing timestamp-storage boundary.
 
 ## Tests
 
@@ -84,9 +86,23 @@ phone's own zone — cannot be read differently by the machine that runs them.
   clock on one phone visible to the other.
 - **Nothing at all.** What we had; the owner asked for the opposite.
 
-## Open questions for the decision owner
+## Owner direction and remaining decision boundary
 
-1. Accept the local-clock model, where each device timestamps its own copy?
-2. Should the sender's instant travel in band later, and under which RFC?
-3. Is the timeline in the sealed snapshot acceptable at this stage, given the
-   threat model's device-compromise section?
+On 2026-09-17 Sergey Maltsev selected client-local timestamps and accepted the
+alpha client downgrade incompatibility with coordinated phone updates:
+[recorded exact directions](https://github.com/GOTD-GLOBAL/ParanoID/pull/45#issuecomment-5715733752),
+also linked from [PR46](https://github.com/GOTD-GLOBAL/ParanoID/pull/46#issuecomment-5715736976).
+The original Telegram permalink is unavailable. These settled product choices
+are not open questions to ask again, and this relay is not permanent ADR
+acceptance evidence under the documentation policy. RFC-0023 remains proposed.
+
+The sender's instant travelling in band is not requested by that choice; any
+future proposal needs its own contract review. The sealed local timeline retains
+the device-compromise risk above. No key/history reset, phone installation,
+publication or server action follows from source integration.
+
+The same owner message requests backup exclusion for iOS names/call logs and
+long-lived history beyond cumulative ledgers/snapshot limits. Those are separate
+protected persistence follow-ups, not implemented by this timestamp PR. Existing
+1000-entry replay/commitment and 8 MiB snapshot safety bounds remain; this PR must
+not be called an implementation of unlimited lifetime history.

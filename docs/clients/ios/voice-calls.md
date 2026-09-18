@@ -270,7 +270,7 @@ from its own side of the same controls. The two accounts legitimately differ —
 a caller that gave up before the ring was answered writes «Вызов отменён» while
 the callee writes «Пропущенный звонок».
 
-Because the core stores no time for a message, a row cannot be sorted into the
+Because the call log stores no wall-clock time, a row cannot be sorted into the
 history by a clock this client would have to invent (REQ-CLIENT-004). Each row
 therefore carries the identifier of the last message that existed when the call
 ended and is drawn there; a call recorded before any message opens the chat, and

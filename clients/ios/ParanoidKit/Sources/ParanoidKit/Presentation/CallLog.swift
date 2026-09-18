@@ -118,7 +118,7 @@ extension ChatRow {
     /// The conversation as the chat draws it: the core's history in its own
     /// order, with each call standing after the message it followed.
     ///
-    /// The core keeps no time for a message (`clients/core/src/lib.rs:70-78`),
+    /// The call log keeps no wall-clock time for a call,
     /// so a call cannot be sorted into the history by a clock without inventing
     /// one — which `REQ-CLIENT-004` forbids. Each row therefore carries the
     /// identifier of the last message that existed when the call ended, and it

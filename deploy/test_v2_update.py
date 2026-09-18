@@ -59,10 +59,77 @@ class SafeV2Update(unittest.TestCase):
         shutil.copy2(CONTROLLER, release / 'alpha.py')
         manifest = json.loads((release / 'manifest.json').read_text())
         manifest['sha256']['alpha.py'] = alpha.digest(release / 'alpha.py')
+        # A fresh CI baseline may already contain this exact controller. Give the
+        # synthetic candidate distinct content, not a made-up release ID, so the
+        # test still exercises a real pointer switch and subsequent rollback.
+        with (release / 'README.md').open('a') as fixture_readme:
+            fixture_readme.write('\nSynthetic same-schema maintenance test candidate.\n')
+        manifest['sha256']['README.md'] = alpha.digest(release / 'README.md')
         manifest['release'] = hashlib.sha256(json.dumps(manifest['sha256'], sort_keys=True).encode()).hexdigest()[:20]
         (release / 'manifest.json').write_text(json.dumps(manifest))
         alpha.verify(release)
         return release
+
+    def test_optional_push_schema_matches_runtime_contract(self):
+        source=(HERE.parent/'server/src/self_service_http.rs').read_text()
+        self.assertIn(alpha.PUSH_TABLE_SQL.replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ',1),source)
+
+    def add_push_fixture(self):
+        alpha.sql(self.root, "CREATE TABLE ss_push_tokens(account TEXT PRIMARY KEY REFERENCES ss_accounts(account),device TEXT NOT NULL REFERENCES ss_devices(device),platform TEXT NOT NULL CHECK(platform='fcm'),token TEXT NOT NULL CHECK(octet_length(token) BETWEEN 1 AND 4096),updated BIGINT NOT NULL CHECK(updated>0))")
+        alpha.sql(self.root, "INSERT INTO ss_push_tokens VALUES ('a','da','fcm','synthetic-not-a-real-token',1)")
+
+    def test_optional_push_schema_and_rows_are_verified_in_encrypted_restore(self):
+        with alpha.lock(self.root), alpha.database(self.root):
+            self.add_push_fixture()
+            destination=alpha.backup_v2(self.root)
+            record=json.loads((destination/'manifest.json').read_text())
+            self.assertTrue(record['verified'])
+            self.assertIn('ss_push_tokens',record['tables'])
+            self.assertTrue(record['row_digests']['ss_push_tokens'].startswith('1|'))
+            self.assertEqual(alpha.v2_rows(self.root),alpha.v2_rows(self.root,record['restore_database']))
+            # Verification must not merely restore rows: it must detect a changed
+            # push token without printing it or replacing the current database.
+            before=alpha.v2_rows(self.root)
+            alpha.sql(self.root,"UPDATE ss_push_tokens SET token='changed-synthetic-token'")
+            with self.assertRaises(RuntimeError):alpha.verify_v2_backup(self.root,destination)
+            self.assertNotEqual(before['ss_push_tokens'],alpha.v2_rows(self.root)['ss_push_tokens'])
+
+    def test_optional_push_schema_drift_is_still_rejected(self):
+        with alpha.lock(self.root), alpha.database(self.root):
+            self.add_push_fixture()
+            alpha.sql(self.root,"ALTER TABLE ss_push_tokens ADD COLUMN unreviewed TEXT")
+            with self.assertRaises(ValueError):alpha.backup_v2(self.root)
+
+    def test_optional_push_constraint_drift_is_rejected_before_backup(self):
+        with alpha.lock(self.root), alpha.database(self.root):
+            self.add_push_fixture()
+            alpha.sql(self.root, 'ALTER TABLE ss_push_tokens DROP CONSTRAINT ss_push_tokens_updated_check')
+            with self.assertRaises(ValueError):
+                alpha.backup_v2(self.root)
+            self.assertEqual(list((self.root / 'backups').iterdir()), [])
+
+    def test_missing_push_rows_in_restored_database_refuse_cutover(self):
+        candidate = self.make_candidate()
+        with alpha.lock(self.root), alpha.database(self.root):
+            self.add_push_fixture()
+        original = alpha.command
+        corrupted = []
+        def corrupt_restore(args, **kwargs):
+            result = original(args, **kwargs)
+            if str(args[0]).endswith('/pg_restore') and '--exit-on-error' in args:
+                restored = args[args.index('-d') + 1]
+                self.assertTrue(restored.startswith('verify_v2_'))
+                alpha.sql(self.root, 'DELETE FROM ss_push_tokens', restored)
+                corrupted.append(restored)
+            return result
+        with patch.object(alpha, 'command', side_effect=corrupt_restore), self.assertRaisesRegex(
+                RuntimeError, 'restored v2 schema or rows differ'):
+            alpha.switch_v2_offline(self.root, candidate, self.identifier)
+        self.assertEqual(len(corrupted), 1, 'restore corruption hook must execute exactly once')
+        self.assertEqual(self.old_pointer, (self.root / 'current').readlink())
+        with alpha.lock(self.root), alpha.database(self.root):
+            self.assertEqual(alpha.sql(self.root, 'SELECT count(*) FROM ss_push_tokens').strip(), b'1')
+        self.assert_identity()
 
     def assert_identity(self):
         self.assertEqual(self.identifier, alpha.cluster_identifier(self.root))

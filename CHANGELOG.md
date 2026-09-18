@@ -25,8 +25,22 @@ public contract is declared.
 - **Compatibility:** an older build cannot open a snapshot that carries the new
   field, the same alpha break as the retired history ceiling. Both phones must be
   updated together. A build of this generation opens an older snapshot unchanged.
+- Call previews do not borrow a preceding message's date; Android pre-epoch
+  clocks become unknown timestamps rather than breaking native request parsing.
+  The time smoke now gates CI and APK builds. [Integration evidence](docs/clients/pr46-integration.md)
+  separates the Linux result from the still-required final Mac run.
 - No wire format, server route, schema column or protocol kind changes. No
   device acceptance, deployment or ADR acceptance is claimed.
+
+### PR45 current-main integration — 2026-09-17
+
+- Preserve PR34 cold-push owner, split-R8/DEX and crash-report fixes while adding
+  PR45 call rows; retain PR35 server maintenance gates and dated evidence.
+- Gate Android call-log/presentation/UI/crash-exit checks in CI and verify the
+  declared-iOS-branch condition plus inherited no-iOS-diff boundary shortcut.
+- Record the successful contributor Mac anchor tests and the new local Android
+  build separately. The inherited versionCode26 build is review-only, not a new
+  device release or republished v26. [Evidence](docs/clients/pr45-main-integration.md).
 
 ### Chat marks, call rows in the chat, and history without a ceiling — 2026-09-17
 
@@ -81,6 +95,45 @@ public contract is declared.
 - Keep iOS delivery accessibility labels exposed instead of hiding their element.
   New Mac/VoiceOver verification remains required.
 - Record [verification scope and remaining gates](docs/clients/pr45-validation.md).
+
+### PR35 integration checks — 2026-09-17
+
+- Integrate the server rollout evidence with current main without dropping later
+  Android/iOS records. Add blocking CI invocations for reconciliation/recovery and
+  real packaged v2 encrypted backup, optional FCM coverage and interruption tests.
+- No new hosted operation, application schema migration or architecture acceptance.
+
+### Server APK-cap rollout completed — 2026-09-13
+
+- Deployed the reviewed server without the fixed APK ceiling on retained data.
+  Live executable, original coordinator status and v26 feed download were verified.
+- Reconciled exact already-authorized push/TLS maintenance with immutable old
+  records, without weakening status checks. An initial update then safely rolled
+  back because backup validation omitted the known optional FCM table.
+- Fixed strict optional-schema and encrypted-restore coverage, including push
+  tokens. Fifteen packaged maintenance checks passed; the successful live update
+  restored/verified all seven tables before switching. Failed history is retained.
+  [Operation and evidence](docs/operations/apk-cap-rollout-2026-09-13.md).
+
+### PR34 integration corrections — 2026-09-17
+
+- Restore complete project evidence lost to a truncation placeholder in PR34.
+- Restrict native exit reports to structured fields, collect off UI, and defer
+  acknowledgement until explicit Copy/Close. Existing Java report limits remain.
+- Verify real DEX definitions and reject secondary split inputs before merging.
+- Correct two pinned Maven repository selectors without changing artifact bytes.
+- This source candidate is not a new v26 publication or a server deployment.
+
+### v26 bridge APK published — 2026-09-13
+
+- Published `0.0.26-update` through the existing in-app feed with the retained
+  signer, within the old clients' size ceiling. It removes the client's fixed
+  ceiling and preserves the v25 cold-push call-owner and Firebase-only R8 fixes.
+- Canonical build and independent artifact review pass; actual old-v25 updater
+  downloads the new feed APK over pinned TLS. Phone acceptance is still pending.
+- Server rollout was stopped at coordinator identity drift. No server update or
+  bypass is implied by APK publication. See the
+  [release evidence](docs/clients/android/v26-bridge-release.md).
 
 ### iOS call-control targeting candidate — 2026-09-14
 

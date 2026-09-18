@@ -652,8 +652,8 @@ final class AppModel {
     /// One finished call, from the call controller's terminal transition.
     ///
     /// The row is anchored to the last message the conversation has right now,
-    /// which is how a call keeps its place in a history the core stores no time
-    /// for (`ChatRow.rows(messages:calls:)`).
+    /// which preserves its position without inventing a call timestamp
+    /// (`ChatRow.rows(messages:calls:)`).
     func callFinished(_ termination: CallTermination) {
         let anchor = CallLog.anchor(messages: isBroken ? nil : view.dialog(termination.account)?.messages)
         callLog.record(termination.record(afterMessageId: anchor))
@@ -692,11 +692,12 @@ final class AppModel {
 
     /// When the last message of a conversation happened, as its row says it:
     /// the time today, «Вчера» yesterday, the date before that, and nothing at
-    /// all for a conversation whose history was written without a time.
+    /// all for untimed history or a row whose preview is an untimed call.
     func listTime(for dialog: Dialog) -> String {
         guard let last = dialog.last else { return "" }
         return MessagePresentation.listTime(last.localMilliseconds,
-                                            now: UInt64(max(0, Date().timeIntervalSince1970 * 1000)))
+                                            now: UInt64(max(0, Date().timeIntervalSince1970 * 1000)),
+                                            isCallPreview: preview(for: dialog) != nil)
     }
 
     /// The preview of one conversation row: the last call when it is newer than

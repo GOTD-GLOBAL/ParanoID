@@ -7,6 +7,36 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_message_time_gates_ci_and_android_build(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        self.assertIn('python3 clients/android/test_message_time.py', supported)
+        build = (ROOT / 'clients/android/build.sh').read_text()
+        self.assertIn('python3 test_message_time.py', build)
+
+    def test_android_call_rows_and_preserved_main_fixes_gate_in_ci(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        for name in ('test_call_log.py', 'test_message_presentation.py',
+                     'test_ui_contract.py', 'test_crash_exit.py'):
+            self.assertIn('python3 clients/android/' + name, supported)
+
+    def test_v2_backup_and_one_off_recovery_are_blocking_ci_gates(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        package = workflow.split('  native-package:\n', 1)[1].split('  postgres-http:\n', 1)[0]
+        for name in ('deploy/test_reconcile_apk_cap_20260913.py',
+                     'deploy/test_restore_active_after_rollback.py',
+                     'scripts/check-v2-maintenance.py'):
+            self.assertIn('python3 ' + name, package)
+            self.assertTrue((ROOT / name).is_file())
+        self.assertEqual(workflow.count('"scripts/check-v2-maintenance.py"'), 2)
+        runner = (ROOT / 'scripts/check-v2-maintenance.py').read_text()
+        for marker in ('self_service_v2=True', 'PARANOID_V2_OLD_RELEASE',
+                       'PARANOID_TEST_PACKAGED', 'PARANOID_V2_RELEASE',
+                       'test_v2_update.py', 'test_v2_maintenance_interrupts.py',
+                       'check=True'):
+            self.assertIn(marker, runner)
+
     def test_turn_offline_package_and_versioned_controller_gate(self):
         workflow = (ROOT / ".github/workflows/server.yml").read_text()
         package = workflow.split("  native-package:\n", 1)[1].split("  postgres-http:\n", 1)[0]

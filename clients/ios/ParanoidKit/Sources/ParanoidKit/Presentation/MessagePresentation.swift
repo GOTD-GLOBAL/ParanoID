@@ -138,8 +138,9 @@ public enum MessagePresentation {
     /// the time today, «Вчера» yesterday, and the date before that.
     public static func listTime(_ milliseconds: UInt64,
                                 now: UInt64,
+                                isCallPreview: Bool = false,
                                 calendar: Calendar = .current) -> String {
-        guard milliseconds > 0 else { return "" }
+        guard !isCallPreview, milliseconds > 0 else { return "" }
         let when = date(milliseconds)
         let today = date(now)
         if calendar.isDate(when, inSameDayAs: today) { return time(milliseconds, calendar: calendar) }

@@ -69,6 +69,15 @@ final class MessageTimeTests: XCTestCase {
                        "12.09.2025")
     }
 
+    func testCallPreviewDoesNotBorrowTheLastMessagesTime() {
+        let today = instant(2026, 9, 17, 16, 6)
+        let yesterday = instant(2026, 9, 16, 21, 40)
+        XCTAssertEqual(MessagePresentation.listTime(yesterday, now: today,
+                        isCallPreview: true, calendar: calendar), "")
+        XCTAssertEqual(MessagePresentation.listTime(yesterday, now: today,
+                        isCallPreview: false, calendar: calendar), "Вчера")
+    }
+
     func testTheCoreValueReachesTheDecodedMessageAndZeroMeansUnknown() {
         let timed = Message.decode(["id": "m1", "author": "a", "text": "t",
                                     "accepted": true, "delivered": true,

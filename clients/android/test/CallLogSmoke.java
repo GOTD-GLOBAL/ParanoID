@@ -31,7 +31,7 @@ public final class CallLogSmoke {
         check(MessagePresentation.callDuration(59).equals("0:59")&&MessagePresentation.callDuration(60).equals("1:00"),"duration is minutes and seconds");
         check(!MessagePresentation.callTitle("incoming",false).contains("рочитано"),"a call row claims nothing about reading");
 
-        // Where a row stands, in a history the core stores no time for.
+        // Where a call row stands without a wall-clock timestamp of its own.
         JSONArray messages=new JSONArray().put(message("m1")).put(message("m2"));
         JSONArray calls=new JSONArray().put(call("c1","missed","m1")).put(call("c2","outgoing","m2"));
         check(ids(MessagePresentation.chatRows(messages,calls)).equals("m1,c1,m2,c2"),"each call stands after the message it followed");

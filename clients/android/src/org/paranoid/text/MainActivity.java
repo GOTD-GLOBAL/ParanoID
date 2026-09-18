@@ -108,14 +108,16 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateLockScreen(engine.calls().snapshot().optString("state"));
         String install=UpdateController.installStatus(this,getIntent());
         if(install!=null){updateController.showStatus(install);show("identity");}
-        String crash=CrashLog.take(this);
-        if(crash!=null){
+        CrashLog.load(this,this::runOnUiThread,report->{
+            if(report==null||isFinishing()||isDestroyed())return;
+            String crash=report.text;
             android.widget.TextView text=new android.widget.TextView(this);text.setText(crash);text.setTextIsSelectable(true);text.setTextSize(11);
             android.widget.ScrollView scroll=new android.widget.ScrollView(this);scroll.addView(text);int pad=(int)(12*getResources().getDisplayMetrics().density);scroll.setPadding(pad,pad,pad,0);
-            new android.app.AlertDialog.Builder(this).setTitle("Приложение аварийно завершилось").setView(scroll)
-                .setPositiveButton("Скопировать",(d,w)->{getSystemService(android.content.ClipboardManager.class).setPrimaryClip(android.content.ClipData.newPlainText("ParanoID crash",crash));CrashLog.clear(this);})
-                .setNegativeButton("Закрыть",(d,w)->CrashLog.clear(this)).setCancelable(false).show();
-        }
+            new android.app.AlertDialog.Builder(this).setTitle("Отчёт о завершении приложения")
+                .setMessage("Проверьте текст перед копированием: отчёт Java может содержать технические данные приложения.").setView(scroll)
+                .setPositiveButton("Скопировать",(d,w)->{getSystemService(android.content.ClipboardManager.class).setPrimaryClip(android.content.ClipData.newPlainText("ParanoID crash",crash));CrashLog.acknowledge(this,report);})
+                .setNegativeButton("Закрыть",(d,w)->CrashLog.acknowledge(this,report)).setCancelable(false).show();
+        });
     }
     @Override protected void onNewIntent(Intent intent){
         super.onNewIntent(intent);
@@ -636,20 +638,21 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             // A call that happened after the newest message is what the row should say.
             JSONArray calls=CallLog.records(this,account);
             JSONObject lastCall=calls.length()>0?calls.optJSONObject(calls.length()-1):null;
-            if(lastCall!=null&&lastCall.optString("after_message_id","").equals(last==null?"":last.optString("id")))
+            boolean callPreview=lastCall!=null&&lastCall.optString("after_message_id","").equals(last==null?"":last.optString("id"));
+            if(callPreview)
                 preview=MessagePresentation.callLine(lastCall.optString("kind"),lastCall.optBoolean("video"),lastCall.optLong("duration_seconds"));
-            conversationRow(dialogList,dialog,preview,last);
-            conversationRow(contactList,dialog,DialogPolicy.trustLabel(dialog),null);
+            conversationRow(dialogList,dialog,preview,last,callPreview);
+            conversationRow(contactList,dialog,DialogPolicy.trustLabel(dialog),null,false);
         }
     }
-    private void conversationRow(LinearLayout container,JSONObject dialog,String preview,JSONObject last){
+    private void conversationRow(LinearLayout container,JSONObject dialog,String preview,JSONObject last,boolean callPreview){
         String account=dialog.optString("account");LinearLayout row=row();row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(14),dp(12),dp(14));row.setMinimumHeight(dp(88));row.setBackground(ripple(colors.canvas,18));row.setOnClickListener(v->openChat(account));row.setFocusable(true);
         TextView avatar=text(account.substring(0,Math.min(2,account.length())).toUpperCase(java.util.Locale.ROOT),17,colors.actionText,true);avatar.setGravity(Gravity.CENTER);avatar.setBackground(shape(colors.actionSoft,28));avatar.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(avatar,box(52,52));
         LinearLayout lines=column();LinearLayout.LayoutParams lineParams=new LinearLayout.LayoutParams(0,-2,1);lineParams.setMargins(dp(12),0,dp(8),0);row.addView(lines,lineParams);
         TextView title=text(ContactNames.title(this,account),16,colors.text,true);title.setMaxLines(1);title.setEllipsize(TextUtils.TruncateAt.END);lines.addView(title);
         TextView snippet=text(preview,14,colors.muted,false);snippet.setMaxLines(2);snippet.setEllipsize(TextUtils.TruncateAt.END);LinearLayout.LayoutParams snippetParams=full();snippetParams.topMargin=dp(4);lines.addView(snippet,snippetParams);
         LinearLayout side=column();side.setGravity(Gravity.END);row.addView(side,new LinearLayout.LayoutParams(-2,-2));
-        String when=last==null?"":MessagePresentation.listTime(last.optLong("local_ms",0),System.currentTimeMillis());
+        String when=last==null?"":MessagePresentation.listTime(last.optLong("local_ms",0),System.currentTimeMillis(),callPreview);
         if(!when.isEmpty()){TextView stamp=text(when,12,colors.muted,false);stamp.setGravity(Gravity.END);side.addView(stamp);}
         String marker=dialog.optBoolean("blocked")?"Блок":dialog.optString("trust").equals("out_of_band_verified")?"Проверен":"";
         if(!marker.isEmpty()){TextView badge=text(marker,11,colors.muted,false);badge.setGravity(Gravity.END);side.addView(badge);}

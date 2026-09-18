@@ -37,6 +37,8 @@ public final class MessageTimeSmoke {
         check(MessagePresentation.listTime(instant(2026,9,16,21,40),now).equals("Вчера"),"a row says yesterday");
         check(MessagePresentation.listTime(instant(2026,9,12,21,40),now).equals("12.09"),"a row shows an older date");
         check(MessagePresentation.listTime(instant(2025,9,12,21,40),now).equals("12.09.2025"),"a row names another year");
+        check(MessagePresentation.listTime(instant(2026,9,16,21,40),now,true).isEmpty(),"call preview cannot borrow yesterday's message time");
+        check(MessagePresentation.listTime(instant(2026,9,17,10,5),now,false).equals("10:05"),"message preview retains its time");
         System.out.println("PASS: message time, day separators and conversation-row dates");
     }
 }

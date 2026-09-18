@@ -1001,6 +1001,51 @@ fn message_time_is_the_clock_the_client_passed_and_never_reaches_the_wire() {
     );
 }
 
+#[test]
+fn message_time_survives_acceptance_receipts_and_duplicate_replay() {
+    let a = ready();
+    let b = ready();
+    let sent_at = 1_700_000_000_000;
+    let received_at = sent_at + 5_000;
+    let a = send_at(&pair(&a, &b), &b, "timed", sent_at);
+    let original = incoming(&a, 0, 1);
+    let b = receive_at(&b, original.clone(), received_at);
+    let before = reopen(&b);
+    let replay = receive_at(&before, original, received_at + 90_000);
+    assert_eq!(
+        replay["state"], before["state"],
+        "replay cannot restamp history"
+    );
+    let a = call(
+        &a["state"],
+        json!({"op":"accepted_v2","id":a["outbox"][0]["id"]}),
+    )
+    .unwrap();
+    assert_eq!(messages(&a, id(&b))[0]["local_ms"], json!(sent_at));
+    let a = receive_at(&a, incoming(&b, 0, 1), received_at + 10_000);
+    let rows = messages(&a, id(&b));
+    assert_eq!(rows.len(), 1, "receipt is not a timed text row");
+    assert_eq!(rows[0]["local_ms"], json!(sent_at));
+    assert_eq!(rows[0]["delivered"], true);
+    assert_eq!(messages(&reopen(&a), id(&b))[0]["local_ms"], json!(sent_at));
+}
+
+#[test]
+fn backwards_local_clock_does_not_reorder_or_reject_messages() {
+    let a = ready();
+    let b = ready();
+    let a = send_at(&pair(&a, &b), &b, "first", 2_000);
+    let a = send_at(&a, &b, "second", 1_000);
+    let b = receive_at(&b, incoming(&a, 0, 1), 4_000);
+    let b = receive_at(&b, incoming(&a, 1, 2), 3_000);
+    let rows = messages(&b, id(&a));
+    assert_eq!(rows[0]["text"], "first");
+    assert_eq!(rows[0]["local_ms"], 4_000);
+    assert_eq!(rows[1]["text"], "second");
+    assert_eq!(rows[1]["local_ms"], 3_000);
+    assert_eq!(b["state"]["cursor"], 2);
+}
+
 // A conversation written by a build that kept no time still opens, and every
 // entry of it is simply without one: nothing is invented for it (REQ-CLIENT-004).
 #[test]

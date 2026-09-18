@@ -91,7 +91,7 @@ struct ConversationRow: View {
     let title: String
     let subtitle: String
     /// When the last message of this conversation happened, or the empty string
-    /// for a history that carries no time (`AppModel.listTime(for:)`).
+    /// for untimed history or a call preview (`AppModel.listTime(for:)`).
     var time: String = ""
     let trailing: Trailing
 

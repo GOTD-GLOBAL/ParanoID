@@ -14,6 +14,7 @@ python3 test_firebase_dependency.py
 python3 test_sdk_compile.py
 python3 test_call_controller.py
 python3 test_call_log.py
+python3 test_crash_exit.py
 python3 test_voice_relay.py
 TOOLS="$ANDROID_SDK_ROOT/build-tools/35.0.0"
 PLATFORM="$ANDROID_SDK_ROOT/platforms/android-35/android.jar"
@@ -46,6 +47,7 @@ java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDenseSmoke
 javac --release 8 -Xlint:-options -cp out/host:out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host test/PublicQr.java
 python3 test_ui_contract.py
 python3 test_message_presentation.py
+python3 test_message_time.py
 python3 test_contact_names.py
 python3 test_background_contract.py
 python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
@@ -64,14 +66,23 @@ python3 -c 'from pathlib import Path; import shutil; p=Path("out/gen"); shutil.r
 "$TOOLS/aapt" package -f -m --auto-add-overlay -M AndroidManifest.xml -S res $FCM_RES -I "$PLATFORM" -J out/gen --extra-packages "$FCM_PACKAGES" -F out/unsigned.apk
 javac --release 8 -Xlint:-options -encoding UTF-8 -classpath "$PLATFORM:out/deps/zxing-core-3.5.3.jar:out/deps/webrtc-classes.jar:$FCM_CP" -d out/classes src/org/paranoid/text/*.java $(find out/gen -name R.java)
 # R8 shrink-only (see proguard.pro): the closure's own consumer rules (proguard.txt inside each AAR) are
-# honoured, ours forbid optimization/renaming. Avoid unnecessary APK growth; no fixed size ceiling.
+# honoured, ours forbid optimization/renaming. Avoid unnecessary binary growth, without a fixed APK ceiling.
 python3 -c 'from pathlib import Path; import shutil; p=Path("out/r8-rules"); shutil.rmtree(p, ignore_errors=True); p.mkdir(); import zipfile
 for aar in sorted(Path("out/deps/fcm-archives").glob("*.aar")):
     with zipfile.ZipFile(aar) as z:
         if "proguard.txt" in z.namelist(): (p/(aar.stem+".pro")).write_bytes(z.read("proguard.txt"))'
-rm -rf out/dex && mkdir -p out/dex
-java -cp "$TOOLS/lib/d8.jar" com.android.tools.r8.R8 --release --lib "$PLATFORM" --min-api 26 --output out/dex --pg-conf proguard.pro $(for f in out/r8-rules/*.pro; do printf -- '--pg-conf %s ' "$f"; done) $(find out/classes -name '*.class') out/deps/zxing-core-3.5.3.jar out/deps/webrtc-classes.jar out/deps/fcm-jars/*.jar > out/r8.log 2>&1 || { grep -v "^Warning\|^Info\|does not match anything\|^  \|^}$" out/r8.log; exit 1; }
-test -s out/dex/classes.dex
+rm -rf out/dex out/dex-fcm out/dex-app && mkdir -p out/dex out/dex-fcm out/dex-app
+# (1) R8 shrinks ONLY Firebase. --classpath resolves types; it is NOT a keep root.
+#     Explicit API/manifest keep rules and consumer rules retain required members.
+#     (2) d8 dexes app/WebRTC/ZXing untouched (JNI class lookup by
+#     name). (3) d8 merges both dex files into one classes.dex (must stay single-dex, <64K methods).
+java -cp "$TOOLS/lib/d8.jar" com.android.tools.r8.R8 --release --lib "$PLATFORM" --classpath out/classes --classpath out/deps/webrtc-classes.jar --classpath out/deps/zxing-core-3.5.3.jar --min-api 26 --output out/dex-fcm --pg-conf proguard.pro $(for f in out/r8-rules/*.pro; do printf -- '--pg-conf %s ' "$f"; done) out/deps/fcm-jars/*.jar > out/r8.log 2>&1 || { grep -v "^Warning\|^Info\|does not match anything\|^  \|^}$" out/r8.log; exit 1; }
+"$TOOLS/d8" --release --lib "$PLATFORM" --min-api 26 --output out/dex-app $(find out/classes -name '*.class') out/deps/zxing-core-3.5.3.jar out/deps/webrtc-classes.jar
+# The packager intentionally supports one DEX. Reject split INPUTS before merging
+# rather than silently dropping their second file. API26 itself supports multidex.
+test ! -e out/dex-app/classes2.dex && test ! -e out/dex-fcm/classes2.dex
+"$TOOLS/d8" --release --lib "$PLATFORM" --min-api 26 --output out/dex out/dex-app/classes.dex out/dex-fcm/classes.dex
+test -s out/dex/classes.dex && test ! -e out/dex/classes2.dex
 python3 test_dex_shrink.py
 python3 -c 'import zipfile; z=zipfile.ZipFile("out/unsigned.apk","a",compression=zipfile.ZIP_DEFLATED); z.write("out/dex/classes.dex","classes.dex"); z.write("../core/target/aarch64-linux-android/release/libparanoid_client_core.so","lib/arm64-v8a/libparanoid_client_core.so",compress_type=zipfile.ZIP_STORED); z.write("out/deps/webrtc/arm64-v8a/libjingle_peerconnection_so.so","lib/arm64-v8a/libjingle_peerconnection_so.so",compress_type=zipfile.ZIP_STORED); z.write("out/THIRD_PARTY_NOTICES.txt","assets/THIRD_PARTY_NOTICES.txt"); z.close()'
 "$TOOLS/zipalign" -P 16 -f 4 out/unsigned.apk out/aligned.apk

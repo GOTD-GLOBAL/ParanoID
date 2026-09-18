@@ -1,7 +1,7 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-17
 ---
 
 # Current project state
@@ -14,18 +14,41 @@ saw, stored in the core's sealed snapshot and never transmitted
 under the bubble, put a pill where the day turns and date the conversation rows.
 An entry written before this candidate keeps no time and is shown without one.
 
-The branch stands on the PR45 candidate rather than on `main`, because both
-change the same core files; it cannot merge before PR45 does. As with the
-retired history ceiling, an older build cannot open a snapshot that carries the
-new field, so both alpha phones must be updated together, and acceptance is the
-owner's.
+PR45 has merged into main. The PR46 integration work now includes main
+`de439206172e36dcb6da0c55e6a886900d53f309`, preserving the current Android
+push/crash/packaging fixes and server maintenance gates. An older build cannot
+open a snapshot carrying the new field. Sergey selected device-local time and
+accepted coordinated alpha updates on 2026-09-17; the provenance and remaining
+ADR boundary are in [RFC-0023](../rfcs/0023-message-time.md#owner-direction-and-remaining-decision-boundary).
+This does not implement the separate long-lived-history or iOS metadata-backup
+follow-ups.
 
-Verified on this Mac: core `clean_first_contact` 20/0 including the two new
+Original contributor Mac receipt for `7093845`: core `clean_first_contact` 20/0 including the two new
 time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,
 `voice_calls` 14/0, `registration` 7/0, `key_vectors` 1/0, `self_service`
 unchanged at 10 passed with the same 14 legacy failures; `fmt` and `clippy`
 clean. **Not run:** any physical device, a signed build, the Android APK, and
 the hosted server. No merge, deployment or ADR acceptance is implied.
+
+The [2026-09-18 coordinator integration record](../clients/pr46-integration.md)
+adds actual Linux core, SDK/APK and source-gate evidence, including duplicate/
+receipt timestamp preservation and backwards-clock checks. The Android time test
+now gates both CI and APK build. Its retained-signer local versionCode26 APK is
+review-only, not the published v26 and not authorized for delivery. Original Mac
+results, Linux source checks and still-unrun phone/iOS runtime gates remain
+separate.
+
+## PR45 current-main integration candidate — 2026-09-17
+
+The [integration record](../clients/pr45-main-integration.md) combines PR45
+`ee8d043` with main `6b428c8` after PR34/35. Cold-push main-thread ownership,
+Firebase-only R8/DEX guards, structured crash reports and maintenance gates are
+preserved. Local retained-signer Android build and supported core tests pass;
+legacy keeps exactly 14 known failures. iOS/core sources remain identical to
+Yaroslav's Mac-verified `ee8d043`. The local APK inherits versionCode26 only for
+review: it is not the published v26 and must not be delivered under that number.
+RFC-0022 owner disposition, physical-device checks and main merge remain gates.
+No feed, phone, live server or architecture acceptance action occurred.
 
 ## Chat marks, call rows and unlimited history — local candidate (2026-09-17)
 
@@ -61,19 +84,71 @@ The [Linux validation and fixes](../clients/pr45-validation.md) record the
 real Android35 compile failure, its correction and a retained-signer local APK
 build, separate from Yaroslav's Mac receipt above. Core gates pass; local fixes
 also preserve call-repaint status, recheck missed-notice foreground state and
-restore the iOS receipt accessibility element. The changed iOS view needs a new
-Mac/VoiceOver check. No phone, feed publication, deployment or ADR acceptance
-follows; the APK remains a versionCode22 review candidate, not a release.
+restore the iOS receipt accessibility element. The subsequent Mac receipts below
+close compilation and simulator accessibility-label gates; physical VoiceOver
+speech remains unverified. No phone, feed publication, deployment or ADR acceptance
+follows; that earlier APK was a versionCode22 review candidate, not a release.
 
 ### Mac receipt and iOS anchor parity follow-up
 
 Yaroslav reports ParanoidKit 318/0 and unsigned simulator build on `2ee749d`,
 then simulator text-flow PASS on `ed4e2f8` with the delivery accessibility
 labels checked at runtime. The [dated receipt and scope](../clients/pr45-validation.md#contributor-mac-receipt-and-ios-anchor-follow-up)
-separate contributor execution from coordinator checks. The next iOS patch
-aligns unavailable/empty call anchors with Android and adds three XCTest cases;
-these new tests still need a Mac run. Names/log backup exposure is documented
-for owner disposition in RFC-0022, with no storage migration or live action.
+separate contributor execution from coordinator checks. The iOS patch aligns
+unavailable/empty call anchors with Android and adds three XCTest cases.
+Yaroslav's subsequent `ee8d043` Mac receipt reports CallLogTests 16/0, full
+ParanoidKit 321/0 and unsigned simulator build PASS; see the validation record.
+Names/log backup exposure remains documented for owner disposition in RFC-0022,
+with no storage migration or live action.
+
+## PR35 source integration and maintenance gates — 2026-09-17
+
+The APK-cap rollout branch is integrated with main `4830134` in a separate
+review worktree. Both branches' dated Android/iOS/TLS and server evidence remain
+intact. New CI wiring covers the one-off metadata tests and freshly packaged v2
+backup/restore/rollback/interrupt checks on disposable synthetic PostgreSQL data.
+REQ-MSG-004 and REQ-DEPLOY-002/003 remain unchanged; draft RFCs/ADR-0008 are not
+accepted by this source merge. The dated hosted result below is from September 13,
+not a fresh host check or a new deployment. CI and independent review results
+are recorded on PR35 before merge; no new APK, phone or hosted action is implied.
+
+## APK-cap server rollout completed — 2026-09-13
+
+[The actual rollout record](../operations/apk-cap-rollout-2026-09-13.md) supersedes
+the initial blocker below. Message release9f37215d844b21abae3c is active under the
+unchanged coordinator CLI; the actual process binary hash matches the tested kit.
+Original records were preserved during exact maintenance reconciliation. The first
+attempt safely rolled back on the known optional FCM schema; a strict reference
+schema/backup-coverage correction then passed fifteen packaged tests and review.
+The successful update verified encrypted restore of all seven tables, including
+push tokens, before switching. TLS key/certificate/pin, PG identity, unit and
+semantic config were preserved. Live old-v25 updater downloads the unchanged v26
+feed correctly. Phone call/push/reboot acceptance remains unrun; no permanent
+ADR acceptance or generic future drift bypass is claimed.
+
+## APK-cap server deployment blocked — 2026-09-13
+
+The owner authorized server update and bridge publication after PRs32/33 merged.
+The locked native server candidate was built, but original coordinator status
+refused config/certificate/unit identity drift before deployment. Read-only worker
+inspection confirmed unchanged release, PG identifier, TLS key and pin. No drift
+adoption or code switch was attempted. [The blocked-rollout record](../operations/apk-cap-rollout-blocked-2026-09-13.md)
+retains evidence and required reviewed reconciliation. Android delivery is a
+separate operation; it does not prove the server was updated.
+
+## PR34 v26 source integration candidate
+
+The [integration review](../clients/android/pr34-integration-review.md) records
+local fixes, actual SDK/split-DEX and host test results, and remaining gates.
+
+The [dated v26 publication record](../clients/android/v26-bridge-release.md)
+covers the bridge published on 2026-09-13, including v25 call-owner and split-R8
+fixes absent from main. Its server-blocked statement is historical evidence for
+that operation, not a fresh host status check. This integration retains current
+main's complete evidence (including later iOS/TLS entries) and removes an
+accidentally committed output-truncation placeholder from the PR branch.
+Local integration/testing is not a new APK publication, phone acceptance,
+server deployment, main merge or architecture approval.
 
 ## C1 integrated and verified at host/simulator scope (2026-09-14)
 

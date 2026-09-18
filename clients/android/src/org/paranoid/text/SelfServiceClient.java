@@ -99,7 +99,7 @@ public final class SelfServiceClient {
         if(!active())throw new IOException("registration required");
         // The core keeps no clock: a message carries the time of the phone that wrote or
         // received it, passed with the operation and never transmitted.
-        apply(new JSONObject().put("op","send_v2").put("account",account).put("text",text).put("now_ms",System.currentTimeMillis()));
+        apply(new JSONObject().put("op","send_v2").put("account",account).put("text",text).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }
     /** Returns immutable envelope ID; this is durable enqueue, not server acceptance. */
     public String sendCall(String account,JSONObject body) throws Exception {
@@ -150,7 +150,7 @@ public final class SelfServiceClient {
         long cursor=view().getLong("cursor");
         JSONArray messages=signed("message","GET","/v2/messages?after="+cursor+"&limit=20","").getJSONArray("messages");
         if(messages.length()>20)throw new IOException("page limit");
-        for(int n=0;n<messages.length();n++)apply(new JSONObject().put("op","receive_v2").put("message",messages.getJSONObject(n)).put("now_ms",System.currentTimeMillis()));
+        for(int n=0;n<messages.length();n++)apply(new JSONObject().put("op","receive_v2").put("message",messages.getJSONObject(n)).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }
     public JSONObject publicView() throws Exception {
         healthy();JSONObject safe=new JSONObject().put("identity",false).put("active",false).put("configured",!state.isEmpty()).put("dialogs",new JSONArray());
@@ -203,6 +203,6 @@ public final class SelfServiceClient {
         if(acceptedListener!=null)acceptedListener.accepted(envelope.getString("id"));
     }
     public void received(JSONObject message)throws Exception {
-        apply(new JSONObject().put("op","receive_v2").put("message",message).put("now_ms",System.currentTimeMillis()));
+        apply(new JSONObject().put("op","receive_v2").put("message",message).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }
 }

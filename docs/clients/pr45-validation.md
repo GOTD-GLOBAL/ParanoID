@@ -144,3 +144,14 @@ not rewritten because their original availability cannot be recovered.
 Both local names and call-log UserDefaults backup exposure are now explicit
 in client docs, source comments and RFC-0022 question 4 for the owner. No
 file-store migration, physical-device install, feed, merge or ADR acceptance.
+
+### Anchor-fix Mac gate closed on ee8d043
+
+Yaroslav's subsequent 2026-09-17 [contributor receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/45#issuecomment-5714820519)
+reports an isolated worktree with the core rebuilt from `ee8d043`: CallLogTests
+16/0, full ParanoidKit 321/0 and unsigned simulator app BUILD SUCCEEDED. The
+first fresh-tree build lacked generated THIRD_PARTY_NOTICES.txt; running
+`python3 clients/ios/notices.py --offline` fixed preparation and the build passed.
+This closes the compilation/XCTest gate described above, not physical VoiceOver,
+phone call rows, signed iOS export or architecture acceptance. Earlier pending
+statements are historical; coordinator execution remains Linux-only.
