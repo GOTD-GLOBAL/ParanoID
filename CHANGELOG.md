@@ -8,6 +8,12 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v27 packaging — 2026-09-18
+
+- Prepare `0.0.27-timeout`, version code27, from merged main after PR48. Retain
+  package/signing identity and current shared-core/UI changes. This source
+  increment alone does not claim publication or physical-phone acceptance.
+
 ### Android response timeout — 2026-09-18
 
 - Ordinary self-service v2 reads now wait 15 seconds, above the server 10-second

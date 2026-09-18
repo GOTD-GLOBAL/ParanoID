@@ -6,6 +6,17 @@ last_reviewed: 2026-09-17
 
 # Current project state
 
+## Android v27 release preparation — 2026-09-18
+
+Sergey requested merging PR48 and publishing a new in-app Android update. PR48
+merged as `408911f32833b2e3e62411bafff0adcdcfe90daf`; this release branch adds only
+version27 / `0.0.27-timeout` packaging and matching version assertions. Runtime
+code and shared core are the merged main, including PR45/46 UI/history/time and
+PR48 response timeout changes. The observed existing feed is version26.
+Retained signer/package, strict TLS, native installer consent and phone data
+remain protected. Build, independent artifact review and verified publication
+are separate gates; this source preparation is not a publication receipt.
+
 ## Android response timeout candidate — 2026-09-18
 
 Issue #39: ordinary self-service v2 reads use 15 seconds, events 30 seconds and
