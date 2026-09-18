@@ -57,6 +57,7 @@ jobs:
           python3 clients/ios/test_toolchain.py --no-xcode
           python3 clients/ios/test_webrtc_dependency.py --offline
           python3 clients/ios/test_ui_contract.py
+          python3 clients/ios/test_call_tone_lifecycle.py
           python3 clients/ios/test_storage_bootstrap_contract.py
           python3 clients/ios/test_freeze_open_contract.py
           python3 clients/ios/test_interrupted_onboarding_contract.py

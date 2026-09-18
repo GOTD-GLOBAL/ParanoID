@@ -712,19 +712,30 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   start after the toggle downgrades the call to audio and never ends it; and
   the two configurations are the ones the protocol demands. Every address in
   the file is RFC 5737 documentation space.
+- `ParanoID/Voice/CallTones.swift` selects the three progress sounds from the
+  ordered authenticated presentation: ring, caller ringback and a two-second
+  busy tail only for busy/reject/timeout from outgoing ringing. It owns session
+  policy on the audio-control queue; `CallTonePlayback.swift` owns all player
+  I/O on a separate executor, with generation/deadline cancellation and muted
+  startup until play succeeds. Incoming uses foreground-only ambient; caller
+  audio uses the existing call route, with capture off during a terminal tail.
+  See [RFC-0025](../../docs/rfcs/0025-ios-call-tone-lifecycle.md) and the
+  [Mac handoff](../../docs/clients/ios/call-tones-handoff.md). No physical
+  audibility, mute-switch/haptic or route acceptance is implied by source tests.
 - `ParanoID/Voice/AudioSessionController.swift` is the part of Android's
   engine that iOS keeps outside libwebrtc: the process has exactly one
   `AVAudioSession`, and a call needs it **running before there is any media at
   all**, because the `audio` background mode holds nothing without one. It is
   started from the explicit Call and Answer actions, after the microphone is
-  granted and before the first `knock` leaves the device, and from the arrival
-  of an incoming ring. It puts libwebrtc into manual audio
+  granted and before the first `knock` leaves the device; readiness is awaited
+  rather than inferred from enqueuing a request. Incoming instead uses ambient
+  without microphone authority. For a call it puts libwebrtc into manual audio
   (`useManualAudio = true`, `isAudioEnabled = false`), configures
   `.playAndRecord` / `.voiceChat` / `.allowBluetoothHFP` (the renamed
   `.allowBluetooth`) and activates the session, and spins one silent
   `AVAudioPlayer` — a WAVE file of zeroes built in memory, looped at volume 0
-  — until media flows. There is **no ringtone**: Android rings from a
-  background notification and this client has no background. Only `connected`
+  — until media flows. Foreground incoming ring and caller progress tones use
+  the separately queued player and policy described above. Only `connected`
   hands the audio unit to libwebrtc (`isAudioEnabled = true`) and stops the
   silent loop. «Громкая связь» is `overrideOutputAudioPort(.speaker)`, and it
   yields to a wired or Bluetooth headset that is already carrying the call;

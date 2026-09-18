@@ -33,6 +33,19 @@ New observer: Apple as TestFlight distributor and installation observer
 Not used: APNs / PushKit / background refresh / CallKit (foreground-only)
 ```
 
+## Call-tone lifecycle candidate (RFC-0025)
+
+[RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md) records the revised alert
+boundary: ambient incoming output only while active; explicit Call/Answer
+prepares recording-capable call routing but only connected media enables the
+unit. The terminal busy tail is output-only and bounded; late callbacks/timers
+cannot own a replacement epoch. Player I/O cannot block UI/state-owner queues.
+A failure to activate/play is not evidence of successful audio. Counted WebRTC
+leases are balanced even after failed deactivation or service reset. Haptic
+availability and physical silent-switch/routes remain native/device gates,
+not properties proved by source or fake-port tests. No new wire, storage,
+permission prompt, push or CallKit authority is introduced.
+
 ## Storage boundary (threat-model boundary 2)
 
 The lazy wrapping-key correction replaces the defaults-based first-run exception;

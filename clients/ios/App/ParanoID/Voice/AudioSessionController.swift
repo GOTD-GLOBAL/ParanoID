@@ -1,61 +1,22 @@
 import AVFoundation
 import Foundation
+import ParanoidKit
 import UIKit
 import WebRTC
 
-/// The audio session of one call: the part of Android's `WebRtcAudioEngine`
-/// that iOS keeps outside the media engine.
-///
-/// On Android the engine owns the `AudioManager`, the focus request, the
-/// speakerphone and the proximity wake lock
-/// (`clients/android/src/org/paranoid/text/WebRtcAudioEngine.java:86-140`). On
-/// iOS none of that belongs to libwebrtc: the process has exactly one
-/// `AVAudioSession`, the route is a property of that session rather than of a
-/// peer connection, and the session has to be **running before there is any
-/// media at all** — otherwise the `audio` background mode holds nothing and
-/// the system may suspend the process while the call is still ringing. So this
-/// type owns it, and `WebRtcAudioEngine` owns only tracks.
-///
-/// ## The order it exists for
-///
-/// 1. The microphone is granted (the coordinator asks; this type never does).
-/// 2. ``begin()`` — **before** the first `knock`, `ready` or Answer — puts
-///    libwebrtc into manual audio (`useManualAudio`), leaves its audio unit
-///    switched off (`isAudioEnabled = false`), configures the session
-///    `.playAndRecord` / `.voiceChat` / Bluetooth HFP and activates it, and
-///    starts one silent looping player so that the `audio` background mode has
-///    something to hold while the call is still being set up. There is no
-///    ringtone: Android rings only from a background notification, and this
-///    client has no background (`docs/clients/ios/README.md`, the foreground
-///    rule).
-/// 3. ``enableAudio()`` at `connected` — and only there — switches the
-///    libwebrtc audio unit on, stops the silent player and arms the proximity
-///    sensor, because from that instant the call itself is what keeps the
-///    session alive (`voice-v1.md:107-108`: only an actual connection is
-///    "connected").
-/// 4. ``end()`` releases everything and hands the route back to whatever had
-///    it before.
-///
-/// ## What it reports
-///
-/// An interruption that begins (a cellular call, Siri) and a media-services
-/// reset are both the loss of the audio this call is made of, so they are
-/// reported and the coordinator ends the call as `failed` — **if** there is
-/// media to lose. A call that is still ringing has none, so the coordinator
-/// leaves it to its own forty-five-second deadline, and the session the system
-/// deactivated is put back by ``resume()`` when the interruption ends;
-/// otherwise Answer would hand libwebrtc the audio unit of a session that is
-/// no longer running. A route change is not a failure either: it only moves
-/// the earpiece/speaker decision, and with it the proximity sensor.
-///
-/// ## Where it runs
-///
-/// Every mutable member is touched on ``queue``. `AVAudioSession` and
-/// `RTCAudioSession` are process-wide singletons with their own locking, so
-/// they are reached from that queue directly; `UIDevice` and `UIApplication`
-/// are main-actor and are reached through one hop. Nothing here calls back
-/// into the call controller: it hands the coordinator an ``Interruption`` and
-/// the coordinator decides.
+/// Owns call/alert session configuration on one serial control queue.
+/// CallTones consumes ordered authenticated presentations on that queue; all
+/// player I/O (including the zero-volume keep-alive) uses QueuedCallToneOutput.
+/// Incoming is foreground-only ambient: system silent-switch behavior applies,
+/// no recording mode is acquired. Explicit Call/Answer prepares playAndRecord /
+/// voiceChat and awaits activation before its first control. Only connected
+/// media may enable libwebrtc; close requests capture revocation without waiting
+/// for a player. A caller's terminal busy tail may retain an ALREADY-owned output
+/// route for two seconds, with capture off, then stop-ACK precedes deactivation.
+/// Route/video/proximity remain owned here. OS API failures are reported to the
+/// policy as failures, not represented as confirmed physical audio behavior.
+/// RTCAudioSession's pinned setActive(false) consumes a logical activation even
+/// on failure; reset keeps activationCount. See RFC-0025 for that accounting.
 final class AudioSessionController: @unchecked Sendable {
     /// What can take the audio away from a live call.
     enum Interruption: Sendable, Equatable {
@@ -75,6 +36,7 @@ final class AudioSessionController: @unchecked Sendable {
     /// `.allowBluetoothHFP` is the current spelling of `.allowBluetooth`
     /// (same option, renamed in iOS 26) and is what `.voiceChat` needs before
     /// a headset can carry the microphone.
+    static let incomingCategory = AVAudioSession.Category.ambient
     static let category = AVAudioSession.Category.playAndRecord
     static let mode = AVAudioSession.Mode.voiceChat
     static let options: AVAudioSession.CategoryOptions = [.allowBluetoothHFP]
@@ -94,12 +56,13 @@ final class AudioSessionController: @unchecked Sendable {
     static let keepAliveSampleRate = 8_000
 
     private let queue = DispatchQueue(label: "global.paranoid.voice.audio")
-    /// The silent loop runs on a queue of its own, because `AVAudioPlayer`
-    /// reaches the audio server: `play()` can take a very long time when that
-    /// server is busy or absent (minutes, measured in the simulator), and the
-    /// queue above carries the audio unit hand-over and the route. A call must
-    /// not wait for the thing that only keeps the background mode alive.
-    private let keepAliveQueue = DispatchQueue(label: "global.paranoid.voice.keepalive")
+    private let toneOutput = QueuedCallToneOutput()
+    private var foreground = false
+    private var incomingOnly = false
+    private var presentedState: CallController.State = .idle
+    private var presentedCallId = ""
+    private lazy var toneDriver = CallTones(queue: queue, session: ToneSessionPort(self),
+                                           output: toneOutput, foreground: foreground)
     private let events: @Sendable (Interruption) -> Void
 
     /// Whether this type activated the session and still holds it.
@@ -123,9 +86,6 @@ final class AudioSessionController: @unchecked Sendable {
     /// The peer's camera. Like local video, it keeps the stage visible and
     /// prevents proximity blanking; it does not change the audio route.
     private var remoteVideo = false
-    /// Both are touched on ``keepAliveQueue`` and nowhere else.
-    private var keepAlive: AVAudioPlayer?
-    private var keepAliveWanted = false
     private var observers: [any NSObjectProtocol] = []
 
     /// - Parameter events: where an interruption goes. It is called on this
@@ -134,44 +94,69 @@ final class AudioSessionController: @unchecked Sendable {
         self.events = events
     }
 
-    // MARK: - The call's audio
+    private final class ToneSessionPort: CallToneSessionPort {
+        private weak var owner: AudioSessionController?
+        init(_ owner: AudioSessionController) { self.owner = owner }
+        func activate(_ mode: CallTones.Mode) -> Bool { owner?.activateToneMode(mode) ?? false }
+        func deactivate() -> Bool { owner?.deactivateToneMode() ?? false }
+        func media(_ enabled: Bool) { owner?.setMediaForTones(enabled) }
+    }
 
-    /// Activates the session for a call that is about to start.
-    ///
-    /// It is called from the explicit Call and Answer actions, with the
-    /// microphone already granted, and **before** the first control leaves
-    /// this device: the `audio` background mode is only worth anything while
-    /// a session is running, and a knock that goes out first would leave a
-    /// window in which the process can be suspended with a call pending.
-    ///
-    /// Idempotent: a second call while the session is already held does
-    /// nothing at all.
-    func begin() {
+    private func setForeground(_ value: Bool, cancelPreparation: Bool = false) {
         queue.async { [self] in
-            guard !held else { return }
-            held = true
-            let session = RTCAudioSession.sharedInstance()
-            // Manual audio: libwebrtc will not touch the audio unit until this
-            // type says so, which is what keeps a ringing call silent
-            // (`call-v2.md`: the microphone of an incoming call is off until
-            // Answer).
-            session.useManualAudio = true
-            session.isAudioEnabled = false
-            audible = false
-            session.lockForConfiguration()
-            do {
-                try session.setCategory(Self.category, mode: Self.mode, options: Self.options)
-                try session.setActive(true)
-            } catch {
-                // A session that will not activate is not a reason to stop:
-                // the call fails on its own deadlines, and `end()` still
-                // balances everything this method did.
-            }
-            session.unlockForConfiguration()
+            foreground = value; toneDriver.setForeground(value)
+            if cancelPreparation { toneDriver.cancelPreparationForBackground() }
+        }
+    }
+
+    /// Ordered on the same queue as session policy, not via an independent UI hop.
+    func callChanged(_ presentation: CallPresentation) {
+        queue.async { [self] in
+            // The coordinator has assigned its controller before publishing or
+            // preparing audio. Register callbacks only after that construction.
             subscribe()
-            startKeepAlive()
+            if presentation.state == .incoming,
+               presentedState != .incoming || presentedCallId != presentation.callId { speaker = false }
+            presentedState = presentation.state; presentedCallId = presentation.callId
+            toneDriver.changed(state: presentation.state, callId: presentation.callId, reason: presentation.reason)
+        }
+    }
+
+    func restoreIncoming() { queue.async { [self] in toneDriver.restoreIncoming() } }
+    func quiesceMedia() {
+        queue.async { [self] in
+            video = false; remoteVideo = false
+            toneDriver.quiesceMedia()
             applyRoute()
         }
+    }
+
+
+    // MARK: - The call's audio
+
+    /// Fire-and-forget preparation retained for platform tests. The application
+    /// uses prepareForCall() to await real readiness before sending controls.
+    func begin() {
+        queue.async { [self] in subscribe(); toneDriver.prepareCall() }
+    }
+
+    /// Call/Answer waits for real session readiness, not merely enqueuing begin().
+    /// Timeout/cancellation never waits for a blocked player or platform operation.
+    func prepareForCall(timeout: TimeInterval = 10) async -> Bool {
+        let reply = AudioPreparationReply()
+        return await withTaskCancellationHandler(operation: {
+            await withCheckedContinuation { continuation in
+                guard reply.install(continuation) else { return }
+                let timer = DispatchWorkItem { [weak reply] in reply?.finish(false) }
+                reply.arm(timer)
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timer)
+                queue.async { [self] in
+                    guard reply.isPending else { return }
+                    subscribe()
+                    toneDriver.prepareCall { value in reply.finish(value) }
+                }
+            }
+        }, onCancel: { reply.finish(false) })
     }
 
     /// The call is actually connected: hand the audio unit to libwebrtc and
@@ -181,15 +166,7 @@ final class AudioSessionController: @unchecked Sendable {
     /// connection (`voice-v1.md:107-108`), and an audio unit started earlier
     /// would open the microphone before there is a call to carry it.
     func enableAudio() {
-        queue.async { [self] in
-            guard held, !audible else { return }
-            audible = true
-            RTCAudioSession.sharedInstance().isAudioEnabled = true
-            stopKeepAlive()
-            // `connected` is also what arms the proximity sensor, so the route
-            // is re-applied here and not only from the controls.
-            applyRoute()
-        }
+        queue.async { [self] in toneDriver.enableAudio() }
     }
 
     /// «Громкая связь» / «Телефонный динамик».
@@ -236,36 +213,10 @@ final class AudioSessionController: @unchecked Sendable {
         }
     }
 
-    /// The interruption is over and the session has to come back.
-    ///
-    /// The system deactivates the session it interrupts, and nothing else in
-    /// this type ever re-activates one: ``begin()`` returns at once while
-    /// ``held`` is set, and ``enableAudio()`` hands libwebrtc the audio unit of
-    /// a session it assumes is still running. A call that was **ringing** when
-    /// a cellular call, Siri or an alarm arrived is exactly that case — it has
-    /// no media yet, so the coordinator does not end it — and without this it
-    /// would be answered into a session the system had already taken away. The
-    /// silent loop comes back with it while there is still no media.
-    ///
-    /// A call that already had media never reaches here: the coordinator ends
-    /// it on ``Interruption/began`` and ``end()`` clears ``held``.
+    /// An interruption-end permits bounded output/session recovery, never
+    /// automatic capture resumption. A connected call is ended by its owner.
     private func resume() {
-        queue.async { [self] in
-            guard held else { return }
-            let session = RTCAudioSession.sharedInstance()
-            session.lockForConfiguration()
-            do {
-                try session.setCategory(Self.category, mode: Self.mode, options: Self.options)
-                try session.setActive(true)
-            } catch {
-                // Same rule as `begin()`: a session that will not come back is
-                // not a reason to stop, and the call fails on its own
-                // deadlines.
-            }
-            session.unlockForConfiguration()
-            if !audible { resumeKeepAlive() }
-            applyRoute()
-        }
+        queue.async { [self] in toneDriver.setInterrupted(false) }
     }
 
     /// Releases the session and everything taken with it.
@@ -275,29 +226,56 @@ final class AudioSessionController: @unchecked Sendable {
     /// route back to whatever had it.
     func end() {
         queue.async { [self] in
-            stopKeepAlive()
-            unsubscribe()
-            let session = RTCAudioSession.sharedInstance()
-            session.isAudioEnabled = false
-            audible = false
-            if held {
-                session.lockForConfiguration()
-                // The route goes back before the session does: a speakerphone
-                // override is a property of the session this call activated,
-                // and whatever had the audio before must not inherit it.
-                try? session.overrideOutputAudioPort(.none)
-                // `RTCAudioSession` counts activations, so this is the one
-                // that balances `begin()`; deactivating notifies whatever was
-                // playing before the call that it may resume.
-                try? session.setActive(false)
-                session.unlockForConfiguration()
-            }
-            held = false
-            speaker = false
-            video = false
-            remoteVideo = false
-            applyRoute()
+            speaker = false; video = false; remoteVideo = false
+            // Keep this adapter alive until queued player stop/session cleanup
+            // has been attempted, including when a test drops its last reference.
+            toneDriver.release { [self] in applyRoute() }
         }
+    }
+
+    private func activateToneMode(_ mode: CallTones.Mode) -> Bool {
+        let session = RTCAudioSession.sharedInstance()
+        session.useManualAudio = true
+        session.isAudioEnabled = false
+        session.lockForConfiguration()
+        do {
+            try session.setCategory(mode == .incoming ? Self.incomingCategory : Self.category,
+                                    mode: mode == .incoming ? .default : Self.mode,
+                                    options: mode == .incoming ? [] : Self.options)
+            try session.setActive(true)
+            held = true; incomingOnly = mode == .incoming; audible = false
+        } catch { session.unlockForConfiguration(); return false }
+        session.unlockForConfiguration()
+        applyRoute()
+        return true
+    }
+
+    private func setMediaForTones(_ enabled: Bool) {
+        guard !enabled || (held && !incomingOnly) else { return }
+        RTCAudioSession.sharedInstance().isAudioEnabled = enabled
+        audible = enabled
+        applyRoute()
+    }
+
+    private func deactivateToneMode() -> Bool {
+        let session = RTCAudioSession.sharedInstance()
+        session.isAudioEnabled = false; audible = false
+        if presentedState == .ended || presentedState == .idle { speaker = false }
+        if held {
+            session.lockForConfiguration()
+            if !incomingOnly { try? session.overrideOutputAudioPort(.none) }
+            do { try session.setActive(false) }
+            catch {
+                session.unlockForConfiguration()
+                held = false // the SDK balances the lease even when setActive(false) throws
+                incomingOnly = false
+                applyRoute(); return false
+            }
+            session.unlockForConfiguration()
+        }
+        held = false; incomingOnly = false
+        applyRoute()
+        return true
     }
 
     /// Whether a wired or Bluetooth headset is carrying the call right now.
@@ -320,7 +298,7 @@ final class AudioSessionController: @unchecked Sendable {
     /// Applies routing and screen policy on ``queue``.
     private func applyRoute() {
         let session = RTCAudioSession.sharedInstance()
-        if held {
+        if held && !incomingOnly {
             let wantsSpeaker = speaker && !isHeadsetRoute
             session.lockForConfiguration()
             try? session.overrideOutputAudioPort(wantsSpeaker ? .speaker : .none)
@@ -337,52 +315,7 @@ final class AudioSessionController: @unchecked Sendable {
         }
     }
 
-    // MARK: - The silent loop
-
-    /// Starts the zero-volume loop that gives the `audio` background mode
-    /// something to hold before media exists.
-    ///
-    /// Everything here happens on ``keepAliveQueue``, so a slow audio server
-    /// delays the loop and nothing else. If the call reached `connected` while
-    /// `play()` was still returning, the player is stopped the moment it does:
-    /// a keep-alive that starts after the media is up would be holding the
-    /// session against the call rather than for it.
-    private func startKeepAlive() {
-        keepAliveQueue.async { [self] in
-            keepAliveWanted = true
-            guard keepAlive == nil,
-                  let player = try? AVAudioPlayer(data: Data(Self.silence()))
-            else { return }
-            player.numberOfLoops = -1
-            player.volume = 0
-            keepAlive = player
-            player.play()
-            if !keepAliveWanted {
-                player.stop()
-                keepAlive = nil
-            }
-        }
-    }
-
-    /// Plays the loop again after an interruption stopped it.
-    ///
-    /// It never builds a player: a call that has no keep-alive any more is one
-    /// that reached `connected`, and starting a loop there would hold the
-    /// session against the call rather than for it.
-    private func resumeKeepAlive() {
-        keepAliveQueue.async { [self] in
-            guard keepAliveWanted, let player = keepAlive, !player.isPlaying else { return }
-            player.play()
-        }
-    }
-
-    private func stopKeepAlive() {
-        keepAliveQueue.async { [self] in
-            keepAliveWanted = false
-            keepAlive?.stop()
-            keepAlive = nil
-        }
-    }
+    // MARK: - Silent keep-alive waveform (played only by QueuedCallToneOutput)
 
     /// A minimal 16-bit PCM WAVE file of silence, built here rather than
     /// shipped as a resource: an asset in the bundle would be one more file to
@@ -422,12 +355,27 @@ final class AudioSessionController: @unchecked Sendable {
     private func subscribe() {
         guard observers.isEmpty else { return }
         let centre = NotificationCenter.default
+        // Fail quiet until the main actor confirms current visibility. The
+        // controller can be constructed long before its first audio request.
+        foreground = false
+        toneDriver.setForeground(false)
+        for (name, active, background) in [(UIApplication.didBecomeActiveNotification, true, false),
+                                           (UIApplication.willResignActiveNotification, false, false),
+                                           (UIApplication.didEnterBackgroundNotification, false, true)] {
+            observers.append(centre.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.setForeground(active, cancelPreparation: background)
+            })
+        }
+        Task { @MainActor [weak self] in
+            let state = UIApplication.shared.applicationState
+            self?.setForeground(state == .active, cancelPreparation: state == .background)
+        }
         observers.append(centre.addObserver(forName: AVAudioSession.interruptionNotification,
                                             object: nil, queue: nil) { [weak self] note in
             guard let self else { return }
             let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
             switch raw.flatMap(AVAudioSession.InterruptionType.init(rawValue:)) {
-            case .began: queue.async { self.events(.began) }
+            case .began: queue.async { self.toneDriver.setInterrupted(true); self.events(.began) }
             case .ended: resume()
             default: break
             }
@@ -435,7 +383,11 @@ final class AudioSessionController: @unchecked Sendable {
         observers.append(centre.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification,
                                             object: nil, queue: nil) { [weak self] _ in
             guard let self else { return }
-            queue.async { self.events(.mediaServicesLost) }
+            queue.async {
+                self.audible = false // SDK reset keeps activationCount; driver must balance the old lease
+                self.toneDriver.mediaServicesReset()
+                self.events(.mediaServicesLost)
+            }
         })
         observers.append(centre.addObserver(forName: AVAudioSession.routeChangeNotification,
                                             object: nil, queue: nil) { [weak self] _ in
@@ -444,11 +396,6 @@ final class AudioSessionController: @unchecked Sendable {
             // speakerphone decision and the proximity sensor with it.
             queue.async { self.applyRoute() }
         })
-    }
-
-    private func unsubscribe() {
-        for observer in observers { NotificationCenter.default.removeObserver(observer) }
-        observers.removeAll()
     }
 
     deinit {

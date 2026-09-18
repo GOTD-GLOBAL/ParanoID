@@ -6,6 +6,29 @@ last_reviewed: 2026-09-18
 
 # Current project state
 
+## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
+
+At Yaroslav's request PR50's initial tone player was corrected after review.
+[RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md), proposed, records the policy:
+ordered authenticated presentations drive a queue-confined session/tone policy;
+player I/O has its own executor, muted startup and generation/deadline fences.
+Incoming uses foreground-only ambient, not a pre-Answer recording session.
+Caller ringback and a bounded terminal busy tail use an already-owned call
+route; capture is revoked separately. Call/Answer awaits actual audio readiness
+within the shared setup deadline. SDK interruption/reset recovery balances the
+pinned WebRTC activation count rather than assuming activation is idempotent.
+
+The [handoff](../clients/ios/call-tones-handoff.md) describes new failure, held-
+player, timer, cancellation, coalesced-interruption and readiness regressions.
+Linux source checks can verify wiring, not Swift execution or audibility. A
+fresh Mac compile/full app test and bundle are required for this corrected tree;
+no physical phone, silent-switch/headset/haptic or real-peer result is claimed.
+No merge, publication, deployment or RFC/ADR acceptance has occurred.
+
+Historical contributor receipt on `4db2f8c` (same initial iOS source as its
+pre-merge branch): package 362/0, app68/0 with tones12/12, fresh bundle23/1 and
+source gates green. That receipt does **not** cover the revised lifecycle.
+
 ## Android v27 published — 2026-09-18
 
 [The v27 release receipt](../clients/android/v27-release.md) records the actual
