@@ -10,20 +10,21 @@ public contract is declared.
 
 ### iPhone local metadata out of the OS backup — 2026-09-18
 
-- **A backup of the iPhone no longer carries who you talk to.** The local contact
+- **Local metadata files are excluded after successful migration.** The local contact
   names and the call log move from `UserDefaults`, which iCloud and encrypted
   local backups include, into `Application Support/paranoid/` files excluded from
   backup on their own inode ([RFC-0024](docs/rfcs/0024-local-metadata-at-rest.md),
   proposed). Peer accounts, typed names, call outcomes, durations and message
-  anchors are no longer reproduced by a restore onto another device.
+  anchors in successfully migrated files are excluded. Failed/deferred migration
+  can retain legacy preferences; historical backups are not erased.
 - **Commit rules are the state file's:** the candidate is created empty and
   flagged before a single row is written and before the rename, the committed
-  file is read back byte for byte and its flag read back too, and a file that
-  cannot be verified or proven excluded is removed rather than left for the next
-  backup. A phone updating from an earlier build migrates each preference once
+  file is read back byte for byte and its flag read back too. A proven byte
+  mismatch or false flag allows removal; throwing verification or directory
+  sync preserves the remaining file. A phone updating migrates each preference once
   and clears it only after that proof, so an interrupted migration repeats
   instead of losing the table.
-- **No failure of this store destroys the table.** A file that exists and will
+- **Inconclusive I/O does not delete the retained table.** A file that exists and will
   not open seals the store instead of becoming an empty table that the next
   write replaces; a committed, verified, provably excluded file is kept even when
   the directory sync that follows fails; a preference is retired only against a
@@ -38,6 +39,10 @@ public contract is declared.
   file that will not open, because it may be older than that file; and emptying
   a table retires the preference first, since it is the backup-eligible copy a
   later launch would resurrect the table from.
+- **No metadata migration before bootstrap permission.** Names and calls start
+  in memory and acquire persistent stores once after successful bootstrap.
+  Screen reads and `.noStand` do not migrate preferences. New app-level tests
+  require a Mac run; source-only verification is recorded separately.
 - **Not encryption.** The bytes stay plain JSON inside the container under
   `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
   them is RFC-0024 question 2, open.

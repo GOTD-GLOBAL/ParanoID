@@ -52,9 +52,11 @@ from OS backup on its own inode.
   table, `F_FULLFSYNC`, `rename(2)`, read the committed file back and compare it
   byte for byte, read the flag back from the committed name, `F_FULLFSYNC` the
   directory.
-- A file that cannot be verified or cannot be proven excluded is **removed**,
-  not kept. A table this build promised to withhold from a backup is not left
-  behind for the next one.
+- After replacement, deletion requires positive evidence of a bad candidate:
+  readback bytes differ, or the backup flag is read as false. A throwing read,
+  flag query or directory sync is inconclusive, so the remaining file is kept
+  and the operation reports failure; the earlier inode was already replaced.
+  Legacy preferences are not retired on these failed saves.
 - One shared `LocalMetadataStore` implements this once for both tables.
 
 The ceiling is set by the largest table the product itself admits, not by a
@@ -88,12 +90,12 @@ But a convenience may not destroy itself, and three rules exist because the
 first implementation of this RFC broke exactly that (PR47 review, 2026-09-18):
 
 - **A file that exists and will not open is not an empty table.** When the read
-  fails and no preference stands behind it, the store *seals*: every later write
-  and the removal are refused for the life of that instance, so the empty table
-  its caller had to start from never replaces the one nobody could read. A later
-  load that succeeds unseals it. Where a preference does stand behind the file —
-  only possible while a migration is unfinished — that preference is the
-  authority and is used instead.
+  fails, the store *seals* whether or not a preference also exists: later writes
+  and removal are refused until a successful load. A legacy preference may be
+  shown in memory, but is not write authority over the unreadable file: a
+  previous save may have left a newer file beside an older preference. Without
+  a legacy value the UI has an empty in-memory table, not permission to replace
+  the retained one.
 - **A committed, byte-exact, provably excluded file is kept even if the
   directory sync then fails.** That sync makes the rename durable; losing it
   answers `false` and keeps both the file and the preference, because the
@@ -131,16 +133,22 @@ they are reviewed as decisions:
   again on that phone. Where a preference stands behind it, that preference is
   used and the file is rewritten from it.
 - **A seal lasts the process.** The instance unseals on a later successful load,
-  but the application builds each store once, in an `AppModel` property
-  initializer, so in practice the next launch is the recovery. The table stays
-  live in memory for the run; nothing is shown as lost and nothing is written.
+  but the application initializes its persistent metadata stores once after a
+  successful bootstrap, so in practice the next launch is the recovery. During
+  a sealed run the UI can show only available legacy/in-memory values; absent
+  such values it shows an empty table, while retained files are not overwritten.
 
-One known deviation is recorded rather than fixed here: both tables are property
-initializers on `AppModel`, so they load — and may migrate, which writes a file —
-before `start()` decides `.noStand`. That path documents leaving the device as it
-found it. Closing it means making the two tables lazy, which is a change to the
-model's lifetime rather than to this storage rule, and is left for the owner to
-direct.
+### Bootstrap ordering
+
+`AppModel` starts with in-memory-only tables (`store: nil`). A stored factory
+constructs their persistent stores only after stand selection, storage
+continuity and runtime construction succeed, before publishing `.running` or
+starting the lanes. It runs once; screen reads do not trigger it. A no-stand,
+malformed-stand or failed-bootstrap path therefore performs no metadata
+migration and leaves existing preferences/files untouched. This preserves the
+existing `.noStand` contract; it is not a waiver requiring a new product choice.
+App-level tests inject bootstrap outcomes and isolated metadata stores, while
+the source gate also checks the actual no-stand early-return ordering.
 
 ## What this is not
 
@@ -187,16 +195,21 @@ Not in scope, and unchanged:
 
 ## Privacy delta
 
-After this change, an iCloud or encrypted local backup of the iPhone contains
-no contact name, no peer account from the name table and no call outcome,
-direction, duration or anchor. Container access, device compromise and the
-owner's own phone are unchanged — this closes the backup path only.
+After a **successful migration**, the current metadata files have backup
+exclusion set and verified, and removal of the legacy preferences has been
+requested. Failed/deferred migration can intentionally leave a backup-eligible
+legacy copy; exclusion of that copy must not be claimed. `UserDefaults` removal
+is asynchronous: an in-process absence assertion is not a crash-durable
+backup/restore proof. The application cannot erase metadata already present in
+historical OS backups. Container access and device compromise are unchanged —
+this candidate addresses the current backup path, not encryption at rest.
 
 No physical backup/restore experiment on a device is claimed. The evidence is
 the host test suite: the flag is asserted on the committed file and on the
 directory through the real file system, the call order is asserted against an
-in-memory one, and a file system that refuses to confirm the flag is asserted to
-leave no file behind.
+in-memory one. An explicitly false flag after replacement is tested separately
+from a flag query that throws: the former removes the bad candidate; the latter
+preserves the remaining copy and reports failure.
 
 ## Compatibility
 

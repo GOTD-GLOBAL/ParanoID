@@ -15,8 +15,9 @@ backup on their own inode
 ([RFC-0024](../rfcs/0024-local-metadata-at-rest.md), **proposed**). The state
 file's commit sequence is reused: the candidate is created empty and flagged
 before a single row is written and before the rename, the committed file is read
-back byte for byte and its flag read back too, and a file that cannot be
-verified or proven excluded is removed rather than left for the next backup. A phone updating from an earlier build migrates each preference
+back byte for byte and its flag read back too. Positive readback mismatch or
+an explicitly false flag permits removal; inconclusive I/O and directory-sync
+failures preserve the remaining file. A phone updating from an earlier build migrates each preference
 once and clears it only after that proof, so an interrupted migration repeats
 instead of losing the table.
 
@@ -51,9 +52,9 @@ removed the file before retiring the preference, so a failure in that window
 left the backup-eligible copy to resurrect it. All three are fixed with
 regressions. Two further behaviours are now stated in RFC-0024 as decisions
 rather than left implicit — an unparseable file is replaced rather than sealed,
-and a seal lasts the process because the model builds each store once — and one
-deviation is recorded rather than fixed: both tables load, and may migrate,
-before `start()` decides `.noStand`. The rest of the twelve were stale
+and a seal lasts the process because the model builds each store once. That
+revision still migrated metadata before `start()` decided `.noStand`; the
+bootstrap follow-up below corrects that regression. The rest of the twelve were stale
 statements in the client README, the voice-call document and two source
 comments, all corrected.
 
@@ -63,6 +64,22 @@ gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
 is the owner gate). No physical backup/restore experiment on a device is
 claimed, no simulator scenario covers a restore, and acceptance of the storage
 rule remains the decision owner's.
+
+### PR47 bootstrap follow-up — Mac verification pending
+
+At Yaroslav's request the coordinator corrected the remaining review findings
+on top of `57a45de`. `AppModel` now starts with in-memory-only metadata and loads
+the persistent stores once after successful client/runtime bootstrap, before
+starting lanes or showing `.running`. A denied or failed bootstrap does not
+migrate metadata; ordinary view reads cannot trigger migration. Three new
+app-level XCTest cases use isolated preferences/files and injected bootstrap
+outcomes. The Linux UI source regression was RED before the change and all
+23 UI contracts now pass. New Swift compilation/runtime tests remain NOT RUN
+until the contributor's Mac gate; the earlier 362/0 does not cover this patch.
+[Exact scope and Mac commands](../clients/pr47-bootstrap-followup.md).
+RFC0024 and client/threat documentation now consistently distinguish proven
+invalidity from inconclusive errors, and successful migration from retained
+legacy data or historical backups. No merge, installation or ADR acceptance.
 
 ## Android response timeout candidate — 2026-09-18
 

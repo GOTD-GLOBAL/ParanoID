@@ -72,10 +72,11 @@ They use the state file's commit sequence for the reason it has one: the flag
 lives on the inode, so it is set on the candidate before the rename — and here
 while that candidate is still empty, so no interruption leaves rows in an
 unflagged file — and it is read back from the committed name afterwards. A file
-that cannot be verified or proven excluded is removed rather than left for the
-next backup. One `LocalMetadataStore` implements this for both.
+whose readback differs or whose backup flag is explicitly false is removed.
+A throwing verification or directory sync preserves the remaining copy and
+reports failure. One `LocalMetadataStore` implements this for both.
 
-Failure never destroys the table. A file that exists and will not open seals the
+An inconclusive I/O failure does not delete the retained table. A file that exists and will not open seals the
 store rather than becoming an empty table that the next write replaces; a
 committed, verified, provably excluded file is kept even when the directory sync
 that follows fails; and the preference behind a file is retired only against a
@@ -83,15 +84,14 @@ read that both parses and proves the exclusion. The ceiling clears the largest
 admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no legal table
 is refused migration and left in the backup-eligible preference.
 
-Peer IDs, locally assigned names, call outcomes, durations and message anchors
-are therefore no longer carried in an OS backup/restore. They remain plain JSON
-inside the container: this is backup exclusion, **not** application-level
-encryption, and container access still exposes them. Android disables
-application backup in its manifest, so the platforms no longer diverge on this
-property. No physical backup/restore experiment on a device is claimed; the
-evidence is the host suite (`LocalMetadataStoreTests`), which asserts the flag
-on the committed file and the directory, the call order against an in-memory
-file system, and the removal of a file whose exclusion cannot be confirmed.
+After successful migration the current files are excluded and legacy preference
+removal is requested. Failed/deferred migration can leave old preferences
+eligible for backup; asynchronous UserDefaults removal is not proof of durable
+backup erasure. Historical OS backups are not changed. The files remain plain
+JSON inside the container: this is backup exclusion, **not** application-level
+encryption. Android disables application backup in its manifest. No physical
+backup/restore experiment is claimed; host tests cover inode flags and injected
+failure paths, including explicit false flags versus throwing flag queries.
 
 A phone updating from an earlier build migrates each preference once: the file
 is written first and the preference cleared only after that file is committed,
@@ -99,6 +99,13 @@ read back byte for byte and proven excluded, so an interrupted migration
 repeats instead of losing the table. Failure never reaches a screen — the table
 stays in memory for the run and the chat opens either way, unlike the snapshot,
 where a failed commit is terminal.
+
+`AppModel` initially holds in-memory-only names and calls. It loads/migrates
+persistent metadata once after successful stand/bootstrap/runtime construction,
+before exposing the running UI. A no-stand or failed bootstrap leaves those
+files and preferences untouched; screen reads never trigger the migration.
+[The bootstrap follow-up](../pr47-bootstrap-followup.md) records its verification
+limits and the pending Mac app tests.
 
 `ReceiptHint` (`paranoid.receipt-hint.v1`) stays in UserDefaults: one boolean
 that names no contact and no call. Whether these files should additionally be

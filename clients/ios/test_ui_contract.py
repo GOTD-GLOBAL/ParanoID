@@ -125,6 +125,19 @@ def parse_captions(text):
 
 
 class UiContract(unittest.TestCase):
+    def test_metadata_migration_waits_for_successful_bootstrap(self):
+        model = (HERE / MODEL).read_text()
+        self.assertIn('var contactNames = ContactNames(store: nil)', model)
+        self.assertIn('var callLog = CallLog(store: nil)', model)
+        start = model.split('func start() {', 1)[1].split('catch let problem as DebugFixtureProblem', 1)[0]
+        self.assertLess(start.index('stage = .noStand(nil)'),
+                        start.index('loadLocalMetadataOnce()'))
+        self.assertLess(start.index('try Runtime(client: client, model: self)'),
+                        start.index('loadLocalMetadataOnce()'))
+        self.assertLess(start.index('loadLocalMetadataOnce()'), start.index('stage = .running'))
+        self.assertEqual(model.count('loadLocalMetadataOnce()'), 2,
+                         'one definition and one authorized call, never a lazy view-triggered load')
+
     def test_call_anchor_distinguishes_unavailable_history(self):
         model = (HERE / MODEL).read_text()
         finished = model.split('func callFinished(_ termination: CallTermination) {', 1)[1].split('\n    }', 1)[0]
@@ -349,7 +362,9 @@ class UiContract(unittest.TestCase):
                          'the title sites are dialogs, contacts, chat, details and the call')
         self.present('func title(for account: String) -> String {\n'
                      '        contactNames.title(for: account)', model, MODEL)
-        self.present('private(set) var contactNames = ContactNames()', model, MODEL)
+        self.present('private(set) var contactNames = ContactNames(store: nil)', model, MODEL)
+        self.present('contactNames = names', model, MODEL)
+        self.present('loadLocalMetadataOnce()', model, MODEL)
 
         # 2. The way in is Android's positive button, above «Проверить QR»,
         #    and it opens the field with the current name in it.

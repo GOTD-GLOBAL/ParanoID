@@ -36,8 +36,8 @@ import Foundation
 ///   never replaced by the empty one its caller had to start from — and a
 ///   preference beside it, which may be *older* than the file, is never written
 ///   back over it either. A later load that succeeds unseals the instance, but
-///   the application builds each store once, in an `AppModel` property
-///   initializer, so in practice a seal lasts the process and the next launch
+///   the application builds each persistent store once after successful
+///   bootstrap, so in practice a seal lasts the process and the next launch
 ///   is the recovery.
 /// - **A file that opens but does not parse is replaced, not sealed.** It is
 ///   unreadable to every build of this generation, so refusing to store names
