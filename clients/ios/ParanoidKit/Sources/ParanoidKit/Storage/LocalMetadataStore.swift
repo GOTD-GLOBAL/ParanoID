@@ -31,10 +31,24 @@ import Foundation
 /// draft of this type did exactly that in three places (PR47 review):
 ///
 /// - **A file that exists and will not open is not an empty table.** When the
-///   read fails and no older preference stands behind it, the store *seals*:
-///   every later write is refused for the life of this instance, so a table
-///   that could not be read is never replaced by the empty one its caller had
-///   to start from. A later load that succeeds unseals it.
+///   read fails the store *seals*, whatever else is lying around: every later
+///   write and the removal are refused, so a table that could not be read is
+///   never replaced by the empty one its caller had to start from — and a
+///   preference beside it, which may be *older* than the file, is never written
+///   back over it either. A later load that succeeds unseals the instance, but
+///   the application builds each store once, in an `AppModel` property
+///   initializer, so in practice a seal lasts the process and the next launch
+///   is the recovery.
+/// - **A file that opens but does not parse is replaced, not sealed.** It is
+///   unreadable to every build of this generation, so refusing to store names
+///   for the rest of the run would trade a recoverable state for a permanent
+///   one. Where a preference still stands behind it, that preference is used
+///   and the file is rewritten from it.
+/// - **Only a proven failure deletes.** Bytes that come back different, or a
+///   backup flag that reads definitely false, are evidence the committed file
+///   is wrong, and it goes. An operation that merely *throws* — a read the
+///   device would not answer — proves nothing, and by then the rename has
+///   already unlinked the copy it replaced, so the file stays.
 /// - **A file that is committed, byte-exact and provably excluded is kept**,
 ///   even if the *directory* sync that follows fails. That sync makes the
 ///   rename durable; losing it is a reason to answer `false`, never a reason to
@@ -151,17 +165,21 @@ public final class LocalMetadataStore {
                 readFailed = true
             }
         }
-        guard let defaults, let carried = legacy(defaults) else {
-            if readFailed {
-                // Exists, will not open, and nothing older stands behind it:
-                // this is the only copy there is, and no failure to read it is
-                // permission to write over it.
-                isSealed = true
-            } else {
-                // Nothing this build would keep — but an old value must still
-                // stop being carried into backups.
-                clearLegacy()
-            }
+        let carried = defaults.flatMap(legacy)
+        if readFailed {
+            // A file that exists and will not open is the only copy there is,
+            // whatever else is lying around. The preference beside it may be
+            // *older* than the file — a save whose durability could not be
+            // proven keeps both — so writing it back would replace a newer
+            // table with a stale one. Seal, show whatever the old copy holds,
+            // and write nothing.
+            isSealed = true
+            return carried
+        }
+        guard let carried else {
+            // Nothing this build would keep — but an old value must still stop
+            // being carried into backups.
+            clearLegacy()
             return nil
         }
         isSealed = false
@@ -200,15 +218,23 @@ public final class LocalMetadataStore {
         }
         do {
             let readback = try fileSystem.read(at: fileURL, maximumBytes: Self.maximumStoredBytes)
-            guard readback == data, try fileSystem.isExcludedFromBackup(at: fileURL) else {
-                // Either the device did not keep what it was handed, or the
-                // committed name is not excluded. Both leave metadata this
-                // build promised to withhold, so the file goes.
+            let excluded = try fileSystem.isExcludedFromBackup(at: fileURL)
+            guard readback == data, excluded else {
+                // Proven wrong, not merely unproven: the device handed back
+                // other bytes, or the committed name is definitely not
+                // excluded. Both leave metadata this build promised to
+                // withhold, so the file goes.
                 try? fileSystem.removeItem(at: fileURL)
                 return false
             }
         } catch {
-            try? fileSystem.removeItem(at: fileURL)
+            // Inconclusive, and that is a different thing. The candidate's
+            // inode carried the flag before the rename, so the committed name
+            // is excluded by construction; an answer the device would not give
+            // is proof of nothing. Meanwhile the rename has already unlinked
+            // the copy this one replaced, so deleting here would destroy the
+            // only table there is — the mistake the directory sync above was
+            // already corrected for.
             return false
         }
         do {
@@ -233,19 +259,23 @@ public final class LocalMetadataStore {
     @discardableResult
     public func clear() -> Bool {
         guard !isSealed else { return false }
+        // The preference goes first, and unconditionally. It is the copy an OS
+        // backup carries, and it is the copy a later launch would resurrect the
+        // emptied table from: leaving it alive while the file is already gone
+        // is both the disclosure this type exists to stop and a table the owner
+        // deleted coming back.
+        clearLegacy()
         do {
             try fileSystem.removeItem(at: fileURL)
             try fileSystem.removeItem(at: temporaryFileURL)
             if fileSystem.fileExists(at: directory) {
                 // An emptied table that comes back after a power loss is the
-                // same disclosure as never having emptied it, so the removal is
-                // made durable before the preference is retired.
+                // same disclosure as never having emptied it.
                 try fileSystem.fullSync(at: directory, directory: true)
             }
         } catch {
             return false
         }
-        clearLegacy()
         return true
     }
 

@@ -139,6 +139,59 @@ final class LocalMetadataStoreTests: XCTestCase {
         XCTAssertTrue(fake.log.contains(.removeItem("metadata.v1.json")))
     }
 
+    /// Adversarial review, 2026-09-18: the same class as the directory-sync
+    /// defect, one line further on. By the time the verification runs, the
+    /// rename has already unlinked the copy this table replaced — so a check
+    /// that merely *throws* must not delete what it could not check.
+    func testAThrowingReadbackKeepsTheCommittedFileRatherThanDeletingIt() {
+        defaults.set(table, forKey: Self.legacyKey)
+        let fake = FakeFileSystem()
+        let store = self.store(fake)
+        fake.failure = { if case .read = $0 { return FileSystemError(.read, URL(fileURLWithPath: "/x"), errno: EIO) }; return nil }
+
+        XCTAssertFalse(store.save(table), "an unverified commit is not a successful save")
+        XCTAssertEqual(fake.contents(at: store.fileURL), table,
+                       "but it is the only table there is, and an unanswered question is not proof against it")
+        XCTAssertFalse(fake.log.contains(.removeItem("metadata.v1.json")))
+        XCTAssertEqual(defaults.data(forKey: Self.legacyKey), table, "nor is the preference retired on it")
+    }
+
+    func testAThrowingBackupFlagReadKeepsTheCommittedFileToo() {
+        let fake = FakeFileSystem()
+        let store = self.store(fake)
+        fake.failure = {
+            if case .readBackupFlag = $0 {
+                return FileSystemError(.readBackupFlag, URL(fileURLWithPath: "/x"), errno: EIO)
+            }
+            return nil
+        }
+        XCTAssertFalse(store.save(table))
+        XCTAssertEqual(fake.contents(at: store.fileURL), table,
+                       "the candidate's inode was flagged before the rename; a question the device would not answer does not undo that")
+        XCTAssertFalse(fake.log.contains(.removeItem("metadata.v1.json")))
+    }
+
+    /// Adversarial review, 2026-09-18: once a save can legitimately keep both
+    /// copies — which the directory-sync fix introduced — the preference may be
+    /// *older* than the file, so it must never be written back over it.
+    func testAnUnreadableFileIsNeverOverwrittenByThePreferenceBehindIt() {
+        let stale = Data(#"{"old":"stale"}"#.utf8)
+        let newer = Data(#"{"new":"current"}"#.utf8)
+        defaults.set(stale, forKey: Self.legacyKey)
+        let fake = FakeFileSystem()
+        let store = self.store(fake)
+        fake.seed(directory: directory)
+        fake.seed(file: store.fileURL, data: newer)
+        fake.failure = { if case .read = $0 { return FileSystemError(.read, URL(fileURLWithPath: "/x"), errno: EIO) }; return nil }
+
+        XCTAssertEqual(store.load(migrating: { $0.data(forKey: Self.legacyKey) }), stale,
+                       "the old copy is still shown rather than nothing")
+        XCTAssertTrue(store.isSealed)
+        XCTAssertEqual(fake.contents(at: store.fileURL), newer,
+                       "but the newer table is not replaced by it")
+        XCTAssertEqual(defaults.data(forKey: Self.legacyKey), stale)
+    }
+
     func testAFailedCommitLeavesNoCandidateBehind() {
         let fake = FakeFileSystem()
         fake.failure = { if case .rename = $0 { return FileSystemError(.rename, URL(fileURLWithPath: "/x"), errno: EIO) }; return nil }
@@ -326,11 +379,12 @@ final class LocalMetadataStoreTests: XCTestCase {
         fake.seed(file: store.fileURL, data: table)
         fake.failure = { if case .read = $0 { return FileSystemError(.read, URL(fileURLWithPath: "/x"), errno: EIO) }; return nil }
 
-        // An interrupted migration is the only way both copies exist at once,
-        // and there the preference is the authority — so this is not the sealed
-        // case: the table is shown and the old copy is kept.
+        // The old copy is shown rather than nothing — but it is not written
+        // back, because a file that will not open may be newer than it.
         XCTAssertEqual(store.load(migrating: { $0.data(forKey: Self.legacyKey) }), table)
         XCTAssertEqual(defaults.data(forKey: Self.legacyKey), table)
+        XCTAssertTrue(store.isSealed)
+        XCTAssertFalse(store.save(Data("{}".utf8)))
     }
 
     func testAPreferenceHoldingNothingWorthKeepingIsStillCleared() {
@@ -353,7 +407,7 @@ final class LocalMetadataStoreTests: XCTestCase {
         XCTAssertNil(store.load(migrating: { $0.data(forKey: Self.legacyKey) }))
     }
 
-    func testClearingIsMadeDurableBeforeThePreferenceIsRetired() {
+    func testClearingRemovesTheFileTheCandidateAndMakesTheRemovalDurable() {
         let fake = FakeFileSystem()
         let store = self.store(fake)
         XCTAssertTrue(store.save(table))
@@ -364,6 +418,28 @@ final class LocalMetadataStoreTests: XCTestCase {
             .removeItem("metadata.v1.json.tmp"),
             .fullSync(directory.lastPathComponent, directory: true),
         ], "an emptied table that comes back after a power loss is the same disclosure")
+    }
+
+    /// Adversarial review, 2026-09-18: the preference is the backup-eligible
+    /// copy and the one a later launch would resurrect the emptied table from,
+    /// so it goes first and unconditionally — not after a directory sync that
+    /// may never happen.
+    func testClearingRetiresThePreferenceEvenWhenTheRemovalCannotBeMadeDurable() {
+        defaults.set(table, forKey: Self.legacyKey)
+        let fake = FakeFileSystem()
+        let store = self.store(fake)
+        fake.seed(directory: directory)
+        fake.seed(file: store.fileURL, data: table)
+        fake.failure = {
+            if case .fullSync(_, directory: true) = $0 {
+                return FileSystemError(.fullSync, URL(fileURLWithPath: "/x"), errno: EIO)
+            }
+            return nil
+        }
+        XCTAssertFalse(store.clear(), "an undurable removal is not a successful one")
+        XCTAssertNil(fake.contents(at: store.fileURL), "the file the owner emptied is gone")
+        XCTAssertNil(defaults.object(forKey: Self.legacyKey),
+                     "and so is the backup-eligible copy that would otherwise bring it back")
     }
 
     func testAStoreWithNoPreferencesMigratesNothing() {

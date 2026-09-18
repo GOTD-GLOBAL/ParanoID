@@ -105,6 +105,43 @@ first implementation of this RFC broke exactly that (PR47 review, 2026-09-18):
   counts as absent, so a corrupt file beside a good preference is replaced by it
   rather than mistaken for an empty table.
 
+An adversarial pass over that revision on the same day found three more, and
+they are closed the same way:
+
+- **Only a proven failure deletes.** Bytes that come back different, or a backup
+  flag that reads definitely false, are evidence the committed file is wrong,
+  and it goes. A verification step that merely *throws* proves nothing — and by
+  then the rename has already unlinked the copy it replaced, so deleting would
+  destroy the only table there is. This is the directory-sync rule one line
+  further on, and it was missed the first time.
+- **A preference is never written back over a file that will not open.** Once a
+  save can legitimately keep both copies, the preference may be *older* than the
+  file, so the unreadable-file case seals in every shape: the old copy is shown,
+  and nothing is written.
+- **Emptying retires the preference first.** It is the backup-eligible copy and
+  the one a later launch would resurrect an emptied table from, so it goes
+  before the file and unconditionally, not after a directory sync that may fail.
+
+Two behaviours are deliberate rather than defects, and are stated here so that
+they are reviewed as decisions:
+
+- **A file that opens but does not parse is replaced, not sealed.** It is
+  unreadable to every build of this generation, so sealing would trade a
+  recoverable state for a permanent one: the owner could never store a name
+  again on that phone. Where a preference stands behind it, that preference is
+  used and the file is rewritten from it.
+- **A seal lasts the process.** The instance unseals on a later successful load,
+  but the application builds each store once, in an `AppModel` property
+  initializer, so in practice the next launch is the recovery. The table stays
+  live in memory for the run; nothing is shown as lost and nothing is written.
+
+One known deviation is recorded rather than fixed here: both tables are property
+initializers on `AppModel`, so they load — and may migrate, which writes a file —
+before `start()` decides `.noStand`. That path documents leaving the device as it
+found it. Closing it means making the two tables lazy, which is a change to the
+model's lifetime rather than to this storage rule, and is left for the owner to
+direct.
+
 ## What this is not
 
 It is not application-level encryption. The bytes are plain JSON inside the

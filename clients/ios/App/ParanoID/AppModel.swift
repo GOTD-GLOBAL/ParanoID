@@ -643,7 +643,7 @@ final class AppModel {
     ///
     /// It is the one action of this client that reaches no core, no snapshot
     /// and no connection: the name is written to this application's own
-    /// defaults and the screens re-read it from there. An empty or blank name
+    /// backup-excluded file and the screens re-read it from there. An empty or blank name
     /// clears it, and the default label comes back — «Оставьте пустым, чтобы
     /// вернуть имя по умолчанию.»
     func rename(account: String, to name: String) {

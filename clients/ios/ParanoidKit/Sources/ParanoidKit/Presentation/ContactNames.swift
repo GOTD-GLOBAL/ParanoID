@@ -4,7 +4,8 @@ import Foundation
 ///
 /// It is `clients/android/src/org/paranoid/text/ContactNames.java` (Android
 /// v22, owner request 2026-09-12), rule for rule: a purely presentational
-/// label, kept in the application's own defaults keyed by account, never sent
+/// label, kept in a backup-excluded file of the application's own, keyed by
+/// account, never sent
 /// to the peer or the server and never part of the encrypted snapshot — the
 /// state file is not touched by anything here. A contact with no name of its
 /// own keeps the default label, which is the account itself

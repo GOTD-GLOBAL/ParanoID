@@ -41,7 +41,23 @@ the candidate took its backup flag only after the rows were already written, so
 an interruption in between left them in a file a backup would take — and it is
 closed by flagging the candidate while it is still empty.
 
-Mac evidence on this candidate: ParanoidKit **358/0**; the UI-contract,
+An adversarial pass over that fix, run here the same day, judged twenty findings
+and confirmed twelve. Three were real defects of the same class as the first:
+a verification that *threw* after the rename still deleted the committed file,
+although the copy it replaced was already unlinked and an unanswered question
+proves nothing; a preference could be written back over a file that would not
+open, although that preference may be older than the file; and emptying a table
+removed the file before retiring the preference, so a failure in that window
+left the backup-eligible copy to resurrect it. All three are fixed with
+regressions. Two further behaviours are now stated in RFC-0024 as decisions
+rather than left implicit — an unparseable file is replaced rather than sealed,
+and a seal lasts the process because the model builds each store once — and one
+deviation is recorded rather than fixed: both tables load, and may migrate,
+before `start()` decides `.noStand`. The rest of the twelve were stale
+statements in the client README, the voice-call document and two source
+comments, all corrected.
+
+Mac evidence on this candidate: ParanoidKit **362/0**; the UI-contract,
 storage-bootstrap, documents-against-evidence and component-boundary source
 gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
 is the owner gate). No physical backup/restore experiment on a device is

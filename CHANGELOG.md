@@ -31,6 +31,13 @@ public contract is declared.
   largest admissible log — 64 conversations of 500 rows, about 7.1 MiB — so no
   legal table is refused migration and left in the backup-eligible preference.
   These five rules come from the PR47 review and each has a regression behind it.
+- **Three more of the same class, found by an adversarial pass over that fix.**
+  A verification that merely throws after the rename no longer deletes the
+  committed file — by then the copy it replaced is already unlinked, and an
+  unanswered question is not proof; a preference is never written back over a
+  file that will not open, because it may be older than that file; and emptying
+  a table retires the preference first, since it is the backup-eligible copy a
+  later launch would resurrect the table from.
 - **Not encryption.** The bytes stay plain JSON inside the container under
   `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
   them is RFC-0024 question 2, open.
