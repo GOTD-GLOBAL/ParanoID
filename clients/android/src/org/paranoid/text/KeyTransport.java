@@ -14,7 +14,7 @@ public final class KeyTransport {
         if(!(path.startsWith("/v1/") || path.startsWith("/v2/")) || path.indexOf('#')>=0 || path.indexOf('\r')>=0 || path.indexOf('\n')>=0)throw new IOException("invalid path");
         HttpsURLConnection c=(HttpsURLConnection)new URL(realm+path).openConnection(java.net.Proxy.NO_PROXY);
         c.setSSLSocketFactory(PinnedTls.factory(new URL(realm).getHost(),pin));
-        c.setInstanceFollowRedirects(false);c.setConnectTimeout(8000);c.setReadTimeout(8000);
+        c.setInstanceFollowRedirects(false);c.setConnectTimeout(8000);c.setReadTimeout(path.startsWith("/v2/")?15000:8000);
         c.setRequestMethod(method);c.setRequestProperty("Accept","application/json");
         // Each request owns a fresh trust factory; do not strand cached idle sockets.
         c.setRequestProperty("Connection","close");

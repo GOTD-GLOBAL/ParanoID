@@ -31,6 +31,14 @@ the merged Android tree of this branch (`0.0.22-push`, versionCode 22), not at
 `fe9c26c`. Those line numbers do not resolve at `fe9c26c` and some of them mean
 something else there. Line numbers of `clients/ios/**` refer to this branch.
 
+## Timeout alignment — 2026-09-18
+
+The historical timeout row below describes the original iOS port. Issue #39 now
+aligns Android ordinary v2 reads to the same 15-second bound; realtime events
+remain 30 seconds and connect remains 8 seconds. The shared
+[realtime profile](../../protocol/realtime-v1.md) now documents those values.
+This removes that timeout divergence only, not the other historical findings.
+
 ## Discrepancies are not corrected here
 
 The `Discrepancy` column names the numbered doc-to-code findings reported to

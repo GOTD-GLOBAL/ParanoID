@@ -13,10 +13,10 @@ call log out of `UserDefaults`, which iCloud and encrypted local backups
 include, and puts them in `Application Support/paranoid/` files excluded from OS
 backup on their own inode
 ([RFC-0024](../rfcs/0024-local-metadata-at-rest.md), **proposed**). The state
-file's commit sequence is reused: the flag is set on the candidate before the
-rename, the committed file is read back byte for byte and its flag read back
-too, and a file that cannot be proven excluded is removed rather than left for
-the next backup. A phone updating from an earlier build migrates each preference
+file's commit sequence is reused: the candidate is created empty and flagged
+before a single row is written and before the rename, the committed file is read
+back byte for byte and its flag read back too, and a file that cannot be
+verified or proven excluded is removed rather than left for the next backup. A phone updating from an earlier build migrates each preference
 once and clears it only after that proof, so an interrupted migration repeats
 instead of losing the table.
 
@@ -47,6 +47,16 @@ gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
 is the owner gate). No physical backup/restore experiment on a device is
 claimed, no simulator scenario covers a restore, and acceptance of the storage
 rule remains the decision owner's.
+
+## Android response timeout candidate — 2026-09-18
+
+Issue #39: ordinary self-service v2 reads use 15 seconds, events 30 seconds and
+connect 8 seconds. Key/auth, TURN and update transports are included. Real
+loopback pinned-TLS tests fail on the old 8-second reads and pass for delayed
+9-second replies and 10-second HTTP 408 responses. Existing pooling, independent
+lanes and redirect refusal pass. This is local JVM evidence, not phone, APK
+publication, merge or hosted rollout. Issue #38 remains separate; raising this
+bound does not establish or repair its network-drop cause.
 
 ## Message time — local candidate (2026-09-17)
 

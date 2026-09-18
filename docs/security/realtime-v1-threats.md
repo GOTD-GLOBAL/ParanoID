@@ -47,6 +47,19 @@ metadata exposure (identity, graph, IP, timing, size and ciphertext) remains.
 | RT-S06 transport optimization drops old persistence/abuse safeguards; high | Existing message helper and full binding checks retained; registration/challenge/auth/total ingress, decoded/body/page/row/byte quotas unchanged; exact retry/no-eviction/ingress regressions | Existing storage/account metadata and account-enumeration risks remain, as in v2 threat model |
 | RT-S07 fallback silently weakens trust or breaks after rollback; high | Capability is only discovery; retained pin/identity and v2 proof fallback; 404 triggers pinned rediscovery; 401 never weakens auth; schema and capabilities JSON unchanged | Client/old-binary integration and final deploy same-data rollback evidence are coordinator gates, not established by these server tests |
 
+## Response-read correction — 2026-09-18
+
+Issue #39 raises ordinary v2 Android read bounds from 8 to 15 seconds, above the
+unchanged 10-second handler deadline; connect stays 8 and events 30.
+REQ-MSG-006 / REQ-CLIENT-004 availability improves for delayed replies; RT-S02,
+RT-S05 and RT-S07 controls remain unchanged. Retries still require fresh proofs
+with immutable message IDs/ciphertext. TLS, body bounds, concurrency, voice
+cancellation and the nominal update deadline check are unchanged. A blocked
+update read can now extend past that nominal deadline by up to 15 seconds rather
+than 8; this is not a total wall-clock cap. Residual risk: failed reads can occupy
+their existing worker/permit longer; neither a total
+request deadline nor a cure for hosted network drops is claimed.
+
 ## Compatibility and review boundaries
 
 No server schema, root credential, E2EE frame, recipient routing, replay cursor,

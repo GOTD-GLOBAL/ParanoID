@@ -19,7 +19,7 @@ public final class UpdateClient {
         if(CookieHandler.getDefault()!=null)throw new IOException("ambient HTTP credentials forbidden");
         HttpsURLConnection c=(HttpsURLConnection)new URL(realm+path).openConnection(Proxy.NO_PROXY);
         c.setSSLSocketFactory(PinnedTls.factory(new URL(realm).getHost(),pin));
-        c.setInstanceFollowRedirects(false);c.setUseCaches(false);c.setConnectTimeout(8000);c.setReadTimeout(8000);
+        c.setInstanceFollowRedirects(false);c.setUseCaches(false);c.setConnectTimeout(8000);c.setReadTimeout(15000);
         c.setRequestMethod("GET");c.setRequestProperty("Connection","close");c.setRequestProperty("Accept-Encoding","identity");
         return c;
     }
