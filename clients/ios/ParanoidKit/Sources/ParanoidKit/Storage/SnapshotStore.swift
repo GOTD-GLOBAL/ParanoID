@@ -73,12 +73,7 @@ public final class SnapshotStore {
     }
 
     public func prepare() throws {
-        if !fileSystem.fileExists(at: directory) {
-            try fileSystem.createDirectory(at: directory)
-            try fileSystem.excludeFromBackup(at: directory)
-        } else if try !fileSystem.isExcludedFromBackup(at: directory) {
-            try fileSystem.excludeFromBackup(at: directory)
-        }
+        try fileSystem.prepareExcludedDirectory(at: directory)
     }
 
     /// Returns nil only for an empty store; the persistent adapter refuses a

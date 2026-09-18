@@ -1,7 +1,7 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-17
+last_reviewed: 2026-09-18
 ---
 
 # Current project state
@@ -27,6 +27,81 @@ Retained signer/package, strict TLS, native installer consent and phone data
 remain protected. Build, independent artifact review and verified publication
 are separate gates; this source preparation is not a publication receipt.
 
+## iPhone local metadata out of the OS backup — local candidate (2026-09-18)
+
+At Yaroslav's request the candidate takes the iPhone's local contact names and
+call log out of `UserDefaults`, which iCloud and encrypted local backups
+include, and puts them in `Application Support/paranoid/` files excluded from OS
+backup on their own inode
+([RFC-0024](../rfcs/0024-local-metadata-at-rest.md), **proposed**). The state
+file's commit sequence is reused: the candidate is created empty and flagged
+before a single row is written and before the rename, the committed file is read
+back byte for byte and its flag read back too. Positive readback mismatch or
+an explicitly false flag permits removal; inconclusive I/O and directory-sync
+failures preserve the remaining file. A phone updating from an earlier build migrates each preference
+once and clears it only after that proof, so an interrupted migration repeats
+instead of losing the table.
+
+This is backup exclusion, not encryption: the bytes stay plain JSON inside the
+container under `completeUntilFirstUserAuthentication`, and container access is
+unchanged. Sealing the files is RFC-0024 question 2. `ReceiptHint` stays in
+preferences, naming no contact and no call. Android is unaffected, its manifest
+already disabling application backup, and no core, protocol, server, route or
+snapshot behaviour changes.
+
+The first revision of this candidate was reviewed on 2026-09-18 and changed
+before merge. The review found five ways a failure of the store destroyed or
+dropped the table it held: a failed directory sync deleted the committed file, a
+transient read failure became an empty table that then overwrote the real one, a
+preference was retired against bytes nobody had parsed, the read ceiling sat
+below the largest admissible call log so that log would never migrate, and a
+save that succeeded after a failed migration left the old copy behind. All five
+are fixed, and the reviewer's five regressions are in the suite: run against the
+previous revision they are **5 tests, 5 failures**, including `7428417` bytes
+against the old `4194304` ceiling. A sixth was found here while fixing them —
+the candidate took its backup flag only after the rows were already written, so
+an interruption in between left them in a file a backup would take — and it is
+closed by flagging the candidate while it is still empty.
+
+An adversarial pass over that fix, run here the same day, judged twenty findings
+and confirmed twelve. Three were real defects of the same class as the first:
+a verification that *threw* after the rename still deleted the committed file,
+although the copy it replaced was already unlinked and an unanswered question
+proves nothing; a preference could be written back over a file that would not
+open, although that preference may be older than the file; and emptying a table
+removed the file before retiring the preference, so a failure in that window
+left the backup-eligible copy to resurrect it. All three are fixed with
+regressions. Two further behaviours are now stated in RFC-0024 as decisions
+rather than left implicit — an unparseable file is replaced rather than sealed,
+and a seal lasts the process because the model builds each store once. That
+revision still migrated metadata before `start()` decided `.noStand`; the
+bootstrap follow-up below corrects that regression. The rest of the twelve were stale
+statements in the client README, the voice-call document and two source
+comments, all corrected.
+
+Mac evidence on this candidate: ParanoidKit **362/0**; the UI-contract,
+storage-bootstrap, documents-against-evidence and component-boundary source
+gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
+is the owner gate). No physical backup/restore experiment on a device is
+claimed, no simulator scenario covers a restore, and acceptance of the storage
+rule remains the decision owner's.
+
+### PR47 bootstrap follow-up — Mac verification pending
+
+At Yaroslav's request the coordinator corrected the remaining review findings
+on top of `57a45de`. `AppModel` now starts with in-memory-only metadata and loads
+the persistent stores once after successful client/runtime bootstrap, before
+starting lanes or showing `.running`. A denied or failed bootstrap does not
+migrate metadata; ordinary view reads cannot trigger migration. Three new
+app-level XCTest cases use isolated preferences/files and injected bootstrap
+outcomes. The Linux UI source regression was RED before the change and all
+23 UI contracts now pass. New Swift compilation/runtime tests remain NOT RUN
+until the contributor's Mac gate; the earlier 362/0 does not cover this patch.
+[Exact scope and Mac commands](../clients/pr47-bootstrap-followup.md).
+RFC0024 and client/threat documentation now consistently distinguish proven
+invalidity from inconclusive errors, and successful migration from retained
+legacy data or historical backups. No merge, installation or ADR acceptance.
+
 ## Android response timeout candidate — 2026-09-18
 
 Issue #39: ordinary self-service v2 reads use 15 seconds, events 30 seconds and
@@ -51,8 +126,9 @@ push/crash/packaging fixes and server maintenance gates. An older build cannot
 open a snapshot carrying the new field. Sergey selected device-local time and
 accepted coordinated alpha updates on 2026-09-17; the provenance and remaining
 ADR boundary are in [RFC-0023](../rfcs/0023-message-time.md#owner-direction-and-remaining-decision-boundary).
-This does not implement the separate long-lived-history or iOS metadata-backup
-follow-ups.
+PR46 has since merged into main as `c9ca0679`. That candidate did not implement
+the separate long-lived-history or iOS metadata-backup follow-ups; the latter is
+the 2026-09-18 candidate above.
 
 Original contributor Mac receipt for `7093845`: core `clean_first_contact` 20/0 including the two new
 time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,

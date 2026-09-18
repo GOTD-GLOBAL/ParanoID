@@ -23,7 +23,10 @@ class FreezeOpenContractTests(unittest.TestCase):
         # explicitly transfer ownership to Runtime, not make the client Sendable.
         for declaration in (
             'private let openClient: (() throws -> sending SelfServiceClient)?',
-            'init(openClient: (() throws -> sending SelfServiceClient)? = nil)',
+            # The initializer gained a second parameter (the metadata factory,
+            # PR47 bootstrap follow-up), so the contract is the closure type and
+            # the parameter boundary, not the whole one-line signature.
+            'init(openClient: (() throws -> sending SelfServiceClient)? = nil,',
         ):
             with self.subTest(declaration=declaration):
                 self.assertIn(declaration, text)

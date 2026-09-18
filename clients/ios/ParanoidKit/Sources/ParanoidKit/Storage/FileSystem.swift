@@ -93,6 +93,23 @@ public protocol FileSystem {
     func removeItem(at url: URL) throws
 }
 
+extension FileSystem {
+    /// The directory every local file of this application lives in: created if
+    /// it is missing, and excluded from backup either way.
+    ///
+    /// An existing directory is re-checked rather than assumed, because a
+    /// container restored from a backup made by an older build has the
+    /// directory without the flag.
+    func prepareExcludedDirectory(at url: URL) throws {
+        if !fileExists(at: url) {
+            try createDirectory(at: url)
+            try excludeFromBackup(at: url)
+        } else if try !isExcludedFromBackup(at: url) {
+            try excludeFromBackup(at: url)
+        }
+    }
+}
+
 /// The real file system: `FileManager` for metadata, POSIX for the durability
 /// steps.
 ///

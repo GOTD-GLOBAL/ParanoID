@@ -161,3 +161,13 @@ retained E2EE call channel as [call-v2](../protocol/call-v2.md), with
 [ADR-0013](../decisions/0013-video-calls.md) proposed and the
 [threat delta](../security/video-v1-threats.md) drafted. Groups, SFU and
 screen sharing are explicitly excluded.
+
+## Local metadata at rest
+
+[RFC-0024](0024-local-metadata-at-rest.md) (proposed) moves the iPhone's local
+contact names and call log out of `UserDefaults`, which an OS backup carries,
+into container files excluded from backup on their own inode, with a migration
+that clears the old preference only after the new file is committed, read back
+and proven excluded. It is backup exclusion, not encryption; sealing the files
+and the fate of a future delete path are its open questions. Android already
+disables application backup, and no core, protocol or server behaviour changes.

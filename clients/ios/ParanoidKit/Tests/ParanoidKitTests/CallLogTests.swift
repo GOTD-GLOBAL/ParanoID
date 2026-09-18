@@ -6,18 +6,33 @@ import XCTest
 final class CallLogTests: XCTestCase {
     private var suite: UserDefaults!
     private var suiteName: String!
+    /// The container this case writes its log into. The log lives in a file
+    /// that no OS backup carries, so a case needs a directory of its own as
+    /// well as the scratch suite the migration reads.
+    private var directory: URL!
 
     override func setUp() {
         super.setUp()
         suiteName = "paranoid.tests.call-log." + UUID().uuidString
         suite = UserDefaults(suiteName: suiteName)
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("paranoid-call-log-" + UUID().uuidString, isDirectory: true)
     }
 
     override func tearDown() {
         suite.removePersistentDomain(forName: suiteName)
+        try? FileManager.default.removeItem(at: directory)
         suite = nil
         suiteName = nil
+        directory = nil
         super.tearDown()
+    }
+
+    /// The log's own backup-excluded file, plus the preference an older build
+    /// would have left behind for it to migrate.
+    private func store() -> LocalMetadataStore {
+        LocalMetadataStore(name: CallLog.fileName, legacyKey: CallLog.defaultsKey,
+                           directory: directory, defaults: suite)
     }
 
     // MARK: - what a terminal transition means
@@ -68,7 +83,7 @@ final class CallLogTests: XCTestCase {
     // MARK: - the store
 
     func testOneCallIsOneRowHoweverOftenItIsRecorded() {
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         let record = Self.record(id: "c1", account: "peer", kind: .missed)
         XCTAssertTrue(log.record(record))
         XCTAssertFalse(log.record(record))
@@ -78,10 +93,10 @@ final class CallLogTests: XCTestCase {
     }
 
     func testRowsSurviveARelaunchAndStayPerConversation() {
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         log.record(Self.record(id: "c1", account: "peer", kind: .outgoing))
         log.record(Self.record(id: "c2", account: "other", kind: .missed))
-        let reopened = CallLog(defaults: suite)
+        let reopened = CallLog(store: store())
         XCTAssertEqual(reopened.records(for: "peer").map(\.id), ["c1"])
         XCTAssertEqual(reopened.records(for: "other").map(\.id), ["c2"])
         XCTAssertEqual(reopened.records(for: "nobody"), [])
@@ -89,23 +104,37 @@ final class CallLogTests: XCTestCase {
     }
 
     func testForgettingAConversationLeavesTheOthers() {
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         log.record(Self.record(id: "c1", account: "peer", kind: .outgoing))
         log.record(Self.record(id: "c2", account: "other", kind: .missed))
         log.forget(account: "peer")
         XCTAssertEqual(log.records(for: "peer"), [])
-        XCTAssertEqual(CallLog(defaults: suite).records(for: "other").map(\.id), ["c2"])
+        XCTAssertEqual(CallLog(store: store()).records(for: "other").map(\.id), ["c2"])
     }
 
     func testAnEmptyAccountOrIdentifierIsNotRecorded() {
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         XCTAssertFalse(log.record(Self.record(id: "", account: "peer", kind: .missed)))
         XCTAssertFalse(log.record(Self.record(id: "c1", account: "", kind: .missed)))
-        XCTAssertNil(suite.object(forKey: CallLog.defaultsKey))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store().fileURL.path))
+    }
+
+    func testAnOlderBuildsCallsMoveOutOfTheBackupOnFirstLaunch() throws {
+        // What an installation of the previous build left behind: the same
+        // JSON, in preferences an iCloud or encrypted local backup carries.
+        suite.set(try JSONEncoder().encode(["peer": [Self.record(id: "c1", account: "peer", kind: .missed)]]),
+                  forKey: CallLog.defaultsKey)
+
+        let log = CallLog(store: store())
+        XCTAssertEqual(log.records(for: "peer").map(\.id), ["c1"], "the calls survive the move")
+        XCTAssertNil(suite.object(forKey: CallLog.defaultsKey),
+                     "and the copy a backup carried does not stay behind")
+        XCTAssertTrue(store().isExcludedFromBackup())
+        XCTAssertEqual(CallLog(store: store()), log)
     }
 
     func testTheLogIsBoundedPerConversation() {
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         for n in 0...CallLog.perAccountLimit {
             log.record(Self.record(id: "c\(n)", account: "peer", kind: .outgoing))
         }
@@ -141,9 +170,9 @@ final class CallLogTests: XCTestCase {
     func testUnavailableHistoryAnchorSurvivesReloadAndStandsAtTheEnd() {
         let anchor = CallLog.anchor(messages: nil)
         XCTAssertEqual(anchor, "unavailable")
-        var log = CallLog(defaults: suite)
+        var log = CallLog(store: store())
         log.record(Self.record(id: "c1", account: "peer", kind: .missed, after: anchor))
-        let calls = CallLog(defaults: suite).records(for: "peer")
+        let calls = CallLog(store: store()).records(for: "peer")
         XCTAssertEqual(calls.first?.afterMessageId, "unavailable")
         XCTAssertEqual(ChatRow.rows(messages: [Self.message("m1")], calls: calls).map(\.id),
                        ["m:m1", "c:c1"])
