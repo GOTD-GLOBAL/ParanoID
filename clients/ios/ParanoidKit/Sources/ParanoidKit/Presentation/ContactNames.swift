@@ -16,22 +16,28 @@ import Foundation
 /// - **Nothing a peer chose can reach it.** The only writer is the person
 ///   holding the phone, through «Переименовать»; the core publishes no name
 ///   and this type reads none.
-/// - **Container deletion removes it, but backup restore can carry it.**
-///   Standard UserDefaults has no explicit backup exclusion here. A fresh
-///   install without restored preferences starts with default labels; OS
-///   backup/restore may carry names to another device. This is not covered
-///   by the encrypted snapshot's backup exclusion.
+/// - **Container deletion removes it, and no backup carries it.** The table
+///   lives in a `LocalMetadataStore` file beside the state file, excluded
+///   from OS backup on its inode, so a restore onto a second device brings no
+///   names with it (RFC-0024). A phone updating from a build that kept the
+///   names in `UserDefaults` migrates them once, and the old preference is
+///   cleared only after the file has been read back and proven excluded.
 ///
 /// The value semantics are what the screens need: the table is held here, a
 /// rename mutates it and writes it through in the same call, so a model that
 /// stores a `ContactNames` publishes the change by mutating its own property.
-/// It is deliberately **not** `Sendable`: the defaults suite it writes
-/// through is not, and this table belongs to the one actor that shows it —
-/// the main actor, where the screens are.
+/// It is deliberately **not** `Sendable`: the store it writes through is not,
+/// and this table belongs to the one actor that shows it — the main actor,
+/// where the screens are.
 public struct ContactNames: Equatable {
-    /// The defaults key the whole table lives under. Versioned, so a later
-    /// rule can be told apart from this one rather than reinterpreting it
-    /// (`ContactNames.java:14`, `paranoid-contact-names-v1`).
+    /// The file the whole table lives in, inside the directory that holds the
+    /// state file. Versioned, so a later rule can be told apart from this one
+    /// rather than reinterpreting it (`ContactNames.java:14`,
+    /// `paranoid-contact-names-v1`).
+    public static let fileName = "contact-names.v1.json"
+
+    /// The preference this table used to live in. A phone updating from an
+    /// earlier build still has it; it is read once, migrated, and cleared.
     public static let defaultsKey = "paranoid.contact-names.v1"
 
     /// The longest name kept, in code points (`ContactNames.java:15`).
@@ -42,23 +48,52 @@ public struct ContactNames: Equatable {
 
     /// Where the table is read from and written back to, or `nil` for a table
     /// that only lives in memory.
-    private let defaults: UserDefaults?
+    private let store: LocalMetadataStore?
 
-    /// - Parameter defaults: the standard suite in the application; the tests
-    ///   pass a scratch suite so that a run leaves nothing behind.
-    public init(defaults: UserDefaults? = .standard) {
-        self.defaults = defaults
-        let stored = defaults?.dictionary(forKey: Self.defaultsKey) ?? [:]
-        // Anything that is not a string, or is a name this build would refuse
-        // to store, is dropped on the way in rather than shown.
+    /// The application's table, in the backup-excluded container file.
+    public static func applicationStore() -> LocalMetadataStore? {
+        LocalMetadataStore.applicationSupport(name: fileName, legacyKey: defaultsKey)
+    }
+
+    /// - Parameter store: the application's file; the tests pass one in a
+    ///   scratch directory so that a run leaves nothing behind.
+    public init(store: LocalMetadataStore? = ContactNames.applicationStore()) {
+        self.store = store
+        guard let data = store?.load(migrating: Self.carriedForward),
+              let decoded = try? JSONDecoder().decode([String: String].self, from: data)
+        else {
+            names = [:]
+            return
+        }
+        names = Self.sanitize(decoded)
+    }
+
+    /// Anything that is not a name this build would agree to store is dropped
+    /// on the way in rather than shown.
+    private static func sanitize(_ table: [String: String]) -> [String: String] {
+        var clean: [String: String] = [:]
+        for (account, value) in table {
+            guard !account.isEmpty else { continue }
+            let name = normalize(value)
+            guard !name.isEmpty else { continue }
+            clean[account] = name
+        }
+        return clean
+    }
+
+    /// The preference of an earlier build, as the JSON the file now holds. It
+    /// was a plist dictionary, so anything in it that is not a string is not a
+    /// name and does not survive the move.
+    private static func carriedForward(_ defaults: UserDefaults) -> Data? {
+        guard let stored = defaults.dictionary(forKey: defaultsKey) else { return nil }
         var table: [String: String] = [:]
         for (account, value) in stored {
-            guard !account.isEmpty, let text = value as? String else { continue }
-            let name = Self.normalize(text)
-            guard !name.isEmpty else { continue }
-            table[account] = name
+            guard let text = value as? String else { continue }
+            table[account] = text
         }
-        names = table
+        let clean = sanitize(table)
+        guard !clean.isEmpty else { return nil }
+        return try? JSONEncoder().encode(clean)
     }
 
     /// The name typed for this contact, or the empty string
@@ -128,11 +163,11 @@ public struct ContactNames: Equatable {
     // MARK: - storage
 
     private func write() {
-        guard let defaults else { return }
+        guard let store else { return }
         if names.isEmpty {
-            defaults.removeObject(forKey: Self.defaultsKey)
-        } else {
-            defaults.set(names, forKey: Self.defaultsKey)
+            store.clear()
+        } else if let data = try? JSONEncoder().encode(names) {
+            store.save(data)
         }
     }
 

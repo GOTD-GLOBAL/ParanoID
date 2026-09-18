@@ -8,6 +8,28 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iPhone local metadata out of the OS backup — 2026-09-18
+
+- **A backup of the iPhone no longer carries who you talk to.** The local contact
+  names and the call log move from `UserDefaults`, which iCloud and encrypted
+  local backups include, into `Application Support/paranoid/` files excluded from
+  backup on their own inode ([RFC-0024](docs/rfcs/0024-local-metadata-at-rest.md),
+  proposed). Peer accounts, typed names, call outcomes, durations and message
+  anchors are no longer reproduced by a restore onto another device.
+- **Commit rules are the state file's:** the flag is set on the candidate before
+  the rename, the committed file is read back byte for byte and its flag read
+  back too, and a file that cannot be proven excluded is removed rather than left
+  for the next backup. A phone updating from an earlier build migrates each
+  preference once and clears it only after that proof, so an interrupted
+  migration repeats instead of losing the table.
+- **Not encryption.** The bytes stay plain JSON inside the container under
+  `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
+  them is RFC-0024 question 2, open.
+- Android is unaffected (its manifest already disables application backup), and
+  no core, protocol, server, route or snapshot behaviour changes. No physical
+  backup/restore experiment on a device is claimed; the evidence is the host
+  suite. Acceptance of the storage rule remains the decision owner's.
+
 ### Message time — 2026-09-17
 
 - **A message says when it happened.** A history entry gains `local_ms`: the

@@ -1,10 +1,38 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-17
+last_reviewed: 2026-09-18
 ---
 
 # Current project state
+
+## iPhone local metadata out of the OS backup — local candidate (2026-09-18)
+
+At Yaroslav's request the candidate takes the iPhone's local contact names and
+call log out of `UserDefaults`, which iCloud and encrypted local backups
+include, and puts them in `Application Support/paranoid/` files excluded from OS
+backup on their own inode
+([RFC-0024](../rfcs/0024-local-metadata-at-rest.md), **proposed**). The state
+file's commit sequence is reused: the flag is set on the candidate before the
+rename, the committed file is read back byte for byte and its flag read back
+too, and a file that cannot be proven excluded is removed rather than left for
+the next backup. A phone updating from an earlier build migrates each preference
+once and clears it only after that proof, so an interrupted migration repeats
+instead of losing the table.
+
+This is backup exclusion, not encryption: the bytes stay plain JSON inside the
+container under `completeUntilFirstUserAuthentication`, and container access is
+unchanged. Sealing the files is RFC-0024 question 2. `ReceiptHint` stays in
+preferences, naming no contact and no call. Android is unaffected, its manifest
+already disabling application backup, and no core, protocol, server, route or
+snapshot behaviour changes.
+
+Mac evidence on this candidate: ParanoidKit **344/0**; the UI-contract,
+storage-bootstrap, documents-against-evidence and component-boundary source
+gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
+is the owner gate). No physical backup/restore experiment on a device is
+claimed, no simulator scenario covers a restore, and acceptance of the storage
+rule remains the decision owner's.
 
 ## Message time — local candidate (2026-09-17)
 
@@ -20,8 +48,9 @@ push/crash/packaging fixes and server maintenance gates. An older build cannot
 open a snapshot carrying the new field. Sergey selected device-local time and
 accepted coordinated alpha updates on 2026-09-17; the provenance and remaining
 ADR boundary are in [RFC-0023](../rfcs/0023-message-time.md#owner-direction-and-remaining-decision-boundary).
-This does not implement the separate long-lived-history or iOS metadata-backup
-follow-ups.
+PR46 has since merged into main as `c9ca0679`. That candidate did not implement
+the separate long-lived-history or iOS metadata-backup follow-ups; the latter is
+the 2026-09-18 candidate above.
 
 Original contributor Mac receipt for `7093845`: core `clean_first_contact` 20/0 including the two new
 time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,

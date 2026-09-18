@@ -62,22 +62,39 @@ the flag lives on the inode: setting it on the committed name alone would
 cover the first commit only, and a later iCloud restore would hand back a stale
 ratchet while the Keychain key still worked.
 
-### Local names and call-log backup limitation
+### Local names and call log at rest
 
-`ContactNames` (`paranoid.contact-names.v1`) and `CallLog`
-(`paranoid.call-log.v1`) currently use standard UserDefaults. Neither store has
-application-level encryption or explicit backup exclusion. Peer IDs, locally
-assigned names, call outcomes, durations and message anchors can therefore be
-carried in an OS backup/restore; "local-only" means not sent by the messenger
-to its peer/server, **not** excluded from the phone backup. The encrypted
-snapshot's backup exclusion does not cover these preferences. Android disables
-application backup in its manifest; the platforms differ here. No physical
-backup/restore experiment is claimed.
+`ContactNames` and `CallLog` live in `Application Support/paranoid/` as
+`contact-names.v1.json` and `call-log.v1.json`, owner-only,
+`.completeUntilFirstUserAuthentication`, 4 MiB read ceiling, each excluded from
+OS backup ([RFC-0024](../../rfcs/0024-local-metadata-at-rest.md), proposed).
+They use the state file's commit sequence for the reason it has one: the flag
+lives on the inode, so it is set on the candidate before the rename, and it is
+read back from the committed name afterwards. A file that cannot be proven
+excluded is removed rather than left for the next backup. One
+`LocalMetadataStore` implements this for both.
 
-Moving both stores into backup-excluded container files, including migration
-and failure semantics, versus retaining and explicitly accepting this limitation
-is an unresolved owner privacy decision, tracked with the RFC-0022 questions.
-No storage migration or acceptance is authorized by documenting the limitation.
+Peer IDs, locally assigned names, call outcomes, durations and message anchors
+are therefore no longer carried in an OS backup/restore. They remain plain JSON
+inside the container: this is backup exclusion, **not** application-level
+encryption, and container access still exposes them. Android disables
+application backup in its manifest, so the platforms no longer diverge on this
+property. No physical backup/restore experiment on a device is claimed; the
+evidence is the host suite (`LocalMetadataStoreTests`), which asserts the flag
+on the committed file and the directory, the call order against an in-memory
+file system, and the removal of a file whose exclusion cannot be confirmed.
+
+A phone updating from an earlier build migrates each preference once: the file
+is written first and the preference cleared only after that file is committed,
+read back byte for byte and proven excluded, so an interrupted migration
+repeats instead of losing the table. Failure never reaches a screen — the table
+stays in memory for the run and the chat opens either way, unlike the snapshot,
+where a failed commit is terminal.
+
+`ReceiptHint` (`paranoid.receipt-hint.v1`) stays in UserDefaults: one boolean
+that names no contact and no call. Whether these files should additionally be
+sealed, and with which key, is RFC-0024 question 2 and remains open; acceptance
+of the storage rule is the decision owner's.
 
 ### Install marker and lazy wrapping key
 

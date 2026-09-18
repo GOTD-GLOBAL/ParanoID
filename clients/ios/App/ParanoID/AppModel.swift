@@ -132,17 +132,18 @@ final class AppModel {
     /// The names typed for contacts **on this phone**
     /// (`ContactNames`, Android v22). It is a stored property so that a rename
     /// is published to the screens the same way every other change is; the
-    /// table itself is read from and written to the application's own
-    /// defaults, and it never reaches the snapshot, the core or the network.
+    /// table itself is read from and written to a backup-excluded file of the
+    /// application's own, and it never reaches the snapshot, the core or the
+    /// network.
     private(set) var contactNames = ContactNames()
     /// Whether this phone still owes its owner the sentence that two marks are
     /// not "read" (`ReceiptHint`). Like the names, it lives in the
     /// application's own defaults and reaches neither the snapshot nor the
     /// network.
     private(set) var receiptHint = ReceiptHint()
-    /// The calls this phone has had (`CallLog`). Like the names and the hint it
-    /// lives in the application's own defaults: the core keeps no call history
-    /// and the server is told nothing about an outcome.
+    /// The calls this phone has had (`CallLog`). Like the names it lives in a
+    /// backup-excluded file of the application's own: the core keeps no call
+    /// history and the server is told nothing about an outcome.
     private(set) var callLog = CallLog()
     /// The last published call view, or `nil` while this run has never had a
     /// call. It carries no SDP, no ICE credential and neither nonce

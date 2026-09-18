@@ -177,10 +177,12 @@ server transport integrity is not a production secure-update claim.
 
 ## Candidate local call-log metadata
 
-Local contact names already use the same preference-storage boundary. The
-[iOS client limitation](../clients/ios/self-service.md#local-names-and-call-log-backup-limitation)
-and RFC-0022 question 4 cover both stores; backup-excluded file migration is
-proposed for owner disposition, not implemented or accepted.
+Local contact names use the same storage boundary as the call log. On iOS both
+now live in backup-excluded container files rather than preferences
+([iOS storage](../clients/ios/self-service.md#local-names-and-call-log-at-rest),
+[RFC-0024](../rfcs/0024-local-metadata-at-rest.md), proposed): the OS-backup
+path below is closed, container access is not, and acceptance of the rule
+remains owner disposition.
 
 PR45 adds local call outcomes, peer account IDs, durations and message anchors
 in Android app-private SharedPreferences and iOS UserDefaults. These are not
@@ -188,11 +190,11 @@ message plaintext or recordings and are not sent to a peer/server, but they
 are sensitive relationship metadata **outside the encrypted core snapshot**.
 The candidate keeps at most 500 rows per peer; existing core contact admission
 bounds the normal peer set. No new account-delete or recovery path is introduced.
-Android disables application backup in its manifest. No equivalent backup
-exclusion or physical backup/restore verification is claimed here for iOS
-UserDefaults. Platform sandbox/data protection is not application-level log
-encryption; container access can expose these rows. Future recovery/deletion
-must explicitly include this store. This describes the proposed candidate, not
+Android disables application backup in its manifest; iOS excludes both metadata
+files from backup on the inode, verified by the host suite, with no physical
+backup/restore experiment on a device claimed. Platform sandbox/data protection
+is not application-level log encryption; container access can expose these rows.
+Future recovery/deletion must explicitly include this store. This describes the proposed candidate, not
 an accepted privacy guarantee or ADR.
 
 ## Candidate message time
