@@ -298,8 +298,8 @@ task and hands the finished answer back through `perform`.
   drawing. The first time a message of this user's reaches the second mark, the
   chat says once that two marks are delivery and not reading, and «Понятно»
   retires that sentence for good (`ReceiptHint`, a flag in this application's
-  own defaults). Android still spells the marks as characters; the wording is
-  identical and the divergence is visual only.
+  own defaults). The [Android presentation candidate](../android/receipt-presentation.md)
+  uses the same drawn-state and one-time-hint semantics; wording stays identical.
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or

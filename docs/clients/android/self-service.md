@@ -15,6 +15,14 @@ The later [Android voice implementation](voice-calls.md) builds on the retained
 v8 messenger. Its current tests, media/permission boundaries and pending signed
 artifact are separate from the historical APK evidence below.
 
+## Receipt presentation follow-up
+
+The [drawn marks and one-time explanation](receipt-presentation.md) replace
+font characters in outgoing bubbles and chat-list receipt positions with Canvas
+geometry. The same three delivery states and Russian accessibility labels
+remain. An own delivered message earns a dismissible explanation; one local
+boolean remembers dismissal, with no core/wire/identity change.
+
 ## Active clean-install candidate (RFC-0014)
 
 The 2026-09-09 owner clarification authorizes an actual local APK candidate and

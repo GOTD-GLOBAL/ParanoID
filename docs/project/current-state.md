@@ -6,6 +6,20 @@ last_reviewed: 2026-09-18
 
 # Current project state
 
+## Android receipt presentation candidate — 2026-09-18
+
+At Yaroslav's request, a separate Android branch replaces typed delivery glyphs
+with Canvas marks in the outgoing bubble and chat-list receipt position, and
+adds the existing iOS one-time explanation after an own delivered message.
+REQ-MSG-003 is unchanged: queued/server-stored/peer-delivered, never read. One
+non-sensitive installation-local preference remembers dismissal; no core, wire,
+identity, snapshot, server or iOS source changes.
+[Implementation and scoped evidence](../clients/android/receipt-presentation.md)
+record JVM RED/GREEN, real SDK/full signed APK build and isolated emulator
+Canvas/density/font-scale/accessibility-label/dismissal-restart checks. The
+probe does not prove full MainActivity visuals, spoken TalkBack or physical
+phone behavior. No release-number bump, publication, messenger install or merge.
+
 ## Android v27 published — 2026-09-18
 
 [The v27 release receipt](../clients/android/v27-release.md) records the actual

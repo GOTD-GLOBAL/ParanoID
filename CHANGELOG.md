@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android receipt presentation — 2026-09-18
+
+- Draw queued/server-stored/peer-delivered marks with Canvas in bubbles and chat
+  rows instead of font symbols; preserve the three Russian accessibility labels.
+- Show the existing iOS explanation after an own delivery; `Понятно` dismisses
+  it across normal restarts using one local preference, with immediate repaint.
+- Add JVM semantics, SDK compilation/source checks and an isolated emulator
+  Canvas/persistence probe. No read receipts, wire or encrypted-state changes.
+
 ### Android v27 packaging — 2026-09-18
 
 - Published `0.0.27-timeout`, version code27, from merged main after PR48 plus
