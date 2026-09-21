@@ -1,0 +1,38 @@
+{"command": "cargo +1.98.1 test --locked --manifest-path blockchain/solana/runtime-tests/Cargo.toml", "exit_code": 0}
+Compiling paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/client)
+   Compiling paranoid-registry-runtime-tests v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/runtime-tests)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.20s
+     Running unittests src/lib.rs (blockchain/solana/runtime-tests/target/debug/deps/paranoid_registry_runtime_tests-110e81d847b038cf)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/mobile_interop.rs (blockchain/solana/runtime-tests/target/debug/deps/mobile_interop-875985ca2c2fcac5)
+
+running 1 test
+test mobile_core_signs_transaction_executed_by_sbf_and_verifies_runtime_records ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/registry.rs (blockchain/solana/runtime-tests/target/debug/deps/registry-1d65c5834e350e9b)
+
+running 10 tests
+test one_identity_cannot_register_a_second_name ... ok
+test missing_owner_signature_is_rejected ... ok
+test failure_of_second_allocation_rolls_back_first_record ... ok
+test registration_and_exact_retry_are_atomic_and_idempotent ... ok
+test occupied_name_does_not_create_another_identity ... ok
+test prefunded_system_pdas_work_without_refunding_excess ... ok
+test read_only_record_is_rejected ... ok
+test wrong_pda_or_system_program_is_rejected ... ok
+test foreign_owner_partial_or_corrupt_state_is_rejected_without_repair ... ok
+test rejects_bad_instruction_names_versions_and_lengths_without_creating_accounts ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.34s
+
+   Doc-tests paranoid_registry_runtime_tests
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

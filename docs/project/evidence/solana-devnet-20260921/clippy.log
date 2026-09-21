@@ -1,0 +1,7 @@
+{"command": "for c in registry client runtime-tests; do cargo +1.98.1 clippy --locked --manifest-path blockchain/solana/$c/Cargo.toml --all-targets -- -D warnings || exit; done", "exit_code": 0}
+Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+    Checking paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/client)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.29s
+    Checking paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/client)
+    Checking paranoid-registry-runtime-tests v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/runtime-tests)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.46s

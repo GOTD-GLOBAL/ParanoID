@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Solana Devnet registration candidate — 2026-09-21
+
+- Add a native SBF nickname/identity registry, shared Rust signing/recovery client
+  and separate Android registration-only candidate under draft RFC-0026.
+- Restrict mnemonic export to explicit recovery UI; share public deployment pins
+  through JNI and verify ProgramData authority and exact bytecode before signing.
+- Record executable local tests, independent recovery-vector reproduction and
+  build/signature evidence. No chain deployment, physical-phone acceptance,
+  Mainnet action or messenger replacement is claimed by this candidate.
+
 ### iOS call tones and lifecycle review corrections — 2026-09-18
 
 - Add synthesized incoming ring, caller ringback and exact two-second busy

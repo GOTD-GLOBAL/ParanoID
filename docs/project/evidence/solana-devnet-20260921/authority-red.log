@@ -1,0 +1,3 @@
+Exception in thread "main" java.lang.AssertionError: accepted wrong upgrade authority
+	at org.paranoid.devnet.ProgramPinTest.rejected(ProgramPinTest.java:18)
+	at org.paranoid.devnet.ProgramPinTest.main(ProgramPinTest.java:30)
