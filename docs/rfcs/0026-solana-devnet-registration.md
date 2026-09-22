@@ -16,6 +16,10 @@ accounts/messages are disposable test data and need not be preserved. This remov
 legacy-account linking/migration as a gate for THIS Devnet transition only. It is
 not a global deletion/backup exception or an instruction to wipe the hosted DB,
 phones, signing keys or TLS. Telegram provenance has no available permalink.
+The human decision/risk owner `martadvix-web` (Sergey Maltsev) directly
+[confirmed this bounded scope, completed Devnet deployment and conditional merge](https://github.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821)
+on2026-09-22. This is permanent scope approval, not accepted-ADR architecture
+approval, Mainnet permission or phone release.
 
 The prior proposal to preserve/link existing accounts is superseded for this
 slice. Mainnet, real funds, existing wallets, tokens/NFTs, name transfers, server

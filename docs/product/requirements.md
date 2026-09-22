@@ -14,8 +14,10 @@ records this bounded transition. Previous account-link/migration work is not a
 gate for this candidate. This is not a global data-deletion/backup exception,
 permission to erase neighboring services, phone actions, key/TLS replacement or
 a live database wipe command. Devnet-only fresh identities; no Mainnet/real funds.
-Source: owner Telegram direction, with no available permalink; provenance is
-recorded in RFC-0026, not represented as accepted-ADR approval.
+Source: owner Telegram direction, subsequently
+[confirmed directly by human owner `martadvix-web` (Sergey Maltsev)](https://github.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821)
+on2026-09-22. This bounded scope/deployment/conditional-merge approval is not
+accepted-ADR architecture approval or phone/Mainnet release permission.
 
 These requirements capture founder intent for discovery. `Confirmed direction`
 means the intent is explicit; it does not mean the acceptance criteria or design

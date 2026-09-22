@@ -4,8 +4,12 @@
 
 Sergey Maltsev explicitly instructed **«Деплой в девнет»** in Telegram after the
 B1-B5 closure report and request for deployment authorization. No Telegram
-permalink is available. This authorizes this bounded test-data Devnet deployment,
-not Mainnet, merge, architecture acceptance, phone reset or APK publication.
+permalink is available for that original message. Human owner `martadvix-web`
+(Sergey Maltsev) subsequently [confirmed the exact bounded scope and deployment](https://github.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821)
+on2026-09-22, authorizing merge only after Fable closure and mandatory CI pass.
+This is not Mainnet, architecture acceptance, phone reset or APK publication.
+Historical JSON receipts retain the original Telegram provenance; this permanent
+GitHub confirmation supplements them without rewriting historical outputs.
 RFC-0026 remains draft; ADR-0001/0003 gates remain. The prior independent
 [code/artifact and documentation reviews](../solana-devnet-20260921/README.md)
 approved this exact SBF for bounded Devnet deployment and chain verification.

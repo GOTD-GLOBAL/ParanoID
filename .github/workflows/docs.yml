@@ -6,6 +6,8 @@ on:
       - "**/*.md"
       - ".markdownlint-cli2.yaml"
       - ".github/workflows/docs.yml"
+      - "scripts/check-devnet-receipt.py"
+      - "scripts/test-devnet-receipt.py"
   push:
     branches:
       - main
@@ -13,6 +15,8 @@ on:
       - "**/*.md"
       - ".markdownlint-cli2.yaml"
       - ".github/workflows/docs.yml"
+      - "scripts/check-devnet-receipt.py"
+      - "scripts/test-devnet-receipt.py"
 
 permissions:
   contents: read
@@ -27,12 +31,22 @@ jobs:
       - name: Lint Markdown
         uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e # v20
 
+      - name: Verify Devnet citations through read-only RPC
+        # Explorer HTML returns bot429; verify the exact on-chain objects instead.
+        # No wallet, credentials, airdrop, signing or submission. Network errors fail.
+        run: |
+          python3 scripts/test-devnet-receipt.py
+          python3 scripts/check-devnet-receipt.py
+
       - name: Check links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           # Private PR provenance is verified through authenticated GitHub API calls.
           args: >-
             --no-progress
+            --exclude '^https://explorer\.solana\.com/address/C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas\?cluster=devnet$'
+            --exclude '^https://explorer\.solana\.com/tx/4dFfANwtzdq6iEwBM1GTd2iYLFowe3xXQBrBPYdjqxPSAwVPT6VNP3EnCuLwuHzhdJDc6NT3tywRYrCxyMk6PH1a\?cluster=devnet$'
+            --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821$'
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4$'
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500$'
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/12$'

@@ -53,7 +53,7 @@ version are locked per Cargo.lock. LiteSVM0.16.0 resolves Agave runtime4.2.2 in
 its lockfile; it is older-runtime coverage, not identical to CLI or Devnet.
 
 ```sh
-cargo-build-sbf --tools-version v1.57 --arch v0 --manifest-path registry/Cargo.toml
+cargo-build-sbf --tools-version v1.57 --arch v0 --manifest-path registry/Cargo.toml -- --locked
 cargo +1.98.1 test --locked --manifest-path runtime-tests/Cargo.toml
 cargo +1.98.1 test --locked --manifest-path client/Cargo.toml
 ```

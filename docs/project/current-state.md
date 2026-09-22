@@ -23,8 +23,8 @@ instructed deployment in Devnet. The reviewed SBF is now deployed and finalized;
 canonical ProgramData/authority checks and an independent CLI dump matched the
 reviewed artifact. See the [actual deployment receipt](evidence/solana-devnet-deploy-20260922/README.md).
 Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
-physical-phone acceptance is claimed. RFC0026 remains draft, and no merge,
-Mainnet/server action or APK publication followed.
+physical-phone acceptance is claimed. RFC0026 remains draft. Merge and APK
+publication remain separate gates; no Mainnet/server action followed.
 
 ## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
 
