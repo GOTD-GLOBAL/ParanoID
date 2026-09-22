@@ -2,13 +2,19 @@
 import json
 from pathlib import Path
 import subprocess
-metadata=json.loads(subprocess.check_output(["cargo","metadata","--offline","--locked","--format-version","1","--filter-platform","aarch64-linux-android","--manifest-path","../core/Cargo.toml"],text=True))
-nodes={n["id"]:n for n in metadata["resolve"]["nodes"]}
-active=set();pending=[metadata["resolve"]["root"]]
-while pending:
-    current=pending.pop()
-    if current in active:continue
-    active.add(current);pending.extend(d["pkg"] for d in nodes[current]["deps"])
+packages={};active=set()
+for manifest in ("../core/Cargo.toml","../../blockchain/solana/client/Cargo.toml"):
+    metadata=json.loads(subprocess.check_output(["cargo","metadata","--offline","--locked","--format-version","1","--filter-platform","aarch64-linux-android","--manifest-path",manifest],text=True))
+    nodes={n["id"]:n for n in metadata["resolve"]["nodes"]}
+    seen=set();pending=[metadata["resolve"]["root"]]
+    while pending:
+        current=pending.pop()
+        if current in seen:continue
+        seen.add(current);pending.extend(d["pkg"] for d in nodes[current]["deps"])
+    active.update(seen);packages.update({p["id"]:p for p in metadata["packages"]})
+metadata={"packages":list(packages.values())}
+license_sources=json.loads(Path("licenses/devnet/sources.json").read_text())
+license_fallback={name:entry for entry in license_sources for name in entry["packages"]}
 parts=["Third-party notices for the ParanoID development text client"]
 for package in sorted(metadata["packages"],key=lambda p:(p["name"],p["version"])):
     if package["source"] is None or package["id"] not in active:continue
@@ -19,6 +25,10 @@ for package in sorted(metadata["packages"],key=lambda p:(p["name"],p["version"])
         files=[root/"matrix-pickle-LICENSE"]
     if not files and package["name"]=="jni-sys-macros":
         root=Path("licenses");files=sorted(root.glob("jni-sys-macros-LICENSE-*"))
+    if not files and package["name"] in license_fallback:
+        entry=license_fallback[package["name"]];root=Path("licenses/devnet");files=[root/entry["file"]]
+        import hashlib
+        if hashlib.sha256(files[0].read_bytes()).hexdigest()!=entry["sha256"]:raise RuntimeError("License integrity: "+package["name"])
     if not files:raise RuntimeError("Missing license text: "+package["name"])
     parts.append(f"\n{package['name']} {package['version']} — {package['license']}\n{package['repository']}")
     for path in files:parts.append(str(path.relative_to(root))+"\n"+path.read_text(errors="replace"))

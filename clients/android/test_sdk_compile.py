@@ -31,6 +31,7 @@ with tempfile.TemporaryDirectory(prefix="paranoid-sdk-compile-") as scratch:
     subprocess.run(["javac", "--release", "8", "-Xlint:-options", "-encoding", "UTF-8",
                     "-classpath", os.pathsep.join(map(str, jars)), "-d", str(classes),
                     *map(str, sorted((root / "src/org/paranoid/text").glob("*.java"))),
+                    *map(str, sorted((root.parent / "android-devnet/src/org/paranoid/devnet").glob("*.java"))),
                     *map(str, sorted(generated.rglob("R.java")))], check=True)
     for name in ("MainActivity", "TextEngine", "VoiceCallService", "CallLog"):
         assert (classes / "org/paranoid/text" / (name + ".class")).is_file(), name

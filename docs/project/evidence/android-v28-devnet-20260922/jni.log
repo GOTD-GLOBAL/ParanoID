@@ -1,0 +1,26 @@
+JNI PASS: real Rust derivation, recovery, transaction creation and wrong-cluster refusal; no network or funded keys
+reject wrong upgrade authority
+reject modified bytecode
+reject missing program
+reject missing programdata
+reject program not executable
+reject executable programdata
+reject wrong loader
+reject wrong programdata owner
+reject program tag/link 0
+reject program tag/link 1
+reject program tag/link 4
+reject programdata tag/authority option 0
+reject programdata tag/authority option 1
+reject programdata tag/authority option 12
+reject short program
+reject short programdata
+reject extra programdata bytes
+reject wrong encoding
+reject invalid base64
+PROGRAM PIN PASS
+RPC PROGRAM GATE PASS: shared native pins, paired finalized reads, authority and genesis refusal
+REGISTRATION FLOW PASS: same-wire retry, expiry, name switch, storage failure, pending-name guard, broadcast bound, costs/funds and lost response
+UI GENERATION PASS
+DEVNET WORK BOUNDARY PASS
+HOST CLIENT CHECKS PASS; not device or live-chain evidence

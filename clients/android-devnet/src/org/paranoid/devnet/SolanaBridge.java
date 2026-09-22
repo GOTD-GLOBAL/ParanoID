@@ -4,9 +4,9 @@ final class SolanaBridge {
     static { System.loadLibrary("paranoid_devnet_client"); }
     private static native String call(String input);
     static JSONObject run(JSONObject input)throws Exception {
-        if(input.toString().length()>8192)throw new Exception("input_limit");
+        if(input.toString().length()>8192)throw new java.io.IOException("input_limit");
         JSONObject output=new JSONObject(call(input.toString()));
-        if(output.has("error"))throw new Exception(output.getString("error"));
+        if(output.has("error"))throw new java.io.IOException(output.getString("error"));
         return output;
     }
 }

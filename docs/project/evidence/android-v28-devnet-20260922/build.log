@@ -1,0 +1,263 @@
+Verified SHA256: zxing-core-3.5.3.jar
+Verified SHA256: json-20240303.jar
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+.Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+.Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+Verified WebRTC150.7871.01 AAR, Java and ARM64/x86_64 payloads
+.
+----------------------------------------------------------------------
+Ran 3 tests in 0.621s
+
+OK
+Verified Firebase Messaging closure: 61 artifacts, 6 resource packages
+.....Verified Firebase Messaging closure: 61 artifacts, 6 resource packages
+Verified Firebase Messaging closure: 61 artifacts, 6 resource packages
+.
+----------------------------------------------------------------------
+Ran 6 tests in 0.271s
+
+OK
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+SDK compilation PASS: MainActivity.java
+SDK compilation PASS: TextEngine.java
+SDK compilation PASS: VoiceCallService.java
+SDK compilation PASS: CallLog.java
+CallControllerSmoke PASS: terminal records, video consent/signaling, consent, freshness, replay, lifecycle, persistence failure, heartbeat, crossing, clock, answer binding, media bounds, delayed callbacks, pre-ready cancel
+CallOwnerThreadSmoke PASS
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS: call outcomes, their wording and their place in the conversation
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+CrashExitSmoke PASS: bounded structured native exit, no raw API payload access, dedup, API29 gate (synthetic JVM adapter)
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.612s
+
+OK
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+Voice relay config PASS: valid issuer + 49 strict negatives + independent wall/monotonic deadline
+    Finished `release` profile [optimized] target(s) in 0.11s
+     Running unittests src/lib.rs (/home/codex/projects/paranoid-worktrees/devnet-[REDACTED]-acceptance/clients/core/target/release/deps/paranoid_client_core-898acf2cdebe30d3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/clean_first_contact.rs (/home/codex/projects/paranoid-worktrees/devnet-[REDACTED]-acceptance/clients/core/target/release/deps/clean_first_contact-f38b6e15596cc9c6)
+
+running 22 tests
+test old_snapshots_refuse_without_reset_and_pristine_registration_identity_reopens ... ok
+test a_history_written_without_a_time_opens_and_stays_untimed ... ok
+test duplicate_nested_receipt_fields_are_not_collapsed_before_validation ... ok
+test genuine_changed_same_root_fallback_and_stale_signature_are_rejected ... ok
+test backwards_local_clock_does_not_reorder_or_reject_messages ... ok
+test exact_wire_limit_and_equivalent_json_reencoding_have_distinct_replay_commitments ... ok
+test message_time_is_the_clock_the_client_passed_and_never_reaches_the_wire ... ok
+test server_acceptance_preserves_local_pending_channel_and_exact_commitment ... ok
+test message_time_survives_acceptance_receipts_and_duplicate_replay ... ok
+test stripped_v1_is_also_rejected_by_the_unchanged_historical_v0_decoder ... ok
+test independently_derived_channel_crossing_texts_and_receipts_share_two_sessions ... ok
+test history_past_the_retired_cap_loads_and_still_accepts_decrypted_text ... ok
+test replay_ledger_binds_sender_uuid_sequence_exact_outer_and_survives_reload ... ok
+test unknown_receipt_and_every_wrong_commitment_target_roll_back ... ok
+test zero_contact_plaintext_reply_receipts_and_clean_reopen ... ok
+test eight_real_inbound_sessions_are_retained_and_ninth_is_rejected_transactionally ... ok
+test wrong_signatures_stripping_and_recursive_outer_fields_never_allocate_peer ... ok
+test signed_wrong_inner_context_and_strict_json_roll_back_entire_state ... ok
+test post_decrypt_receipt_outbox_capacity_discards_account_and_ratchets ... ok
+test valid_outer_signature_with_corrupt_olm_and_full_inbox_never_commit_crypto_state ... ok
+test whole_snapshot_limit_after_unknown_decryption_and_receipt_construction_rolls_back ... ok
+test budgets_bound_unverified_and_total_peers_without_eviction_and_block_preserves_keys ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.75s
+
+     Running tests/realtime_signing.rs (/home/codex/projects/paranoid-worktrees/devnet-[REDACTED]-acceptance/clients/core/target/release/deps/realtime_signing-bc5eeb1b9bdadf93)
+
+running 6 tests
+test session_signs_exact_native_cursor_context_with_unique_nonces_without_state_mutation ... ok
+test session_open_is_exact_active_device_challenge_only ... ok
+test push_selector_signs_exact_fcm_registration_and_rejects_bad_tokens ... ok
+test session_send_only_signs_retained_immutable_outbox_and_rejects_accepted_ids ... ok
+test session_rejects_cross_identity_trust_invalid_expiry_unknown_routes_and_extra_fields ... ok
+test voice_turn_selector_signs_only_exact_empty_get_and_retained_device_context ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/voice_calls.rs (/home/codex/projects/paranoid-worktrees/devnet-[REDACTED]-acceptance/clients/core/target/release/deps/voice_calls-0801d6350ca1abb2)
+
+running 14 tests
+test retained_session_id_identifies_consumed_reusable_fallback_prekey ... ok
+test early_end_has_explicit_empty_context_without_promoting_it_to_media_authority ... ok
+test prior_authenticated_text_contact_can_receive_call_without_identity_trust_upgrade ... ok
+test exact_control_replay_and_reopen_never_emit_another_call_event ... ok
+test call_control_preserves_v8_snapshot_shape_and_exact_retry_bytes ... ok
+test duplicate_body_keys_are_rejected_without_json_value_normalization ... ok
+test unknown_and_blocked_call_controls_cannot_allocate_or_mutate_crypto_state ... ok
+test higher_sequence_replay_of_consumed_call_prekey_never_recreates_a_fallback_session ... ok
+test authenticated_call_wrong_inner_or_outer_context_and_ciphertext_tamper_roll_back ... ok
+test call_admission_preserves_normal_text_outbox_capacity_and_numeric_bounds ... ok
+test established_call_controls_are_encrypted_signed_transient_and_never_messages_or_receipts ... ok
+test flat_call_shape_limits_and_kind_sequences_are_strict_on_send_and_receive ... ok
+test sdp_exact_fingerprint_ice_offer_digest_and_audio_only_contract_are_enforced ... ok
+test twenty_maximum_duration_calls_preserve_text_replay_history_and_receipt_budgets ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 10.91s
+
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+JNI string boundary: PASS (Linux JVM, not Android device)
+Snapshot codec: PASS (JVM crypto, not Android Keystore)
+Sync cycle: PASS (real HTTP409/507 do not block GET; exact retry bytes; local failures stop)
+PASS REG-01: real JNI creation, durable-before-use, duplicate Create ID, reopen, storage failure freezes; no network
+PASS clean actual JVM/JNI: durable wrapper4/core3, zero contacts, stable ID/retry/reopen, unsupported older snapshots preserve bytes, failed storage freezes
+PASS actual JNI snapshot boundary: populated historical native0 refused unchanged; pristine interrupted creation reopens and upgrades same ID
+PASS actual JNI/Olm voice adapter: commit-before-event, duplicate/reopen, unknown/block, no text/receipt, failed-save freeze
+PASS Android UI policy: network-unverified immediate reply, trust text, blocked/offline/frozen/inflight disabled
+PASS: ZXing QR encode/decode UTF-8 roundtrip, input/frame bounds; camera/OPPO NOT RUN
+PASS 200 deterministic diverse public grant QR render/decode roundtrips
+PASS dense contact QR decodes at scanner-class resolutions (6 frames)
+...........
+----------------------------------------------------------------------
+Ran 11 tests in 0.004s
+
+OK
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS: receipt semantics, 2048-byte Unicode limit, readable unknown sender, in-flight per-chat draft safety
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS: message time, day separators and conversation-row dates
+ContactNamesSmoke PASS
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.001s
+
+OK
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS real pinned TLS reused; blocked receive independent of send; redirects refused
+PASS update delayed 200
+PASS voice delayed 200
+PASS key delayed 200
+PASS realtime delayed 200
+PASS update delayed 408
+PASS voice delayed 408
+PASS realtime delayed 408
+PASS key delayed 408
+..
+----------------------------------------------------------------------
+Ran 2 tests in 0.001s
+
+OK
+Session worker success PASS (host adapter, not Android install)
+Session worker focus-lost PASS (host adapter, not Android install)
+Session worker destroyed PASS (host adapter, not Android install)
+Session worker bad-hash PASS (host adapter, not Android install)
+Session worker open-failed PASS (host adapter, not Android install)
+Session worker close-success PASS (host adapter, not Android install)
+Session worker close-cancel PASS (host adapter, not Android install)
+Session worker acquire-failed PASS (host adapter, not Android install)
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK
+    Finished `release` profile [optimized] target(s) in 0.05s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running unittests src/lib.rs (/home/codex/projects/paranoid-worktrees/devnet-[REDACTED]-acceptance/blockchain/solana/client/target/debug/deps/paranoid_devnet_client-a73d86a4679438e5)
+
+running 8 tests
+test tests::program_info_exposes_only_fixed_public_deployment_pins ... ok
+test tests::slip0010_published_vector_and_nonhardened_rejection ... ok
+test tests::registry_readback_requires_both_exact_records ... ok
+test tests::rejects_wrong_cluster_arbitrary_fields_mnemonic_and_names ... ok
+test tests::prepare_is_unsigned_and_matches_fixed_signed_message ... ok
+test tests::registration_transaction_is_fixed_and_signature_verifies ... ok
+test tests::standard_public_recovery_vector ... ok
+test tests::identity_does_not_export_recovery_material ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+   Doc-tests paranoid_devnet_client
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `release` profile [optimized] target(s) in 0.06s
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.319s
+
+OK
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+...
+----------------------------------------------------------------------
+Ran 3 tests in 0.053s
+
+OK
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.539s
+
+OK
+UpdateCopySmoke PASS (overflow-safe declared-size accounting)
+UpdateLargeSmoke PASS (manifest signed-long range and sparse 2GiB provider fixture, not install evidence)
+UpdateSmoke valid manifest PASS
+UpdatePolicySmoke PASS; negative cases=41
+UpdateTrustSmoke saved nondefault trust/no state writes PASS
+Non-origin/cleartext/credential URLs: REJECT PASS; explicit unusable JVM proxy ignored
+TLS valid/ok: PASS
+TLS valid/chunked: PASS
+TLS valid/absent: PASS
+TLS valid/redirect: REJECT PASS
+TLS valid/apk-redirect: REJECT PASS
+TLS valid/metadata-big: REJECT PASS
+TLS valid/metadata-invalid: REJECT PASS
+TLS valid/metadata-utf8: REJECT PASS
+TLS valid/bad-hash: REJECT PASS
+TLS valid/size-small: REJECT PASS
+TLS valid/size-large: REJECT PASS
+TLS valid/disk-space: REJECT PASS
+TLS valid/truncated: REJECT PASS
+TLS valid/overflow: REJECT PASS
+TLS valid/encoding: REJECT PASS
+TLS valid/reject-apk: REJECT PASS
+TLS valid/wrong-pin: REJECT PASS
+TLS valid/cookie: REJECT PASS
+TLS expired/ok: REJECT PASS
+TLS san/ok: REJECT PASS
+TLS ca/ok: REJECT PASS
+RFC0013 host fixture PASS (not Android PackageManager/installer/device evidence)

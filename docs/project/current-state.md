@@ -6,6 +6,29 @@ last_reviewed: 2026-09-18
 
 # Current project state
 
+## Integrated Android v28 candidate — 2026-09-22
+
+The owner rejected a standalone registrar and requested one main ParanoID APK
+with existing chats/calls and built-in Devnet nickname registration, then asked
+for an update build after disclosure that seed recovery currently restores ONLY
+the Devnet nickname key, not the messenger account/history. Package and retained
+signer remain unchanged. No server identity/QR/E2EE binding is silently changed.
+RFC0026's integrated amendment and proposed ADR0015 describe this boundary.
+
+The version28 candidate builds through the existing chat/call/TLS/updater gates.
+A separate disposable emulator package executes the same DevnetStore code against
+real Android Keystore/AtomicFile; restart and interrupted-write-marker checks pass.
+A real Devnet test name was registered through the new shared controller, finalized
+records verified, and its nickname identity recovered via24 words in a fresh
+local state. This host/JNI chain test is not physical-phone or full-account recovery.
+Independent integrated-artifact review and private handoff remain separate gates.
+The integrated ARM64 APK has not been launched here; Android runtime evidence is
+from the separate storage harness only. A latched Devnet store has no safe in-app
+reset in this build. Clearing application data would remove the latch but also
+lose the messenger ID/history, so users must NOT do that to repair Devnet; leave
+messenger data intact and report the error. Native module linkage failures are
+contained inside the Devnet worker and must not terminate the messenger process.
+
 ## Solana Devnet registration workstream — 2026-09-21
 
 The owner requests fresh Devnet identities and explicitly permits loss of current

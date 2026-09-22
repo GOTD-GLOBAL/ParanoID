@@ -1,0 +1,15 @@
+{
+  "version_code": 28,
+  "version_name": "0.0.28-devnet",
+  "package": "global.paranoid.messenger",
+  "apk_bytes": 17671910,
+  "apk_sha256": "d53a4c846a86a750a269833f88ebca7171f5441e702fbdf9513c13dd1dd2dc29",
+  "signer_sha256": "82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926",
+  "main_launcher": "org.paranoid.text.MainActivity",
+  "devnet_activity": "org.paranoid.devnet.MainActivity (private, same APK)",
+  "scope": "private owner-requested update build, not publication",
+  "full_messenger_seed_recovery": false,
+  "physical_phone_install": "NOT RUN",
+  "feed_publication": "NOT PERFORMED",
+  "revision": "post-review B1/B2 fixes; Fable APPROVE for private handoff, not publication/merge"
+}

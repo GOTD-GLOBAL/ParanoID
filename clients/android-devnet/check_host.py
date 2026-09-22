@@ -18,10 +18,10 @@ classes = CLIENT / "out/host"
 classes.mkdir(parents=True, exist_ok=True)
 src = CLIENT / "src/org/paranoid/devnet"
 subprocess.run(["javac", "--release", "8", "-Xlint:-options", "-cp", str(jar), "-d", str(classes),
-                *[str(src / (name + ".java")) for name in ["SolanaBridge", "ProgramPin", "DevnetRpc"]],
-                *[str(CLIENT / "test" / (name + ".java")) for name in ["BridgeSmoke", "ProgramPinTest", "RpcProgramTest"]]], check=True, cwd=ROOT)
-for name in ["BridgeSmoke", "RpcProgramTest"]:
+                *[str(src / (name + ".java")) for name in ["SolanaBridge", "ProgramPin", "DevnetRpc", "RegistrationFlow", "UiGeneration", "DevnetWork"]],
+                *[str(CLIENT / "test" / (name + ".java")) for name in ["BridgeSmoke", "ProgramPinTest", "RpcProgramTest", "RegistrationFlowTest", "UiGenerationTest", "DevnetWorkTest"]]], check=True, cwd=ROOT)
+for name in ["BridgeSmoke", "RpcProgramTest", "RegistrationFlowTest", "UiGenerationTest", "DevnetWorkTest"]:
     subprocess.run(["java", "-Djava.library.path=" + str(ROOT / "blockchain/solana/client/target/debug"),
                     "-cp", str(classes) + os.pathsep + str(jar), "org.paranoid.devnet." + name,
-                    str(ROOT / "blockchain/solana/registry/target/deploy/paranoid_devnet_registry.so")], check=True, cwd=ROOT)
+                    str(Path(os.environ.get("SBF_PATH",ROOT / "blockchain/solana/registry/target/deploy/paranoid_devnet_registry.so")))], check=True, cwd=ROOT)
 print("HOST CLIENT CHECKS PASS; not device or live-chain evidence")

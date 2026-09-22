@@ -1,0 +1,2 @@
+Actual APK tools -> Java identity/hash policy PASS; same/lower no update; cached tamper/truncation rejected. Not Android PackageManager execution.
+Upgrade continuity v27 -> v28 PASS, same package and signer; not physical Android installation

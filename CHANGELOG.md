@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v28 integrated Devnet update candidate — 2026-09-22
+
+- Keep the main messenger package/signer, chats, calls and updater; add private
+  My ID -> Devnet nickname registration inside that same APK, not a separate app.
+- Bound identical transaction rebroadcasts, reconcile expired attempts, prepare
+  fee-checkable unsigned messages before signing and persist write-intent markers.
+- Test real Devnet registration/name recovery and Android Keystore in an isolated
+  emulator harness. The mnemonic restores the Devnet name key only, NOT the
+  messenger account/history. Owner-requested build, not a production release.
+
 ### Authorized Solana Devnet deployment — 2026-09-22
 
 - Deploy the reviewed73800-byte registry after explicit owner authorization;

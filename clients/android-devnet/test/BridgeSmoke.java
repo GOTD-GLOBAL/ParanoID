@@ -11,7 +11,7 @@ public final class BridgeSmoke {
         if(!entropy.equals(restored.getString("entropy")))throw new AssertionError("restore");
         JSONObject tx=SolanaBridge.run(new JSONObject().put("op","register").put("entropy",entropy).put("name","alice_test").put("blockhash","11111111111111111111111111111111").put("genesis",DevnetRpc.GENESIS));
         if(tx.getString("signature").isEmpty()||!tx.getString("owner").equals(identity.getString("owner")))throw new AssertionError("transaction");
-        try{SolanaBridge.run(new JSONObject().put("op","register").put("entropy",entropy).put("name","alice_test").put("blockhash","11111111111111111111111111111111").put("genesis","mainnet"));throw new AssertionError("cluster gate");}catch(Exception expected){if(!expected.getMessage().equals("wrong_cluster"))throw expected;}
+        try{SolanaBridge.run(new JSONObject().put("op","register").put("entropy",entropy).put("name","alice_test").put("blockhash","11111111111111111111111111111111").put("genesis","mainnet"));throw new AssertionError("cluster gate");}catch(Exception expected){if(!(expected instanceof java.io.IOException))throw new AssertionError("native code is hidden by UI exception filter");if(!expected.getMessage().equals("wrong_cluster"))throw expected;}
         System.out.println("JNI PASS: real Rust derivation, recovery, transaction creation and wrong-cluster refusal; no network or funded keys");
     }
 }
