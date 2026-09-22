@@ -53,6 +53,32 @@ lose the messenger ID/history, so users must NOT do that to repair Devnet; leave
 messenger data intact and report the error. Native module linkage failures are
 contained inside the Devnet worker and must not terminate the messenger process.
 
+## Android receipt presentation candidate — 2026-09-18
+
+At Yaroslav's request, a separate Android branch replaces typed delivery glyphs
+with Canvas marks in the outgoing bubble and chat-list receipt position, and
+adds the existing iOS one-time explanation after an own delivered message.
+REQ-MSG-003 is unchanged: queued/server-stored/peer-delivered, never read. One
+non-sensitive installation-local preference remembers dismissal; no core, wire,
+identity, snapshot, server or iOS source changes.
+[Implementation and scoped evidence](../clients/android/receipt-presentation.md)
+record JVM RED/GREEN, real SDK/full signed APK build and isolated emulator
+Canvas/density/font-scale/accessibility-label/dismissal-restart checks. The
+probe does not prove full MainActivity visuals, spoken TalkBack or physical
+phone behavior. No release-number bump, publication or messenger install.
+
+On 2026-09-22 Sergey requested completing and merging PR51/PR54, closing issue52
+and leaving issue38 untouched. PR51's integration with main preserves all fourteen
+non-conflict files byte-for-byte and retains added documentation from both sides
+of the two documentation-only conflicts. Actual receipt JVM, twelve Android UI
+contracts and six CI wiring checks pass on the integrated tree. The first JVM
+attempt lacked the pinned JSON dependency; after the canonical dependency
+preparation it passed. Actual Android35 SDK compilation, message presentation,
+time and call-log checks, twenty-three iOS UI source checks and Markdown with the
+CI-pinned CLI2 0.18.1 pass. An initial unpinned newer local linter reported baseline
+table-style warnings; no repository rule was weakened. Independent merge review
+and fresh CI remain gates; no server/phone/data action is authorized by source merge.
+
 ## Solana Devnet registration workstream — 2026-09-21
 
 The owner requests fresh Devnet identities and explicitly permits loss of current

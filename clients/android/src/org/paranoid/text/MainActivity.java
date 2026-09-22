@@ -663,7 +663,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(!when.isEmpty()){TextView stamp=text(when,12,colors.muted,false);stamp.setGravity(Gravity.END);side.addView(stamp);}
         String marker=dialog.optBoolean("blocked")?"Блок":dialog.optString("trust").equals("out_of_band_verified")?"Проверен":"";
         if(!marker.isEmpty()){TextView badge=text(marker,11,colors.muted,false);badge.setGravity(Gravity.END);side.addView(badge);}
-        else if(last!=null&&last.optString("author").equals(dialog.optString("own"))){TextView receipt=text(last.optBoolean("delivered")?"✓✓":last.optBoolean("accepted")?"✓":"…",14,colors.muted,false);receipt.setGravity(Gravity.END);receipt.setContentDescription(MessagePresentation.delivery(last));side.addView(receipt);}
+        else if(last!=null&&last.optString("author").equals(dialog.optString("own"))){side.addView(new ReceiptMark(this,last,colors.muted),box(24,18));}
         container.addView(row,full());
     }
     private void empty(LinearLayout container,String title,String body,Runnable action){
@@ -676,7 +676,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         boolean blocked=dialog.optBoolean("blocked");chatTrust.setText(DialogPolicy.trustLabel(dialog)+(blocked?" · Заблокирован":" · Подробнее"));
         JSONArray messages=dialog.optJSONArray("messages");
         JSONArray calls=CallLog.records(this,selectedAccount);
-        String signature=selectedAccount+":"+(messages==null?"[]":messages.toString())+"|"+CallLog.revision(this);
+        String signature=selectedAccount+":"+(messages==null?"[]":messages.toString())+"|"+CallLog.revision(this)+"|"+ReceiptHint.isPending(this);
         if(!force&&signature.equals(renderedHistory))return;renderedHistory=signature;
         boolean nearBottom=force||history.getHeight()-messageScroll.getHeight()-messageScroll.getScrollY()<dp(100);
         int oldScroll=messageScroll.getScrollY();history.removeAllViews();
@@ -708,15 +708,25 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             TextView body=text(message.optString("text"),16,colors.text,false);body.setTextIsSelectable(true);body.setMaxWidth(Math.min(dp(440),Math.max(dp(160),getResources().getDisplayMetrics().widthPixels-dp(92))));bubble.addView(body);
             String stamp=MessagePresentation.time(when);
             if(mine){
-                String state=(message.optBoolean("delivered")?"✓✓ ":message.optBoolean("accepted")?"✓ ":"… ")+MessagePresentation.delivery(message);
-                TextView receipt=text(stamp.isEmpty()?state:stamp+" · "+state,11,colors.muted,false);
-                receipt.setGravity(Gravity.END);receipt.setPadding(0,dp(5),0,0);bubble.addView(receipt,full());
+                LinearLayout footer=row();footer.setGravity(Gravity.END|Gravity.CENTER_VERTICAL);footer.setPadding(0,dp(5),0,0);
+                if(!stamp.isEmpty()){TextView at=text(stamp,11,colors.muted,false);at.setPadding(0,0,dp(4),0);footer.addView(at);}
+                footer.addView(new ReceiptMark(this,message,colors.muted),box(24,18));
+                bubble.addView(footer,full());
             } else if(!stamp.isEmpty()){
                 TextView at=text(stamp,11,colors.muted,false);at.setPadding(0,dp(5),0,0);bubble.addView(at,full());
             }
         }
+        if(ReceiptHint.shouldShow(this,dialog))receiptHintCard();
         messageScroll.post(()->{if(nearBottom)messageScroll.scrollTo(0,history.getHeight());else messageScroll.scrollTo(0,oldScroll);});
     }
+    private void receiptHintCard(){
+        LinearLayout card=column();card.setPadding(dp(14),dp(12),dp(14),dp(12));card.setBackground(shape(colors.surface,18));
+        card.addView(text("Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает.",13,colors.muted,false),full());
+        Button dismiss=secondary("Понятно",()->{ReceiptHint.dismiss(this);renderHistory(false);});
+        card.addView(dismiss);
+        LinearLayout.LayoutParams params=full();params.topMargin=dp(10);history.addView(card,params);
+    }
+
     /**
      * What one finished call left in the conversation. It is a line and not a bubble because nobody
      * wrote it: the core stores no call history and the peer keeps its own account of the same call

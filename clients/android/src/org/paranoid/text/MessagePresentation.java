@@ -25,6 +25,19 @@ public final class MessagePresentation {
         return message.optBoolean("delivered")?"delivered":message.optBoolean("accepted")?"stored":"queued";
     }
 
+    /** Earned only by an authenticated own-message delivery, never by an incoming row. */
+    public static boolean receiptHintEarned(JSONObject dialog){
+        if(dialog==null)return false;
+        String own=dialog.optString("own","");
+        if(own.isEmpty())return false;
+        org.json.JSONArray messages=dialog.optJSONArray("messages");
+        for(int n=0;messages!=null&&n<messages.length();n++){
+            JSONObject message=messages.optJSONObject(n);
+            if(message!=null&&own.equals(message.optString("author"))&&message.optBoolean("delivered"))return true;
+        }
+        return false;
+    }
+
     // --- when a message happened (iOS MessagePresentation) ----------------
 
     /** The months as a date is read aloud in Russian, so a separator never depends on the locale. */
