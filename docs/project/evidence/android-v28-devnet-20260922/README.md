@@ -61,6 +61,23 @@ x86_64 storage harness. My ID -> Devnet screen/navigation and library loading in
 the actual messenger process are for the owner's first physical acceptance. No
 claim of full UI/device readiness or full-account seed recovery is made.
 
+## Review closure and owner report — 2026-09-22
+
+The retained [review closure](review-closure.json) approved private artifact
+handoff after the artifact-scope blockers recorded in that file were corrected.
+The APK was handed to the owner in Telegram;
+he subsequently reported that nickname registration works. This is a user report,
+not independently captured full-app phone instrumentation, seed recovery or a
+new joint audio/video acceptance. Earlier NOT RUN statements below describe
+what the build host actually observed and remain preserved.
+
+The owner now requests completion and merge of PR54, separate from publication
+or permanent ADR acceptance. The new offline `devnet-client` CI job covers native
+Rust and actual JNI/controller tests plus integration/notices; exact-SBF program
+pin verification and Android storage checks remain separate artifact evidence.
+No live transaction, reset, server change or APK publication is performed by the
+merge-preparation follow-up.
+
 ## Remaining acceptance
 
 The proposed update is to be installed over the existing package, not by deleting

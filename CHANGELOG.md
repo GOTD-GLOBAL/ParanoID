@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Devnet merge verification — 2026-09-22
+
+- Add blocking offline Rust/JNI registration-controller and integrated Android
+  source/notices CI checks, including blockchain-only path triggers.
+- Preserve the separate exact-program artifact and Android runtime gates and
+  the visible historical legacy-history failures; no production code, data,
+  signing identity, server or update feed is changed by this CI follow-up.
+
 ### Android v28 integrated Devnet update candidate — 2026-09-22
 
 - Keep the main messenger package/signer, chats, calls and updater; add private

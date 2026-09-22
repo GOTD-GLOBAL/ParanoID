@@ -178,6 +178,15 @@ our exact mutually-consistent records mean success; both absent permit a rebuilt
 transaction; conflicting/malformed/partial records are terminal, not blind retry.
 The nickname is shown in canonical form for explicit confirmation before signing.
 
+Integrated-client implementation clarification (2026-09-22): the controller
+queries signature history and validates its result count, but does not currently
+branch on individual status values. Finalized paired registry readback is the
+success authority; finalized height beyond every saved last-valid height plus a
+fresh registry read is the rebuild/prune authority. A finalized-error status does
+not enable early pruning or a new transaction before that height gate. This is
+more conservative than the status-directed flow described above; signature-status
+UX remains a follow-up, not an implemented early-failure shortcut.
+
 For deployment, query actual rent for the built program-data allocation and
 fees; record required lamports before requesting funds. Funding source is the
 official Devnet faucet (RPC or owner-mediated faucet UI), with at most three

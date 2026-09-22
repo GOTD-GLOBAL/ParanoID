@@ -1,7 +1,8 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-22
+last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
 ---
 
 # Threat model

@@ -1,10 +1,34 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-18
+last_reviewed: 2026-09-22
+last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
 ---
 
 # Current project state
+
+## PR54 closure preparation — 2026-09-22
+
+Sergey reports that nickname registration now works and requests completion of
+PR51/PR54 and issue52, explicitly excluding issue38. This is an owner-reported
+registration result, not a new independently observed phone recovery/call test.
+The private v28 handoff already received independent review closure in the
+[evidence](evidence/android-v28-devnet-20260922/README.md). Merge authorization
+is separate from permanent ADR acceptance and from APK/feed/server deployment.
+The proposed ADR0015 and draft RFC0026 retain their status.
+
+A dedicated offline Devnet CI job now exercises Rust tests, real JNI/controller
+retries, UI generation/error fences and integration/notices checks. Exact SBF pin,
+Android storage/runtime and live-chain evidence remain separate gates; CI does
+not silently substitute synthetic RPC for live-chain proof. The historical
+legacy-history RED job remains visible and unchanged.
+
+Blockchain server login is deferred to the next workstream. Sergey confirms one
+active device initially (recovered-seed login replaces the previous device), with
+simultaneous multi-phone authorization required later, including ten phones as
+an example rather than a fixed maximum. This product direction is not a wire
+contract, implemented revocation or seed-based chat-history recovery. Existing
+messenger identity, contact verification, E2EE and stored data remain unchanged.
 
 ## Integrated Android v28 candidate — 2026-09-22
 
