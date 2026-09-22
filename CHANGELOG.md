@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android receipt presentation — 2026-09-18
+
+- Draw queued/server-stored/peer-delivered marks with Canvas in bubbles and chat
+  rows instead of font symbols; preserve the three Russian accessibility labels.
+- Show the existing iOS explanation after an own delivery; `Понятно` dismisses
+  it across normal restarts using one local preference, with immediate repaint.
+- Add JVM semantics, SDK compilation/source checks and an isolated emulator
+  Canvas/persistence probe. No read receipts, wire or encrypted-state changes.
+
 ### Authorized Solana Devnet deployment — 2026-09-22
 
 - Deploy the reviewed73800-byte registry after explicit owner authorization;

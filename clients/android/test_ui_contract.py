@@ -2,6 +2,25 @@ import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
+    def test_drawn_receipts_and_dismissible_hint_are_wired(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        self.assertIn('new ReceiptMark(this,last,colors.muted)',ui)
+        self.assertIn('new ReceiptMark(this,message,colors.muted)',ui)
+        # Only the two dynamic receipt renderers change. The contact-details
+        # prose legend stays shared with the iOS caption contract.
+        listing=ui.split('private void conversationRow(',1)[1].split('private void empty(',1)[0]
+        history=ui.split('private void renderHistory(',1)[1].split('private void receiptHintCard(',1)[0]
+        self.assertIn('side.setGravity(Gravity.END)',listing)
+        self.assertIn('new ReceiptMark(this,last,colors.muted)',listing)
+        self.assertIn('new ReceiptMark(this,message,colors.muted)',history)
+        self.assertNotIn('✓',listing)
+        self.assertNotIn('✓',history)
+        self.assertIn('ReceiptHint.shouldShow(this,dialog)',ui)
+        self.assertIn('ReceiptHint.dismiss(this);renderHistory(false)',ui)
+        self.assertIn('ReceiptHint.isPending(this)',ui)
+        self.assertIn('Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает.',ui)
+        self.assertIn('"Понятно"',ui)
+
     def test_missed_notice_rechecks_foreground_on_ui_delivery(self):
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
         self.assertIn('if(missed)ui.post(()->{if(listener==null)VoiceCallService.missed(context);});',engine)
