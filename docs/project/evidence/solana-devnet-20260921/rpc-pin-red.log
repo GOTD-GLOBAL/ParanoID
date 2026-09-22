@@ -1,0 +1,5 @@
+reject wrong upgrade authority
+reject modified bytecode
+PROGRAM PIN PASS
+Exception in thread "main" java.lang.AssertionError: RPC gate accepted wrong authority
+	at org.paranoid.devnet.RpcProgramTest.main(RpcProgramTest.java:49)

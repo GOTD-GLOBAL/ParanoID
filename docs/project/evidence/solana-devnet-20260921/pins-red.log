@@ -1,0 +1,24 @@
+   Compiling paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/client)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.43s
+     Running unittests src/lib.rs (blockchain/solana/client/target/debug/deps/paranoid_devnet_client-a73d86a4679438e5)
+
+running 1 test
+test tests::program_info_exposes_only_fixed_public_deployment_pins ... FAILED
+
+failures:
+
+---- tests::program_info_exposes_only_fixed_public_deployment_pins stdout ----
+
+thread 'tests::program_info_exposes_only_fixed_public_deployment_pins' (3930011) panicked at src/lib.rs:345:9:
+assertion `left == right` failed
+  left: Null
+ right: "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::program_info_exposes_only_fixed_public_deployment_pins
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--lib`

@@ -333,6 +333,7 @@ enum Strings {
         static let contactCopied = "Контакт скопирован. Сравните отпечаток отдельно."
         /// `MainActivity.java:394` — no connection to place a call with.
         static let callOffline = "Нет подключения для звонка. Повторите после восстановления связи."
+        static let audioUnavailable = "Не удалось подготовить звук. Попробуйте позвонить ещё раз."
         /// `MainActivity.java:534` — the microphone was refused.
         static let microphoneDenied = "Для звонка нужен доступ к микрофону. Переписка доступна без него."
         /// `MainActivity.java:609` — the camera was refused during a call. It

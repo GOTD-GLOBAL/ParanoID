@@ -6,6 +6,23 @@ last_reviewed: 2026-09-09
 
 # Threat model
 
+## Fresh Solana Devnet identity boundary
+
+[RFC-0026](../rfcs/0026-solana-devnet-registration.md) proposes fresh noncustodial
+Devnet authority, exact PDA/state/signature validation, atomic registration and
+RPC/finality verification. Existing test-account migration is waived only for
+this transition; no implicit hosted wipe. Mainnet, real funds, social/device graph
+and plaintext are excluded. RPC trust, program upgrades, faucet abuse and name
+front-running remain explicit risks; no weakening of existing E2EE/TLS.
+The candidate's `program_info` JNI response owns compiled public pins. Android
+checks paired finalized loader records, canonical ProgramData linkage, exact
+upgrade authority, allocation size and SBF SHA256 before signing. Negative host
+fixtures reject substitutions and corrupted code. This is detection against the
+configured trusted RPC, not cryptographic chain verification: dishonest RPC and
+upgrade-after-check races remain residual risks. No secrets cross this pin API;
+mnemonic export uses a separate explicit UI-only operation. Phone persistence and
+lifecycle are not proved by the host/JNI tests.
+
 The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)
 adds explicit current-boot isolation and root-controlled execution-evidence binding.
 The full runner, packet/current-call acceptance and deployment remain pending;

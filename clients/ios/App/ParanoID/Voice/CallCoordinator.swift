@@ -323,11 +323,11 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     /// Activates the audio session for a call that is about to start.
     ///
     /// It is called from the explicit intent, after the microphone is granted
-    /// and **before** the first `knock`, and from the arrival of an incoming
-    /// ring. It opens no microphone: libwebrtc is in manual audio with its
+    /// and **before** the first `knock`. Incoming alerts use the distinct
+    /// ambient path driven by callChanged. It opens no microphone: libwebrtc is in manual audio with its
     /// audio unit off until `connected`.
-    func prepareAudio() {
-        audio.begin()
+    func prepareAudio() async -> Bool {
+        await audio.prepareForCall()
     }
 
     /// Gives the session back when an intent was abandoned before it became a
@@ -338,6 +338,10 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     /// was ringing must not take that call's audio away.
     func releaseAudio() async {
         await owner.onOwner {
+            if self.controller.presentation.state == .incoming {
+                self.audio.restoreIncoming()
+                return
+            }
             guard !self.controller.isActive else { return }
             self.audio.end()
         }
@@ -481,7 +485,9 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
             }
         }
         audio.setVideo(false)
-        audio.end()
+        // Revoke capture immediately. The next terminal presentation decides
+        // whether an already-owned output route has a bounded busy tail.
+        audio.quiesceMedia()
         // A call that is over cannot resolve a send any more: the controller
         // is already terminal and a late completion would reach nothing.
         for (_, completion) in sends { completion(false) }
@@ -610,25 +616,21 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
     /// The public view changed (`TextEngine.java:92-102`).
     func changed(_ presentation: CallPresentation) {
         precondition(owner.isOnOwner, "the call coordinator runs on the state owner")
-        let previous = lastState
         lastState = presentation.state
         // The lanes this call is signalled over are the lanes the foreground
         // rule stops when the application leaves the screen, so the policy is
         // told about every call state — including `ended`, which opens its
         // ten-second teardown window (`LifecyclePolicy`, `TextEngine.java:99`).
         runner.post(.callChanged(CallActivity(rawValue: presentation.state.rawValue) ?? .idle))
-        // An incoming ring gets its audio session when it is shown, not when
-        // it is answered: the ring itself must survive the process being
-        // pushed to the edge of the foreground.
-        if presentation.state == .incoming, previous != .incoming { audio.begin() }
-        if presentation.state == .connected { audio.enableAudio() }
         // The peer's camera decides the screen as much as this device's does
         // (`MainActivity.java:533-537`: the stage, and `FLAG_KEEP_SCREEN_ON`
         // with it, is bound to `localVideo || remoteVideo`), and this is the
-        // only place the remote state is published. It is applied before
-        // `end()`, which clears both cameras together with the session.
+        // only place the remote state is published. Session/tones then receive
+        // the same presentation; media close already revoked camera/capture.
         audio.setRemoteVideo(presentation.remoteVideo)
-        if presentation.state == .ended || presentation.state == .idle { audio.end() }
+        // Session policy and tones consume the same ordered publication before
+        // the independent UI hop. No player call is made on either owner here.
+        audio.callChanged(presentation)
         let model = self.model
         Task { @MainActor in model?.callChanged(presentation) }
     }

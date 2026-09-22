@@ -1,0 +1,41 @@
+{
+  "checked_at": "2026-09-22T03:52:30.082760+00:00",
+  "owner_authorization": "Sergey Maltsev Telegram: Деплой в девнет (no available permalink)",
+  "source_commit": "1867e54e061a5daf07e98c7bfc4052003d035d21",
+  "network": "https://api.devnet.solana.com",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "version": {
+    "feature-set": 2409014235,
+    "solana-core": "4.3.0-rc.0"
+  },
+  "feature": "B8JJXCy5amZyWG9r7EnUYLwzXSXTxG7GZ1qZ1qggo83g | inactive                | NA              | SIMD-0500: Disable deployment of SBPF v0, v1 and v2 programs",
+  "program": "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas",
+  "payer": "5jD3zwcQPiLoM41eHZXSL8bZnWn16WuZ7kBqBjMUwndm",
+  "sbf_bytes": 73800,
+  "sbf_sha256": "ab3517cb30be9832344f46638373bfd305f954619f3a95a6513d4981a4f93efa",
+  "program_absent_at_finalized_slot": 502237161,
+  "balance": {
+    "context": {
+      "apiVersion": "4.3.0-rc.0",
+      "slot": 502237162
+    },
+    "value": 1000000000
+  },
+  "rent_lamports": {
+    "73845": 375782840,
+    "73837": 375742200,
+    "36": 833120
+  },
+  "signature_fee_lamports": {
+    "1": 5000,
+    "2": 10000
+  },
+  "budget": {
+    "max_initial_deployment_lamports": 400000000,
+    "priority_fee_micro_lamports": 0,
+    "max_sign_attempts": 1,
+    "timeout_seconds": 240,
+    "fee_allowance_lamports": 10000000,
+    "no_automatic_retries": true
+  }
+}

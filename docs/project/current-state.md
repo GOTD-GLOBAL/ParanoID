@@ -18,7 +18,62 @@ identity, snapshot, server or iOS source changes.
 record JVM RED/GREEN, real SDK/full signed APK build and isolated emulator
 Canvas/density/font-scale/accessibility-label/dismissal-restart checks. The
 probe does not prove full MainActivity visuals, spoken TalkBack or physical
-phone behavior. No release-number bump, publication, messenger install or merge.
+phone behavior. No release-number bump, publication or messenger install.
+
+On 2026-09-22 Sergey requested completing and merging PR51/PR54, closing issue52
+and leaving issue38 untouched. PR51's integration with main preserves all fourteen
+non-conflict files byte-for-byte and retains added documentation from both sides
+of the two documentation-only conflicts. Actual receipt JVM, twelve Android UI
+contracts and six CI wiring checks pass on the integrated tree. The first JVM
+attempt lacked the pinned JSON dependency; after the canonical dependency
+preparation it passed. Actual Android35 SDK compilation, message presentation,
+time and call-log checks, twenty-three iOS UI source checks and Markdown with the
+CI-pinned CLI2 0.18.1 pass. An initial unpinned newer local linter reported baseline
+table-style warnings; no repository rule was weakened. Independent merge review
+and fresh CI remain gates; no server/phone/data action is authorized by source merge.
+
+## Solana Devnet registration workstream — 2026-09-21
+
+The owner requests fresh Devnet identities and explicitly permits loss of current
+test accounts/messages for this transition, removing legacy migration as a gate.
+[RFC-0026](../rfcs/0026-solana-devnet-registration.md) scopes a minimal registry and
+Android registration, separate from server login and multi-server membership.
+No hosted/phone reset or Mainnet action follows. The local SBF registry, shared
+Rust client and separate Android registration candidate now build and pass the
+[bounded local checks](evidence/solana-devnet-20260921/README.md). The owner-funded
+Devnet deployment address has a verified 1-test-SOL balance (finalized slot
+501971808). Funding is no longer a blocker. Independent code/artifact re-review approved
+bounded Devnet deployment/chain tests and closed B1-B5. The documentation
+supplement also passed independent review. On2026-09-22 Sergey explicitly
+instructed deployment in Devnet. The reviewed SBF is now deployed and finalized;
+canonical ProgramData/authority checks and an independent CLI dump matched the
+reviewed artifact. See the [actual deployment receipt](evidence/solana-devnet-deploy-20260922/README.md).
+Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
+physical-phone acceptance is claimed. RFC0026 remains draft. Merge and APK
+publication remain separate gates; no Mainnet/server action followed.
+
+## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
+
+At Yaroslav's request PR50's initial tone player was corrected after review.
+[RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md), proposed, records the policy:
+ordered authenticated presentations drive a queue-confined session/tone policy;
+player I/O has its own executor, muted startup and generation/deadline fences.
+Incoming uses foreground-only ambient, not a pre-Answer recording session.
+Caller ringback and a bounded terminal busy tail use an already-owned call
+route; capture is revoked separately. Call/Answer awaits actual audio readiness
+within the shared setup deadline. SDK interruption/reset recovery balances the
+pinned WebRTC activation count rather than assuming activation is idempotent.
+
+The [handoff](../clients/ios/call-tones-handoff.md) describes new failure, held-
+player, timer, cancellation, coalesced-interruption and readiness regressions.
+Linux source checks can verify wiring, not Swift execution or audibility. A
+fresh Mac compile/full app test and bundle are required for this corrected tree;
+no physical phone, silent-switch/headset/haptic or real-peer result is claimed.
+No merge, publication, deployment or RFC/ADR acceptance has occurred.
+
+Historical contributor receipt on `4db2f8c` (same initial iOS source as its
+pre-merge branch): package 362/0, app68/0 with tones12/12, fresh bundle23/1 and
+source gates green. That receipt does **not** cover the revised lifecycle.
 
 ## Android v27 published — 2026-09-18
 

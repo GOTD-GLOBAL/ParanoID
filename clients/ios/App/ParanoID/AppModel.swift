@@ -1103,8 +1103,14 @@ final class AppModel {
             }
             // Before the first `knock`, and before Answer: the `audio`
             // background mode holds nothing without a live session.
-            calls?.prepareAudio()
-            guard await waitForCallConnection() else {
+            let deadline = ContinuousClock.now.advanced(by: Self.callIntentWindow)
+            guard await calls?.prepareAudio() == true else {
+                if ownsCallAudio(generation) { await calls?.releaseAudio() }
+                guard !Task.isCancelled else { return }
+                showNotice(Strings.Notice.audioUnavailable)
+                return
+            }
+            guard await waitForCallConnection(until: deadline) else {
                 if ownsCallAudio(generation) { await calls?.releaseAudio() }
                 guard !Task.isCancelled else { return }
                 showNotice(Strings.Notice.callOffline)
@@ -1156,13 +1162,12 @@ final class AppModel {
 
     /// Waits for the realtime lane to say it is connected, for at most
     /// ``callIntentWindow`` (`MainActivity.java:405,415-418`).
-    private func waitForCallConnection() async -> Bool {
-        let deadline = ContinuousClock.now.advanced(by: AppModel.callIntentWindow)
+    private func waitForCallConnection(until deadline: ContinuousClock.Instant) async -> Bool {
         while !isConnected {
             guard !Task.isCancelled, !isBroken, ContinuousClock.now < deadline else { return false }
             try? await Task.sleep(for: AppModel.callIntentPoll)
         }
-        return !Task.isCancelled && !isBroken
+        return !Task.isCancelled && !isBroken && ContinuousClock.now < deadline
     }
 
     /// The call view changed. It is published from the state owner and arrives

@@ -1,0 +1,32 @@
+{"command": "python3 /home/codex/.hermes/profiles/paranoid/tasks/build-devnet.py", "exit_code": 0}
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (/home/codex/projects/paranoid-worktrees/solana-devnet/blockchain/solana/client/target/debug/deps/paranoid_devnet_client-a73d86a4679438e5)
+
+running 7 tests
+test tests::program_info_exposes_only_fixed_public_deployment_pins ... ok
+test tests::slip0010_published_vector_and_nonhardened_rejection ... ok
+test tests::registry_readback_requires_both_exact_records ... ok
+test tests::rejects_wrong_cluster_arbitrary_fields_mnemonic_and_names ... ok
+test tests::registration_transaction_is_fixed_and_signature_verifies ... ok
+test tests::identity_does_not_export_recovery_material ... ok
+test tests::standard_public_recovery_vector ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+   Doc-tests paranoid_devnet_client
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `release` profile [optimized] target(s) in 0.06s
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+
+BUILD_EXIT 0

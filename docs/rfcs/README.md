@@ -45,6 +45,14 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0026: Fresh Solana Devnet nickname registration](0026-solana-devnet-registration.md)
+  (draft): owner-requested fresh test identities, minimal registry, Android
+  registration and actual chain-state verification; no legacy migration gate.
+
+- [RFC-0025: iOS call-tone lifecycle](0025-ios-call-tone-lifecycle.md) (proposed):
+  separate player/session ownership, foreground ambient alerts, bounded caller
+  output tails and counted WebRTC session recovery; native validation pending.
+
 - [RFC-0013: User-triggered Android updates](0013-user-triggered-android-updates.md)
   (draft): user-requested Update button, pinned APK distribution and mandatory
   platform confirmation; [draft ADR-0008](../decisions/0008-user-triggered-android-updates.md).

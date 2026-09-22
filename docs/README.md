@@ -43,6 +43,12 @@ This is the entry point and navigation contract for ParanoID documentation.
 
 ## Contracts and operations
 
+- [Solana Devnet candidate](../blockchain/solana/README.md),
+  [draft RFC-0026](rfcs/0026-solana-devnet-registration.md) and
+  [deployment receipt](project/evidence/solana-devnet-deploy-20260922/README.md):
+  isolated registration candidate; finalized Devnet deployment is verified,
+  but real registration and phone acceptance remain unperformed.
+
 - [Voice scope](product/voice-calls.md), [wire contract](protocol/voice-v1.md),
   [threat/test mapping](security/voice-v1-threats.md) and
   [local evidence](operations/voice-calls-local.md): implemented controls and

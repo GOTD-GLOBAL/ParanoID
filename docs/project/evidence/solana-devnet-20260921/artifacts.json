@@ -1,0 +1,14 @@
+{
+  "blockchain/solana/registry/target/deploy/paranoid_devnet_registry.so": {
+    "bytes": 73800,
+    "sha256": "ab3517cb30be9832344f46638373bfd305f954619f3a95a6513d4981a4f93efa"
+  },
+  "blockchain/solana/client/target/aarch64-linux-android/release/libparanoid_devnet_client.so": {
+    "bytes": 1177984,
+    "sha256": "8ff78daa97a2b36255693cf94b10248fe930c139508e1029f8cedd4201dd9a9d"
+  },
+  "clients/android-devnet/out/paranoid-devnet.apk": {
+    "bytes": 1221039,
+    "sha256": "1d3cf3d4237ecdcb26c3fe756c296d8da074dd384f34599c19d5fc5c9ca26b95"
+  }
+}

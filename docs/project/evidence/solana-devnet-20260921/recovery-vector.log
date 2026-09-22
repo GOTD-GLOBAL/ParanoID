@@ -1,0 +1,11 @@
+{"command": "python3 blockchain/solana/check_recovery_vector.py", "exit_code": 0}
+{
+  "result": "PASS",
+  "python": "3.12.3",
+  "cryptography": "41.0.7",
+  "path": "m/44'/501'/0'/0'",
+  "entropy": "public 32 zero bytes",
+  "passphrase": "empty",
+  "address": "3Cy3YNTFywCmxoxt8n7UH6hg6dLo5uACowX3CFceaSnx",
+  "published_slip0010_vector": "PASS"
+}

@@ -1,0 +1,15 @@
+{
+  "status": "PASS (build/signature only, not phone acceptance)",
+  "apk_bytes": 1221039,
+  "apk_sha256": "b08de6ccd3b35174db1c2e015073425c7e017fe61b9cbbe51b384c9840b45457",
+  "native_sha256": "8ff78daa97a2b36255693cf94b10248fe930c139508e1029f8cedd4201dd9a9d",
+  "native_payload_equal": true,
+  "signer_sha256": "82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926",
+  "signature_schemes": [
+    "v2",
+    "v3"
+  ],
+  "alignment": 16384,
+  "program_pins": "unchanged; actual JNI live gate PASS",
+  "publication": "NOT PERFORMED"
+}

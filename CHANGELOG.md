@@ -17,6 +17,41 @@ public contract is declared.
 - Add JVM semantics, SDK compilation/source checks and an isolated emulator
   Canvas/persistence probe. No read receipts, wire or encrypted-state changes.
 
+### Authorized Solana Devnet deployment — 2026-09-22
+
+- Deploy the reviewed73800-byte registry after explicit owner authorization;
+  verify finalized ProgramData/authority and exact bytecode through the actual
+  client gate and an independent CLI dump.
+- Record same-buffer upload recovery, real transaction handles and0.37702096
+  test-SOL total spend in the [receipt](docs/project/evidence/solana-devnet-deploy-20260922/README.md).
+- No registration transaction, phone acceptance, Mainnet action or APK publication
+  is implied. RFC0026 remains draft and issue52 remains open.
+
+### Solana Devnet registration candidate — 2026-09-21
+
+- Add a native SBF nickname/identity registry, shared Rust signing/recovery client
+  and separate Android registration-only candidate under draft RFC-0026.
+- Restrict mnemonic export to explicit recovery UI; share public deployment pins
+  through JNI and verify ProgramData authority and exact bytecode before signing.
+- Record executable local tests, independent recovery-vector reproduction and
+  build/signature evidence. No chain deployment, physical-phone acceptance,
+  Mainnet action or messenger replacement is claimed by this candidate.
+
+### iOS call tones and lifecycle review corrections — 2026-09-18
+
+- Add synthesized incoming ring, caller ringback and exact two-second busy
+  pattern for busy/reject/timeout from outgoing ringing.
+- Move player I/O off MainActor/state owner; fence delayed starts/completions and
+  timers, wait for stop before switching session, and check actual play success.
+- Use foreground ambient incoming alerts; preserve explicit Call/Answer capture
+  consent. A terminal busy tail retains output only, not microphone capture.
+- Await real audio readiness before controls, with cancellation and the shared
+  setup deadline. Recover counted SDK leases after failed deactivation,
+  interruption or reset, including coalesced callbacks and missing end events.
+- Add deterministic policy/backend/readiness tests. Native validation of this
+  revision remains pending; [RFC-0025](docs/rfcs/0025-ios-call-tone-lifecycle.md)
+  is proposed, not accepted. No phone audibility or deployment claim.
+
 ### Android v27 packaging — 2026-09-18
 
 - Published `0.0.27-timeout`, version code27, from merged main after PR48 plus
