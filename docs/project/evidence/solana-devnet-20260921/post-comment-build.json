@@ -1,0 +1,16 @@
+{
+  "scope": "Rebuild after DevnetStore comment-only accuracy correction; not APK release approval",
+  "apk": {
+    "sha256": "8a935f232f9672970f96b3cbdd9be26dffab0f045eaa1f61b5675e34207a501e",
+    "bytes": 1221039
+  },
+  "sbf_sha256": "ab3517cb30be9832344f46638373bfd305f954619f3a95a6513d4981a4f93efa",
+  "sbf_unchanged_from_review": true,
+  "android_build_exit": 0,
+  "signature_schemes_verified": [
+    "v2",
+    "v3"
+  ],
+  "alignment_checked": 16384,
+  "phone_release": "NOT APPROVED / NOT PERFORMED"
+}

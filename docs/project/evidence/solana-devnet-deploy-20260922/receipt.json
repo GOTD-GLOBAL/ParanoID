@@ -1,0 +1,49 @@
+{
+  "verified_at": "2026-09-22T04:02:50.021059+00:00",
+  "source_commit": "1867e54e061a5daf07e98c7bfc4052003d035d21",
+  "owner_authorization": "Sergey Maltsev Telegram: Деплой в девнет (no available permalink)",
+  "network": "devnet",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "node_version": {
+    "feature-set": 2409014235,
+    "solana-core": "4.3.0-rc.0"
+  },
+  "program": "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas",
+  "programdata": "3WzWMcWhaZtbCGubaJHUfVRm5edgkr4amWLWdHVkQLFr",
+  "upgrade_authority": "5jD3zwcQPiLoM41eHZXSL8bZnWn16WuZ7kBqBjMUwndm",
+  "deployment_signature": "4dFfANwtzdq6iEwBM1GTd2iYLFowe3xXQBrBPYdjqxPSAwVPT6VNP3EnCuLwuHzhdJDc6NT3tywRYrCxyMk6PH1a",
+  "deployment_slot": 502240101,
+  "finalized_status": {
+    "confirmationStatus": "finalized",
+    "confirmations": null,
+    "err": null,
+    "slot": 502240101,
+    "status": {
+      "Ok": null
+    }
+  },
+  "program_bytes": 73800,
+  "programdata_bytes": 73845,
+  "sbf_sha256": "ab3517cb30be9832344f46638373bfd305f954619f3a95a6513d4981a4f93efa",
+  "independent_cli_dump_equal": true,
+  "reviewed_client_gate": "PASS (actual JNI and DevnetRpc on live Devnet, not phone)",
+  "buffer": "AYhz3V94wriUXnfzrVZEuEgpJodqjoodgnLx6iJdx8db",
+  "buffer_after_deploy": null,
+  "confirmed_buffer_transaction_count": 79,
+  "all_listed_buffer_transactions_successful": true,
+  "initial_balance_lamports": 1000000000,
+  "remaining_balance_lamports": 622979040,
+  "rent_locked_lamports": 376615960,
+  "deployment_fees_lamports": 405000,
+  "total_spend_lamports": 377020960,
+  "final_transaction_fee_lamports": 10000,
+  "final_balance_slot": 502240905,
+  "attempts": "Initial plus3 separately reconciled same-buffer CLI attempts; each max-sign-attempts1, priority price0. First3 stopped on Max retries exceeded after partial writes. No new buffer or ID, no failed finalized transactions in listed history.",
+  "not_claimed": [
+    "registration transaction",
+    "physical phone acceptance",
+    "Mainnet action",
+    "merge",
+    "APK publication"
+  ]
+}

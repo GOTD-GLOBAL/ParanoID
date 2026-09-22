@@ -1,0 +1,2 @@
+{"command": "/home/codex/.local/share/paranoid-solana/agave-4.3.0/solana-release/bin/cargo-build-sbf --tools-version v1.57 --arch v0 --manifest-path blockchain/solana/registry/Cargo.toml -- --locked", "exit_code": 0}
+Finished `release` profile [optimized] target(s) in 0.16s

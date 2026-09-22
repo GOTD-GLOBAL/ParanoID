@@ -6,6 +6,19 @@ last_reviewed: 2026-09-09
 
 # Initial product requirements
 
+## Fresh Devnet scope correction — 2026-09-21
+
+Sergey explicitly waived preservation/migration of the CURRENT TEST accounts and
+messages for the new Solana Devnet registration work. [RFC-0026](../rfcs/0026-solana-devnet-registration.md)
+records this bounded transition. Previous account-link/migration work is not a
+gate for this candidate. This is not a global data-deletion/backup exception,
+permission to erase neighboring services, phone actions, key/TLS replacement or
+a live database wipe command. Devnet-only fresh identities; no Mainnet/real funds.
+Source: owner Telegram direction, subsequently
+[confirmed directly by human owner `martadvix-web` (Sergey Maltsev)](https://github.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821)
+on2026-09-22. This bounded scope/deployment/conditional-merge approval is not
+accepted-ADR architecture approval or phone/Mainnet release permission.
+
 These requirements capture founder intent for discovery. `Confirmed direction`
 means the intent is explicit; it does not mean the acceptance criteria or design
 are complete.

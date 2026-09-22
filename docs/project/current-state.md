@@ -6,6 +6,26 @@ last_reviewed: 2026-09-18
 
 # Current project state
 
+## Solana Devnet registration workstream — 2026-09-21
+
+The owner requests fresh Devnet identities and explicitly permits loss of current
+test accounts/messages for this transition, removing legacy migration as a gate.
+[RFC-0026](../rfcs/0026-solana-devnet-registration.md) scopes a minimal registry and
+Android registration, separate from server login and multi-server membership.
+No hosted/phone reset or Mainnet action follows. The local SBF registry, shared
+Rust client and separate Android registration candidate now build and pass the
+[bounded local checks](evidence/solana-devnet-20260921/README.md). The owner-funded
+Devnet deployment address has a verified 1-test-SOL balance (finalized slot
+501971808). Funding is no longer a blocker. Independent code/artifact re-review approved
+bounded Devnet deployment/chain tests and closed B1-B5. The documentation
+supplement also passed independent review. On2026-09-22 Sergey explicitly
+instructed deployment in Devnet. The reviewed SBF is now deployed and finalized;
+canonical ProgramData/authority checks and an independent CLI dump matched the
+reviewed artifact. See the [actual deployment receipt](evidence/solana-devnet-deploy-20260922/README.md).
+Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
+physical-phone acceptance is claimed. RFC0026 remains draft. Merge and APK
+publication remain separate gates; no Mainnet/server action followed.
+
 ## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
 
 At Yaroslav's request PR50's initial tone player was corrected after review.
