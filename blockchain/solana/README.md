@@ -22,7 +22,7 @@ used for real funds. New Devnet-only keys are mandatory.
 
 RPC: `https://api.devnet.solana.com`.
 Observed and pinned genesis: `EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG`.
-Candidate program ID (key generated, **not deployed**):
+Program ID (**deployed in Devnet**, finalized slot502240101):
 `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`.
 Dedicated deployment/upgrade authority public address:
 `5jD3zwcQPiLoM41eHZXSL8bZnWn16WuZ7kBqBjMUwndm`.
@@ -31,8 +31,10 @@ ignored and must never be staged. Program/authority keys are different.
 
 The actual Devnet genesis query succeeded. Initial RPC airdrop attempts failed;
 the owner subsequently obtained 1 test SOL, verified at finalized slot501971808.
-Funding is no longer a blocker. This is not yet a deployed registry and no
-registration transaction is claimed.
+Funding is no longer a blocker. On2026-09-22 the owner explicitly authorized
+Devnet deployment; the exact SBF is now finalized and independently dumped/verified.
+See the [deployment receipt](../../docs/project/evidence/solana-devnet-deploy-20260922/README.md).
+No registration transaction or physical-phone acceptance is claimed.
 Funding must be obtained through the official Devnet faucet/owner, never paid SOL,
 Mainnet, borrowed real-wallet keys or quota evasion. Required rent for the current
 73,845-byte program-data allocation was queried as 0.37578284 test SOL; the

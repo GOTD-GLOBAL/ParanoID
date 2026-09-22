@@ -185,4 +185,7 @@ Local implementation and checks are recorded in the
 [review evidence](../project/evidence/solana-devnet-20260921/README.md).
 This remains a draft proposal, not an accepted architecture. Chain deployment,
 real registration and physical-phone storage/lifecycle acceptance remain separate
-unperformed gates at the time of the local review packet.
+unperformed gates at the time of the local review packet. Subsequently the owner
+explicitly authorized the [2026-09-22 Devnet deployment](../project/evidence/solana-devnet-deploy-20260922/README.md);
+that receipt records actual finalized deployment/readback, not architecture
+acceptance or physical-phone/registration completion.

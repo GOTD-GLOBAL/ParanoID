@@ -1,6 +1,8 @@
 # Devnet deployment and acceptance gates
 
-This is a procedure, **not an executed deployment receipt**. Scope: RFC-0026,
+This is a procedure, **not an executed deployment receipt**. The separately
+[authorized2026-09-22 deployment](../../docs/project/evidence/solana-devnet-deploy-20260922/README.md)
+records the actual outcome. Scope: RFC-0026,
 private test-data Devnet registry; no Mainnet, wallet reuse, DB/phone wipe or APK
 feed publication. Independent code review does not replace owner authorization.
 

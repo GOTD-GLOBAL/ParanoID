@@ -18,9 +18,13 @@ Rust client and separate Android registration candidate now build and pass the
 Devnet deployment address has a verified 1-test-SOL balance (finalized slot
 501971808). Funding is no longer a blocker. Independent code/artifact re-review approved
 bounded Devnet deployment/chain tests and closed B1-B5. The documentation
-supplement also passed independent review. Owner deployment authorization remains
-a separate gate;
-no chain deployment, real registration or physical-phone acceptance is claimed.
+supplement also passed independent review. On2026-09-22 Sergey explicitly
+instructed deployment in Devnet. The reviewed SBF is now deployed and finalized;
+canonical ProgramData/authority checks and an independent CLI dump matched the
+reviewed artifact. See the [actual deployment receipt](evidence/solana-devnet-deploy-20260922/README.md).
+Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
+physical-phone acceptance is claimed. RFC0026 remains draft, and no merge,
+Mainnet/server action or APK publication followed.
 
 ## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
 

@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Authorized Solana Devnet deployment — 2026-09-22
+
+- Deploy the reviewed73800-byte registry after explicit owner authorization;
+  verify finalized ProgramData/authority and exact bytecode through the actual
+  client gate and an independent CLI dump.
+- Record same-buffer upload recovery, real transaction handles and0.37702096
+  test-SOL total spend in the [receipt](docs/project/evidence/solana-devnet-deploy-20260922/README.md).
+- No registration transaction, phone acceptance, Mainnet action or APK publication
+  is implied. RFC0026 remains draft and issue52 remains open.
+
 ### Solana Devnet registration candidate — 2026-09-21
 
 - Add a native SBF nickname/identity registry, shared Rust signing/recovery client

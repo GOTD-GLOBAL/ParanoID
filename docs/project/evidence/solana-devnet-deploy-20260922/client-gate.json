@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+  "pins": {
+    "programdata_bytes": "JWY9XRDw+3elIwbt3hyMEQ6LYyvXj8Yb6HKt7rcPMtE=",
+    "authority_bytes": "Rj7EwqG3Ted9Uycw3tEu/6sZhMVUHYCT9xhL64aDLMg=",
+    "genesis": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
+    "sbf_size": 73800,
+    "rpc": "https://api.devnet.solana.com",
+    "sbf_sha256": "ab3517cb30be9832344f46638373bfd305f954619f3a95a6513d4981a4f93efa",
+    "loader": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "authority": "5jD3zwcQPiLoM41eHZXSL8bZnWn16WuZ7kBqBjMUwndm",
+    "program": "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas",
+    "programdata": "3WzWMcWhaZtbCGubaJHUfVRm5edgkr4amWLWdHVkQLFr"
+  },
+  "programdata_account": {
+    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "lamports": 375782840,
+    "bytes": 73845,
+    "executable": false
+  },
+  "slot": 502240517,
+  "program_account": {
+    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+    "lamports": 833120,
+    "bytes": 36,
+    "executable": true
+  }
+}
