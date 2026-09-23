@@ -72,11 +72,12 @@ MainActivity.java "Отпечаток контакта"
 MainActivity.java "Появится после регистрации"
 MainActivity.java "Приложение"
 MainActivity.java "О приложении"
-# «Мой ID» → «Приложение». Android still carries «До 200 сообщений в диалоге.»
-# at MainActivity.java:205, which the removed conversation ceiling made untrue
-# (RFC-0022). This client drops the sentence, so the line is its own until
-# Android drops it too; then its origin returns to MainActivity.java.
-ios "\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+# «Мой ID» → «Приложение». Android still says «До 200 сообщений в диалоге.»
+# (MainActivity.java:205); since #45 the ceiling is about 1000 messages per
+# conversation (1000 retained receipt commitments, 1000 accepted peer events).
+# The line is this client's until Android carries the same number; then its
+# origin returns to MainActivity.java.
+ios "\nЗакрытая альфа, только тестовые сообщения. До 1000 сообщений в диалоге. Восстановление ID пока недоступно."
 ios "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
 MainActivity.java "Закрыть"
 MainActivity.java "Отпечаток идентичности"
@@ -118,7 +119,7 @@ MainActivity.java "Отображается только на этом теле�
 MainActivity.java "Сохранить"
 MainActivity.java "Подключение"
 MainActivity.java "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
-ios "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока iPhone закрыт или заблокирован, появятся после открытия. Звонок в это время не зазвонит, и в чате от него не останется следа."
+ios "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока приложение закрыто или iPhone заблокирован, появятся после открытия. Звонок в это время не зазвонит, и если он закончится до открытия, в чате его не будет."
 ios "Последнее событие"
 ios "Очередь"
 ios "Непринятые сообщения"

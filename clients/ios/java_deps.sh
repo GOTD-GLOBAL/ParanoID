@@ -78,8 +78,8 @@ ANDROID_ONLY=(MainActivity TextEngine QrScanActivity WebRtcAudioEngine VoiceCall
 # messaging service, a Google SDK that is not on this host classpath (the iOS
 # wake path is APNs, RFC-0020); UpdateClient, UpdateManifest and UpdatePolicy
 # are the Android in-app APK update flow, which the iOS client does not have
-# because iOS is distributed through TestFlight and the App Store. Nothing on
-# the iOS side compares against any of the four.
+# (its builds are installed by hand; no TestFlight build exists yet). Nothing
+# on the iOS side compares against any of the four.
 NOT_COMPARED=(PushService UpdateClient UpdateManifest UpdatePolicy)
 # Host fixtures: the Android JNI/codec pipe, the Android stand client, and the
 # two iOS cross-check pipes.

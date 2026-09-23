@@ -15,10 +15,9 @@ import Foundation
 ///   «Входящие приходят, пока приложение открыто» — and the paragraph behind
 ///   it, from the screen mock-up the owner approved (its `dialogs` and
 ///   `connection` screens).
-/// - **no in-app updates.** Builds are installed by hand until a TestFlight
-///   build exists, and will then arrive through TestFlight and the App Store,
-///   so «Проверить обновления», the update block of «Мой ID» and
-///   «Доступна версия …» do not exist here at all.
+/// - **no in-app updates.** Builds are installed by hand and no TestFlight
+///   build exists yet, so «Проверить обновления», the update block of
+///   «Мой ID» and «Доступна версия …» do not exist here at all.
 /// - **screens iOS has and Android does not**: the frozen screen, the
 ///   stand guard and the contact-flow alert, whose wording is the mock-up's.
 ///
@@ -128,7 +127,7 @@ enum Strings {
         static let emptyBody = "Контакт можно добавить по QR или вставить из сообщения собеседника."
     }
 
-    // MARK: - my ID (`MainActivity.java:165-190`)
+    // MARK: - my ID (`MainActivity.java:187-214`)
 
     enum Identity {
         static let title = "Мой ID"
@@ -143,14 +142,19 @@ enum Strings {
         static let application = "Приложение"
         static let about = "О приложении"
 
-        /// `MainActivity.java:205`, with this build's version, less Android's
-        /// «До 200 сообщений в диалоге.»: the core has had no conversation
-        /// entry ceiling since RFC-0022 (`docs/protocol/first-contact-v1.md:165-166`),
-        /// so the sentence is no longer true on either client. What remains is
-        /// word for word the sentence of Android's about dialog
-        /// (`MainActivity.java:306`).
+        /// `MainActivity.java:205`, with this build's version and the ceiling
+        /// the core actually has. Android still says «До 200»: #45 removed the
+        /// 200-entry history ceiling, but a contact still holds at most 1000
+        /// retained receipt commitments, past which a text send is refused
+        /// (`clean_service.rs:410-412`, `local_history_full`), and 1000
+        /// accepted events from the peer — its texts and its receipts for
+        /// ours — past which its messages are refused
+        /// (`clean_service.rs:560-563`, `invalid_or_full_inbox`;
+        /// `docs/protocol/first-contact-v1.md:162-165`). Together that is
+        /// about 1000 messages in both directions. The wording is the owner's,
+        /// and RFC-0022 may change the number.
         static var alpha: String {
-            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. До 1000 сообщений в диалоге. Восстановление ID пока недоступно."
         }
 
         /// The iOS difference, from the mock-up's `identity` screen: neither
@@ -161,7 +165,7 @@ enum Strings {
         static let platform = "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
     }
 
-    /// The about sheet (`MainActivity.java:280-286`).
+    /// The about sheet (`MainActivity.java:302-308`).
     enum About {
         static let title = "О приложении"
         static let close = "Закрыть"
@@ -304,11 +308,13 @@ enum Strings {
         static let body = "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
         /// The foreground rule of this client, from the mock-up's
         /// `connection` screen. The mock-up promised that calls, too, appear
-        /// after opening; they do not. A message waits on the server, but an
-        /// expired call control is dropped without a row
-        /// (`docs/security/ios-client-threats.md:94`), so the sentence says
-        /// what happens to each.
-        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока iPhone закрыт или заблокирован, появятся после открытия. Звонок в это время не зазвонит, и в чате от него не останется следа."
+        /// after opening; they do not. A message waits on the server, but a
+        /// `knock` lives at most 45 seconds (`CallBody.ttlMillis`), an expired
+        /// control is dropped (`CallController.received(account:json:)`), and
+        /// a row is written only when a live call finishes. A call that ended
+        /// before the application was opened therefore leaves nothing; one
+        /// still waiting may ring. The sentence says what happens to each.
+        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока приложение закрыто или iPhone заблокирован, появятся после открытия. Звонок в это время не зазвонит, и если он закончится до открытия, в чате его не будет."
         static let lastEvent = "Последнее событие"
         static let queue = "Очередь"
         static let rejected = "Непринятые сообщения"

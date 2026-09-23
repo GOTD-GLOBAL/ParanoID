@@ -68,16 +68,21 @@ final class TextFlowUITests: XCTestCase {
         // The two places whose captions stopped being true (`test_ui_contract.py`,
         // UNTRUE): «Приложение» at the foot of «Мой ID», and «Подключение»
         // behind the status line. The running screens carry the corrected ones.
-        let alpha = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS %@", "Восстановление ID пока недоступно")).firstMatch
+        func text(containing fragment: String) -> XCUIElement {
+            app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label CONTAINS %@", fragment)).firstMatch
+        }
+        let alpha = text(containing: "Восстановление ID пока недоступно")
         for _ in 0..<4 where !(alpha.exists && alpha.isHittable) { app.swipeUp() }
         XCTAssertTrue(alpha.exists && alpha.isHittable,
                       "«Приложение» is not on «Мой ID»: " + Diagnosis.of(app))
+        XCTAssertTrue(alpha.label.contains("До 1000 сообщений в диалоге."), alpha.label)
         XCTAssertFalse(alpha.label.contains("До 200"), alpha.label)
+        XCTAssertTrue(text(containing: "Сборки пока устанавливаются вручную").exists,
+                      "«Приложение» does not say how builds arrive: " + Diagnosis.of(app))
         try fixture.shot("02a-application")
         app.buttons["status-line"].tap()
-        let foreground = app.staticTexts.containing(
-            NSPredicate(format: "label CONTAINS %@", "в чате от него не останется следа")).firstMatch
+        let foreground = text(containing: "если он закончится до открытия, в чате его не будет")
         XCTAssertTrue(foreground.waitForExistence(timeout: Timeout.screen),
                       "«Подключение» does not say what happens to a call: " + Diagnosis.of(app))
         try fixture.shot("02b-connection")

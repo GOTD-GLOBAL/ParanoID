@@ -18,7 +18,7 @@ import SwiftUI
 ///
 /// Two blocks of the Android screen are missing here, and their absence is the
 /// iOS difference: there is no update check — builds are installed by hand
-/// until a TestFlight build exists — and no «Получать в фоне», because this
+/// and no TestFlight build exists yet — and no «Получать в фоне», because this
 /// client has no background delivery at all. The note at the bottom says so.
 struct IdentityScreen: View {
     let model: AppModel

@@ -78,7 +78,7 @@ ANDROID_ORIGINS = ('MainActivity.java', 'TextEngine.java', 'DialogPolicy.java',
                    'MessagePresentation.java', 'QrScanActivity.java')
 
 # Android blocks this client does not have: there is no in-app update check
-# (builds are installed by hand until a TestFlight build exists) and no
+# (builds are installed by hand; no TestFlight build exists yet) and no
 # background delivery to offer.
 ABSENT = ('Проверить обновления', 'Доступна версия ', 'Получать в фоне',
           'Включить фоновое подключение', 'Отключить фоновое подключение',
@@ -87,15 +87,19 @@ ABSENT = ('Проверить обновления', 'Доступна верс�
 # Sentences a screen once said that stopped being true, each with the fact that
 # retired it. None of them may come back in a literal.
 UNTRUE = (
-    # The core has no conversation entry ceiling
-    # (`docs/protocol/first-contact-v1.md:165-166`, RFC-0022).
+    # #45 removed the 200-entry history ceiling; what a conversation holds now
+    # is about 1000 messages (1000 retained receipt commitments and 1000
+    # accepted peer events per contact, `docs/protocol/first-contact-v1.md:162-165`).
     'До 200 сообщений',
     # No TestFlight or App Store build exists
-    # (`docs/clients/ios/build-and-testflight.md`, the TestFlight row).
-    'TestFlight/App Store',
-    # A call control that expired while the application was closed is dropped
-    # without a row (`docs/security/ios-client-threats.md:94`), so a call to a
-    # closed iPhone never "appears after opening".
+    # (`docs/clients/ios/build-and-testflight.md`, the TestFlight row), so no
+    # screen may name either as the way builds arrive.
+    'TestFlight',
+    'App Store',
+    # A `knock` lives at most 45 seconds and an expired control is dropped
+    # (`CallController.received(account:json:)`); a row is written only when a
+    # live call finishes. A call that ended while the application was closed
+    # never "appears after opening".
     'не доставляются и появятся после открытия',
 )
 

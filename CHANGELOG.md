@@ -10,20 +10,25 @@ public contract is declared.
 
 ### iOS captions that stopped being true — 2026-09-23
 
-- «Мой ID» no longer says «До 200 сообщений в диалоге.»: the core has had no
-  conversation entry ceiling since RFC-0022. Android still shows the sentence
+- «Мой ID» said «До 200 сообщений в диалоге.». #45 removed that history
+  ceiling, but a contact still holds at most 1000 retained receipt commitments
+  and 1000 accepted peer events, so a conversation holds about 1000 messages in
+  both directions; the caption now says «До 1000…». Android still shows «До 200»
   (`MainActivity.java:205`); the caption contract marks the iOS line as its own
-  until Android drops it too.
+  until Android carries the same number.
 - «Подключение» no longer promises that a call to a closed or locked iPhone
   appears after opening. Messages sent in that time still arrive after opening;
-  an expired call control is dropped without a row, and the sheet now says so.
-  The same false sentence is corrected in the iOS voice-call documentation.
+  a call that ended before the application was opened leaves no row, because an
+  expired call control is dropped and a row is written only when a live call
+  finishes. The same false sentence is corrected in the iOS voice-call document.
 - «Приложение» no longer says builds come through TestFlight/App Store: no such
-  build exists yet, so it says builds are installed by hand.
+  build exists yet, so it says builds are installed by hand. The same claim is
+  corrected in the iOS READMEs and `java_deps.sh`.
 - The outbox line agrees with its number («1 сообщение ожидает», «2 сообщения
   ожидают», «5 сообщений ожидают»).
-- The UI contract now fails if any of the three untrue sentences returns; a new
-  app test covers the Russian plural forms.
+- The UI contract now fails if a retired sentence, «TestFlight» or «App Store»
+  returns in a literal; a new app test covers the Russian plural forms, and the
+  simulator text flow checks and photographs both corrected screens.
 
 ### Android receipt presentation — 2026-09-18
 

@@ -299,15 +299,14 @@ ended and is drawn there; a call recorded before any message opens the chat, and
 a call whose anchor is gone stands at the end rather than disappearing. A missed
 row carries «Перезвонить»; this client raises no notification of any kind.
 
-A missed row is written only for a call that rang on an open application. A
-call to a closed or locked iPhone leaves no row at all: its `knock` lives at most
-45 seconds (`CallBody.ttlMillis`), an expired control is dropped like any
-invalid one (`CallController.received(account:body:)`), and a later `end` that
-finds no live call and no readiness slot is dropped too. The caller sees the
-45-second `timeout` ([iOS threat model](../../security/ios-client-threats.md),
-foreground-only delivery). If the application is opened while the caller is still
-waiting, the `knock` is still valid and the call rings. The «Подключение» sheet
-says so: messages sent while the iPhone was closed appear after it is opened,
-and a call in that time does not ring and leaves no trace in the chat. Until
-2026-09-23 this paragraph and that sheet both promised that such a call "is seen
-when it is opened"; no code ever did that.
+A missed row is written only when a call that was live on this device
+finishes. A call to a closed or locked iPhone that ends before the application
+is opened leaves no row: its `knock` lives at most 45 seconds
+(`CallBody.ttlMillis`), an expired control is dropped like any invalid one
+(`CallController.received(account:json:)`), and a later `end` that finds no
+live call and no readiness slot is dropped too. The caller sees the 45-second
+`timeout` ([iOS threat model](../../security/ios-client-threats.md#foreground-only-delivery-threat-model-boundary-8)).
+If the application is opened while the caller is still waiting, the `knock` is
+still valid and the call may ring for what remains of the caller's 45 seconds;
+unanswered, it then leaves the usual missed row. The «Подключение» sheet states
+the same rule.
