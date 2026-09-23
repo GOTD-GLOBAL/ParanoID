@@ -14,8 +14,9 @@ in the ParanoID Telegram thread on 2026-09-18. The durable record of that report
 is the coordinator's bot-authored merge-gate review
 [PR50 review 5251691143](https://github.com/GOTD-GLOBAL/ParanoID/pull/50#pullrequestreview-5251691143):
 `APPROVED`, 2026-09-18T19:18:15Z, by `goryanya-deploy[bot]` on commit `4066f36`,
-quoting the report. This file transcribes that quotation. The raw Telegram
-message, logs and xcresult bundles were not retrieved for this record, and no
+summarizing the contributor's report. This file summarizes that relay and adds
+separately labeled Git checks; it is not a verbatim quotation. Raw execution
+logs and xcresult bundles were not retrieved for this record, and no
 Telegram permalink was supplied.
 
 These are contributor-reported Mac results. They are not a coordinator Mac run,
