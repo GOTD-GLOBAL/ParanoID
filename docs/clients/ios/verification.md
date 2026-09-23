@@ -62,7 +62,23 @@ it ran on that account. Before all three, the only contact this branch had had
 with the hosted server was one TLS handshake that compared the live
 SubjectPublicKeyInfo digest against the pin this client carries.
 
-## Current package/simulator receipt (dad2f7d, integrated in 96298cd)
+## Current package/simulator receipt (4066f36, identical iOS tree on main)
+
+Yaroslav's [4066f36 receipt](../../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+(recorded 2026-09-23) covers PR50's final head. It reports five focused
+call-tone/audio suites 42/0, the app target without Keychain 90/0, an
+ad-hoc-signed Keychain suite 11/0, package 362/0, a freshly built device bundle
+with 23 checks and 1 skipped, and all 16 ios-static Python gates green. These
+results are quoted in the owner's merge-gate review. PR50 merged as `02baeb2`.
+`git diff 4066f36 c735f94 -- clients/ios clients/core key-protocol` is empty,
+so the receipt applies to main's current iOS code. PR46's earlier
+[cc5b0c7 receipt](../../project/evidence/ios-client-20260918/mac-receipt-pr46-cc5b0c7.md)
+separately records `MessageTimeTests` 7/0, package 328/0 and a passing simulator
+text scenario. Both are contributor Mac execution on the simulator and host.
+Neither adds physical-phone evidence, and every phone row below keeps its own
+status.
+
+## Earlier package/simulator receipt (dad2f7d, integrated in 96298cd)
 
 Yaroslav's [full dad2f7d receipt](../../project/evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
 records package **300/0**, C1 **7/0**, lazy-key **14/0**, storage **25/0** and

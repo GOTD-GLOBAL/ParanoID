@@ -51,7 +51,8 @@ Follow the human authority and acceptance-evidence rules in the
 
 - [RFC-0025: iOS call-tone lifecycle](0025-ios-call-tone-lifecycle.md) (proposed):
   separate player/session ownership, foreground ambient alerts, bounded caller
-  output tails and counted WebRTC session recovery; native validation pending.
+  output tails and counted WebRTC session recovery; contributor Mac receipt on
+  `4066f36`, physical-device validation NOT RUN.
 
 - [RFC-0013: User-triggered Android updates](0013-user-triggered-android-updates.md)
   (draft): user-requested Update button, pinned APK distribution and mandatory

@@ -186,7 +186,10 @@ for it; release waits for player stop, and an old expiry cannot release a new
 call. Physical OS failures, speaker/headset routing, silent-switch/haptic
 behavior and audibility require Mac/device verification, not waveform parsing.
 [The handoff](call-tones-handoff.md) separates the original Mac results from
-the new tests that still need execution.
+the new tests. The contributor's
+[4066f36 receipt](../../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+reports those tests passing on the simulator. The hardware behavior above
+remains NOT RUN.
 
 `Громкая связь` is `overrideOutputAudioPort(.speaker)` and yields to a wired or
 Bluetooth headset already carrying the call. The proximity sensor runs only

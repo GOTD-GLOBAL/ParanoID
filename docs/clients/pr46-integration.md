@@ -31,7 +31,7 @@ current-state. Android runtime merged automatically. Main's call-owner,
 crash-report and split-R8/DEX fixes remain. Server/deploy are byte-identical to
 main. Core runtime source is byte-identical to PR46's original head. The final
 iOS follow-up suppresses a message timestamp when the row previews an untimed
-call; its new XCTest still requires a fresh Mac run.
+call. Its new XCTest needed a fresh Mac run, which is recorded below.
 
 ## Added verification
 
@@ -83,6 +83,17 @@ execution. No Swift/Xcode is available
 on this Linux host. The changed simulator text-flow assertions were not executed
 here; physical phones, VoiceOver, signed iOS export and TestFlight are NOT RUN.
 
+Update recorded 2026-09-23: the final-head receipt now exists.
+[Yaroslav's cc5b0c7 Mac receipt](../project/evidence/ios-client-20260918/mac-receipt-pr46-cc5b0c7.md),
+relayed on PR46 before its merge, reports `MessageTimeTests` 7/0 including
+`testCallPreviewDoesNotBorrowTheLastMessagesTime`, ParanoidKit 328/0, an unsigned
+simulator build, and the `test_sim_text.py` text scenario passing with 15
+screenshots. It covers the call-preview fix at unit level only. The text
+scenario has no call, so the suppression was not observed in the live UI.
+Physical phones, spoken VoiceOver, a signed build, export/TestFlight,
+APK/Android SDK checks and the production server remain NOT RUN in that receipt.
+It is contributor execution, not a coordinator Mac run.
+
 ## Local artifact, not a release
 
 - Path: `clients/android/out/paranoid-text.apk` in the integration worktree.
@@ -118,7 +129,8 @@ an enforced repository approval rule.
 
 Hosted CI is recorded on PR46 for the final head. Keep the PR draft until the
 new Swift `MessageTimeTests` case, full package and simulator build/text flow have
-a final-head Mac receipt. Relative day labels can remain stale while a screen
-is idle across midnight until it redraws; no periodic date-refresh capability
-is claimed here. No merge/deployment/publication or permanent architecture
-acceptance is implied.
+a final-head Mac receipt. That receipt arrived and PR46 merged as `c9ca067`,
+whose iOS and core trees equal `cc5b0c7` (see above). Relative day labels can
+remain stale while a screen is idle across midnight until it redraws; no
+periodic date-refresh capability is claimed here. Beyond that merge, no
+deployment/publication or permanent architecture acceptance is implied.

@@ -105,7 +105,9 @@ persistent metadata once after successful stand/bootstrap/runtime construction,
 before exposing the running UI. A no-stand or failed bootstrap leaves those
 files and preferences untouched; screen reads never trigger the migration.
 [The bootstrap follow-up](../pr47-bootstrap-followup.md) records its verification
-limits and the pending Mac app tests.
+limits. Its app tests later compiled and ran within the contributor's
+[4066f36 full app-target run](../../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md),
+which is simulator evidence, not device evidence.
 
 `ReceiptHint` (`paranoid.receipt-hint.v1`) stays in UserDefaults: one boolean
 that names no contact and no call. Whether these files should additionally be
