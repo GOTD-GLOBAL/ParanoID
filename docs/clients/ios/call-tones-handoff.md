@@ -19,8 +19,9 @@ on exact `4066f36`, and they are recorded in the
 The five focused suites passed 42/0. The app target without Keychain passed 90/0
 and the ad-hoc-signed Keychain suite 11/0. ParanoidKit passed 362/0. A freshly
 built device bundle passed 23 checks with 1 skipped, and all 16 ios-static Python
-gates were green. These are contributor results quoted in the owner's merge-gate
-review, not coordinator execution. PR50 merged as `02baeb2`. At main `c735f94`
+gates were green. These are contributor results quoted in the coordinator's
+bot-authored merge-gate review, not coordinator execution. PR50 merged as
+`02baeb2`. At main `c735f94`
 the iOS tree is still byte-identical to `4066f36`. The statements below that nothing is
 claimed passing describe the coordinator's Linux host and are historical. The
 **Important runtime cases** below remain NOT RUN on a physical device, including

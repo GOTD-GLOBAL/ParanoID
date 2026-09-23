@@ -127,9 +127,10 @@ the authenticated GitHub API; no broad link bypass is added. GitHub returned no
 rulesets and no main branch protection, so green checks are not represented as
 an enforced repository approval rule.
 
-Hosted CI is recorded on PR46 for the final head. Keep the PR draft until the
-new Swift `MessageTimeTests` case, full package and simulator build/text flow have
-a final-head Mac receipt. That receipt arrived and PR46 merged as `c9ca067`,
+Hosted CI is recorded on PR46 for the final head. The historical gate required
+a final-head Mac receipt for the new Swift `MessageTimeTests` case, full package
+and simulator build/text flow before leaving draft. That receipt arrived and
+PR46 merged as `c9ca067`,
 whose iOS and core trees equal `cc5b0c7` (see above). Relative day labels can
 remain stale while a screen is idle across midnight until it redraws; no
 periodic date-refresh capability is claimed here. Beyond that merge, no

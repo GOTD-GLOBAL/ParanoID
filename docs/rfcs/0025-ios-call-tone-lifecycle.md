@@ -115,4 +115,5 @@ The contributor's Mac results for the final head `4066f36` are recorded in the
 (added 2026-09-23). They cover compilation, the new XCTests on the simulator and
 a fresh device-bundle check on the Mac. The physical acceptance items above
 remain NOT RUN.
-No owner architecture acceptance, merge, installation or deployment follows.
+PR50 separately merged as `02baeb2`. This receipt does not grant owner
+architecture acceptance or authorize any further merge, installation or deployment.

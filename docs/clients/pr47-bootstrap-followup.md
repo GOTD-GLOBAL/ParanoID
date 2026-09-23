@@ -67,10 +67,10 @@ and the metadata store sources are unchanged, and `AppModel.swift` changes only
 in PR50's call-audio path. The contributor's
 [4066f36 Mac receipt](../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
 reports the full app target without Keychain at 90/0 and ParanoidKit at 362/0.
-Those runs therefore compiled and executed this patch as merged. By the tree's
-test count, the 90 include the three cases above. They were not the focused
-command below, which was not reported separately, and they are not device,
-backup or restore evidence.
+The reported full-target scope and unchanged tests support inferred inclusion
+of the three cases above; individual test logs were not retrieved. This is not
+a separate focused PR47 execution receipt. The focused command below was not
+reported separately, and no device, backup or restore evidence is added.
 
 ## Mac handoff
 

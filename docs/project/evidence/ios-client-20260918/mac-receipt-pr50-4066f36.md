@@ -11,12 +11,12 @@ last_reviewed: 2026-09-23
 Yaroslav ran the Mac gate for exact `4066f36f90eef71bbd78c0ac1813f6598c8e5292`,
 the final head of PR #50 (iOS call tones and audio lifecycle), and reported it
 in the ParanoID Telegram thread on 2026-09-18. The durable record of that report
-is the owner's merge-gate review
+is the coordinator's bot-authored merge-gate review
 [PR50 review 5251691143](https://github.com/GOTD-GLOBAL/ParanoID/pull/50#pullrequestreview-5251691143):
 `APPROVED`, 2026-09-18T19:18:15Z, by `goryanya-deploy[bot]` on commit `4066f36`,
 quoting the report. This file transcribes that quotation. The raw Telegram
 message, logs and xcresult bundles were not retrieved for this record, and no
-Telegram permalink exists.
+Telegram permalink was supplied.
 
 These are contributor-reported Mac results. They are not a coordinator Mac run,
 not human architecture approval and not ADR acceptance. The commands requested
@@ -51,8 +51,9 @@ Read from git, not from the report:
   `git diff 4066f36 02baeb2 -- clients/ios clients/core key-protocol` is empty.
 - `git diff 4066f36 c735f94 -- clients/ios clients/core key-protocol` is empty.
   Main at `c735f94920b0ff85383b22f959b86f35de078e61` has byte-identical iOS,
-  core and key-protocol trees, so this receipt applies to main's current iOS
-  code. The four main commits after `02baeb2` do not touch those paths.
+  core and key-protocol trees. This connects the receipt to that exact source
+  checkpoint, not to later main heads or bit-identical compiled artifacts.
+  The four main commits after `02baeb2` do not touch those paths.
 - The counts agree with the tree. At `4066f36`, `ParanoIDTests` declares 101
   test methods, 11 of them in `KeychainStoreTests` (101 − 11 = 90). The five
   focused suites declare 28 + 3 + 3 + 5 + 3 = 42 test methods. These numbers
@@ -65,12 +66,13 @@ PR47's merge `5026236d0affd25f945999d796a33d3886d1794e` and PR46's head
 (`git merge-base --is-ancestor`). Between `5026236` and `4066f36`,
 `LocalMetadataBootstrapTests.swift` and the metadata store sources are
 unchanged. The only change to `AppModel.swift` is PR50's call-audio preparation
-path. So the full app-target and ParanoidKit runs above compiled and executed
-the [PR47 bootstrap follow-up](../../../clients/pr47-bootstrap-followup.md) code
-as it was merged. Only `KeychainStoreTests` was excluded from that app-target
-run, so its three `LocalMetadataBootstrapTests` cases fall inside the reported
-90. That is an inference from the tree and the count, because the report does
-not list suites.
+path. The reported full-target scope is consistent with inclusion of the
+[PR47 bootstrap follow-up](../../../clients/pr47-bootstrap-followup.md) tests.
+Only `KeychainStoreTests` was reportedly excluded; the three unchanged
+`LocalMetadataBootstrapTests` cases therefore fit within the reported 90.
+This is inferred inclusion from the source tree, counts and stated run scope,
+not an independently retrieved per-suite execution log. Counting declarations
+alone cannot prove runtime discovery, selection or execution.
 
 These runs were not a dedicated PR47 test campaign. The focused
 `LocalMetadataBootstrapTests`/`OpeningRetryTests` command in that handoff was not

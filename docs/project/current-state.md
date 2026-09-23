@@ -71,8 +71,8 @@ fresh Mac run this corrected tree needed was reported by Yaroslav for exact head
 `4066f36` (update recorded 2026-09-23): five focused suites 42/0, app target
 without Keychain 90/0, ad-hoc-signed Keychain 11/0, ParanoidKit 362/0, fresh
 device bundle 23 checks/1 skipped, all 16 ios-static Python gates green. This is
-contributor-reported, quoted in the owner's merge-gate review, and not a
-coordinator run ([receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)).
+contributor-reported, quoted in the coordinator's bot-authored merge-gate
+review, and not a coordinator run ([receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)).
 PR50 then merged into main as `02baeb2` on 2026-09-18. At main `c735f94`, the
 iOS, core and key-protocol trees are still byte-identical to `4066f36`. Physical-phone
 audibility, speaker/headset/silent-switch, haptics, real interruptions and
@@ -104,7 +104,7 @@ Retained signer/package, strict TLS, native installer consent and phone data
 remain protected. Build, independent artifact review and verified publication
 are separate gates; this source preparation is not a publication receipt.
 
-## iPhone local metadata out of the OS backup — local candidate (2026-09-18)
+## iPhone local metadata out of the OS backup — merged source, decision proposed (2026-09-18)
 
 At Yaroslav's request the candidate takes the iPhone's local contact names and
 call log out of `UserDefaults`, which iCloud and encrypted local backups
@@ -163,7 +163,7 @@ is the owner gate). No physical backup/restore experiment on a device is
 claimed, no simulator scenario covers a restore, and acceptance of the storage
 rule remains the decision owner's.
 
-### PR47 bootstrap follow-up — executed inside the 4066f36 Mac run
+### PR47 bootstrap follow-up — inclusion inferred from the 4066f36 full-target receipt
 
 At Yaroslav's request the coordinator corrected the remaining review findings
 on top of `57a45de`. `AppModel` now starts with in-memory-only metadata and loads
@@ -184,8 +184,8 @@ PR50's `4066f36`. Between the two, the metadata store sources and
 only in the call-audio path. So the full app-target (90/0, Keychain excluded)
 and ParanoidKit (362/0) runs of the
 [4066f36 contributor receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
-compiled and executed this patch as merged. By the tree's test count, the 90
-include its three bootstrap cases. That was not a dedicated PR47 run: the
+support inferred inclusion of the three unchanged bootstrap cases, rather than
+a new dedicated PR47 receipt. Individual suite logs were not retrieved; the
 focused command was not reported separately, and there is no device, backup or
 restore evidence. No installation or ADR acceptance.
 
