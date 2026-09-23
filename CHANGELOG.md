@@ -8,6 +8,23 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS captions that stopped being true — 2026-09-23
+
+- «Мой ID» no longer says «До 200 сообщений в диалоге.»: the core has had no
+  conversation entry ceiling since RFC-0022. Android still shows the sentence
+  (`MainActivity.java:205`); the caption contract marks the iOS line as its own
+  until Android drops it too.
+- «Подключение» no longer promises that a call to a closed or locked iPhone
+  appears after opening. Messages sent in that time still arrive after opening;
+  an expired call control is dropped without a row, and the sheet now says so.
+  The same false sentence is corrected in the iOS voice-call documentation.
+- «Приложение» no longer says builds come through TestFlight/App Store: no such
+  build exists yet, so it says builds are installed by hand.
+- The outbox line agrees with its number («1 сообщение ожидает», «2 сообщения
+  ожидают», «5 сообщений ожидают»).
+- The UI contract now fails if any of the three untrue sentences returns; a new
+  app test covers the Russian plural forms.
+
 ### Android receipt presentation — 2026-09-18
 
 - Draw queued/server-stored/peer-delivered marks with Canvas in bubbles and chat

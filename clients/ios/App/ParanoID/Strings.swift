@@ -15,8 +15,9 @@ import Foundation
 ///   «Входящие приходят, пока приложение открыто» — and the paragraph behind
 ///   it, from the screen mock-up the owner approved (its `dialogs` and
 ///   `connection` screens).
-/// - **no in-app updates.** Builds arrive through TestFlight and the App
-///   Store, so «Проверить обновления», the update block of «Мой ID» and
+/// - **no in-app updates.** Builds are installed by hand until a TestFlight
+///   build exists, and will then arrive through TestFlight and the App Store,
+///   so «Проверить обновления», the update block of «Мой ID» and
 ///   «Доступна версия …» do not exist here at all.
 /// - **screens iOS has and Android does not**: the frozen screen, the
 ///   stand guard and the contact-flow alert, whose wording is the mock-up's.
@@ -142,14 +143,22 @@ enum Strings {
         static let application = "Приложение"
         static let about = "О приложении"
 
-        /// `MainActivity.java:183`, with this build's version.
+        /// `MainActivity.java:205`, with this build's version, less Android's
+        /// «До 200 сообщений в диалоге.»: the core has had no conversation
+        /// entry ceiling since RFC-0022 (`docs/protocol/first-contact-v1.md:165-166`),
+        /// so the sentence is no longer true on either client. What remains is
+        /// word for word the sentence of Android's about dialog
+        /// (`MainActivity.java:306`).
         static var alpha: String {
-            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно."
+            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
         }
 
         /// The iOS difference, from the mock-up's `identity` screen: neither
-        /// an update check nor a background connection exists here.
-        static let platform = "Обновления приходят через TestFlight/App Store — отдельной проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
+        /// an update check nor a background connection exists here. The
+        /// mock-up said builds come through TestFlight and the App Store; no
+        /// such build exists yet (`docs/clients/ios/build-and-testflight.md`),
+        /// so the sentence says how a build actually arrives today.
+        static let platform = "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
     }
 
     /// The about sheet (`MainActivity.java:280-286`).
@@ -294,8 +303,12 @@ enum Strings {
         /// `MainActivity.java:518`.
         static let body = "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
         /// The foreground rule of this client, from the mock-up's
-        /// `connection` screen.
-        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. При закрытом или заблокированном iPhone они не доставляются и появятся после открытия."
+        /// `connection` screen. The mock-up promised that calls, too, appear
+        /// after opening; they do not. A message waits on the server, but an
+        /// expired call control is dropped without a row
+        /// (`docs/security/ios-client-threats.md:94`), so the sentence says
+        /// what happens to each.
+        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока iPhone закрыт или заблокирован, появятся после открытия. Звонок в это время не зазвонит, и в чате от него не останется следа."
         static let lastEvent = "Последнее событие"
         static let queue = "Очередь"
         static let rejected = "Непринятые сообщения"
@@ -303,8 +316,17 @@ enum Strings {
         static let retry = "Повторить подключение"
         static let close = "Закрыть"
 
-        /// The outbox line of the mock-up's `connection` screen.
-        static func queued(_ count: Int) -> String { "\(count) сообщений ожидают отправки" }
+        /// The outbox line of the mock-up's `connection` screen, agreeing with
+        /// its number: 1 and 21 but not 11, then 2-4 and 22-24 but not 12-14,
+        /// then everything else.
+        static func queued(_ count: Int) -> String {
+            let (ones, tens) = (count % 10, count % 100)
+            if ones == 1, tens != 11 { return "\(count) сообщение ожидает отправки" }
+            if (2...4).contains(ones), !(12...14).contains(tens) {
+                return "\(count) сообщения ожидают отправки"
+            }
+            return "\(count) сообщений ожидают отправки"
+        }
     }
 
     /// The one-line hint under the status line of «Чаты», in the place

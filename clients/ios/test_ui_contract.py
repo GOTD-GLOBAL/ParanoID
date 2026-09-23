@@ -77,11 +77,27 @@ EXTRACT = 'ParanoidKit/Sources/ParanoidKit/Voice/SdpExtract.swift'
 ANDROID_ORIGINS = ('MainActivity.java', 'TextEngine.java', 'DialogPolicy.java',
                    'MessagePresentation.java', 'QrScanActivity.java')
 
-# Android blocks this client does not have: builds arrive through TestFlight
-# and the App Store, and there is no background delivery to offer.
+# Android blocks this client does not have: there is no in-app update check
+# (builds are installed by hand until a TestFlight build exists) and no
+# background delivery to offer.
 ABSENT = ('Проверить обновления', 'Доступна версия ', 'Получать в фоне',
           'Включить фоновое подключение', 'Отключить фоновое подключение',
           'Входящие в фоне отключены')
+
+# Sentences a screen once said that stopped being true, each with the fact that
+# retired it. None of them may come back in a literal.
+UNTRUE = (
+    # The core has no conversation entry ceiling
+    # (`docs/protocol/first-contact-v1.md:165-166`, RFC-0022).
+    'До 200 сообщений',
+    # No TestFlight or App Store build exists
+    # (`docs/clients/ios/build-and-testflight.md`, the TestFlight row).
+    'TestFlight/App Store',
+    # A call control that expired while the application was closed is dropped
+    # without a row (`docs/security/ios-client-threats.md:94`), so a call to a
+    # closed iPhone never "appears after opening".
+    'не доставляются и появятся после открытия',
+)
 
 # The operator-approval workflow and the bearer credential of the pre-v2
 # protocol. None of these may reach a caption, a request field or a fixture
@@ -211,6 +227,14 @@ class UiContract(unittest.TestCase):
         for caption in ABSENT:
             offered = [literal for literal in self.literals if caption in literal]
             self.assertEqual(offered, [], f'a screen offers {caption!r}')
+
+    def test_no_screen_repeats_a_sentence_that_stopped_being_true(self):
+        for sentence in UNTRUE:
+            with self.subTest(sentence=sentence):
+                said = [literal for literal in self.literals if sentence in literal]
+                self.assertEqual(said, [], f'a screen still says {sentence!r}')
+                listed = [caption for _, caption, _ in self.captions if sentence in caption]
+                self.assertEqual(listed, [], f'{CAPTIONS.name} still lists {sentence!r}')
 
     def test_no_operator_approval_grant_or_bearer_workflow(self):
         for literal in self.literals:
