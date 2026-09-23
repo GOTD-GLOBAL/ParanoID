@@ -87,20 +87,20 @@ ABSENT = ('Проверить обновления', 'Доступна верс�
 # Sentences a screen once said that stopped being true, each with the fact that
 # retired it. None of them may come back in a literal.
 UNTRUE = (
-    # #45 removed the 200-entry history ceiling; what a conversation holds now
-    # is about 1000 messages (1000 retained receipt commitments and 1000
-    # accepted peer events per contact, `docs/protocol/first-contact-v1.md:162-165`).
+    # Neither the retired history cap nor the independent receipt/replay
+    # budgets describe a total-message ceiling (PR #55 review counterexample).
     'До 200 сообщений',
+    'До 1000 сообщений',
     # No TestFlight or App Store build exists
     # (`docs/clients/ios/build-and-testflight.md`, the TestFlight row), so no
     # screen may name either as the way builds arrive.
     'TestFlight',
     'App Store',
-    # A `knock` lives at most 45 seconds and an expired control is dropped
-    # (`CallController.received(account:json:)`); a row is written only when a
-    # live call finishes. A call that ended while the application was closed
-    # never "appears after opening".
+    # Calls are not durable missed-call notifications. Conversely, preserved
+    # readiness can admit a fresh queued offer/end after background/resume.
+    # Neither unconditional promise is true for every lifecycle path.
     'не доставляются и появятся после открытия',
+    'если он закончится до открытия, в чате его не будет',
 )
 
 # The operator-approval workflow and the bearer credential of the pre-v2

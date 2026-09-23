@@ -76,13 +76,14 @@ final class TextFlowUITests: XCTestCase {
         for _ in 0..<4 where !(alpha.exists && alpha.isHittable) { app.swipeUp() }
         XCTAssertTrue(alpha.exists && alpha.isHittable,
                       "«Приложение» is not on «Мой ID»: " + Diagnosis.of(app))
-        XCTAssertTrue(alpha.label.contains("До 1000 сообщений в диалоге."), alpha.label)
+        XCTAssertTrue(alpha.label.contains("Закрытая альфа, только тестовые сообщения."), alpha.label)
         XCTAssertFalse(alpha.label.contains("До 200"), alpha.label)
+        XCTAssertFalse(alpha.label.contains("До 1000"), alpha.label)
         XCTAssertTrue(text(containing: "Сборки пока устанавливаются вручную").exists,
                       "«Приложение» does not say how builds arrive: " + Diagnosis.of(app))
         try fixture.shot("02a-application")
         app.buttons["status-line"].tap()
-        let foreground = text(containing: "если он закончится до открытия, в чате его не будет")
+        let foreground = text(containing: "После открытия запись о пропущенном звонке может отсутствовать")
         XCTAssertTrue(foreground.waitForExistence(timeout: Timeout.screen),
                       "«Подключение» does not say what happens to a call: " + Diagnosis.of(app))
         try fixture.shot("02b-connection")

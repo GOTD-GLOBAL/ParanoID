@@ -300,13 +300,26 @@ a call whose anchor is gone stands at the end rather than disappearing. A missed
 row carries «Перезвонить»; this client raises no notification of any kind.
 
 A missed row is written only when a call that was live on this device
-finishes. A call to a closed or locked iPhone that ends before the application
-is opened leaves no row: its `knock` lives at most 45 seconds
-(`CallBody.ttlMillis`), an expired control is dropped like any invalid one
-(`CallController.received(account:json:)`), and a later `end` that finds no
-live call and no readiness slot is dropped too. The caller sees the 45-second
-`timeout` ([iOS threat model](../../security/ios-client-threats.md#foreground-only-delivery-threat-model-boundary-8)).
-If the application is opened while the caller is still waiting, the `knock` is
-still valid and the call may ring for what remains of the caller's 45 seconds;
-unanswered, it then leaves the usual missed row. The «Подключение» sheet states
-the same rule.
+finishes. Call controls expire and do not provide durable missed-call history.
+A cold controller has no readiness slot: an unsolicited queued `offer` cannot
+create a live call, and a later `end` cannot create a row on its own. An expired
+`knock` is dropped (`CallBody.check`, `CallController.received`). A fresh `knock`
+only requests readiness; if the caller has already ended, its late `ready`
+cannot revive that caller and produce a new offer.
+
+Background/resume is different from a cold launch. A device may have answered
+`ready` before being locked or backgrounded. `foreground(false)` does not clear
+that in-memory readiness slot. If the caller then sends `offer` and `end`, and
+the receiver resumes before the original readiness deadline, the queued offer
+can create an incoming call and the following end emits a terminal record,
+even though the caller ended before reopening. This does not prove audible
+ringing: presentation/audio work may be cancelled before playback starts.
+
+`CallCaptionLifecycleTests` characterizes preserved readiness, cold-controller
+absence of readiness, and expiry with wire-body delivery and an injected clock.
+Native execution of the new tests is pending the PR #55 Mac gate; these are not
+physical lock/suspension tests. The connection caption therefore asks the user
+to keep the app open for incoming calls and warns that a missed-call row may be
+absent after reopening, rather than promising either presence or absence.
+See the [caption handoff](caption-review-handoff.md) and unchanged
+[foreground-only boundary](../../security/ios-client-threats.md#foreground-only-delivery-threat-model-boundary-8).

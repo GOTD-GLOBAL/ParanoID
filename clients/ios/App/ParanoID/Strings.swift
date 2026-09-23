@@ -142,19 +142,12 @@ enum Strings {
         static let application = "Приложение"
         static let about = "О приложении"
 
-        /// `MainActivity.java:205`, with this build's version and the ceiling
-        /// the core actually has. Android still says «До 200»: #45 removed the
-        /// 200-entry history ceiling, but a contact still holds at most 1000
-        /// retained receipt commitments, past which a text send is refused
-        /// (`clean_service.rs:410-412`, `local_history_full`), and 1000
-        /// accepted events from the peer — its texts and its receipts for
-        /// ours — past which its messages are refused
-        /// (`clean_service.rs:560-563`, `invalid_or_full_inbox`;
-        /// `docs/protocol/first-contact-v1.md:162-165`). Together that is
-        /// about 1000 messages in both directions. The wording is the owner's,
-        /// and RFC-0022 may change the number.
+        /// The alpha notice, without a numeric history promise. Receipt and
+        /// replay budgets are independent, not a total-message ceiling.
+        /// Removing this sentence changes no core limits (RFC-0022 remains
+        /// proposed). Android's matching caption is a separate follow-up.
         static var alpha: String {
-            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. До 1000 сообщений в диалоге. Восстановление ID пока недоступно."
+            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
         }
 
         /// The iOS difference, from the mock-up's `identity` screen: neither
@@ -307,14 +300,12 @@ enum Strings {
         /// `MainActivity.java:518`.
         static let body = "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
         /// The foreground rule of this client, from the mock-up's
-        /// `connection` screen. The mock-up promised that calls, too, appear
-        /// after opening; they do not. A message waits on the server, but a
-        /// `knock` lives at most 45 seconds (`CallBody.ttlMillis`), an expired
-        /// control is dropped (`CallController.received(account:json:)`), and
-        /// a row is written only when a live call finishes. A call that ended
-        /// before the application was opened therefore leaves nothing; one
-        /// still waiting may ring. The sentence says what happens to each.
-        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока приложение закрыто или iPhone заблокирован, появятся после открытия. Звонок в это время не зазвонит, и если он закончится до открытия, в чате его не будет."
+        /// `connection` screen. Messages wait on the server, but call controls
+        /// expire and do not provide durable missed-call history. A preserved
+        /// readiness slot can still admit a queued offer/end after resuming;
+        /// neither guaranteed presence nor guaranteed absence of a row is true.
+        /// See `CallCaptionLifecycleTests` and the iOS voice-call document.
+        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока приложение закрыто или iPhone заблокирован, появятся после открытия. Для входящих звонков держите приложение открытым. После открытия запись о пропущенном звонке может отсутствовать."
         static let lastEvent = "Последнее событие"
         static let queue = "Очередь"
         static let rejected = "Непринятые сообщения"
