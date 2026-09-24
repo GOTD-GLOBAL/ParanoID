@@ -15,9 +15,9 @@ import Foundation
 ///   «Входящие приходят, пока приложение открыто» — and the paragraph behind
 ///   it, from the screen mock-up the owner approved (its `dialogs` and
 ///   `connection` screens).
-/// - **no in-app updates.** Builds arrive through TestFlight and the App
-///   Store, so «Проверить обновления», the update block of «Мой ID» and
-///   «Доступна версия …» do not exist here at all.
+/// - **no in-app updates.** Builds are installed by hand and no TestFlight
+///   build exists yet, so «Проверить обновления», the update block of
+///   «Мой ID» and «Доступна версия …» do not exist here at all.
 /// - **screens iOS has and Android does not**: the frozen screen, the
 ///   stand guard and the contact-flow alert, whose wording is the mock-up's.
 ///
@@ -127,7 +127,7 @@ enum Strings {
         static let emptyBody = "Контакт можно добавить по QR или вставить из сообщения собеседника."
     }
 
-    // MARK: - my ID (`MainActivity.java:165-190`)
+    // MARK: - my ID (`MainActivity.java:187-214`)
 
     enum Identity {
         static let title = "Мой ID"
@@ -142,17 +142,23 @@ enum Strings {
         static let application = "Приложение"
         static let about = "О приложении"
 
-        /// `MainActivity.java:183`, with this build's version.
+        /// The alpha notice, without a numeric history promise. Receipt and
+        /// replay budgets are independent, not a total-message ceiling.
+        /// Removing this sentence changes no core limits (RFC-0022 remains
+        /// proposed). Android's matching caption is a separate follow-up.
         static var alpha: String {
-            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно."
+            "\(product) · \(version)\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
         }
 
         /// The iOS difference, from the mock-up's `identity` screen: neither
-        /// an update check nor a background connection exists here.
-        static let platform = "Обновления приходят через TestFlight/App Store — отдельной проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
+        /// an update check nor a background connection exists here. The
+        /// mock-up said builds come through TestFlight and the App Store; no
+        /// such build exists yet (`docs/clients/ios/build-and-testflight.md`),
+        /// so the sentence says how a build actually arrives today.
+        static let platform = "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
     }
 
-    /// The about sheet (`MainActivity.java:280-286`).
+    /// The about sheet (`MainActivity.java:302-308`).
     enum About {
         static let title = "О приложении"
         static let close = "Закрыть"
@@ -294,8 +300,12 @@ enum Strings {
         /// `MainActivity.java:518`.
         static let body = "ID и история сохраняются на этом телефоне. Статус сервера не показывает, находится ли собеседник в сети."
         /// The foreground rule of this client, from the mock-up's
-        /// `connection` screen.
-        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. При закрытом или заблокированном iPhone они не доставляются и появятся после открытия."
+        /// `connection` screen. Messages wait on the server, but call controls
+        /// expire and do not provide durable missed-call history. A preserved
+        /// readiness slot can still admit a queued offer/end after resuming;
+        /// neither guaranteed presence nor guaranteed absence of a row is true.
+        /// See `CallCaptionLifecycleTests` and the iOS voice-call document.
+        static let foreground = "Входящие сообщения и звонки приходят, пока приложение открыто. Сообщения, отправленные, пока приложение закрыто или iPhone заблокирован, появятся после открытия. Для входящих звонков держите приложение открытым. После открытия запись о пропущенном звонке может отсутствовать."
         static let lastEvent = "Последнее событие"
         static let queue = "Очередь"
         static let rejected = "Непринятые сообщения"
@@ -303,8 +313,17 @@ enum Strings {
         static let retry = "Повторить подключение"
         static let close = "Закрыть"
 
-        /// The outbox line of the mock-up's `connection` screen.
-        static func queued(_ count: Int) -> String { "\(count) сообщений ожидают отправки" }
+        /// The outbox line of the mock-up's `connection` screen, agreeing with
+        /// its number: 1 and 21 but not 11, then 2-4 and 22-24 but not 12-14,
+        /// then everything else.
+        static func queued(_ count: Int) -> String {
+            let (ones, tens) = (count % 10, count % 100)
+            if ones == 1, tens != 11 { return "\(count) сообщение ожидает отправки" }
+            if (2...4).contains(ones), !(12...14).contains(tens) {
+                return "\(count) сообщения ожидают отправки"
+            }
+            return "\(count) сообщений ожидают отправки"
+        }
     }
 
     /// The one-line hint under the status line of «Чаты», in the place

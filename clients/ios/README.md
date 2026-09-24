@@ -1460,8 +1460,8 @@ express, so it is named rather than passed over: `PushService` extends
 Firebase's messaging service, a Google SDK that is not on this host classpath
 at all, and the iOS wake path is APNs (RFC-0020); `UpdateClient`,
 `UpdateManifest` and `UpdatePolicy` are the Android in-app APK update flow,
-which the iOS client does not have because iOS is distributed through
-TestFlight and the App Store. Nothing on the iOS side compares against any of
+which the iOS client does not have: its builds are installed by hand and no
+TestFlight build exists yet. Nothing on the iOS side compares against any of
 the four, so compiling them here would prove nothing.
 
 Two Maven jars are needed, and their SHA-256 pins are imported from

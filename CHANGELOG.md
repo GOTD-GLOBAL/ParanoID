@@ -8,6 +8,28 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS captions that stopped being true — 2026-09-23
+
+- «Мой ID» no longer states a numeric conversation limit. #45 removed the
+  200-entry history ceiling; independent receipt/replay budgets do not imply
+  a 1000-total-message ceiling either. Core budgets are unchanged; their future
+  remains a separate RFC-0022 decision. Android still shows «До 200» and will
+  remove the sentence in a separate follow-up before sharing this caption again.
+- «Подключение» asks users to keep the app open for incoming calls and warns
+  that a missed-call row may be absent after reopening. It promises neither
+  durable missed-call history nor unconditional absence: retained readiness
+  can admit a queued offer/end after background/resume. Three native controller
+  characterization tests cover that distinction; their Mac execution is pending.
+  The same overstatement is corrected in the iOS voice-call document.
+- «Приложение» no longer says builds come through TestFlight/App Store: no such
+  build exists yet, so it says builds are installed by hand. The same claim is
+  corrected in the iOS READMEs and `java_deps.sh`.
+- The outbox line agrees with its number («1 сообщение ожидает», «2 сообщения
+  ожидают», «5 сообщений ожидают»).
+- The UI contract now fails if a retired sentence, «TestFlight» or «App Store»
+  returns in a literal; a new app test covers the Russian plural forms, and the
+  simulator text flow checks and photographs both corrected screens.
+
 ### Android receipt presentation — 2026-09-18
 
 - Draw queued/server-stored/peer-delivered marks with Canvas in bubbles and chat
