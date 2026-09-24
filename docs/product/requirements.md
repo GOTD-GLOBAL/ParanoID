@@ -53,6 +53,16 @@ are complete.
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |
 | REQ-SEC-001 | End-to-end encryption scope and metadata guarantees must be specified and verified before any production privacy claim. | Required discovery gate |
 
+## Solana login milestone direction (2026-09-24)
+
+Sergey Maltsev confirmed one app with Solana identity and common-server, invited
+server or self-hosted-server choice. Finish server login first, then implement
+Android-guided deployment on a user VPS (REQ-SERVER-001/002, REQ-DEPLOY-001).
+For this transition only, current test chats and contacts need not be migrated.
+This is not a deletion instruction or a waiver of future message retention.
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) records the Telegram
+provenance and proposed protocol; technical decisions remain unaccepted.
+
 ## APK size correction (2026-09-13)
 
 Sergey Maltsev requests removal of the fixed APK size ceiling on both server and

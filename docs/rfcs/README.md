@@ -45,6 +45,10 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0027: Solana server authentication](0027-solana-server-authentication.md)
+  (draft): identity membership, dual proof, single-device replacement and
+  explicit fresh-contact recovery limits; no implementation or deployment.
+
 - [RFC-0026: Fresh Solana Devnet nickname registration](0026-solana-devnet-registration.md)
   (draft): owner-requested fresh test identities, minimal registry, Android
   registration and actual chain-state verification; no legacy migration gate.

@@ -7,6 +7,16 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Current project state
 
+## Solana login protocol draft — 2026-09-24
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) records the owner-requested
+next milestone: server login before Android-driven owner-server deployment.
+Current test-chat/contact migration is waived, not an instruction to wipe data.
+The draft proposes stable membership with a fresh transport account on device
+replacement, preserving immutable peer pins. New contact exchange after recovery
+is a disclosed proposal requiring owner disposition, not seamless chat recovery.
+Protocol review, ADR disposition, implementation/tests and deployment are pending.
+
 ## PR54 closure preparation — 2026-09-22
 
 Sergey reports that nickname registration now works and requests completion of

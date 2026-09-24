@@ -7,6 +7,14 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Threat model
 
+## Proposed Solana server login boundary — 2026-09-24
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) adds a draft analysis of
+public-identity correlation, trusted RPC, dual proof, membership generations,
+atomic revocation and immutable E2EE contact pins. Its AUTH-01 through AUTH-08
+gates are NOT RUN. Server revocation cannot erase downloaded data or necessarily
+stop existing direct media. No implementation or protection is claimed here.
+
 ## Integrated Android Devnet candidate (2026-09-22)
 
 The registration activity is private inside the existing messenger package.
