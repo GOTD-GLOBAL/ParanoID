@@ -66,7 +66,8 @@ the shared [core contract](../core/self-service.md) and
 
 ## Differences from Android (by design)
 
-- No in-app updates: distribution is TestFlight.
+- No in-app updates: builds are installed by hand, and no TestFlight build
+  exists yet ([build and TestFlight](build-and-testflight.md)).
 - No background delivery, no push, no CallKit: incoming messages and calls
   arrive only while the application is open. The connection screen states
   this in full; the chat list shows the short hint.

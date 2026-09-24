@@ -11,6 +11,23 @@ This candidate follows review of `4db2f8c`. The original contributor's 68/0 app,
 result for this rewrite. Yaroslav requested implementation; merge, deployment,
 physical-device installation and ADR acceptance are not part of this task.
 
+## Current disposition after contributor Mac execution
+
+Update recorded 2026-09-23: Yaroslav ran the native checks this handoff requests
+on exact `4066f36`, and they are recorded in the
+[4066f36 Mac receipt](../../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md).
+The five focused suites passed 42/0. The app target without Keychain passed 90/0
+and the ad-hoc-signed Keychain suite 11/0. ParanoidKit passed 362/0. A freshly
+built device bundle passed 23 checks with 1 skipped, and all 16 ios-static Python
+gates were green. These are contributor results quoted in the coordinator's
+bot-authored merge-gate review, not coordinator execution. PR50 merged as
+`02baeb2`. At main `c735f94`
+the iOS tree is still byte-identical to `4066f36`. The statements below that nothing is
+claimed passing describe the coordinator's Linux host and are historical. The
+**Important runtime cases** below remain NOT RUN on a physical device, including
+audibility, the silent switch, speaker/headset routing, haptics and real
+interruptions.
+
 ## What changed
 
 - Player creation/play/stop moved from MainActor into QueuedCallToneOutput.

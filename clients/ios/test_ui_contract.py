@@ -77,11 +77,31 @@ EXTRACT = 'ParanoidKit/Sources/ParanoidKit/Voice/SdpExtract.swift'
 ANDROID_ORIGINS = ('MainActivity.java', 'TextEngine.java', 'DialogPolicy.java',
                    'MessagePresentation.java', 'QrScanActivity.java')
 
-# Android blocks this client does not have: builds arrive through TestFlight
-# and the App Store, and there is no background delivery to offer.
+# Android blocks this client does not have: there is no in-app update check
+# (builds are installed by hand; no TestFlight build exists yet) and no
+# background delivery to offer.
 ABSENT = ('Проверить обновления', 'Доступна версия ', 'Получать в фоне',
           'Включить фоновое подключение', 'Отключить фоновое подключение',
           'Входящие в фоне отключены')
+
+# Sentences a screen once said that stopped being true, each with the fact that
+# retired it. None of them may come back in a literal.
+UNTRUE = (
+    # Neither the retired history cap nor the independent receipt/replay
+    # budgets describe a total-message ceiling (PR #55 review counterexample).
+    'До 200 сообщений',
+    'До 1000 сообщений',
+    # No TestFlight or App Store build exists
+    # (`docs/clients/ios/build-and-testflight.md`, the TestFlight row), so no
+    # screen may name either as the way builds arrive.
+    'TestFlight',
+    'App Store',
+    # Calls are not durable missed-call notifications. Conversely, preserved
+    # readiness can admit a fresh queued offer/end after background/resume.
+    # Neither unconditional promise is true for every lifecycle path.
+    'не доставляются и появятся после открытия',
+    'если он закончится до открытия, в чате его не будет',
+)
 
 # The operator-approval workflow and the bearer credential of the pre-v2
 # protocol. None of these may reach a caption, a request field or a fixture
@@ -211,6 +231,14 @@ class UiContract(unittest.TestCase):
         for caption in ABSENT:
             offered = [literal for literal in self.literals if caption in literal]
             self.assertEqual(offered, [], f'a screen offers {caption!r}')
+
+    def test_no_screen_repeats_a_sentence_that_stopped_being_true(self):
+        for sentence in UNTRUE:
+            with self.subTest(sentence=sentence):
+                said = [literal for literal in self.literals if sentence in literal]
+                self.assertEqual(said, [], f'a screen still says {sentence!r}')
+                listed = [caption for _, caption, _ in self.captions if sentence in caption]
+                self.assertEqual(listed, [], f'{CAPTIONS.name} still lists {sentence!r}')
 
     def test_no_operator_approval_grant_or_bearer_workflow(self):
         for literal in self.literals:

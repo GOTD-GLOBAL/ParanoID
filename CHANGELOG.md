@@ -8,6 +8,28 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS captions that stopped being true — 2026-09-23
+
+- «Мой ID» no longer states a numeric conversation limit. #45 removed the
+  200-entry history ceiling; independent receipt/replay budgets do not imply
+  a 1000-total-message ceiling either. Core budgets are unchanged; their future
+  remains a separate RFC-0022 decision. Android still shows «До 200» and will
+  remove the sentence in a separate follow-up before sharing this caption again.
+- «Подключение» asks users to keep the app open for incoming calls and warns
+  that a missed-call row may be absent after reopening. It promises neither
+  durable missed-call history nor unconditional absence: retained readiness
+  can admit a queued offer/end after background/resume. Three native controller
+  characterization tests cover that distinction; their Mac execution is pending.
+  The same overstatement is corrected in the iOS voice-call document.
+- «Приложение» no longer says builds come through TestFlight/App Store: no such
+  build exists yet, so it says builds are installed by hand. The same claim is
+  corrected in the iOS READMEs and `java_deps.sh`.
+- The outbox line agrees with its number («1 сообщение ожидает», «2 сообщения
+  ожидают», «5 сообщений ожидают»).
+- The UI contract now fails if a retired sentence, «TestFlight» or «App Store»
+  returns in a literal; a new app test covers the Russian plural forms, and the
+  simulator text flow checks and photographs both corrected screens.
+
 ### Devnet merge verification — 2026-09-22
 
 - Add blocking offline Rust/JNI registration-controller and integrated Android
@@ -66,9 +88,11 @@ public contract is declared.
 - Await real audio readiness before controls, with cancellation and the shared
   setup deadline. Recover counted SDK leases after failed deactivation,
   interruption or reset, including coalesced callbacks and missing end events.
-- Add deterministic policy/backend/readiness tests. Native validation of this
-  revision remains pending; [RFC-0025](docs/rfcs/0025-ios-call-tone-lifecycle.md)
-  is proposed, not accepted. No phone audibility or deployment claim.
+- Add deterministic policy/backend/readiness tests. Update recorded 2026-09-23:
+  the contributor's [4066f36 Mac receipt](docs/project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+  reports focused suites 42/0, app 90/0 excluding Keychain, Keychain 11/0 and
+  package 362/0. [RFC-0025](docs/rfcs/0025-ios-call-tone-lifecycle.md) remains
+  proposed. Physical audibility and device acceptance remain NOT RUN.
 
 ### Android v27 packaging — 2026-09-18
 
@@ -110,8 +134,10 @@ public contract is declared.
   later launch would resurrect the table from.
 - **No metadata migration before bootstrap permission.** Names and calls start
   in memory and acquire persistent stores once after successful bootstrap.
-  Screen reads and `.noStand` do not migrate preferences. New app-level tests
-  require a Mac run; source-only verification is recorded separately.
+  Screen reads and `.noStand` do not migrate preferences. Update recorded
+  2026-09-23: the later [4066f36 full-app receipt](docs/project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+  is consistent with execution of the three unchanged bootstrap cases. This is
+  inferred suite inclusion, not a separate focused run or device backup test.
 - **Not encryption.** The bytes stay plain JSON inside the container under
   `completeUntilFirstUserAuthentication`; container access is unchanged. Sealing
   them is RFC-0024 question 2, open.
@@ -148,7 +174,9 @@ public contract is declared.
 - Call previews do not borrow a preceding message's date; Android pre-epoch
   clocks become unknown timestamps rather than breaking native request parsing.
   The time smoke now gates CI and APK builds. [Integration evidence](docs/clients/pr46-integration.md)
-  separates the Linux result from the still-required final Mac run.
+  separates the Linux result from the contributor's final-head Mac receipt
+  on `cc5b0c7` (recorded 2026-09-23). The call-preview fix passed its unit test;
+  live simulator call-preview observation remains NOT RUN.
 - No wire format, server route, schema column or protocol kind changes. No
   device acceptance, deployment or ADR acceptance is claimed.
 

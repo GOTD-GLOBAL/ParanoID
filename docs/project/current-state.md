@@ -99,7 +99,7 @@ Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
 physical-phone acceptance is claimed. RFC0026 remains draft. Merge and APK
 publication remain separate gates; no Mainnet/server action followed.
 
-## iOS call-tone lifecycle correction — native checks pending (2026-09-18)
+## iOS call-tone lifecycle correction — merged after contributor Mac receipt (2026-09-18)
 
 At Yaroslav's request PR50's initial tone player was corrected after review.
 [RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md), proposed, records the policy:
@@ -113,10 +113,18 @@ pinned WebRTC activation count rather than assuming activation is idempotent.
 
 The [handoff](../clients/ios/call-tones-handoff.md) describes new failure, held-
 player, timer, cancellation, coalesced-interruption and readiness regressions.
-Linux source checks can verify wiring, not Swift execution or audibility. A
-fresh Mac compile/full app test and bundle are required for this corrected tree;
-no physical phone, silent-switch/headset/haptic or real-peer result is claimed.
-No merge, publication, deployment or RFC/ADR acceptance has occurred.
+Linux source checks can verify wiring, not Swift execution or audibility. The
+fresh Mac run this corrected tree needed was reported by Yaroslav for exact head
+`4066f36` (update recorded 2026-09-23): five focused suites 42/0, app target
+without Keychain 90/0, ad-hoc-signed Keychain 11/0, ParanoidKit 362/0, fresh
+device bundle 23 checks/1 skipped, all 16 ios-static Python gates green. This is
+contributor-reported, quoted in the coordinator's bot-authored merge-gate
+review, and not a coordinator run ([receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)).
+PR50 then merged into main as `02baeb2` on 2026-09-18. At main `c735f94`, the
+iOS, core and key-protocol trees are still byte-identical to `4066f36`. Physical-phone
+audibility, speaker/headset/silent-switch, haptics, real interruptions and
+real-peer results remain NOT RUN. No publication, deployment or RFC/ADR
+acceptance has occurred.
 
 Historical contributor receipt on `4db2f8c` (same initial iOS source as its
 pre-merge branch): package 362/0, app68/0 with tones12/12, fresh bundle23/1 and
@@ -143,7 +151,7 @@ Retained signer/package, strict TLS, native installer consent and phone data
 remain protected. Build, independent artifact review and verified publication
 are separate gates; this source preparation is not a publication receipt.
 
-## iPhone local metadata out of the OS backup — local candidate (2026-09-18)
+## iPhone local metadata out of the OS backup — merged source, decision proposed (2026-09-18)
 
 At Yaroslav's request the candidate takes the iPhone's local contact names and
 call log out of `UserDefaults`, which iCloud and encrypted local backups
@@ -202,7 +210,7 @@ is the owner gate). No physical backup/restore experiment on a device is
 claimed, no simulator scenario covers a restore, and acceptance of the storage
 rule remains the decision owner's.
 
-### PR47 bootstrap follow-up — Mac verification pending
+### PR47 bootstrap follow-up — inclusion inferred from the 4066f36 full-target receipt
 
 At Yaroslav's request the coordinator corrected the remaining review findings
 on top of `57a45de`. `AppModel` now starts with in-memory-only metadata and loads
@@ -211,12 +219,22 @@ starting lanes or showing `.running`. A denied or failed bootstrap does not
 migrate metadata; ordinary view reads cannot trigger migration. Three new
 app-level XCTest cases use isolated preferences/files and injected bootstrap
 outcomes. The Linux UI source regression was RED before the change and all
-23 UI contracts now pass. New Swift compilation/runtime tests remain NOT RUN
-until the contributor's Mac gate; the earlier 362/0 does not cover this patch.
-[Exact scope and Mac commands](../clients/pr47-bootstrap-followup.md).
+23 UI contracts now pass. The earlier 362/0 on `57a45de` does not cover this
+patch. [Exact scope and Mac commands](../clients/pr47-bootstrap-followup.md).
 RFC0024 and client/threat documentation now consistently distinguish proven
 invalidity from inconclusive errors, and successful migration from retained
-legacy data or historical backups. No merge, installation or ADR acceptance.
+legacy data or historical backups.
+
+Update recorded 2026-09-23: PR47 merged as `5026236`, which is an ancestor of
+PR50's `4066f36`. Between the two, the metadata store sources and
+`LocalMetadataBootstrapTests.swift` are unchanged, and `AppModel.swift` changes
+only in the call-audio path. So the full app-target (90/0, Keychain excluded)
+and ParanoidKit (362/0) runs of the
+[4066f36 contributor receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+support inferred inclusion of the three unchanged bootstrap cases, rather than
+a new dedicated PR47 receipt. Individual suite logs were not retrieved; the
+focused command was not reported separately, and there is no device, backup or
+restore evidence. No installation or ADR acceptance.
 
 ## Android response timeout candidate — 2026-09-18
 
