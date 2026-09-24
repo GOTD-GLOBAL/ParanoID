@@ -110,4 +110,10 @@ suites remain gates. Source checks are not Swift execution.
 Mac compilation, new XCTest execution, fresh simulator/bundle checks and
 physical silent-switch/speaker/headset/interruption/haptic acceptance must be
 reported separately. Original 4db2f8c results do not validate this revision.
-No owner architecture acceptance, merge, installation or deployment follows.
+The contributor's Mac results for the final head `4066f36` are recorded in the
+[4066f36 receipt](../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+(added 2026-09-23). They cover compilation, the new XCTests on the simulator and
+a fresh device-bundle check on the Mac. The physical acceptance items above
+remain NOT RUN.
+PR50 separately merged as `02baeb2`. This receipt does not grant owner
+architecture acceptance or authorize any further merge, installation or deployment.

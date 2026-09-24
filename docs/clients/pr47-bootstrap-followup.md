@@ -61,6 +61,17 @@ no confirmed blockers after checking the actual type/ownership and bootstrap
 context; this is not Swift execution or architectural acceptance. The contributor's earlier 362/0 package receipt and
 23/1 bundle receipt belong to `57a45de`, not this patch.
 
+Update recorded 2026-09-23: this patch merged in PR47 as `5026236`, which is an
+ancestor of PR50's `4066f36`. Between those commits, `LocalMetadataBootstrapTests.swift`
+and the metadata store sources are unchanged, and `AppModel.swift` changes only
+in PR50's call-audio path. The contributor's
+[4066f36 Mac receipt](../project/evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+reports the full app target without Keychain at 90/0 and ParanoidKit at 362/0.
+The reported full-target scope and unchanged tests support inferred inclusion
+of the three cases above; individual test logs were not retrieved. This is not
+a separate focused PR47 execution receipt. The focused command below was not
+reported separately, and no device, backup or restore evidence is added.
+
 ## Mac handoff
 
 Use an isolated worktree and the project's normal core/framework preparation.
