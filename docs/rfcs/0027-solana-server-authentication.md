@@ -2,236 +2,106 @@
 status: draft
 owner: identity
 decision_owner: martadvix-web
+review_mode: closed-alpha-ai
+required_reviewers: []
 last_reviewed: 2026-09-24
 ---
 
 # RFC-0027: Solana identity login and single-device replacement
 
-## Status and authority
+## Authority, scope and status
 
-This is a protocol proposal, not implemented behavior or an accepted decision.
-Human decision owner: Sergey Maltsev (`martadvix-web`). Independent security and
-protocol review, an ADR and owner disposition precede adoption. Reviewer assignment
-and disposition date remain open; no approval is inferred from drafting permission.
+Protocol proposal, not accepted architecture or deployed capability. Human decision
+and risk owner: Sergey Maltsev (`martadvix-web`). ADR-0001/0003 and documentation
+policy apply. `closed-alpha-ai` identifies the requested review path, NOT proof
+that durable scope/architecture approval is complete. Independent reviewer:
+Claude Opus 5.5, fresh context; not a second human or security audit.
 
-On 2026-09-24 in Telegram ParanoID thread 2 Sergey confirmed the product sequence:
-finish Solana login, then implement owner-operated server deployment from Android.
-The target is one app, a registered identity, and a choice of the common server,
-an invited independent server, or a self-hosted server. He then instructed:
-«Готовь протокол. Если переписка и контакты потеряются ничего страшного.»
-The original message permalink is unavailable. This waives migration of CURRENT
-TEST chats and contacts for this transition only. It does not authorize deleting
-anything now, discarding operational backups, wiping a hosted database, changing
-TLS/signing keys, deploying, or weakening future message durability.
+Scope: local implementation/testing of common-server Devnet authentication,
+Android integrated client, one active device, two informed private alpha testers,
+synthetic/non-sensitive chats/contacts and isolated local PostgreSQL/TLS fixtures.
+No live server change, Mainnet, real funds, public registration service, iOS,
+owner-server installer, federation, invitation implementation or data deletion.
+Device replacement creates fresh transport/E2EE keys and requires new contact
+exchange. This restriction and retained owner-key risks need owner disposition.
 
-The existing [single-device product direction](../project/current-state.md)
-requires seed recovery to replace the previous active device. Concurrent devices
-are later scope. The author proposes the mechanisms below; they are not owner
-approved merely because this document records the product direction.
+Telegram ParanoID thread 2, 2026-09-24, Sergey confirmed: finish server login first,
+then implement Android-driven VPS server deployment. One app offers common server,
+invited independent server or self-hosting with the same blockchain identity.
+He instructed: «Готовь протокол. Если переписка и контакты потеряются ничего страшного.»
+Then: «Разбирай замечания, исправляй, отправь новую ревизию OPus 5.5 согласуй все с ним
+и приступай к реализации.» Original message permalinks are unavailable. This permits
+local preparation and implementation work; not accepted ADR, merge or deployment.
+Current TEST chat/contact migration is not a gate. This never waives future message
+retention or authorizes wiping hosted DB, phones, TLS keys or operational backups.
+Permanent human confirmation in GitHub remains required for protected disposition.
 
-Requirements: REQ-ID-001/002/003/004/005/006/007/008, REQ-MSG-002/003/004/005,
-REQ-SEC-001 and REQ-CLIENT-001. REQ-SERVER-001/002, REQ-MULTI-001 and
-REQ-DEPLOY-001 describe the subsequent milestone, not delivery in this RFC.
-ADR-0001 and ADR-0003 preserve documentation and independent review gates.
+Requirements: REQ-ID-001/002/003/004/005/007/008, REQ-MSG-002/003/004/005,
+REQ-SEC-001, REQ-CLIENT-001. REQ-SERVER-001/002, REQ-MULTI-001 and REQ-DEPLOY-001
+are the next milestone, not this delivery. REQ-ID-006 is the historical proposed
+legacy-enrollment constraint: it conflicts literally with fresh migration waiver.
+We do not silently apply it or alter an accepted decision. Proposed scoped
+supersession: legacy slot/history preservation stays historical; this new cohort
+has no legacy slots, does not migrate test history, and still checks explicit
+server admission policy separately from key possession. The default server policy
+permits bounded self-admission; bans/capacity are not bypassed. This reconciliation
+requires owner disposition alongside the draft ADR, before normative adoption.
 
-## Scope and current compatibility boundary
+## Protocol and alternatives
 
-Use the existing [RFC-0026 registry](0026-solana-devnet-registration.md), its
-Devnet genesis/program/artifact pins and key derivation. No registry deployment,
-new instruction, transfer, rename, Mainnet or real-money wallet is needed.
-Login signs an off-chain challenge: no transaction, fee or SOL balance required.
+The exact candidate is [identity-login-v3](../protocol/identity-login-v3.md), not
+the initial inline RFC exchange. It is paired with
+[threat analysis](../security/identity-login-v3-threats.md) and
+[draft ADR-0016](../decisions/0016-solana-server-authentication.md).
+The existing [RFC0026](0026-solana-devnet-registration.md) registry is unchanged.
+No on-chain transaction, fee or SOL balance is required for login.
 
-Current [v2 credentials](../protocol/key-enrollment-v1.md) derive the transport
-account from a separate root; [first contact](../protocol/first-contact-v1.md)
-pins the credential/device/Olm keys immutably. Therefore seed recovery CANNOT
-silently replace keys under that existing transport account. This proposal adds
-a stable server-local identity membership pointing to a current transport account;
-a replacement gets a fresh transport account and fresh E2EE keys. These are
-internal components of one user account, not two user-facing registrations.
-Old first-contact pins remain immutable. Automatic peer key rebinding is excluded.
+A stable identity membership points to fresh immutable transport generations.
+We deliberately do NOT swap keys under an existing ContactV2 account, derive Olm
+from seed, provide automatic name->account discovery, restore chat ciphertext
+from recovery words, or treat a nickname as admission. Those shortcuts conflict
+with existing first-contact trust. Automatic cryptographic contact rotation and
+strong recovery after seed/owner-device compromise are separate future designs.
 
-A later design may offer verified identity-based contact rotation. Until then,
-replacement requires sharing the new contact and explicitly adding it as a new
-conversation. No automatic transfer of a verified badge, contacts or old history.
-This is a disclosed limitation of the first login slice, not completed seamless
-account recovery. The owner must see it before approving this design.
+The initial eight-generation per-member budget is a bounded alpha choice, not
+production recovery. At cap, current device and status keep working; a new recovery
+is blocked with explicit error. It and the retained owner-key/cooldown risks need
+human risk acceptance before phone release. Repeated contact replacements can
+exhaust existing peer caps; no silent deletion is permitted to conceal that limit.
 
-## Principals and stored state
+## First Opus review and resolution map
 
-- `identity`: (Devnet genesis hash, registry program ID, identity PDA). Never key
-  an account by display name alone. Validate the paired name record and owner.
-- Registry owner: existing independent Devnet Ed25519 authority. Seed stays local.
-- Membership: internal random UUID, unique on (server, identity), with admission
-  state, unsigned 64-bit generation and current transport account. Generation
-  overflow fails closed; there is no wrapping or reset.
-- Transport account: existing independently generated root/auth/Olm credential
-  and existing account derivation. Blockchain seed is not reused as an Olm key.
-- Server binding: existing saved HTTPS realm and SPKI pin; no automatic trust
-  replacement, arbitrary RPC URL or trust learned from a challenge.
+Reviewed initial commit b7410d6; runtime modelUsage confirmed claude-opus-5-5;
+verdict REQUEST_CHANGES. Review used a supplied source packet with tools disabled,
+not repository inspection or executed attacks. Its claim of tool reads is not
+supported by invocation. Packet's RFC was verified against that exact commit.
 
-Membership and generation are server-local, never on-chain. The common server
-can allow bounded self-admission without an operator. Identity possession does
-not override bans, capacity or an independent server's invitation policy. This
-slice implements only the configured common-server policy; invites are later.
+| Finding | Candidate correction, awaiting re-review |
+| --- | --- |
+| B1 retired rebind | Lifetime unique root/account/device/auth/fingerprint/Olm bindings across identities; tombstones and negative tests |
+| B2 route/lock bypass | Separate realm+DB+router; legacy registration disabled; shared ss_meta lock; complete route classes; recipient and push revocation |
+| B3 retry/status | Echo client original generation; immutable current intent/result; device-only historical status; no durable resume ledger |
+| B4 owner compromise | Device-only status, explicit owner-sign UI; retained owner key risk and no strong compromised-device recovery disclosed |
+| B5 resource attacks | No RPC/DB on challenge, post-proof bounded RPC, fixed global windows, reserved lifetime binding budget |
+| B6 membership oracle | Membership-independent challenge; dual-proof inspect; status only reveals exact device's binding |
+| B7 E2EE peers | Reject retired recipients; no directory; fresh contact exchange and finite alpha peer-cap disclosure |
+| B8 schema/consume | Separate exact spec, string generations, explicit state machine; consume memory before SQL, fresh proof on failure |
+| B9 governance | Scoped review mode/risk owner, requirement conflict disclosed, draft ADR; durable human acceptance still pending |
 
-## Proposed login exchange
+Review is requested on technical readiness for LOCAL candidate implementation.
+No AI verdict satisfies permanent human approval or phone/deployment gates.
 
-New routes are `/v3/identity/challenge`, `/v3/identity/commit` and
-`/v3/identity/status`. These names do not re-version message encryption. Requests
-are strict JSON: reject duplicate/unknown keys recursively, cap body at 16 KiB,
-reject query parameters and redirects. Numbers in JSON are exact integers, not
-floats. Public Solana addresses use canonical base58; hashes use lowercase hex.
-Other keys/signatures and LP encoding follow key-enrollment-v1.
+## Validation and implementation sequence
 
-1. Client validates pinned TLS and explicitly selects first enrollment, resume
-   or replacement. It persists any candidate device keys and operation UUID
-   before network use. No automatic replacement merely because a request fails.
-2. POST challenge fields: `target` (`commit` or `status`), `operation` (UUIDv4), `action` (`enroll`, `resume`,
-   `replace`), `genesis`, `program`, `identity`, `owner`, `name`, `credential`
-   (complete existing Credential object). Credential self-signature, account
-   derivation, realm/pin and field bounds must validate before storage.
-3. Server validates admission and reads BOTH canonical registry PDAs in one
-   finalized RPC context; validate all RFC-0026 layout/link/owner/name/padding
-   rules, genesis and pinned program/ProgramData artifact and authority. Never
-   accept client-supplied RPC results. No stale-cache fallback for new commits.
-4. Server returns exactly `id`, `nonce`, `epoch`, `expires`, `realm`, `pin`,
-   `target`, `operation`, `action`, `genesis`, `program`, `identity`, `owner`, `name`,
-   `account`, `device`, `credential`, `expected_generation`. Here credential is
-   the existing credential fingerprint. All are strings except expires and
-   expected_generation. Nonce is 32 OS-random bytes in canonical padded Base64;
-   id and per-process epoch are UUIDv4. TTL is 60 seconds, enforced by both wall
-   and monotonic server time. Generation zero means absent membership.
-5. Client compares every field against saved intent/server/registry/credential;
-   it never signs an arbitrary supplied transcript. It signs the following bytes
-   with both registry-owner and candidate device-auth keys, with distinct domains:
+1. Independent public transcript/hash/signature vectors and parser negatives.
+2. Fresh Opus 5.5 review of specification, vectors and threat delta; fix blockers.
+3. TDD shared Rust transcript/parser/verification, then isolated server schema,
+   RPC verifier and per-route authorization, then Android state and UI integration.
+4. AUTH-01 through AUTH-08 real checks, independent exact-code review and owner
+   disposition; separate phone handoff and explicit operational authority.
 
-   ```text
-   T(domain) = LP(domain, id, nonce, epoch, expires, realm, pin,
-     target, operation, action, genesis, program, identity, owner, name,
-     account, device, credential, expected_generation,
-     "POST", "/v3/identity/commit")
-   owner_signature = Ed25519(owner, T("paranoid-identity-owner-v1"))
-   device_signature = Ed25519(auth, T("paranoid-identity-device-v1"))
-   ```
-
-6. POST commit contains exactly `id`, `operation`, `owner_signature`,
-   `device_signature`. Server uses the stored challenge, not reconstructed client
-   fields. Strict verification of both signatures precedes mutation. Invalid
-   signatures do not consume legitimate challenges. Recheck registry and policy
-   before commit; results must be obtained during this challenge lifetime.
-7. In one serializable transaction lock identity membership; compare expected
-   generation and admission state; consume challenge; publish credential and
-   transport mapping; revoke previous generation if replacing; store operation
-   result. All succeed or none succeed. No success response before durable commit.
-8. Response: `operation`, `membership`, `generation`, `account`, `device`,
-   `credential`, `mode` (`active`). No reusable bearer token. Client commits the
-   result durably before starting message/push/call workers.
-
-`enroll` only creates absent membership (generation 1). `resume` requires the
-exact active credential and does not advance generation. `replace` requires
-existing membership, a fresh root/account/device/auth/Olm bundle and explicit UI
-confirmation; it advances generation once. Two concurrent replacements using the
-same expected generation cannot both commit. Loser must show conflict, not
-silently retry with a new generation and evict the winner.
-
-## Retries, restart and errors
-
-Store `(identity, operation)` result and complete intent digest atomically with
-commit. An exact retry can recover its result after lost replies, but only after
-a fresh dual-signature challenge; never disclose credentials/results by operation
-ID alone. Different intent under the same operation is `operation_conflict`.
-A result whose generation has since been replaced reports `device_revoked`, never
-reactivates old state. Restart invalidates outstanding challenges, not operation
-results, mappings, generations or revocations. Retain operation tombstones for the
-lifetime of membership in this alpha; capacity exhaustion rejects new operations
-rather than dropping replay protection.
-
-`/v3/identity/status` uses the same challenge fields with action `resume`, signed
-with separate domains `paranoid-identity-status-owner-v1` and
-`paranoid-identity-status-device-v1`, method POST and that exact status path. It
-returns the active result or revoked/conflict, without creating or replacing state.
-Challenge issuance therefore also takes an exact `target` field, restricted to
-`commit` or `status`; it is stored and returned, and selects the signed path and
-domain above. Other combinations are rejected; status only allows resume.
-
-Return bounded errors: `invalid_proof`, `expired_challenge`, `registry_unavailable`,
-`identity_invalid`, `admission_denied`, `capacity`, `generation_conflict`,
-`operation_conflict`, `device_revoked`, `unsupported_version`. Registry uncertainty
-is unavailable, not unregistered. No implicit clear-data/rekey or v2 registration
-fallback. Bound in-flight challenges and RPC concurrency, apply per-source and
-identity rate limits before RPC, and never create permanent user rows from an
-unsigned challenge. Exact limits are deployment configuration reviewed before use.
-
-## Revocation and ordinary traffic
-
-Owner key is needed for enrollment/recovery, not every message. Existing device
-request proofs continue only after a server-side active-membership/generation
-check. Every authenticated entry point is covered: REST messages, status, events,
-realtime writes, push registration and TURN credential issuance. A saved transport
-account cannot bypass this through legacy v2 registration/auth routes.
-
-Revocation linearizes with the membership transaction: message reads/writes and
-replacement serialize against the same membership guard; no old-device operation
-may commit after replacement. Long-lived connections recheck generation for every
-authorized operation and close when revoked; queued event output is fenced too.
-An old device cannot re-enroll its retired transport credential through v2.
-Cutover policy must prevent ungated legacy accounts contacting the new cohort;
-use an isolated auth-required deployment/cohort rather than an accidental mixed
-mode. Existing old service remains unchanged until explicit deployment authority.
-
-Already downloaded data cannot be recalled. Existing TURN allocations and direct
-WebRTC media cannot be stopped solely by revoking server login. Stop new signaling
-and relay grants; require tested relay expiry/termination bounds before claiming
-bounded media revocation. Immediate termination of every ongoing old-device call
-is NOT promised by this RFC and remains a release disclosure/review item.
-
-Old transport inbox remains inaccessible to the new device; it has different keys.
-Do not move pending ciphertext or re-sign queued messages under new identity.
-Retention/deletion is a separate scoped operation; revocation is not deletion.
-
-## Security delta and test gates
-
-Residual risks: server knows public identity/name and membership; servers can
-correlate the identity. Trusted RPC can lie; finalized HTTPS RPC is not a light
-client. Upgrade authority remains a trust boundary. Seed theft permits takeover
-and repeated replacement; there is no operator recovery or seed rotation in the
-current registry. Devnet resets/outages can prevent new login. Already authorized
-devices may continue bounded ordinary service during RPC outage: admission uses
-committed membership, not a live RPC lookup for every message. Policy revocation
-still applies. No social graph, device list or server list is written on-chain.
-
-Required executable checks, all NOT RUN for this new proposal:
-
-- AUTH-01: independent signature vectors; mutate every field/domain/target; reject
-  noncanonical encodings, duplicate fields, unknown fields and oversized bodies.
-- AUTH-02: wrong genesis/program/authority/artifact, fake PDA/name/owner, malformed
-  or partial records, RPC outage/stale responses; no mutation or bypass.
-- AUTH-03: replay, expiry, server restart, stolen challenge, wrong device proof,
-  cross-server/cluster/endpoint substitution; challenge budget saturation.
-- AUTH-04: real PostgreSQL concurrent enroll/replace, lost response and crash at
-  transaction boundaries; unique mapping, monotonic generation, exact retries.
-- AUTH-05: revoked REST/event/realtime/push/TURN paths, legacy bypass attempts,
-  concurrent message/replacement and old operation retry after later replacement.
-- AUTH-06: real core/JNI E2EE first contact, reply, receipts, text and calls after
-  login; no silent contact-pin replacement; old ciphertext remains inaccessible.
-- AUTH-07: Android restart/pending operation/Keystore errors; no silent reset;
-  physical two-phone enrollment and seed recovery on a fresh install, then
-  rejection of the old device. Fresh contact exchange after replacement is explicit.
-- AUTH-08: expiry/termination behavior for existing relay allocations and calls;
-  distinguish measured server revocation from impossible remote data erasure.
-
-## Alternatives and disposition blockers
-
-Do not reuse the blockchain key as an Olm key, derive chat history from the seed,
-trust nickname strings as authentication, require an on-chain transaction per
-login, or replace immutable peer keys behind existing ContactV2. These shortcuts
-break existing separation, recovery expectations or peer verification.
-
-Before implementation freeze, independent review must close: exact schema/vectors
-(including target field), all server authorization entry points, operation-result
-retention budgets, strict cutover isolation, registry freshness timeout, and media
-revocation disclosure. Owner disposition must explicitly cover fresh transport
-accounts/new contact exchange after replacement and the resulting UX. A draft ADR
-must record the reviewed choice before acceptance; RFC0026/ADR0015 are not silently
-promoted or rewritten. No owner-server installer, SSH credential collection,
-invitation protocol, federation, iOS implementation or deployment is delivered here.
+Local candidate work may begin after technical blockers close, but no accepted
+ADR, production/privacy claim, deployment or phone success is inferred from it.
+Implementation evidence must distinguish crypto fixtures, real DB/RPC, host/JNI,
+Android runtime and physical phones. Draft remains open; decision deadline is
+before candidate phone release, exact review date assigned when blockers close.
