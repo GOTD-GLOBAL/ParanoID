@@ -15,6 +15,12 @@ pub const RPC: &str = "https://api.devnet.solana.com";
 #[derive(Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
 enum Command {
+    Prepare {
+        owner: String,
+        name: String,
+        blockhash: String,
+        genesis: String,
+    },
     ProgramInfo {},
     Verify {
         owner: String,
@@ -94,8 +100,45 @@ fn addresses(owner: &Address, name: &str) -> (Address, u8, Address, u8) {
         Address::find_program_address(&[b"paranoid-name-v1", name.as_bytes()], &program);
     (id, ib, nick, nb)
 }
+fn registration_message(
+    owner: Address,
+    name: &str,
+    hash: &solana_hash::Hash,
+) -> solana_message::Message {
+    use solana_instruction::{AccountMeta, Instruction};
+    let (id, _, nick, _) = addresses(&owner, name);
+    let mut data = vec![1, name.len() as u8];
+    data.extend(name.as_bytes());
+    let ix = Instruction {
+        program_id: Address::from_str(PROGRAM).expect("compiled program"),
+        accounts: vec![
+            AccountMeta::new(owner, true),
+            AccountMeta::new_readonly(owner, true),
+            AccountMeta::new(id, false),
+            AccountMeta::new(nick, false),
+            AccountMeta::new_readonly(Address::default(), false),
+        ],
+        data,
+    };
+    solana_message::Message::new_with_blockhash(&[ix], Some(&owner), hash)
+}
 fn run(input: Command) -> Result<Value, &'static str> {
     match input {
+        Command::Prepare {
+            owner,
+            name,
+            blockhash,
+            genesis,
+        } => {
+            if genesis != GENESIS {
+                return Err("wrong_cluster");
+            }
+            let owner = Address::from_str(&owner).map_err(|_| "invalid_owner")?;
+            let name = canonical_name(&name)?;
+            let hash = solana_hash::Hash::from_str(&blockhash).map_err(|_| "invalid_blockhash")?;
+            let message = registration_message(owner, &name, &hash);
+            Ok(json!({"message":STANDARD.encode(message.serialize()),"name":name}))
+        }
         Command::ProgramInfo {} => {
             let program = Address::from_str(PROGRAM).map_err(|_| "compiled_pin")?;
             let loader = Address::from_str("BPFLoaderUpgradeab1e11111111111111111111111")
@@ -168,26 +211,11 @@ fn run(input: Command) -> Result<Value, &'static str> {
             let bytes = entropy(&encoded)?;
             let seed = secret(&bytes)?;
             let key = solana_keypair::Keypair::new_from_array(*seed);
-            use solana_instruction::{AccountMeta, Instruction};
             use solana_signer::Signer;
             let owner = key.pubkey();
             let (id, _, nick, _) = addresses(&owner, &name);
-            let program = Address::from_str(PROGRAM).map_err(|_| "program")?;
             let hash = solana_hash::Hash::from_str(&blockhash).map_err(|_| "invalid_blockhash")?;
-            let mut data = vec![1, name.len() as u8];
-            data.extend(name.as_bytes());
-            let ix = Instruction {
-                program_id: program,
-                accounts: vec![
-                    AccountMeta::new(owner, true),
-                    AccountMeta::new_readonly(owner, true),
-                    AccountMeta::new(id, false),
-                    AccountMeta::new(nick, false),
-                    AccountMeta::new_readonly(Address::default(), false),
-                ],
-                data,
-            };
-            let message = solana_message::Message::new_with_blockhash(&[ix], Some(&owner), &hash);
+            let message = registration_message(owner, &name, &hash);
             let tx = solana_transaction::Transaction::new(&[&key], message, hash);
             tx.verify().map_err(|_| "signature")?;
             let wire = bincode::serialize(&tx).map_err(|_| "transaction")?;
@@ -352,6 +380,15 @@ mod tests {
             command(r#"{"op":"identity","op":"recover","entropy":"AAAA"}"#)
                 .contains("invalid_request")
         );
+    }
+    #[test]
+    fn prepare_is_unsigned_and_matches_fixed_signed_message() {
+        let req = json!({"op":"prepare","owner":"3Cy3YNTFywCmxoxt8n7UH6hg6dLo5uACowX3CFceaSnx","name":"test_alice","blockhash":"11111111111111111111111111111111","genesis":GENESIS});
+        let prepared: Value = serde_json::from_str(&command(&req.to_string())).unwrap();
+        let signed:Value=serde_json::from_str(&command(&json!({"op":"register","entropy":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","name":"test_alice","blockhash":"11111111111111111111111111111111","genesis":GENESIS}).to_string())).unwrap();
+        assert_eq!(prepared["message"], signed["message"]);
+        assert!(prepared.get("signature").is_none());
+        assert!(prepared.get("transaction").is_none());
     }
     #[test]
     fn program_info_exposes_only_fixed_public_deployment_pins() {

@@ -34,6 +34,39 @@ retain documentation/review gates. Historical PR1/RFC0002 is research, not accep
 code to merge. The owner's public blockchain identity direction is retained:
 servers can correlate a public identity; no on-chain social/device/server graph.
 
+## Owner correction: integrated Android test APK (2026-09-22)
+
+The owner rejected a standalone registrar and now requests ONE main ParanoID APK
+with built-in Devnet nickname registration, existing messaging and calls. The
+standalone application remains an internal harness only. Telegram instruction:
+«Го. Делай мне APK.» after the explicit integrated-app correction; no permalink
+is available here. This new test-delivery scope is not covered by PR53's older
+explicit no-phone-release statement; permanent owner confirmation belongs in the
+new integration PR. The candidate must not be published as production-ready.
+
+The main package/signing identity, messenger server account, contact QR, E2EE keys,
+chat storage, call lifecycle and updater remain unchanged. A private internal
+activity under My ID opens the Devnet workflow in the SAME APK. Nick ownership
+is not silently promoted to server admission, trusted contact binding, routing or
+chat recovery. These need a later reviewed binding protocol. The UI distinguishes
+the Devnet nickname/key from the messaging identity. No change to on-chain code.
+
+Pending transactions are saved before submission. A user retry during validity
+rebroadcasts identical bytes, at most three submissions per signed attempt; an
+expired attempt is pruned only after finalized block-height and fresh record
+reconciliation. A full bounded ledger must never become an unexplained lifetime
+dead end. Changing a pending name is prohibited while an attempt can still land.
+Cost checks precede signing through an unsigned-message preparation operation.
+
+Storage mutations create and fsync a nonsecret write-intent marker before changing
+Keystore/state, then commit, reread and remove it with directory fsync. A leftover
+marker fails closed across process restart; there is no silent reset/rekey.
+UI result generations fence stale callbacks. The Devnet screen cannot be opened
+during an active call; existing chat/call services are not restarted by it.
+Host transport/state regressions, real Devnet register/retry/readback/recovery,
+Android storage runtime and integrated artifact gates precede private APK handoff.
+Physical-phone acceptance by the owner follows handoff, not a preclaimed result.
+
 ## Minimal registry contract
 
 A native Rust Solana program, no token/NFT dependency. Initial instruction:
@@ -144,6 +177,15 @@ at finalized commitment. After that finalized expiry,
 our exact mutually-consistent records mean success; both absent permit a rebuilt
 transaction; conflicting/malformed/partial records are terminal, not blind retry.
 The nickname is shown in canonical form for explicit confirmation before signing.
+
+Integrated-client implementation clarification (2026-09-22): the controller
+queries signature history and validates its result count, but does not currently
+branch on individual status values. Finalized paired registry readback is the
+success authority; finalized height beyond every saved last-valid height plus a
+fresh registry read is the rebuild/prune authority. A finalized-error status does
+not enable early pruning or a new transaction before that height gate. This is
+more conservative than the status-directed flow described above; signature-status
+UX remains a follow-up, not an implemented early-failure shortcut.
 
 For deployment, query actual rent for the built program-data allocation and
 fees; record required lamports before requesting funds. Funding source is the

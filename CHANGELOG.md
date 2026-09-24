@@ -30,6 +30,24 @@ public contract is declared.
   returns in a literal; a new app test covers the Russian plural forms, and the
   simulator text flow checks and photographs both corrected screens.
 
+### Devnet merge verification — 2026-09-22
+
+- Add blocking offline Rust/JNI registration-controller and integrated Android
+  source/notices CI checks, including blockchain-only path triggers.
+- Preserve the separate exact-program artifact and Android runtime gates and
+  the visible historical legacy-history failures; no production code, data,
+  signing identity, server or update feed is changed by this CI follow-up.
+
+### Android v28 integrated Devnet update candidate — 2026-09-22
+
+- Keep the main messenger package/signer, chats, calls and updater; add private
+  My ID -> Devnet nickname registration inside that same APK, not a separate app.
+- Bound identical transaction rebroadcasts, reconcile expired attempts, prepare
+  fee-checkable unsigned messages before signing and persist write-intent markers.
+- Test real Devnet registration/name recovery and Android Keystore in an isolated
+  emulator harness. The mnemonic restores the Devnet name key only, NOT the
+  messenger account/history. Owner-requested build, not a production release.
+
 ### Android receipt presentation — 2026-09-18
 
 - Draw queued/server-stored/peer-delivered marks with Canvas in bubbles and chat

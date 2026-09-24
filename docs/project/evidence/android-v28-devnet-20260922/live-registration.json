@@ -1,0 +1,23 @@
+{
+  "test_name": "p28_accept_0922",
+  "owner": "n2NGZdM6KZFJE1bBghSapYaMqZM1sb6J1x7CLYei5QJ",
+  "identity": "2x4DynMWpg68PLLmn3cdNXJN6qjgqReMH4MqM9SoGqQj",
+  "registration_signature": "4pNzmDdwdzjSHDgvy1bHbs5WkDzMDDbjPZhMcG46Gu1YS93T8yuGDLCJNThWNTaDX1NgRQqeXmk7qvHjXnmiDReW",
+  "status": {
+    "confirmationStatus": "finalized",
+    "confirmations": null,
+    "err": null,
+    "slot": 502327656,
+    "status": {
+      "Ok": null
+    }
+  },
+  "test_funding_SOL": "0.01",
+  "funding_signature": "TSy79w4nN9Jh2KMv4Yx7j7xbjY82uGZ2shtggx5FBBRo1VwrZyW7ZzRRMa6tkUfCCoQGgB4F3Wa3oabu8BFSFdc",
+  "execution": "real RegistrationFlow/DevnetRpc/JNI on host; not Android UI",
+  "finalized_record_readback": "PASS",
+  "fresh_state_seed_recovery_then_chain_lookup": "PASS",
+  "repeat_user_registration": "PASS: already registered, no new transaction",
+  "private_material": "not included; retained outside Git/APK",
+  "messenger_account_recovery": "NOT IMPLEMENTED"
+}

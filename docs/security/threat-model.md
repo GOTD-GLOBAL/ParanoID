@@ -1,10 +1,27 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-09-09
+last_reviewed: 2026-09-22
+last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
 ---
 
 # Threat model
+
+## Integrated Android Devnet candidate (2026-09-22)
+
+The registration activity is private inside the existing messenger package.
+Its domain-separated key, no-backup encrypted state and write-intent marker never
+replace the messaging identity/QR, credentials or E2EE state. Devnet ownership is
+not server admission or peer trust. Old callbacks are generation-fenced; opening
+the screen during an active call is refused without restarting call/realtime state.
+The marker is fsynced before writes and removed after readback; residual I/O failure
+can prevent persisting a latch, so the current process remains frozen and sends
+nothing. No automatic rekey/reset or chat-history recovery promise is introduced.
+Cost checks use the unsigned native message before signing. All outstanding
+attempts must expire at finalized height and records be reread before pruning.
+Synthetic fixtures, live host/JNI Devnet checks and emulator Keystore checks are
+reported separately from physical-phone acceptance. Native recovery only restores
+the Devnet key/name; full messenger account recovery is still not implemented.
 
 ## Fresh Solana Devnet identity boundary
 

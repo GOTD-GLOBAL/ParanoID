@@ -7,6 +7,23 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_devnet_controller_and_integration_gate_ci(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        self.assertEqual(workflow.count('"blockchain/**"'), 2)
+        self.assertIn('  devnet-client:', workflow)
+        job = workflow.split('  devnet-client:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        for command in ('cargo +1.98.1 test --locked --manifest-path blockchain/solana/client/Cargo.toml',
+                        'cargo +1.98.1 fetch --locked --manifest-path clients/core/Cargo.toml',
+                        'python3 clients/android/test_devnet_integration.py',
+                        'python3 clients/android/test_devnet_notices.py',
+                        'python3 clients/android-devnet/check_controller.py'):
+            self.assertIn(command, job)
+            if command.startswith('python3 '):
+                self.assertTrue((ROOT / command.split()[1]).is_file())
+        self.assertLess(job.index('cargo +1.98.1 fetch --locked --manifest-path clients/core/Cargo.toml'),
+                        job.index('python3 clients/android/test_devnet_notices.py'))
+        self.assertNotIn('continue-on-error:', job)
+
     def test_message_time_gates_ci_and_android_build(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
         supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]

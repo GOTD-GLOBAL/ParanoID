@@ -111,6 +111,14 @@ No permanent architecture acceptance or physical-phone result is implied.
 [Proposed ADR-0012](0012-voice-turn.md) specifies ephemeral relay issuance and
 isolated packaging. Local task authorization does not constitute ADR acceptance.
 
+## Integrated Devnet registration candidate
+
+[Proposed ADR-0015](0015-integrated-devnet-client.md) records the integrated main
+Android APK registration boundary under [RFC-0026](../rfcs/0026-solana-devnet-registration.md).
+Source merge does not accept the ADR or implement server login, messenger recovery
+or production readiness. The build/review evidence and owner-reported registration
+are in [the v28 record](../project/evidence/android-v28-devnet-20260922/README.md).
+
 ## iOS client candidate
 
 [Proposed ADR-0014](0014-ios-client.md): native SwiftUI iOS client over the

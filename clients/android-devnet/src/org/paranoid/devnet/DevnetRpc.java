@@ -6,7 +6,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 
 /** Fixed Devnet endpoint with platform PKI, no redirects/proxies/arbitrary URL. */
-final class DevnetRpc {
+final class DevnetRpc implements RegistrationFlow.Chain {
     private static final JSONObject PINS=loadPins();
     static final String URL=PINS.optString("rpc");
     static final String GENESIS=PINS.optString("genesis");
@@ -16,7 +16,7 @@ final class DevnetRpc {
         catch(Exception e) { throw new ExceptionInInitializerError(e); }
     }
     private long requestId;
-    Object call(String method,JSONArray params)throws Exception {
+    public Object call(String method,JSONArray params)throws Exception {
         if(!java.util.Arrays.asList("getGenesisHash","getAccountInfo","getMultipleAccounts","getBalance","getLatestBlockhash","getBlockHeight","getSignatureStatuses","getFeeForMessage","getMinimumBalanceForRentExemption","sendTransaction","requestAirdrop").contains(method))throw new IOException("rpc_method");
         if(CookieHandler.getDefault()!=null)throw new IOException("ambient_cookies");
         long id=++requestId;
@@ -39,13 +39,13 @@ final class DevnetRpc {
             return result.get("result");
         }finally{c.disconnect();}
     }
-    String cluster()throws Exception {String value=(String)call("getGenesisHash",new JSONArray());if(!GENESIS.equals(value))throw new IOException("wrong_cluster");return value;}
+    public String cluster()throws Exception {String value=(String)call("getGenesisHash",new JSONArray());if(!GENESIS.equals(value))throw new IOException("wrong_cluster");return value;}
     static JSONObject finalized()throws Exception{return new JSONObject().put("commitment","finalized");}
     JSONObject account(String address)throws Exception {
         Object v=((JSONObject)call("getAccountInfo",new JSONArray().put(address).put(finalized().put("encoding","base64")))).get("value");
         return v==JSONObject.NULL?null:(JSONObject)v;
     }
-    void program()throws Exception {
+    public void program()throws Exception {
         cluster();
         // One finalized bank context for Program and its canonical ProgramData PDA.
         JSONArray addresses=new JSONArray().put(PROGRAM).put(PINS.getString("programdata"));

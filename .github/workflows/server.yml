@@ -1,10 +1,10 @@
 name: Server transport
 on:
   pull_request:
-    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["blockchain/**", "server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
   push:
     branches: [main]
-    paths: ["server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+    paths: ["blockchain/**", "server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
 permissions:
   contents: read
 jobs:
@@ -124,6 +124,27 @@ jobs:
           javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
           python3 clients/android/test_voice_relay_lane.py --jni-library-dir clients/core/target/debug --evidence-dir "$RUNNER_TEMP/paranoid-voice-lane"
+  devnet-client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Offline Devnet native and Android integration gates
+        # Fixed commands only; no event interpolation, signing secrets or live RPC.
+        # Exact SBF pin and Android runtime acceptance remain separate artifact gates.
+        run: |
+          cargo +1.98.1 fmt --manifest-path blockchain/solana/client/Cargo.toml -- --check
+          cargo +1.98.1 clippy --locked --manifest-path blockchain/solana/client/Cargo.toml --all-targets -- -D warnings
+          cargo +1.98.1 test --locked --manifest-path blockchain/solana/client/Cargo.toml
+          cargo +1.98.1 build --locked --manifest-path blockchain/solana/client/Cargo.toml
+          # notices.py reads BOTH lockfiles offline, including on a cold runner.
+          cargo +1.98.1 fetch --locked --manifest-path clients/core/Cargo.toml
+          python3 clients/android/dependencies.py
+          python3 clients/android/test_devnet_integration.py
+          python3 clients/android/test_devnet_notices.py
+          JSON_JAR="$GITHUB_WORKSPACE/clients/android/out/deps/json-20240303.jar" python3 clients/android-devnet/check_controller.py
   legacy-client-history:
     name: Legacy client history (informational, failures retained)
     runs-on: ubuntu-24.04

@@ -199,6 +199,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         copy=secondary("Копировать контакт",()->copyPublic(displayedQr,"Контакт скопирован. Сравните отпечаток отдельно."));space(identity,8);identity.addView(copy,full());
         space(identity,24);identity.addView(text("Отпечаток контакта",16,colors.text,true));space(identity,8);
         fingerprint=text("Появится после регистрации",13,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
+        space(identity,24);identity.addView(text("Ник в Devnet",20,colors.text,true));space(identity,8);
+        identity.addView(text("Зарегистрируйте ник в тестовой сети Solana. Чаты и звонки продолжают использовать ваш текущий ID; Devnet-слова не восстанавливают переписку.",14,colors.muted,false));space(identity,12);
+        identity.addView(secondary("Ник в Devnet",this::openDevnet),full());
         space(identity,24);updateHeading=text("Приложение",16,colors.text,true);identity.addView(updateHeading);space(identity,8);
         updateController=new UpdateController(this,engine,identity);
         space(identity,16);String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
@@ -298,6 +301,10 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             return true;
         });
         menu.show();
+    }
+    private void openDevnet(){
+        if(engine.calls().active()){Toast.makeText(this,"Завершите звонок перед регистрацией ника",Toast.LENGTH_LONG).show();return;}
+        startActivity(new Intent(this,org.paranoid.devnet.MainActivity.class));
     }
     private void showAbout(){
         String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}

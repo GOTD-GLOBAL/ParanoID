@@ -1,0 +1,214 @@
+[
+  {
+    "packages": [
+      "five8",
+      "five8_const",
+      "five8_core"
+    ],
+    "declared_license": "MIT",
+    "source": "https://raw.githubusercontent.com/kevinheavey/five8/311279fb81461df36e730458a0463a6a322042d7/LICENSE",
+    "file": "five8-LICENSE-51848502.txt",
+    "sha256": "51848502689f5c8354358b1277cb3ad48a88701c011092aea903856798cd7bd9"
+  },
+  {
+    "packages": [
+      "jni-sys-macros"
+    ],
+    "declared_license": "MIT OR Apache-2.0",
+    "source": "https://raw.githubusercontent.com/jni-rs/jni-sys/64d77b7a5f119d7b55b4e2c169a4668067ff59e6/LICENSE-MIT",
+    "file": "jni-sys-macros-LICENSE-1d85bd75.txt",
+    "sha256": "1d85bd754b04ceec93e98e890edd1fa3c6a22e81bcb32135806beeccefa51cd1"
+  },
+  {
+    "packages": [
+      "solana-address"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/14a725d6e9180e6cfbd98054473d61ef3aabde57/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-hash"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/e33d4eacfc252f0f8bd82ca208c53db8e93f0e24/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-instruction"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/1d4d322b9eac89e6c8069464e0c184d72584106c/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-instruction-error"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/e658c42f7dfdbe5431fa9bbf58709824c64ea706/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-keypair"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/de533879787698dd8facf96bd85166c5c790aa1d/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-message"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/f051d1cf2a9136a0bcdc66cdd1eeeca120da0f15/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-program-error"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/7cdfc06b7deb076e3d95e84eb6f23b8dc4f12378/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-pubkey"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/72b42fb6e1ce322acd9213d39004e6c8e3b835f2/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-sanitize"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/d6dd6d10fbd01f1547a2e4bc18443621f80f92b0/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-sdk-ids"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/1bb184f0646173544c0b44d45342d6d66d54b9ce/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-seed-phrase"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/447f0edce0443895a955a521c108aff5839ef106/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-sha256-hasher"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/5da94053da7b81dcd04c62ff4df7eb6bfc20a398/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-short-vec"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/699d7993b9c2a42ed1ad7b9305a46ecd67b636de/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-signature"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/7db11f7281da2f01f4ba64472cf2e2ae797282ad/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-signer"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/f0dbbc993cce4d7f21e2570205230211d92b481e/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-transaction"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/3a4e8ef7dd15655296ecea4b0caa3d7bbc859335/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "solana-transaction-error"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/342a32244651d1f9a6811ddf735e4c8c1d557c1a/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "wincode"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/wincode/a738c8a139629fb5f26e8473a1aad23eb8f0b6cc/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "wincode-derive"
+    ],
+    "declared_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/wincode/92b0d1599e879455d232dad69f1b7f1f4a26d739/LICENSE",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  },
+  {
+    "packages": [
+      "bitcoin_hashes"
+    ],
+    "declared_license": "CC0-1.0",
+    "source": "https://raw.githubusercontent.com/spdx/license-list-data/main/text/CC0-1.0.txt",
+    "file": "CC0-1.0.txt",
+    "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+  },
+  {
+    "packages": [
+      "derivation-path",
+      "ed25519-dalek-bip32"
+    ],
+    "declared_license": "MIT OR Apache-2.0",
+    "selected_license": "Apache-2.0",
+    "source": "https://raw.githubusercontent.com/anza-xyz/solana-sdk/14a725d6e9180e6cfbd98054473d61ef3aabde57/LICENSE",
+    "provenance": "License selection from exact locked Cargo package declarations; standard Apache2.0 text, not a claim of upstream NOTICE availability.",
+    "file": "Apache-2.0.txt",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+  }
+]

@@ -1,0 +1,19 @@
+harness-build
+HARNESS BUILD PASS /home/codex/projects/paranoid-worktrees/devnet-android-acceptance/clients/android-devnet/out/storage-test/storage-test.apk
+harness-install
+Serving...
+All files should be loaded. Notifying the device.
+Performing Incremental Install
+Success
+Install command complete in 89 ms
+harness-reset
+Success
+write
+INSTRUMENTATION_RESULT: result=PASS write (real Android Keystore/AtomicFile, emulator only)
+INSTRUMENTATION_CODE: -1
+reopen
+INSTRUMENTATION_RESULT: result=PASS reopen (real Android Keystore/AtomicFile, emulator only)
+INSTRUMENTATION_CODE: -1
+freeze
+INSTRUMENTATION_RESULT: result=PASS freeze (real Android Keystore/AtomicFile, emulator only)
+INSTRUMENTATION_CODE: -1

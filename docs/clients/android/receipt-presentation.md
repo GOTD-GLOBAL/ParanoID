@@ -10,6 +10,15 @@ REQ-MSG-003 and REQ-CLIENT-004. This UI-only candidate brings Android in line
 with the existing iOS ReceiptMark/ReceiptHint, without changing the core, wire,
 receipts, sender/recipient trust, encrypted snapshot or message timestamps.
 
+## Integration note — 2026-09-22
+
+The version27 APK described below is the historical PR51 review artifact, not
+an update to install. PR54's combined source preserves these receipt changes and
+Devnet registration, currently with version28 build metadata. That combined source
+is NOT the already handed-out v28 APK: no new artifact was built or published by
+source integration. Any later delivery requires a fresh build, artifact checks
+and an appropriate newer version code; never replace an issued version silently.
+
 ## Presentation
 
 `ReceiptMark` paints a clock, one check or two checks using Canvas paths at a
