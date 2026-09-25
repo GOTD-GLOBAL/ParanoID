@@ -267,8 +267,10 @@ same channel resumes on unblock.
 ## Text, receipts and the lanes
 
 `StateOwner` is an actor on one serial queue holding the client, every bridge
-call, every commit, the realtime session and the discovered capability — the
-port of Android's single-threaded `TextEngine.worker`. No member of it is
+call after launch, every commit, the realtime session and the discovered
+capability — the port of Android's single-threaded `TextEngine.worker`. Before
+it exists, opening the client validates the saved state and the runtime reads
+the new-message baseline once; nothing else reaches the core outside it. No member of it is
 `async`, so it cannot wait on a socket; a lane awaits the network in its own
 task and hands the finished answer back through `perform`.
 
@@ -302,6 +304,39 @@ task and hands the finished answer back through `perform`.
   retires that sentence for good (`ReceiptHint`, a flag in this application's
   own defaults). The [Android presentation candidate](../android/receipt-presentation.md)
   uses the same drawn-state and one-time-hint semantics; wording stays identical.
+- **New messages.** A row of «Чаты» counts the peer's messages this run of the
+  application has not shown yet, the open chat draws «Новые сообщения» over
+  the first of them and opens there, and a «↓» button with the count leads
+  down while unseen messages are below (`SeenMarks`). The baseline is one read
+  of the conversations when the runtime is built, before a lane or a lifecycle
+  notification can exist; only the counts are kept. What arrives after it
+  counts, and a conversation that appears later counts from its first message;
+  if that read fails, nothing is counted for the run. Own messages and call
+  rows never count. A chat is seen when its bottom is on the screen, the
+  application is active and no call screen or sheet covers it; with a divider,
+  only after the opening scroll has landed (about 300 ms). On iOS 18 and later
+  "the bottom is on the screen" is asked of the scroll view itself — its
+  offset is within the history's 12-point bottom padding of as far as it can
+  go — because a lazy stack keeps rows it built after they scroll away and
+  does not re-measure them, so neither a row appearing nor its measured frame
+  says what is visible (both were tried on the simulator and both were wrong).
+  Content that grows under a reader who was at the end, a new message, keeps
+  the reader at the end; only the reader scrolls the reader away. iOS 17 has no
+  scroll geometry: there a marker's appearance after the last row stands in
+  for it, an approximation that has not been run. One handler asks again on
+  every change, including a message arriving while the chat is open. A reader who
+  scrolled up is not dragged down by a new message. The divider stays where
+  the chat was opened until the chat is closed; returning to the application
+  without the bottom on the screen adds one over what arrived meanwhile. The
+  mark is a position in the history, never a message identifier, which the
+  sender chooses. **It lives in memory only**: nothing is written to a file,
+  to defaults or to the snapshot, and nothing reaches the core's commit path,
+  the server or the peer — reading is never reported (REQ-MSG-003). What a
+  relaunch loses is exactly that: a message received in an earlier run and
+  never opened is not counted in the next one. Persisting the mark across
+  launches is new stored metadata: it needs a new RFC, unless the owner
+  explicitly widens [RFC-0024](../../rfcs/0024-local-metadata-at-rest.md). The
+  feature and its words are proposed and await the owner.
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or

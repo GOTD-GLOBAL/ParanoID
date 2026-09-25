@@ -19,8 +19,10 @@ import WebRTC
 /// One `Runtime`, built once at launch: the snapshot store over the Keychain
 /// key, the `SelfServiceClient`, the state owner, the pinned transport, the
 /// two realtime lanes and the lifecycle runner that starts and stops them.
-/// Nothing here opens a connection itself; nothing here touches the core
-/// except through `StateOwner.perform`.
+/// Nothing here opens a connection itself. Before the owner exists, opening
+/// the client validates the saved state and `Runtime` reads the new-message
+/// baseline once; after that nothing here touches the core except through
+/// `StateOwner.perform`.
 ///
 /// ## The two guards
 ///
@@ -141,6 +143,14 @@ final class AppModel {
     /// application's own defaults and reaches neither the snapshot nor the
     /// network.
     private(set) var receiptHint = ReceiptHint()
+    /// Which incoming messages this run has not shown yet (`SeenMarks`). It is
+    /// in memory only: no file, no defaults, no snapshot, no request, and the
+    /// peer is never told anything about reading (REQ-MSG-003).
+    private(set) var seenMarks = SeenMarks()
+    /// Where the open chat draws «Новые сообщения»: the position of its first
+    /// new message when it was opened, kept while it stays open so that the
+    /// line does not vanish the moment it is read.
+    private(set) var unreadDivider: Int?
     /// The calls this phone has had (`CallLog`). Like the names it lives in a
     /// backup-excluded file of the application's own: the core keeps no call
     /// history and the server is told nothing about an outcome.
@@ -163,7 +173,17 @@ final class AppModel {
     /// (`MainActivity.java:534`).
     var microphoneRefused = false
     /// The open conversation, or `nil` for the tabs.
-    var chatAccount: String?
+    ///
+    /// Every way into a chat writes this — `openChat`, and the navigation
+    /// binding directly — so this is where the chat's «Новые сообщения»
+    /// divider is fixed: once, when the conversation changes, and not when
+    /// the screen reappears from under the call screen or a sheet.
+    var chatAccount: String? {
+        didSet {
+            guard chatAccount != oldValue else { return }
+            unreadDivider = chat.flatMap { seenMarks.firstUnseenIndex($0) }
+        }
+    }
     /// What is presented over the screens.
     var sheet: Sheet?
     /// The refusal shown inside the scanner or the paste sheet.
@@ -280,6 +300,7 @@ final class AppModel {
                 client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             }
             let built = try Runtime(client: client, model: self)
+            seenMarks = built.seenBaseline
             // No migration until stand, continuity and runtime construction succeeded.
             // Every noStand/frozen early exit leaves both stores in-memory only.
             loadLocalMetadataOnce()
@@ -693,20 +714,70 @@ final class AppModel {
     /// written by a build that kept no time opens nothing either — there is no
     /// day to name for it (`MessagePresentation.startsNewDay`).
     var chatTimeline: [TimelineRow] {
-        let now = UInt64(max(0, Date().timeIntervalSince1970 * 1000))
+        Self.timeline(chatRows, now: UInt64(max(0, Date().timeIntervalSince1970 * 1000)),
+                      dividerBefore: unreadDivider)
+    }
+
+    /// The rows of a conversation with its day pills and, when there is one,
+    /// the «Новые сообщения» divider.
+    ///
+    /// The divider stands immediately before the message at position
+    /// `dividerBefore` in the history — after the calls anchored to the message
+    /// before it, and after that message's day pill, so the pill still opens
+    /// the day and the line still points at the first new message. Its identity
+    /// is its position (`TimelineRow.unreadId`), never a message identifier,
+    /// which the sender chooses.
+    nonisolated static func timeline(_ rows: [ChatRow], now: UInt64,
+                                     dividerBefore: Int?) -> [TimelineRow] {
         var timeline: [TimelineRow] = []
         var previous: UInt64 = 0
-        for row in chatRows {
+        var position = 0
+        for row in rows {
             if case .message(let message) = row {
                 if MessagePresentation.startsNewDay(message.localMilliseconds, after: previous) {
                     let title = MessagePresentation.daySeparator(message.localMilliseconds, now: now)
                     if !title.isEmpty { timeline.append(TimelineRow(id: "d:" + message.id, kind: .day(title))) }
                 }
                 if message.localMilliseconds > 0 { previous = message.localMilliseconds }
+                if position == dividerBefore {
+                    timeline.append(TimelineRow(id: TimelineRow.unreadId(position), kind: .unread))
+                }
+                position += 1
             }
             timeline.append(TimelineRow(id: row.id, kind: row))
         }
         return timeline
+    }
+
+    // MARK: - new messages
+
+    /// How many messages of `dialog`'s peer this run has not shown yet — the
+    /// count on its row of «Чаты».
+    func unseenCount(for dialog: Dialog) -> Int {
+        seenMarks.unseenCount(dialog)
+    }
+
+    /// The same for the open chat, for its «↓» button.
+    var chatUnseenCount: Int {
+        chat.map { seenMarks.unseenCount($0) } ?? 0
+    }
+
+    /// The bottom of the open chat was on the screen, with the application
+    /// active and nothing over the chat: everything it holds has been seen.
+    ///
+    /// It is the one mutation of «Новые сообщения», and it reaches no core, no
+    /// snapshot, no connection and no peer — only this object's memory.
+    func markChatSeen() {
+        guard let chat else { return }
+        seenMarks.markSeen(chat)
+    }
+
+    /// The application came back while a chat was open. A chat that had no
+    /// divider gets one if something new arrived in the meantime; one that
+    /// had a divider keeps it where it was.
+    func chatResumed() {
+        guard unreadDivider == nil, let chat else { return }
+        unreadDivider = seenMarks.firstUnseenIndex(chat)
     }
 
     /// When the last message of a conversation happened, as its row says it:
@@ -1275,6 +1346,9 @@ final class AppModel {
         /// The call machinery: the controller, the TURN lane, the media engine
         /// and the audio session, all on the owner.
         let calls: CallCoordinator
+        /// How far each conversation went before anything started
+        /// (`SeenMarks`); inactive when the read failed.
+        let seenBaseline: SeenMarks
 
         /// - Parameters:
         ///   - client: the state adapter, handed over for good. It is
@@ -1285,6 +1359,18 @@ final class AppModel {
         ///   - model: where the lanes publish.
         init(client: sending SelfServiceClient, model: AppModel) throws {
             let trust = try client.updateTrust()
+            // What «Новые сообщения» counts from: every conversation as this
+            // run found it. It is read here, while the client still has one
+            // caller and before a lane or a lifecycle notification can exist,
+            // so nothing a lane fetches can slip into the baseline and be taken
+            // for seen — the one read of the core besides opening the client
+            // that happens before the owner does. It is one `view`, and on a
+            // fresh install with no state file it is no core call at all, so a
+            // new identity still counts what arrives after it registers. Only
+            // the counts are kept, not the messages. A failed read leaves no
+            // baseline, which counts nothing.
+            seenBaseline = (try? client.publicDialogs())
+                .map { SeenMarks(opening: $0.compactMap(Dialog.decode)) } ?? SeenMarks()
             let transport = try RealtimeTransport(realm: trust.realm, pin: trust.pin)
             let signal = WakeSignal()
             let owner = StateOwner(client: client, hook: signal)

@@ -224,6 +224,73 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertTrue(fixture.titled(app, defaultTitle),
                       "an empty name did not restore the default title: " + Diagnosis.of(app))
         try fixture.shot("15-default-name")
+
+        // «Новые сообщения» (`SeenMarks`). A message that arrives while this
+        // chat is open at its bottom is seen at once, so back in «Чаты» its row
+        // counts nothing — the case a mark moved only on appear would miss.
+        func counted(_ label: String) -> Bool {
+            label.contains("новое сообщение") || label.contains("новых сообщени")
+        }
+        try fixture.ask("peer-send", fixture.seenText)
+        let seen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.seenText)).firstMatch
+        XCTAssertTrue(seen.waitForExistence(timeout: Timeout.delivery),
+                      "the peer's message never reached the open chat: " + Diagnosis.of(app))
+        Thread.sleep(forTimeInterval: 1)
+        fixture.back(app)
+        let conversation = app.descendants(matching: .any)["dialog-\(fixture.peerAccount)"]
+        app.buttons["tab-dialogs"].tap()
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { $0.contains(fixture.seenText) },
+                      "«Чаты» does not show the conversation: " + Diagnosis.of(app))
+        XCTAssertFalse(counted(conversation.label),
+                       "a message read in the open chat is still counted: \(conversation.label)")
+        try fixture.shot("16-seen-while-open")
+
+        // Twelve messages while «Чаты» is on the screen — more than one screen
+        // of history. The row says how many; the chat opens at «Новые
+        // сообщения», not at the bottom, with «↓» offering the way down; and
+        // the count clears only once the bottom has been on the screen.
+        for text in fixture.unseenTexts { try fixture.ask("peer-send", text) }
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.delivery) {
+            $0.contains("\(fixture.unseenTexts.count) новых сообщений")
+        }, "the row does not count the new messages: \(conversation.label)")
+        try fixture.shot("17-unseen-row")
+        conversation.tap()
+        let divider = app.descendants(matching: .any)["unread-divider"]
+        XCTAssertTrue(divider.waitForExistence(timeout: Timeout.screen),
+                      "the chat has no «Новые сообщения» divider: " + Diagnosis.of(app))
+        XCTAssertEqual(divider.label, "Новые сообщения")
+        XCTAssertTrue(fixture.visible(divider), "the chat did not open at the divider")
+        let newest = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@",
+                                  try XCTUnwrap(fixture.unseenTexts.last))).firstMatch
+        XCTAssertFalse(fixture.visible(newest), "the chat opened at the bottom, not at the divider")
+        let down = app.buttons["scroll-to-new"]
+        XCTAssertTrue(down.waitForExistence(timeout: Timeout.screen),
+                      "«↓» is missing below unread messages: " + Diagnosis.of(app))
+        try fixture.shot("18-unseen-divider")
+        down.tap()
+        XCTAssertTrue(fixture.becomesVisible(newest), "«↓» did not lead to the newest message")
+
+        // A reader who scrolled up is not dragged down by a new message: the
+        // history stays where it is and «↓» says something came.
+        for _ in 0..<3 where fixture.visible(newest) { app.scrollViews.firstMatch.swipeDown() }
+        XCTAssertFalse(fixture.visible(newest), "the history could not be scrolled up")
+        try fixture.ask("peer-send", fixture.dragText)
+        XCTAssertTrue(down.waitForExistence(timeout: Timeout.delivery),
+                      "«↓» did not appear for a message that arrived above the fold")
+        let dragged = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.dragText)).firstMatch
+        XCTAssertFalse(fixture.visible(dragged), "the history dragged the reader down")
+        try fixture.shot("19a-not-dragged")
+        down.tap()
+        XCTAssertTrue(fixture.becomesVisible(dragged), "«↓» did not lead to the new message")
+
+        // Leaving after the bottom was on the screen clears the count.
+        fixture.back(app)
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { !counted($0) },
+                      "the count outlived reading the chat: \(conversation.label)")
+        try fixture.shot("19-unseen-cleared")
         try fixture.note("flow", "complete")
     }
 
@@ -297,6 +364,13 @@ private struct Fixture {
     let firstText: String
     let replyText: String
     let doubleText: String
+    /// The peer's text that arrives while the chat is open at its bottom.
+    let seenText: String
+    /// The peer's texts that arrive while «Чаты» is on the screen — more than
+    /// one screen of history.
+    let unseenTexts: [String]
+    /// The peer's text that arrives while the reader is scrolled up.
+    let dragText: String
     let previousAccount: String?
 
     static func fromEnvironment() throws -> Fixture {
@@ -321,6 +395,10 @@ private struct Fixture {
             firstText: try XCTUnwrap(value("PARANOID_SIM_FIRST_TEXT")),
             replyText: try XCTUnwrap(value("PARANOID_SIM_REPLY_TEXT")),
             doubleText: try XCTUnwrap(value("PARANOID_SIM_DOUBLE_TEXT")),
+            seenText: try XCTUnwrap(value("PARANOID_SIM_SEEN_TEXT")),
+            unseenTexts: try XCTUnwrap(value("PARANOID_SIM_UNSEEN_TEXTS"))
+                .split(separator: ",").map(String.init),
+            dragText: try XCTUnwrap(value("PARANOID_SIM_DRAG_TEXT")),
             previousAccount: value("PARANOID_SIM_PREVIOUS_ACCOUNT"))
     }
 
@@ -370,6 +448,48 @@ private struct Fixture {
         XCTAssertTrue(value.allSatisfy { $0.isHexDigit && !$0.isUppercase },
                       "the \(what) is not lowercase hexadecimal")
         return value
+    }
+
+    /// Whether `element` is on the screen now. A lazy stack has not built a row
+    /// far from the visible region at all, so a missing row is not visible.
+    @MainActor
+    func visible(_ element: XCUIElement) -> Bool {
+        element.exists && element.isHittable
+    }
+
+    /// Waits until `element` is on the screen.
+    @MainActor
+    func becomesVisible(_ element: XCUIElement, timeout: TimeInterval = Timeout.screen) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if visible(element) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return false
+    }
+
+    /// The system back button of the chat: the one navigation-bar button that
+    /// is not one of the chat's own three.
+    @MainActor
+    func back(_ app: XCUIApplication) {
+        let button = app.navigationBars.buttons.matching(
+            NSPredicate(format: "NOT (identifier IN %@)",
+                        ["call-audio", "call-video", "contact-details"])).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: Timeout.screen),
+                      "the chat has no back button: " + Diagnosis.of(app))
+        button.tap()
+    }
+
+    /// Waits until `element` exists with a label that satisfies `accept`.
+    @MainActor
+    func wait(_ element: XCUIElement, timeout: TimeInterval = Timeout.commit,
+              until accept: (String) -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.exists, accept(element.label) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return false
     }
 
     /// Waits until `element` carries exactly `label`.

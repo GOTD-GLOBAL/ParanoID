@@ -32,8 +32,100 @@ import SwiftUI
 /// before it is sent rather than after.
 struct ChatScreen: View {
     @Bindable var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether the bottom of the history is on the screen. A chat opens at
+    /// its bottom unless it has a divider, and the scroll view reports only
+    /// changes, so this starts true and the divider scroll turns it false.
+    @State private var isAtBottom = true
+    /// Whether the first positioning — at the divider or at the bottom — is
+    /// over. Until it is, the bottom may flash by under `defaultScrollAnchor`
+    /// and must not count as seen.
+    @State private var positioned = false
+    /// The one-point view at the very end of the history, after the receipt
+    /// card: what «↓» and a new own message scroll to, so that a scroll to it
+    /// is a scroll to the end the scroll view itself measures.
+    private static let bottomId = "bottom"
+
+    /// Whether the bottom of the history is on the screen is asked of the
+    /// scroll view itself: its offset is as far as it can go. A lazy stack keeps rows it has built after they scroll away and
+    /// does not re-measure them, so neither a row appearing nor its measured
+    /// frame says what is visible (both were tried and both were wrong on the
+    /// simulator). iOS 17 has no scroll geometry; there the bottom marker's
+    /// appearance stands in for it, an approximation that has not been run.
+    private struct HistoryScrolling: ViewModifier {
+        @Binding var isAtBottom: Bool
+
+        /// How close to the end still is the end: the history's own bottom
+        /// padding (12 points, below the last row) plus the marker and
+        /// rounding. Inside it, nothing unread is out of sight.
+        static let endSlack: CGFloat = 16
+
+        /// How far the visible part is from the end, and how tall the content is.
+        struct Edge: Equatable {
+            let distance: CGFloat
+            let height: CGFloat
+        }
+
+        func body(content: Content) -> some View {
+            if #available(iOS 18.0, *) {
+                // The same anchor main has always had, for every role: the chat
+                // opens at its end and keeps its end in place when the keyboard
+                // or a new row changes a size.
+                content
+                    .defaultScrollAnchor(.bottom)
+                    // The distance to the end and the content height rather
+                    // than a yes/no, so that every re-measurement reports again,
+                    // and so that content growing under a reader who was at the
+                    // end — a new message — does not count as scrolling away:
+                    // only the reader moves the reader off the bottom.
+                    .onScrollGeometryChange(for: Edge.self) { geometry in
+                        // The furthest the scroll view can go, insets included; a
+                        // history shorter than the screen cannot scroll at all.
+                        let furthest = max(-geometry.contentInsets.top,
+                                           geometry.contentSize.height + geometry.contentInsets.bottom
+                                               - geometry.containerSize.height)
+                        return Edge(distance: (furthest - geometry.contentOffset.y).rounded(),
+                                    height: geometry.contentSize.height.rounded())
+                    } action: { old, new in
+                        let grewUnderReader = new.height > old.height && old.distance <= Self.endSlack
+                        let atBottom = grewUnderReader || new.distance <= Self.endSlack
+                        if isAtBottom != atBottom { isAtBottom = atBottom }
+                    }
+            } else {
+                content.defaultScrollAnchor(.bottom)
+            }
+        }
+
+        /// Whether the scroll view answers for itself.
+        static var measures: Bool {
+            if #available(iOS 18.0, *) { return true }
+            return false
+        }
+    }
 
     private var dialog: Dialog? { model.chat }
+
+    /// Everything «seen» depends on, compared as one value so that a change in
+    /// any of them — a new message, a scroll, the scene, a call or a sheet over
+    /// the chat — asks the question again.
+    private struct SeenCondition: Equatable {
+        let messages: Int
+        let atBottom: Bool
+        let positioned: Bool
+        let active: Bool
+        let covered: Bool
+
+        var isSeen: Bool { atBottom && positioned && active && !covered }
+    }
+
+    private var seenCondition: SeenCondition {
+        SeenCondition(messages: dialog?.messages.count ?? 0,
+                      atBottom: isAtBottom,
+                      positioned: positioned,
+                      active: scenePhase == .active,
+                      covered: model.showsCall || model.sheet != nil)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -115,6 +207,9 @@ struct ChatScreen: View {
                         case .day(let title):
                             DaySeparator(title: title)
                                 .id(row.id)
+                        case .unread:
+                            UnreadDivider()
+                                .id(row.id)
                         case .message(let message):
                             MessageBubble(message: message, isOwn: dialog?.isOwn(message) == true)
                                 .id(message.id)
@@ -129,16 +224,94 @@ struct ChatScreen: View {
                         ReceiptHintCard { model.dismissReceiptHint() }
                             .padding(.top, 6)
                     }
+                    Color.clear
+                        .frame(height: 1)
+                        .id(Self.bottomId)
+                        .accessibilityHidden(true)
+                        .onAppear { if !HistoryScrolling.measures { isAtBottom = true } }
+                        .onDisappear { if !HistoryScrolling.measures { isAtBottom = false } }
                 }
                 .frame(maxWidth: .infinity, alignment: .bottom)
                 .padding(12)
             }
-            .defaultScrollAnchor(.bottom)
+            .modifier(HistoryScrolling(isAtBottom: $isAtBottom))
+            .overlay(alignment: .bottomTrailing) {
+                if !isAtBottom && model.chatUnseenCount > 0 {
+                    toNewButton(scroll)
+                }
+            }
+            .onAppear { position(scroll) }
+            // A new last message follows the reader down only when the reader
+            // is already at the bottom or wrote it: someone scrolled up to read
+            // is not pulled away, and the «↓» button says what came.
             .onChange(of: dialog?.messages.last?.id) { _, last in
-                guard let last else { return }
-                withAnimation { scroll.scrollTo(last, anchor: .bottom) }
+                guard last != nil, positioned else { return }
+                let own = dialog?.last.map { dialog?.isOwn($0) == true } ?? false
+                guard own || isAtBottom else { return }
+                withAnimation(reduceMotion ? nil : .default) {
+                    scroll.scrollTo(Self.bottomId, anchor: .bottom)
+                }
+            }
+            // One handler, so the order is fixed: a chat that is seen is marked
+            // seen; a chat the application comes back to without its bottom
+            // on the screen gains a divider over what arrived meanwhile.
+            .onChange(of: seenCondition, initial: true) { old, condition in
+                if condition.isSeen {
+                    model.markChatSeen()
+                } else if condition.active, !old.active {
+                    model.chatResumed()
+                }
             }
         }
+    }
+
+    /// Opens the chat at its «Новые сообщения» divider, or at the bottom when
+    /// there is none. With a divider the bottom counts as seen only after the
+    /// scroll has landed; without one the chat opens where it always did and
+    /// is positioned at once.
+    private func position(_ scroll: ScrollViewProxy) {
+        guard let divider = model.unreadDivider else {
+            positioned = true
+            return
+        }
+        positioned = false
+        if !HistoryScrolling.measures { isAtBottom = false }
+        scroll.scrollTo(TimelineRow.unreadId(divider), anchor: .top)
+        // One layout pass for the scroll to land and for the bottom marker to
+        // report where it ended up, before anything is taken as read.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            positioned = true
+        }
+    }
+
+    /// «↓»: back down to the newest message, with the number of new ones.
+    private func toNewButton(_ scroll: ScrollViewProxy) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .default) {
+                scroll.scrollTo(Self.bottomId, anchor: .bottom)
+            }
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .background(Color(.secondarySystemBackground), in: Circle())
+                    .shadow(radius: 2)
+                Text(Strings.Unread.badge(model.chatUnseenCount))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(Color.accentColor, in: Capsule())
+                    .offset(x: 4, y: -4)
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(12)
+        .accessibilityLabel(Strings.Unread.toNew)
+        .accessibilityValue(Strings.Unread.count(model.chatUnseenCount))
+        .accessibilityIdentifier("scroll-to-new")
     }
 
     /// The composer (`MainActivity.java:227-235,341-352`).

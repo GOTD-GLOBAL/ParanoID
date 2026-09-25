@@ -375,6 +375,15 @@ public final class SelfServiceClient {
         return text
     }
 
+    /// The conversations alone, in one read of the core — the new-message
+    /// baseline (`SeenMarks`). An empty state has none, and answers without a
+    /// core call.
+    public func publicDialogs() throws -> [[String: Any]] {
+        try healthy()
+        guard !state.isEmpty else { return [] }
+        return try view().object["dialogs"] as? [[String: Any]] ?? []
+    }
+
     /// Everything a screen may see: no private key, no state text
     /// (`SelfServiceClient.java:155-168`).
     public func publicView() throws -> [String: Any] {
