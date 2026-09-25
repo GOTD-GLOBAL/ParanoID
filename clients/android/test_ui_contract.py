@@ -2,6 +2,12 @@ import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
+    def test_alpha_notice_has_no_numeric_conversation_ceiling(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        self.assertIn('"ParanoID · "+version+"\\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."',ui)
+        for obsolete in ['До 200 сообщений', 'До 1000 сообщений']:
+            self.assertNotIn(obsolete,ui)
+
     def test_drawn_receipts_and_dismissible_hint_are_wired(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         self.assertIn('new ReceiptMark(this,last,colors.muted)',ui)
