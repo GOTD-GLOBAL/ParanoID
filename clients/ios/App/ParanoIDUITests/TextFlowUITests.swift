@@ -224,6 +224,46 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertTrue(fixture.titled(app, defaultTitle),
                       "an empty name did not restore the default title: " + Diagnosis.of(app))
         try fixture.shot("15-default-name")
+
+        // «Новые сообщения» (`SeenMarks`). A message that arrives while this
+        // chat is open at its bottom is seen at once, so back in «Чаты» its row
+        // counts nothing — the case a mark moved only on appear would miss.
+        func counted(_ label: String) -> Bool {
+            label.contains("новое сообщение") || label.contains("новых сообщени")
+        }
+        try fixture.ask("peer-send", fixture.seenText)
+        let seen = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", fixture.seenText)).firstMatch
+        XCTAssertTrue(seen.waitForExistence(timeout: Timeout.delivery),
+                      "the peer's message never reached the open chat: " + Diagnosis.of(app))
+        Thread.sleep(forTimeInterval: 1)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let conversation = app.descendants(matching: .any)["dialog-\(fixture.peerAccount)"]
+        app.buttons["tab-dialogs"].tap()
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { $0.contains(fixture.seenText) },
+                      "«Чаты» does not show the conversation: " + Diagnosis.of(app))
+        XCTAssertFalse(counted(conversation.label),
+                       "a message read in the open chat is still counted: \(conversation.label)")
+        try fixture.shot("16-seen-while-open")
+
+        // Two messages while «Чаты» is on the screen: the row says how many,
+        // the chat opens at «Новые сообщения», and leaving it clears the count.
+        for text in fixture.unseenTexts { try fixture.ask("peer-send", text) }
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.delivery) {
+            $0.contains("2 новых сообщения")
+        }, "the row does not count two new messages: \(conversation.label)")
+        try fixture.shot("17-unseen-row")
+        conversation.tap()
+        let divider = app.descendants(matching: .any)["unread-divider"]
+        XCTAssertTrue(divider.waitForExistence(timeout: Timeout.screen),
+                      "the chat has no «Новые сообщения» divider: " + Diagnosis.of(app))
+        XCTAssertEqual(divider.label, "Новые сообщения")
+        try fixture.shot("18-unseen-divider")
+        Thread.sleep(forTimeInterval: 1)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { !counted($0) },
+                      "the count outlived reading the chat: \(conversation.label)")
+        try fixture.shot("19-unseen-cleared")
         try fixture.note("flow", "complete")
     }
 
@@ -297,6 +337,10 @@ private struct Fixture {
     let firstText: String
     let replyText: String
     let doubleText: String
+    /// The peer's text that arrives while the chat is open at its bottom.
+    let seenText: String
+    /// The peer's two texts that arrive while «Чаты» is on the screen.
+    let unseenTexts: [String]
     let previousAccount: String?
 
     static func fromEnvironment() throws -> Fixture {
@@ -321,6 +365,9 @@ private struct Fixture {
             firstText: try XCTUnwrap(value("PARANOID_SIM_FIRST_TEXT")),
             replyText: try XCTUnwrap(value("PARANOID_SIM_REPLY_TEXT")),
             doubleText: try XCTUnwrap(value("PARANOID_SIM_DOUBLE_TEXT")),
+            seenText: try XCTUnwrap(value("PARANOID_SIM_SEEN_TEXT")),
+            unseenTexts: try XCTUnwrap(value("PARANOID_SIM_UNSEEN_TEXTS"))
+                .split(separator: ",").map(String.init),
             previousAccount: value("PARANOID_SIM_PREVIOUS_ACCOUNT"))
     }
 
@@ -370,6 +417,18 @@ private struct Fixture {
         XCTAssertTrue(value.allSatisfy { $0.isHexDigit && !$0.isUppercase },
                       "the \(what) is not lowercase hexadecimal")
         return value
+    }
+
+    /// Waits until `element` exists with a label that satisfies `accept`.
+    @MainActor
+    func wait(_ element: XCUIElement, timeout: TimeInterval = Timeout.commit,
+              until accept: (String) -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if element.exists, accept(element.label) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return false
     }
 
     /// Waits until `element` carries exactly `label`.

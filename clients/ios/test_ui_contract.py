@@ -422,6 +422,54 @@ class UiContract(unittest.TestCase):
         for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus'):
             self.absent(forbidden, rename, 'AppModel.rename(account:to:)')
 
+    def test_new_message_marks_stay_in_memory_and_off_the_wire(self):
+        # «Новые сообщения» (`SeenMarks`): which messages this run has not shown.
+        # The owner has not approved storing a per-conversation mark, so it may
+        # live in memory only, and nothing about reading may reach the core, the
+        # network or the peer (REQ-MSG-003).
+        marks_path = 'ParanoidKit/Sources/ParanoidKit/Presentation/SeenMarks.swift'
+        self.assertIn(marks_path, self.sources, 'SeenMarks.swift is missing')
+        marks = self.sources[marks_path]
+        for token in ('UserDefaults', 'FileManager', 'Keychain', 'LocalMetadataStore',
+                      'SnapshotStore', 'SelfServiceClient', 'StateOwner', 'URLSession',
+                      'write(to', '@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore'):
+            self.absent(token, marks, marks_path)
+        # No SwiftUI persistence anywhere could stand in for it instead.
+        for name, text in self.sources.items():
+            for token in ('@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore'):
+                self.absent(token, text, name)
+
+        model = self.sources[MODEL]
+        section = model[model.index('    // MARK: - new messages'):
+                        model.index('    /// When the last message of a conversation happened')]
+        for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus',
+                          'UserDefaults', 'FileManager', 'callLog.record', 'contactNames.rename'):
+            self.absent(forbidden, section, 'AppModel, new messages')
+        self.present('seenMarks.markSeen(chat)', section, 'AppModel.markChatSeen()')
+        # The baseline is read before a lane or a lifecycle notification exists.
+        # Only the dialogs are read, so a device with no identity yet — where
+        # contactText() throws — still gets a baseline and counts what arrives.
+        self.before('seenBaseline = (try? client.publicView()).map { ClientView.decode($0).dialogs }',
+                    'let owner = StateOwner(client: client', model, MODEL)
+        self.absent('seenBaseline = (try? ClientView.read(client))', model, MODEL)
+
+        # Seen means the bottom was on the screen, positioned, active and
+        # uncovered — asked again on every change, not once on appear.
+        chat = self.sources[CHAT]
+        self.present('var isSeen: Bool { atBottom && positioned && active && !covered }', chat, CHAT)
+        self.present('.onChange(of: seenCondition, initial: true)', chat, CHAT)
+        self.present('if condition.isSeen { model.markChatSeen() }', chat, CHAT)
+        # The history no longer drags a reader who scrolled up to the bottom.
+        self.absent('withAnimation { scroll.scrollTo(last, anchor: .bottom) }', chat, CHAT)
+        self.present('guard own || isAtBottom else { return }', chat, CHAT)
+
+        # The divider's caption is a literal of its own, not a fragment of the
+        # blocked-contact sentence that also begins «Новые сообщения».
+        self.assertIn('Новые сообщения', self.literals, 'the divider caption is not its own literal')
+        unread = self.sources['App/ParanoID/Strings.swift']
+        unread = unread[unread.index('    enum Unread {'):unread.index('    // MARK: - connection')]
+        self.absent('рочит', unread, 'Strings.Unread')
+
     # ------------------------------------------------------------------
     # The call (`MainActivity.java:361-441,443-545`, `docs/protocol/call-v2.md`)
 

@@ -41,7 +41,8 @@ struct DialogsScreen: View {
                                         title: model.title(for: dialog.account),
                                         subtitle: model.preview(for: dialog) ?? Self.preview(dialog),
                                         time: model.listTime(for: dialog),
-                                        trailing: Self.trailing(dialog))
+                                        trailing: Self.trailing(dialog),
+                                        unseen: model.unseenCount(for: dialog))
                         .contentShape(Rectangle())
                         .onTapGesture { model.openChat(dialog.account) }
                     }
@@ -94,6 +95,9 @@ struct ConversationRow: View {
     /// for untimed history or a call preview (`AppModel.listTime(for:)`).
     var time: String = ""
     let trailing: Trailing
+    /// How many messages of the peer this run has not shown yet (`SeenMarks`).
+    /// «Контакты» leaves it at zero.
+    var unseen: Int = 0
 
     var body: some View {
         HStack(spacing: 12) {
@@ -105,7 +109,7 @@ struct ConversationRow: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: unseen > 0 ? .bold : .semibold))
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.system(size: 15))
@@ -119,9 +123,22 @@ struct ConversationRow: View {
                     Text(time)
                         .font(.system(size: 12))
                         .monospacedDigit()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(unseen > 0 ? Color.accentColor : Color.secondary)
                 }
-                trailingView
+                HStack(spacing: 6) {
+                    if unseen > 0 {
+                        Text(Strings.Unread.badge(unseen))
+                            .font(.system(size: 13, weight: .semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .frame(minWidth: 22, minHeight: 22)
+                            .background(Color.accentColor, in: Capsule())
+                            .accessibilityLabel(Strings.Unread.count(unseen))
+                            .accessibilityIdentifier("dialog-unseen")
+                    }
+                    trailingView
+                }
             }
         }
         .padding(.vertical, 12)

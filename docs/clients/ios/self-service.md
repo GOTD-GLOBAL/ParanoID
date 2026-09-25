@@ -302,6 +302,24 @@ task and hands the finished answer back through `perform`.
   retires that sentence for good (`ReceiptHint`, a flag in this application's
   own defaults). The [Android presentation candidate](../android/receipt-presentation.md)
   uses the same drawn-state and one-time-hint semantics; wording stays identical.
+- **New messages.** A row of «Чаты» counts the peer's messages this run of the
+  application has not shown yet, the open chat draws «Новые сообщения» over
+  the first of them, and a «↓» button with the count appears when new messages
+  arrive while the reader is scrolled up (`SeenMarks`). The baseline is every
+  conversation as the state stood when the runtime was built, before a lane or
+  a lifecycle notification could exist; what arrives after it counts, and a
+  conversation that appears later counts from its first message. Own messages
+  and call rows never count. A chat is seen when the bottom of its history is
+  on the screen, the application is active and no call screen or sheet covers
+  it, and that is asked again on every change, including a message arriving
+  while the chat is open. The mark is a position in the history, never a
+  message identifier, which the sender chooses. **It lives in memory only**:
+  nothing is written to a file, to defaults or to the snapshot, and nothing
+  reaches the core's commit path, the server or the peer — reading is never
+  reported (REQ-MSG-003). What a relaunch loses is exactly that: a message
+  received in an earlier run and never opened is not counted in the next one.
+  Persisting the mark across launches is new stored metadata and waits for an
+  owner decision (see [local metadata at rest](#local-names-and-call-log-at-rest)).
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or

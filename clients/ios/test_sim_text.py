@@ -92,13 +92,18 @@ SUITE = 'ParanoIDUITests/TextFlowUITests'
 SCENARIOS = {'text': SUITE + '/testTextFlowOnTheLocalStand',
              'reinstall': SUITE + '/testReinstallStartsANewIdentity'}
 
-# The three texts this run sends. They are synthetic identifiers rather than
+# The texts this run sends. They are synthetic identifiers rather than
 # UI strings: they are typed on a simulator keyboard, and they are what the
 # `psql` scan looks for in every column of the cluster, so they stay ASCII and
 # stay free of the characters a SQL literal cannot hold.
 FIRST = 'sim-text-first-message'
 REPLY = 'sim-text-peer-reply'
 DOUBLE = 'sim-text-double-tap'
+# «Новые сообщения» (`SeenMarks`): one text the peer sends while the chat is open
+# at its bottom — seen at once — and two it sends while «Чаты» is on screen.
+SEEN = 'sim-text-seen-while-open'
+UNSEEN = ('sim-text-unseen-one', 'sim-text-unseen-two')
+PEER_TEXTS = (REPLY, SEEN) + UNSEEN
 
 ACCOUNT = re.compile(r'\A[0-9a-f]{64}\Z')
 # How long one `xcodebuild test-without-building` may take. How long the test
@@ -478,6 +483,9 @@ CHECKS = {
         '«Заблокировать контакт» disables the composer and «Разблокировать контакт» restores it',
         '«Переименовать» names the contact on this phone only: the local name replaces the '
         'default label and an empty field restores it',
+        '«Новые сообщения»: a message that arrives while the chat is open at its bottom is not '
+        'counted; two that arrive while «Чаты» is on screen show «2 новых сообщения» on the row, '
+        'the chat opens with the «Новые сообщения» divider, and leaving it clears the count',
     ],
     'reinstall': [
         'xcrun simctl uninstall leaves the Keychain item and takes the container: the next launch '
@@ -551,6 +559,8 @@ def run(args):
                 'PARANOID_SIM_FIRST_TEXT': FIRST,
                 'PARANOID_SIM_REPLY_TEXT': REPLY,
                 'PARANOID_SIM_DOUBLE_TEXT': DOUBLE,
+                'PARANOID_SIM_SEEN_TEXT': SEEN,
+                'PARANOID_SIM_UNSEEN_TEXTS': ','.join(UNSEEN),
             }
             shots = []
             notes = {}
@@ -597,11 +607,12 @@ def run(args):
             history = peer.history()
             texts = [message['text'] for message in history]
             rows = database.messages()
-            plaintext = sum(database.rows_carrying(text) for text in (FIRST, REPLY, DOUBLE))
+            plaintext = sum(database.rows_carrying(text) for text in (FIRST, DOUBLE) + PEER_TEXTS)
             require(texts.count(FIRST) == 1, f'the peer holds {texts.count(FIRST)} first messages')
             require(texts.count(DOUBLE) == 1,
                     f'a double tap reached the peer {texts.count(DOUBLE)} times')
-            require(texts.count(REPLY) == 1, 'the peer does not hold its own reply once')
+            for text in PEER_TEXTS:
+                require(texts.count(text) == 1, f'the peer does not hold its own {text!r} once')
             require(plaintext == 0, f'{plaintext} rows of the cluster carry a plaintext of this run')
 
             payload = {
@@ -619,7 +630,7 @@ def run(args):
                          'session': peer_facts['session']['issued'],
                          'contact_bytes': len(peer.contact)},
                 'messages': {'sent_by_application': 2,
-                             'sent_by_peer': 1,
+                             'sent_by_peer': len(PEER_TEXTS),
                              'copies_of_the_double_tap': texts.count(DOUBLE),
                              'peer_history': len(history)},
                 'server_state': {'stored_envelopes': len(rows),

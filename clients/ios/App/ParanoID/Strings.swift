@@ -293,6 +293,33 @@ enum Strings {
         static let cancel = "Отмена"
     }
 
+    // MARK: - new messages (`SeenMarks`)
+
+    /// «Новые сообщения»: which messages this run has not shown yet. A screen
+    /// element Android does not have, so the words are this client's own and
+    /// the owner's to approve. None of them says "read": the peer is never told
+    /// anything about reading, and two marks mean delivered (REQ-MSG-003).
+    enum Unread {
+        /// The divider over the first new message of an open chat.
+        static let divider = "Новые сообщения"
+        /// The «↓» button's label.
+        static let toNew = "К новым сообщениям"
+
+        /// The number on a row of «Чаты» and on the «↓» button.
+        static func badge(_ count: Int) -> String { count > 99 ? "99+" : String(count) }
+
+        /// The same number in words, for VoiceOver, agreeing with it:
+        /// 1 and 21 but not 11, then 2-4 and 22-24 but not 12-14, then the rest.
+        static func count(_ count: Int) -> String {
+            let (ones, tens) = (count % 10, count % 100)
+            if ones == 1, tens != 11 { return "\(count) новое сообщение" }
+            if (2...4).contains(ones), !(12...14).contains(tens) {
+                return "\(count) новых сообщения"
+            }
+            return "\(count) новых сообщений"
+        }
+    }
+
     // MARK: - connection (`MainActivity.java:517-520` and the mock-up)
 
     enum Connection {

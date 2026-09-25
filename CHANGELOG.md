@@ -8,6 +8,22 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS new-message marks — 2026-09-26
+
+- A row of «Чаты» counts the peer's messages this run has not shown yet and
+  sets the title in bold; the open chat draws «Новые сообщения» over the first
+  of them and opens there; a «↓» button with the count appears when messages
+  arrive while the reader is scrolled up; the history no longer drags a reader
+  who scrolled up down to every new message.
+- The marks live in memory only for the current run: no file, no defaults, no
+  snapshot, and nothing about reading reaches the server or the peer
+  (REQ-MSG-003). A message received in an earlier run and never opened is not
+  counted after a relaunch; persisting the mark waits for an owner decision.
+- Covered by `SeenMarksTests` (10, RED on a stub), `UnreadTimelineTests` (7),
+  a new UI-contract check that the marks stay in memory and off the wire, and
+  four new steps of the simulator text flow, including a message that arrives
+  while the chat is open. Android is unchanged.
+
 ### iOS captions that stopped being true — 2026-09-23
 
 - «Мой ID» no longer states a numeric conversation limit. #45 removed the

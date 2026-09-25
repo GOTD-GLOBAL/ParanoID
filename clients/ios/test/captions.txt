@@ -223,6 +223,13 @@ MessagePresentation.java "Перезвонить"
 
 # --- ContactFlowError.swift — the refusal shown inside the scanner or the paste sheet
 ios "Понятно"
+# «Новые сообщения» (SeenMarks): a screen element Android does not have yet;
+# the words are this client's own and the owner's to approve.
+ios "Новые сообщения"
+ios "К новым сообщениям"
+ios " новое сообщение"
+ios " новых сообщения"
+ios " новых сообщений"
 ios "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID»."
 ios "Это ваш собственный контакт."
 ios "Контакт уже добавлен."

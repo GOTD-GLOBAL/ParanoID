@@ -71,6 +71,9 @@ the shared [core contract](../core/self-service.md) and
 - No background delivery, no push, no CallKit: incoming messages and calls
   arrive only while the application is open. The connection screen states
   this in full; the chat list shows the short hint.
+- New-message counts and the «Новые сообщения» divider exist on iOS only, and
+  in memory only for the current run ([text and the lanes](self-service.md#text-receipts-and-the-lanes)).
+  Android has no such markers yet.
 - Reinstalling remains a proposed clean-install distinction using install.v1.
   Missing marker with a surviving file freezes before key deletion. With the
   marker present, key/file XOR always freezes; no pending defaults flag excuses

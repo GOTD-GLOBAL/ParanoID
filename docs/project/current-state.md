@@ -7,6 +7,20 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Current project state
 
+## iOS new-message marks, in memory only — 2026-09-26
+
+At Yaroslav's request the iOS client counts new messages: a row of «Чаты»
+shows how many messages of the peer this run has not shown, the chat opens at
+a «Новые сообщения» divider, and a «↓» button leads down to them. The marks
+live in memory for the current run and reach no file, no defaults, no
+snapshot, no server and no peer; REQ-MSG-003 is unchanged — two marks mean
+delivered, never read. Persisting the mark across launches is new stored
+metadata and is deferred to the owner (RFC-0024 scope or a new RFC). Android
+has no such markers yet; parity is a separate request. Evidence: ParanoidKit
+375/0, app 98/0, the stand-backed simulator text flow with four new steps, and
+two mutation checks recorded in the PR. No physical-phone run is claimed.
+[Rule and limits](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
 ## PR54 closure preparation — 2026-09-22
 
 Sergey reports that nickname registration now works and requests completion of
