@@ -135,7 +135,6 @@ struct ConversationRow: View {
                             .frame(minWidth: 22, minHeight: 22)
                             .background(Color.accentColor, in: Capsule())
                             .accessibilityLabel(Strings.Unread.count(unseen))
-                            .accessibilityIdentifier("dialog-unseen")
                     }
                     trailingView
                 }

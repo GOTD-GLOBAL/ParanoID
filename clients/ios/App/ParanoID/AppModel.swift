@@ -19,8 +19,10 @@ import WebRTC
 /// One `Runtime`, built once at launch: the snapshot store over the Keychain
 /// key, the `SelfServiceClient`, the state owner, the pinned transport, the
 /// two realtime lanes and the lifecycle runner that starts and stops them.
-/// Nothing here opens a connection itself; nothing here touches the core
-/// except through `StateOwner.perform`.
+/// Nothing here opens a connection itself. Before the owner exists, opening
+/// the client validates the saved state and `Runtime` reads the new-message
+/// baseline once; after that nothing here touches the core except through
+/// `StateOwner.perform`.
 ///
 /// ## The two guards
 ///
@@ -298,7 +300,7 @@ final class AppModel {
                 client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             }
             let built = try Runtime(client: client, model: self)
-            seenMarks = built.seenBaseline.map { SeenMarks(opening: $0) } ?? SeenMarks()
+            seenMarks = built.seenBaseline
             // No migration until stand, continuity and runtime construction succeeded.
             // Every noStand/frozen early exit leaves both stores in-memory only.
             loadLocalMetadataOnce()
@@ -1344,9 +1346,9 @@ final class AppModel {
         /// The call machinery: the controller, the TURN lane, the media engine
         /// and the audio session, all on the owner.
         let calls: CallCoordinator
-        /// The conversations as the state stood before anything started, or
-        /// `nil` when they could not be read (`SeenMarks`).
-        let seenBaseline: [Dialog]?
+        /// How far each conversation went before anything started
+        /// (`SeenMarks`); inactive when the read failed.
+        let seenBaseline: SeenMarks
 
         /// - Parameters:
         ///   - client: the state adapter, handed over for good. It is
@@ -1361,11 +1363,14 @@ final class AppModel {
             // run found it. It is read here, while the client still has one
             // caller and before a lane or a lifecycle notification can exist,
             // so nothing a lane fetches can slip into the baseline and be taken
-            // for seen. Only the dialogs are read: `contactText()` throws on a
-            // device with no identity yet, and a fresh install must still count
-            // what arrives after it registers. A failed read leaves no baseline,
-            // which counts nothing.
-            seenBaseline = (try? client.publicView()).map { ClientView.decode($0).dialogs }
+            // for seen — the one read of the core besides opening the client
+            // that happens before the owner does. It is one `view`, and on a
+            // fresh install with no state file it is no core call at all, so a
+            // new identity still counts what arrives after it registers. Only
+            // the counts are kept, not the messages. A failed read leaves no
+            // baseline, which counts nothing.
+            seenBaseline = (try? client.publicDialogs())
+                .map { SeenMarks(opening: $0.compactMap(Dialog.decode)) } ?? SeenMarks()
             let transport = try RealtimeTransport(realm: trust.realm, pin: trust.pin)
             let signal = WakeSignal()
             let owner = StateOwner(client: client, hook: signal)

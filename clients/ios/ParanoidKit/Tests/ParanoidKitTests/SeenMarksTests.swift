@@ -109,8 +109,12 @@ final class SeenMarksTests: XCTestCase {
         XCTAssertEqual(marks.firstUnseenIndex(after), 1)
     }
 
-    func testTwoDialogsWithOneAccountAtLaunchDoNotTrap() {
-        let marks = SeenMarks(opening: [dialog([incoming("a")]), dialog([incoming("a"), incoming("b")])])
-        XCTAssertEqual(marks.unseenCount(dialog([incoming("a"), incoming("b"), incoming("c")])), 1)
+    func testTwoDialogsWithOneAccountAtLaunchKeepTheLongerInEitherOrder() {
+        let shorter = dialog([incoming("a")])
+        let longer = dialog([incoming("a"), incoming("b")])
+        let three = dialog([incoming("a"), incoming("b"), incoming("c")])
+        XCTAssertEqual(SeenMarks(opening: [shorter, longer]).unseenCount(three), 1)
+        XCTAssertEqual(SeenMarks(opening: [longer, shorter]).unseenCount(three), 1,
+                       "neither the first nor the last read may win over the longer one")
     }
 }

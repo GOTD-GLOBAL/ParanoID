@@ -100,10 +100,12 @@ FIRST = 'sim-text-first-message'
 REPLY = 'sim-text-peer-reply'
 DOUBLE = 'sim-text-double-tap'
 # «Новые сообщения» (`SeenMarks`): one text the peer sends while the chat is open
-# at its bottom — seen at once — and two it sends while «Чаты» is on screen.
+# at its bottom — seen at once — twelve it sends while «Чаты» is on screen, more
+# than one screen of history, and one while the reader is scrolled up.
 SEEN = 'sim-text-seen-while-open'
-UNSEEN = ('sim-text-unseen-one', 'sim-text-unseen-two')
-PEER_TEXTS = (REPLY, SEEN) + UNSEEN
+UNSEEN = tuple(f'sim-text-unseen-{n:02d}' for n in range(1, 13))
+DRAG = 'sim-text-while-scrolled-up'
+PEER_TEXTS = (REPLY, SEEN) + UNSEEN + (DRAG,)
 
 ACCOUNT = re.compile(r'\A[0-9a-f]{64}\Z')
 # How long one `xcodebuild test-without-building` may take. How long the test
@@ -484,8 +486,11 @@ CHECKS = {
         '«Переименовать» names the contact on this phone only: the local name replaces the '
         'default label and an empty field restores it',
         '«Новые сообщения»: a message that arrives while the chat is open at its bottom is not '
-        'counted; two that arrive while «Чаты» is on screen show «2 новых сообщения» on the row, '
-        'the chat opens with the «Новые сообщения» divider, and leaving it clears the count',
+        'counted; twelve that arrive while «Чаты» is on screen show «12 новых сообщений» on the '
+        'row; the chat opens with the «Новые сообщения» divider on the screen and the newest '
+        'message below it, «↓» leads down and the count clears after the bottom was shown; a '
+        'message that arrives while the reader is scrolled up leaves the history where it is and '
+        'brings up «↓»',
     ],
     'reinstall': [
         'xcrun simctl uninstall leaves the Keychain item and takes the container: the next launch '
@@ -561,6 +566,7 @@ def run(args):
                 'PARANOID_SIM_DOUBLE_TEXT': DOUBLE,
                 'PARANOID_SIM_SEEN_TEXT': SEEN,
                 'PARANOID_SIM_UNSEEN_TEXTS': ','.join(UNSEEN),
+                'PARANOID_SIM_DRAG_TEXT': DRAG,
             }
             shots = []
             notes = {}
