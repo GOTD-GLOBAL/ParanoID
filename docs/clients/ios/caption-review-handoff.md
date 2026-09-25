@@ -86,7 +86,10 @@ for the owner's decision. No server deployment is needed by this iOS-only diff.
 Installing/distributing an iOS build is separate from merging source into `main`.
 Rollback is a reviewed revert; no data migration is involved.
 
-After #55 merges, the separate Android follow-up removes its stale numeric
-sentence and restores the shared line's `MainActivity.java` origin in
-`clients/ios/test/captions.txt`; run both UI contracts. Do not edit Android in
-this iOS PR or expand its component-boundary allowlist.
+The separate Android follow-up from main after #55/#56 removes the stale
+numeric sentence and restores the shared line's `MainActivity.java` origin in
+`clients/ios/test/captions.txt`. Both UI contracts guard the shared wording;
+a dedicated Android assertion rejects either retired numeric promise. This is
+a source change, not an APK release. Core budgets and RFC-0022 are unchanged.
+The Android edit lives outside the original iOS PR; its component-boundary
+allowlist is not expanded.

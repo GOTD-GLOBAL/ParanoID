@@ -8,13 +8,22 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android alpha caption follow-up
+
+- Remove the stale «До 200 сообщений в диалоге.» sentence from «Мой ID» →
+  «Приложение», without substituting another number. Restore the shared iOS
+  caption's `MainActivity.java` origin and guard against both retired numeric
+  promises. Core budgets and RFC-0022 are unchanged. Source-only preparation;
+  users receive the wording with a separately authorized Android release.
+
 ### iOS captions that stopped being true — 2026-09-23
 
 - «Мой ID» no longer states a numeric conversation limit. #45 removed the
   200-entry history ceiling; independent receipt/replay budgets do not imply
   a 1000-total-message ceiling either. Core budgets are unchanged; their future
-  remains a separate RFC-0022 decision. Android still shows «До 200» and will
-  remove the sentence in a separate follow-up before sharing this caption again.
+  remains a separate RFC-0022 decision. The Android follow-up above now removes
+  its stale sentence and restores the shared caption contract; no APK publication
+  is implied by either source change.
 - «Подключение» asks users to keep the app open for incoming calls and warns
   that a missed-call row may be absent after reopening. It promises neither
   durable missed-call history nor unconditional absence: retained readiness
