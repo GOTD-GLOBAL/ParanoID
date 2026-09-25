@@ -45,6 +45,13 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0027: Content-free iOS background delivery through APNs](0027-ios-background-delivery.md)
+  (draft): a constant, content-free APNs alert wake as a second provider of the
+  RFC-0020 gateway, then a read-only notification service extension with
+  CallKit; Apple becomes an observer of the recipient device and wake timing;
+  [threat delta](../security/ios-push-threats.md). Owner decisions, RFC-0020
+  disposition and Apple team custody are open; nothing is implemented.
+
 - [RFC-0026: Fresh Solana Devnet nickname registration](0026-solana-devnet-registration.md)
   (draft): owner-requested fresh test identities, minimal registry, Android
   registration and actual chain-state verification; no legacy migration gate.
