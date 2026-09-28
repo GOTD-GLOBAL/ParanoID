@@ -1,10 +1,10 @@
 ---
-status: draft
+status: proposed
 owner: identity
 decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 required_reviewers: []
-last_reviewed: 2026-09-24
+last_reviewed: 2026-09-28
 ---
 
 # ADR-0016: Proposed Devnet server identity authentication
@@ -46,8 +46,27 @@ no availability guarantee under attack. Non-local self-admission policy and thes
 risks require explicit owner disposition; no public rollout follows local tests.
 Banned memberships retain reserved slots. Ban lifecycle is fixture-only here.
 
-Status remains draft. No approval date, URL or accepted marker is fabricated.
-Permanent owner scope/decision evidence is pending. REQ-ID-006 scoped reconciliation
+## Owner disposition record (2026-09-28)
+
+Decision owner `martadvix-web` approved on GitHub, PR #60:
+<https://github.com/GOTD-GLOBAL/ParanoID/pull/60#issuecomment-5874285958>
+(2026-09-28T16:32:02Z). Exact text:
+
+> Как decision owner принимаю ADR-0016 для закрытой альфы на Devnet в локальном
+> режиме, только с тестовыми данными: вход на сервер тем же Solana ID; при
+> восстановлении на новом телефоне старый отключается; история и контакты при
+> этом не переносятся. Ограничения: 128 участников, до 8 смен телефона на
+> человека, не чаще одной смены в сутки. Публичный режим, Mainnet и
+> развёртывание этим решением не разрешаются.
+
+Covered: login with the same Devnet identity, single-device replacement, no
+history/contact transfer, the 128/8/one-per-day limits, local test data only; no
+public mode, Mainnet or deployment. NOT yet covered by that text, so status is
+`proposed`, not `accepted`: the REQ-ID-006 conflict (the local profile admits any
+finalized Devnet registry owner, i.e. key possession grants admission), the Sybil
+and availability risks above, RPC trust, inter-server correlation and takeover by
+a compromised old device holding the seed. Acceptance also needs AUTH-06/07
+evidence for delivered behavior. No accepted marker is fabricated. REQ-ID-006 scoped reconciliation
 and all limits above must be included in that disposition. Fresh independent
 Opus5.5 technical review must close blockers; AUTH-01..08 and code/artifact review
 must precede relevant delivery claims. Policy ADR0003 is not application approval.
