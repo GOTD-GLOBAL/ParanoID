@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-29
 ---
 
 # iOS client documentation (candidate, RFC-0021)
@@ -85,6 +85,11 @@ the shared [core contract](../core/self-service.md) and
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,
   answered by the owner's agents in
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)).
+- «Чаты» is ordered by the time stamped on each conversation's last message,
+  newest first, and a missed call in a row's preview is red ([self-service.md](self-service.md#text-receipts-and-the-lanes)).
+  Android keeps the core's account order and draws the line muted; the same
+  request stands for Android. A call moves no chat on either: the call log
+  keeps no time.
 - Screen capture: Android's `FLAG_SECURE` has no iOS equivalent. This client
   covers the video stage while the screen is recorded, mirrored or AirPlayed
   and leaves the controls reachable; a screenshot and the app-switcher snapshot

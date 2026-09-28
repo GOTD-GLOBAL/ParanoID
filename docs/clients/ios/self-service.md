@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-29
 ---
 
 # iOS client: storage, registration, contacts and text
@@ -292,6 +292,22 @@ task and hands the finished answer back through `perform`.
   row (the time today, «Вчера», then `12.09`). The core stores it and never
   sends it; an entry written before this build has none and is shown without one
   ([RFC-0023](../../rfcs/0023-message-time.md), proposed).
+- **The list.** «Чаты» is ordered by the time stamped on each conversation's
+  last message, newest first — the same local instant the bubble shows, and a
+  fourth client-only reading of it (RFC-0023 lists the bubble, the day pill
+  and the row date). That is the conversation with the newest message
+  whenever this phone's clock ran forward between messages; a clock set back
+  leaves the later message with the smaller stamp, and the list follows the
+  stamp, as the bubble does. Conversations with no messages, or whose last
+  entry was written by a build that kept no time, follow in the core's order;
+  nothing invents a time for them. A call moves no conversation: the call log
+  keeps no wall-clock time (`CallRecord`, RFC-0023 «Privacy»), so a chat whose
+  last event is a call stands where its last message puts it. When the row's
+  preview is a missed call it is drawn in red (`DialogOrder`,
+  `AppModel.isMissedCallPreview`). «Контакты» keeps the core's order. Both
+  lists' rows are buttons that show a grey fill while pressed. Android keeps
+  the core's order and draws the missed line muted; the same request stands
+  for it.
 - **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
   anywhere in this client (REQ-MSG-003). The three states are drawn

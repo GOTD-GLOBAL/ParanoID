@@ -722,12 +722,30 @@ final class AppModel {
     /// The preview of one conversation row: the last call when it is newer than
     /// the last message, and the last message otherwise.
     func preview(for dialog: Dialog) -> String? {
-        guard let call = callLog.records(for: dialog.account).last else { return nil }
-        // A call recorded after the newest message is what the row should say;
-        // an older one stays in the chat and out of the list.
-        guard call.afterMessageId == dialog.last?.id else { return nil }
+        guard let call = previewedCall(for: dialog) else { return nil }
         return Strings.CallRow.line(kind: call.kind, video: call.video,
                                     seconds: call.durationSeconds)
+    }
+
+    /// Whether the row's preview is a missed call, which the list draws in red.
+    func isMissedCallPreview(for dialog: Dialog) -> Bool {
+        previewedCall(for: dialog)?.kind.isMissed == true
+    }
+
+    /// The call the row shows instead of the last message, or `nil`: the last
+    /// call of the conversation, when it was recorded after the newest message
+    /// — an older one stays in the chat and out of the list.
+    private func previewedCall(for dialog: Dialog) -> CallRecord? {
+        guard let call = callLog.records(for: dialog.account).last,
+              call.afterMessageId == dialog.last?.id else { return nil }
+        return call
+    }
+
+    /// «Чаты» in the order a person reads them: the conversation with the
+    /// newest message first (`DialogOrder.byRecency`). «Контакты» keeps the
+    /// core's order.
+    var orderedDialogs: [Dialog] {
+        DialogOrder.byRecency(view.dialogs)
     }
 
     /// Whether the open conversation shows the sentence about the second mark.
