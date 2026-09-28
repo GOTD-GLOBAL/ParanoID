@@ -250,22 +250,54 @@ final class PresentationTests: XCTestCase {
                        .notAContact)
         XCTAssertEqual(ContactFlowError.classify(CoreError.rejected("qr_limit")), .notAContact)
         XCTAssertEqual(ContactFlowError.classify(CoreError.rejected("peer_already_pinned")),
-                       .alreadyAdded)
+                       .otherKeys)
         XCTAssertEqual(ContactFlowError.classify(CoreError.rejected("contact_limit")),
-                       .refused("contact_limit"))
+                       .contactLimit)
+        XCTAssertEqual(ContactFlowError.classify(CoreError.rejected("local_state_full")),
+                       .stateFull)
+        XCTAssertEqual(ContactFlowError.classify(CoreError.rejected("contact_binding_mismatch")),
+                       .otherServer)
+        // `pair_contact_v2` is always sent verified (`AppModel.pairPendingContact`),
+        // so its `peer_not_verified` means the enrollment is missing
+        // (`clean_service.rs:870-871`), as `prepare_contact_first` does for a
+        // registration that has not prepared this device's contact yet.
+        for code in ["peer_not_verified", "prepare_contact_first", "registration_required"] {
+            XCTAssertEqual(ContactFlowError.classify(CoreError.rejected(code)), .notRegistered, code)
+        }
         XCTAssertEqual(ContactFlowError.classify(ContactFlowError.ownContact), .ownContact)
 
         XCTAssertEqual(ContactFlowError.notAContact.message,
                        "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID».")
         XCTAssertEqual(ContactFlowError.ownContact.message, "Это ваш собственный контакт.")
-        XCTAssertEqual(ContactFlowError.alreadyAdded.message, "Контакт уже добавлен.")
-        XCTAssertEqual(ContactFlowError.refused("contact_limit").message,
-                       "Не удалось добавить контакт (contact_limit).")
+        XCTAssertEqual(ContactFlowError.refused("unverified_contact_limit").message,
+                       "Не удалось добавить контакт (unverified_contact_limit).")
+    }
+
+    /// `peer_already_pinned` is not "this contact is already there": the same
+    /// QR again is accepted (`clean_service.rs:355-362`). It is an account
+    /// that is already in the list with **other keys**, and the saved contact
+    /// is left as it was (`SendRefusalTests`).
+    func testTheSameAccountWithOtherKeysIsNotCalledAlreadyAdded() {
+        let message = ContactFlowError.classify(CoreError.rejected("peer_already_pinned")).message
+        XCTAssertNotEqual(message, "Контакт уже добавлен.")
+        XCTAssertTrue(message.contains("другими ключами"), message)
+        XCTAssertTrue(message.contains("не изменён"), message)
+    }
+
+    /// A refusal a user can do something about is a sentence, not a code.
+    func testNamedContactRefusalsCarryNoRawCode() {
+        for code in ["peer_already_pinned", "contact_limit", "local_state_full",
+                     "peer_not_verified", "prepare_contact_first", "registration_required",
+                     "contact_binding_mismatch"] {
+            let message = ContactFlowError.classify(CoreError.rejected(code)).message
+            XCTAssertFalse(message.contains("("), "\(code): \(message)")
+            XCTAssertFalse(message.contains("_"), "\(code): \(message)")
+        }
+        XCTAssertFalse(ContactFlowError.classify(CoreError.nativeFailure).message.contains("_"))
     }
 
     func testAFailureThatIsNotTheContactsFaultIsNotReportedAsABadQr() {
-        XCTAssertEqual(ContactFlowError.classify(CoreError.nativeFailure),
-                       .refused("native_failure"))
+        XCTAssertEqual(ContactFlowError.classify(CoreError.nativeFailure), .internalFailure)
         XCTAssertEqual(ContactFlowError.classify(SelfServiceError.frozen),
                        .refused("local state frozen"))
     }

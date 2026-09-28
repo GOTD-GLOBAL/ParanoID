@@ -7,6 +7,22 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Current project state
 
+## iOS refusals named where they happen — 2026-09-28
+
+The iOS client names a refused send above the composer and a refused contact
+inside its alert, with the reason the core gave, instead of returning the text
+silently and publishing one sentence to a sheet the chat cannot open. The
+untrue «Контакт уже добавлен.» for `peer_already_pinned` is replaced by a
+statement that the account is already saved with other keys and that the saved
+contact is unchanged. Nothing is persisted; core, server and protocol are
+unchanged. The wording is proposed, awaits the owner and carries the `ios`
+caption origin until Android names the same refusals. Evidence is contributor
+Mac execution on the host and a simulator, recorded in the
+[receipt](evidence/ios-client-20260928/honest-refusals-mac.md); a physical phone
+is not run. Refused incoming events, the status line and 507/409 wording are the
+next part and are not in this change.
+[Rule and limits](../clients/ios/self-service.md#contacts-and-qr).
+
 ## PR54 closure preparation — 2026-09-22
 
 Sergey reports that nickname registration now works and requests completion of

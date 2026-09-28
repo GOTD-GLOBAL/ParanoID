@@ -264,6 +264,19 @@ signature; a contact with the same account or the same curve key as self is
 refused. Block is orthogonal to trust: pins and history are preserved and the
 same channel resumes on unblock.
 
+A refused contact is named inside the sheet it happened in
+(`ContactFlowError`), never as a bare code when the reason is known. The same
+QR scanned again is not a refusal: it only raises the trust of the saved
+contact. `peer_already_pinned` is a **different** contact of an account that
+is already in the list — the same identity with other keys — and the alert
+says so: «Этот аккаунт уже есть в контактах с другими ключами. Сохранённый
+контакт не изменён: сообщения по-прежнему шифруются для прежних ключей.» The
+core refuses it before anything changes, so the saved contact, its channel and
+its history stay as they were. The contact-limit, state-size,
+unfinished-registration and other-server refusals have sentences of their own;
+anything else keeps «Не удалось добавить контакт (код).» Android shows one
+generic status line for all of them.
+
 ## Text, receipts and the lanes
 
 `StateOwner` is an actor on one serial queue holding the client, every bridge
@@ -286,6 +299,19 @@ task and hands the finished answer back through `perform`.
   before the delivery mark it produces is published. A 409 or a 507 defers that
   envelope and lets the rest of the batch go out; any other status ends the
   pass at once. An idle lane waits on a wake signal instead of polling.
+- **Refused text.** `send_v2` refuses before it commits anything, so a
+  refused text is never in the conversation or the outbox. The text goes back
+  into the field (unless something else was typed there meanwhile) and the
+  line above the composer names the reason, in red, and VoiceOver reads it:
+  the 400-envelope outbox to this contact is full, the conversation reached its
+  1000 sent texts (the receipt commitment of each is never removed), the local
+  state reached its 8 MiB bound, the text does not fit one envelope after
+  encryption, or the ID is not registered yet (`SendRefusal`). Any other code
+  keeps Android's «Отправка не завершена; сохранённая очередь не удалена.»,
+  which the connection sheet also shows. The refusal lives in memory only and
+  is forgotten on a real edit, a new send or leaving the chat; the field's echo
+  of the text put back is not an edit. A failed commit shows no refusal: the
+  frozen screen replaces the chat.
 - **Time.** Under every bubble stands the instant this phone wrote or received
   the message, in its own time zone (`14:32`), with a pill where the day turns
   («Сегодня», «Вчера», «12 сентября») and the same instant on the conversation

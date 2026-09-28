@@ -19,7 +19,9 @@
 #   ios
 #       a screen Android does not have (the frozen screen, the stand guard, the
 #       contact-flow alert) or the foreground rule of this client, whose wording
-#       is the approved mock-up's. iOS has no background delivery and no in-app
+#       is the approved mock-up's; or a refusal Android does not name — a
+#       refused text above the composer, a refused contact in its alert — where
+#       Android publishes one sentence for all of them (`TextEngine.java:285-309`). iOS has no background delivery and no in-app
 #       update check, so «Получать в фоне», «Проверить обновления» and
 #       «Доступна версия …» have no counterpart here and are absent by design.
 
@@ -91,6 +93,12 @@ MainActivity.java "Сохраняем сообщение…"
 MainActivity.java "Сообщение слишком длинное: "
 MainActivity.java " из 2048 байт."
 ios " из 2048 байт"
+ios "Сообщение не отправлено: в этой переписке достигнут предел отправленных сообщений."
+ios "Сообщение не отправлено: очередь к этому контакту заполнена. Место освободится, когда сервер примет сообщения из очереди."
+ios "Сообщение не отправлено: данные ParanoID на этом телефоне достигли предельного размера. Свободное место на iPhone на это не влияет."
+ios "Сообщение не отправлено: текст пустой или длиннее 2048 байт."
+ios "Сообщение не отправлено: после шифрования оно не помещается в один конверт. Сократите текст."
+ios "Сообщение не отправлено: ID ещё не зарегистрирован на сервере."
 MainActivity.java "Сканировать QR"
 MainActivity.java "Вставить контакт"
 MainActivity.java "Отмена"
@@ -221,7 +229,12 @@ MessagePresentation.java "Перезвонить"
 ios "Понятно"
 ios "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID»."
 ios "Это ваш собственный контакт."
-ios "Контакт уже добавлен."
+ios "Этот аккаунт уже есть в контактах с другими ключами. Сохранённый контакт не изменён: сообщения по-прежнему шифруются для прежних ключей."
+ios "Контакт не добавлен: на этом телефоне достигнут предел числа контактов."
+ios "Контакт не добавлен: данные ParanoID на этом телефоне достигли предельного размера."
+ios "Контакт не добавлен: регистрация ID на сервере ещё не завершена. Повторите позже."
+ios "Контакт не добавлен: он создан для другого сервера ParanoID или повреждён."
+ios "Контакт не добавлен из-за внутренней ошибки приложения."
 ios "Не удалось добавить контакт ("
 
 # --- Qr/ContactQrView.swift — the code, the share and the clipboard

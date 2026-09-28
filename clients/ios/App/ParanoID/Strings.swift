@@ -6,7 +6,7 @@ import Foundation
 /// The rule for this file is the rule of the whole client: a caption is
 /// Android's, character for character
 /// (`clients/android/src/org/paranoid/text/MainActivity.java`), unless the
-/// screen it belongs to does not exist on Android. There are exactly three
+/// screen it belongs to does not exist on Android. There are exactly four
 /// kinds of exception, and each one is marked where it stands:
 ///
 /// - **the foreground rule.** This client has no background delivery, so
@@ -20,6 +20,10 @@ import Foundation
 ///   «Мой ID» and «Доступна версия …» do not exist here at all.
 /// - **screens iOS has and Android does not**: the frozen screen, the
 ///   stand guard and the contact-flow alert, whose wording is the mock-up's.
+/// - **refusals Android does not name**: a refused text is named above the
+///   composer (`Chat.Refusal`) and a refused contact inside its alert
+///   (`ContactFlowError`), where Android has one sentence for all of them
+///   (`TextEngine.java:285-309`).
 ///
 /// `clients/ios/test/captions.txt` is the list this file is checked against by
 /// `clients/ios/test_ui_contract.py`, so a caption cannot quietly drift from
@@ -241,6 +245,40 @@ enum Strings {
 
         /// The composer's byte counter, from the mock-up's `chat` screen.
         static func counter(bytes: Int) -> String { "\(bytes) из 2048 байт" }
+
+        /// A text the core refused, named above the composer
+        /// (`SendRefusal`). Android has no such line: it publishes
+        /// `Status.sendUnfinished` for every refusal to a status line the chat
+        /// does not show (`TextEngine.java:285-294`), so these are the fourth
+        /// kind of exception of this file — a refusal Android does not name —
+        /// and they carry the `ios` origin until Android names them too.
+        /// None of them says the text "stayed in the field": a text typed
+        /// while the send was in flight is not replaced
+        /// (`MessagePresentation.Drafts.finished`).
+        enum Refusal {
+            static let historyFull = "Сообщение не отправлено: в этой переписке достигнут предел отправленных сообщений."
+            static let outboxFull = "Сообщение не отправлено: очередь к этому контакту заполнена. Место освободится, когда сервер примет сообщения из очереди."
+            static let stateFull = "Сообщение не отправлено: данные ParanoID на этом телефоне достигли предельного размера. Свободное место на iPhone на это не влияет."
+            static let invalidText = "Сообщение не отправлено: текст пустой или длиннее 2048 байт."
+            static let tooLarge = "Сообщение не отправлено: после шифрования оно не помещается в один конверт. Сократите текст."
+            static let notRegistered = "Сообщение не отправлено: ID ещё не зарегистрирован на сервере."
+        }
+
+        /// The sentence for one refusal. A blocked contact keeps the hint the
+        /// composer already shows for it, and a refusal nothing more is known
+        /// about keeps Android's sentence.
+        static func refusal(_ refusal: SendRefusal) -> String {
+            switch refusal {
+            case .historyFull: return Refusal.historyFull
+            case .outboxFull: return Refusal.outboxFull
+            case .stateFull: return Refusal.stateFull
+            case .blocked: return blockedHint
+            case .invalidText: return Refusal.invalidText
+            case .tooLarge: return Refusal.tooLarge
+            case .notRegistered: return Refusal.notRegistered
+            case .unfinished: return Status.sendUnfinished
+            }
+        }
     }
 
     // MARK: - adding a contact (`MainActivity.java:485-504`)

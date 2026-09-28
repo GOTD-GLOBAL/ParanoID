@@ -147,7 +147,8 @@ struct ChatScreen: View {
             if !model.composerHint.isEmpty {
                 Text(model.composerHint)
                     .font(.system(size: 12))
-                    .foregroundStyle(model.isOverLimit ? Color.red : Color.secondary)
+                    .foregroundStyle(model.isOverLimit || model.isRefusalShown
+                                     ? Color.red : Color.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 8)
                     .padding(.bottom, 4)

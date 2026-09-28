@@ -8,6 +8,25 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS refusals named where they happen, proposed — 2026-09-28
+
+- A text the core refuses is named above the composer, in red and read by
+  VoiceOver: a full outbox to the contact, the 1000 sent texts of a
+  conversation, the local state size bound, a text that does not fit one
+  envelope after encryption, or an ID not yet registered. Before, the text came
+  back into the field without a word and the only sentence went to the
+  «Подключение» sheet, which the chat cannot open. Other codes keep Android's
+  «Отправка не завершена; сохранённая очередь не удалена.» The refusal is kept
+  in memory only.
+- «Контакт уже добавлен.» is retired: the same QR again is accepted, and
+  `peer_already_pinned` is the same account with other keys, now said as such
+  with the note that the saved contact is unchanged. The contact-limit,
+  state-size, unfinished-registration and other-server refusals get sentences
+  of their own instead of a bare code.
+- The wording is a proposal for the owner and carries the `ios` origin, a
+  fourth kind of exception to "Android word for word", until Android names the
+  same refusals. Core, server and protocol are unchanged.
+
 ### Android alpha caption follow-up
 
 - Remove the stale «До 200 сообщений в диалоге.» sentence from «Мой ID» →

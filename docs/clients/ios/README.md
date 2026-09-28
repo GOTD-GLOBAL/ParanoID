@@ -85,6 +85,11 @@ the shared [core contract](../core/self-service.md) and
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,
   answered by the owner's agents in
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)).
+- Refusals are named where they happen. A text the core refuses is named above
+  the composer, and a refused contact inside its alert, with the reason the
+  core gave ([self-service.md](self-service.md)). Android publishes one sentence
+  for all of them to a status line the chat does not show. These captions have
+  the `ios` origin until Android names the same refusals.
 - Screen capture: Android's `FLAG_SECURE` has no iOS equivalent. This client
   covers the video stage while the screen is recorded, mirrored or AirPlayed
   and leaves the controls reachable; a screenshot and the app-switcher snapshot

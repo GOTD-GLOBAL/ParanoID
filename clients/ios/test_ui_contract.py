@@ -101,6 +101,10 @@ UNTRUE = (
     # Neither unconditional promise is true for every lifecycle path.
     'не доставляются и появятся после открытия',
     'если он закончится до открытия, в чате его не будет',
+    # `peer_already_pinned` is not a repeated QR: the same QR again is
+    # accepted and only raises trust (`clients/core/src/clean_service.rs:355-362`).
+    # It is the same account with other keys, and the saved contact is kept.
+    'Контакт уже добавлен',
 )
 
 # The operator-approval workflow and the bearer credential of the pre-v2
@@ -344,6 +348,41 @@ class UiContract(unittest.TestCase):
         # `canSend` asks the same policy, with the in-flight send as an input,
         # so the disabled button and the refused tap cannot disagree.
         self.present('sending: drafts.isSending', model, MODEL)
+
+    def test_a_refused_send_is_named_in_the_chat_and_kept_in_memory_only(self):
+        model = self.sources[MODEL]
+        send = model[model.index('    func send() {'):model.index('    /// A contact arrived')]
+        # The core's code is classified, not replaced by one sentence for all;
+        # the sheet keeps Android's sentence beside it.
+        self.present('refuse(ticket.account, error)', send, 'AppModel.send()')
+        self.present('SendRefusal.classify(error)', send, 'AppModel.refuse(_:_:)')
+        self.present('lastStatus = Strings.Status.sendUnfinished', send, 'AppModel.send()')
+        # A new send forgets the last refusal before its first await.
+        self.assertLess(send.index('refusal = nil'), send.index('Task {'),
+                        'a new send still shows the refusal of the one before')
+        # VoiceOver hears it; otherwise only the text coming back is heard.
+        self.present('UIAccessibility.post(notification: .announcement', send, 'AppModel.refuse(_:_:)')
+        # The composer names it last, and its colour follows the same branch.
+        self.present('if let reason = shownRefusal { return (Strings.Chat.refusal(reason), true) }',
+                     model, MODEL)
+        self.present('model.isOverLimit || model.isRefusalShown', self.sources[CHAT], CHAT)
+        # Only a real edit forgets it: the field reports the text a failed send
+        # put back as a change too.
+        changed = model[model.index('    func draftChanged() {'):
+                        model.index('    /// Opens a conversation')]
+        self.present('refusal.draft != draft', changed, 'AppModel.draftChanged()')
+        # Leaving the conversation forgets it.
+        for name, end in (('    func openChat(', '    /// Leaves the conversation'),
+                          ('    func closeChat() {', '    /// One tap on «Отправить»')):
+            body = model[model.index(name):model.index(end)]
+            self.present('refusal = nil', body, name.strip())
+        # Memory only: the refusal reaches no defaults, no file and no core.
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/SendRefusal.swift']
+        for forbidden in ('UserDefaults', 'FileManager', 'LocalMetadataStore', 'CoreBridge'):
+            self.absent(forbidden, kit, 'SendRefusal.swift')
+            for line in model.splitlines():
+                if 'refusal' in line.lower() and not line.strip().startswith('///'):
+                    self.absent(forbidden, line, f'{MODEL}: {line.strip()}')
 
     def test_the_contact_refusal_is_modal_inside_the_sheet_it_happened_in(self):
         app = self.sources[ENTRY]
