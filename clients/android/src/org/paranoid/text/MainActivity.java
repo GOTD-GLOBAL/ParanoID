@@ -205,7 +205,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         space(identity,24);updateHeading=text("Приложение",16,colors.text,true);identity.addView(updateHeading);space(identity,8);
         updateController=new UpdateController(this,engine,identity);
         space(identity,16);String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
-        identity.addView(text("ParanoID · "+version+"\nЗакрытая альфа, только тестовые сообщения. До 200 сообщений в диалоге. Восстановление ID пока недоступно.",12,colors.muted,false));
+        identity.addView(text("ParanoID · "+version+"\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно.",12,colors.muted,false));
         space(identity,20);identity.addView(text("Получать в фоне",16,colors.text,true));space(identity,8);
         identity.addView(text("Поддерживает подключение с постоянным уведомлением и расходует заряд. Google не требуется. После принудительной остановки откройте приложение; доставка в режиме сна пока не проверена на телефонах.",13,colors.muted,false));space(identity,12);
         background=secondary("Включить фоновое подключение",()->{
