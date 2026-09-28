@@ -17,8 +17,9 @@ proofs, identity-only inspect, replacement/retirement on all transport paths, lo
 retries, rebind refusal, fail-closed registry, global start budget, cooldown, fixture
 ban and the eight-generation cap. Eight deliberate guard removals were each caught by a
 failing test. A read-only live Devnet check accepted the owner's real test name and
-rejected a wrong name and wrong owner. The full server suite result is recorded in the
-PR. RPC here is a fake in integration tests; real RPC outage/lie/timeout behavior,
+rejected a wrong name and wrong owner. Three Fable code-review rounds; the last
+returned APPROVE_FOR_LOCAL_CANDIDATE and its recommendations were applied. The
+full server suite result is recorded in the PR. RPC here is a fake in integration tests; real RPC outage/lie/timeout behavior,
 Android login, phones, independent code review, human ADR disposition and any
 deployment remain NOT RUN.
 

@@ -63,3 +63,16 @@ AUTH-01..08 are defined by the contract; no execution evidence is claimed here.
 Public vectors check encoding/crypto only, never RPC, SQL races or phone lifecycle.
 Independent review and permanent human disposition are still required; qualified
 human review before sensitive/public production use remains mandatory.
+
+## Implementation residuals (server candidate, 2026-09-24)
+
+- Ban and retirement are enforced through `ss_accounts.mode` plus database triggers.
+  They guard application SQL only; a database owner can disable triggers or edit
+  transport rows directly. Ban procedures take `ss_meta FOR UPDATE` first.
+- Availability: any self-generated owner key can fill the 64 pending challenges or
+  the 8-per-minute verification starts and delay other logins. Accepted for the
+  private Devnet alpha; any non-local mode needs admission policy and per-source limits.
+- A registered member can learn whether a device UUID or Olm key is already bound
+  (generic `identity_invalid`, but only for that collision class).
+- An open `/v2/events` wait of a banned or retired device may run until its bounded
+  timeout; no new data is served after the next locked check.

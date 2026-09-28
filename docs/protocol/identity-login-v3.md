@@ -32,8 +32,11 @@ implemented. Deviations from the text below, reported rather than silently chose
   credential under the `ss_meta` lock; they do not read `id_*` tables. This is
   equivalent only because of two enforced invariants: in this mode `ss_accounts`
   rows are created solely by the identity commit, and any change of a membership to
-  `banned` revokes its current transport account in the same transaction (database
-  trigger; unban is refused). Sessions are not tagged with a generation.
+  `banned` revokes its old and new transport accounts in the same transaction
+  (database trigger; unban, account change after ban, banned inserts and
+  reactivating a revoked transport account are refused). A ban procedure must take
+  `ss_meta FOR UPDATE` first. The triggers guard application SQL, not a database
+  owner who disables triggers. Sessions are not tagged with a generation.
 - Admission: there is no `self-admission` flag and no `admission_denied` path yet.
   The local mode admits any finalized registry owner up to 128 memberships. Any
   non-local mode requires an explicit admission policy decision first.
@@ -45,8 +48,7 @@ implemented. Deviations from the text below, reported rather than silently chose
   challenges or the 8-per-minute verification starts; a member can probe whether a
   device UUID or Olm key is taken via `identity_invalid`.
 - The AUTH items below remain the full acceptance list. Local evidence covers parts
-  of AUTH-01..05 and 08; AUTH-06/07 (E2EE and Android/phones) are NOT RUN. The
-  closing sentence "All are planned, NOT RUN" is superseded by this paragraph.
+  of AUTH-01..05 and 08; AUTH-06/07 (E2EE and Android/phones) are NOT RUN.
 
 ## Boundary and principal model
 
@@ -420,4 +422,4 @@ AUTH-07: Android persistence/restart/seed recovery, old auth rejection AND hosti
 old-owner re-replacement attempt (disclosed limitation), explicit UI confirmation.
 AUTH-08: TURN/media revocation measured separately; generation 8/cooldown/128-member
 capacity with active traffic/status still working; no lifetime login-operation ledger.
-All are planned, NOT RUN until a dated implementation receipt says otherwise.
+Execution status is recorded in the implementation-status section above and in current state.

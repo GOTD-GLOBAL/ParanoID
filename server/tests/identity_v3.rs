@@ -485,6 +485,64 @@ async fn replacement_revokes_every_session_operation_of_the_old_device() {
 }
 
 #[tokio::test]
+async fn ban_trigger_cannot_be_bypassed_by_application_sql() {
+    let s = server().await;
+    let alice = user("alice_trig");
+    s.registry.register(&alice);
+    let (d1, d2) = (device(), device());
+    call(&s, &alice, &d1, Purpose::Enroll, "0", &op()).await;
+    // Pre-create a second active transport account to try swapping in during a ban.
+    let spare = device();
+    sqlx::query("INSERT INTO ss_accounts VALUES($1,$2,'active')")
+        .bind(&spare.credential.account)
+        .bind(&spare.credential.root)
+        .execute(&s.db)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE id_memberships SET state='banned', account=$1")
+        .bind(&spare.credential.account)
+        .execute(&s.db)
+        .await
+        .unwrap();
+    let modes: Vec<String> =
+        sqlx::query_scalar("SELECT mode FROM ss_accounts WHERE account IN ($1,$2)")
+            .bind(&d1.credential.account)
+            .bind(&spare.credential.account)
+            .fetch_all(&s.db)
+            .await
+            .unwrap();
+    assert_eq!(
+        modes,
+        ["revoked", "revoked"],
+        "both old and new account revoked"
+    );
+    for sql in [
+        "UPDATE id_memberships SET state='active'",
+        "UPDATE id_memberships SET account=(SELECT account FROM ss_accounts LIMIT 1)",
+    ] {
+        assert!(sqlx::query(sql).execute(&s.db).await.is_err(), "{sql}");
+    }
+    assert!(
+        sqlx::query("UPDATE ss_accounts SET mode='active' WHERE account=$1")
+            .bind(&d1.credential.account)
+            .execute(&s.db)
+            .await
+            .is_err(),
+        "no reactivation of a revoked transport account"
+    );
+    assert!(
+        sqlx::query(
+            "INSERT INTO id_memberships VALUES('m','i','o','n','banned',1,$1,'op','x','{}',NULL)"
+        )
+        .bind(&d2.credential.account)
+        .execute(&s.db)
+        .await
+        .is_err(),
+        "memberships start active"
+    );
+}
+
+#[tokio::test]
 async fn challenge_accepts_bodies_up_to_16_kib() {
     let s = server().await;
     let r = serde_json::to_string(&request(
