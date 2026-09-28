@@ -159,6 +159,11 @@ fn owner_key(bytes: &[u8; 32]) -> crate::Result<()> {
     }
 }
 
+/// Solana `find_program_address`: highest bump whose derivation is off the curve.
+pub fn program_address(seeds: &[&[u8]], program: &[u8; 32]) -> crate::Result<([u8; 32], u8)> {
+    find_program_address(seeds, program)
+}
+
 fn find_program_address(seeds: &[&[u8]], program: &[u8; 32]) -> crate::Result<([u8; 32], u8)> {
     for bump in (0..=255u8).rev() {
         let mut hash = Sha256::new();

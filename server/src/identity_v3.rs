@@ -75,6 +75,10 @@ pub async fn initialize(pool: &PgPool, realm: &str, pin: &str) -> Result<(), sql
         return Err(sqlx::Error::Configuration("invalid realm".into()));
     }
     let mut tx = pool.begin().await?;
+    // Never let a hostile or unexpected search_path place tables outside `public`.
+    sqlx::query("SET LOCAL search_path = public")
+        .execute(&mut *tx)
+        .await?;
     let existing: i64 = sqlx::query_scalar("SELECT (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public')+(SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public')+(SELECT count(*) FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace WHERE n.nspname='public' AND t.typrelid=0 AND t.typelem=0)").fetch_one(&mut *tx).await?;
     if existing != 0 {
         return Err(sqlx::Error::Configuration(
@@ -429,7 +433,7 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
         }
     }
     let state = v3(&s);
-    let _permit = state
+    let permit = state
         .rpc
         .try_acquire()
         .map_err(|_| fail(StatusCode::TOO_MANY_REQUESTS, "verification_budget"))?;
@@ -450,6 +454,8 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
             ))
         }
     }
+    // The RPC slot is for the network call only, not for waiting on ss_meta.
+    drop(permit);
     let verified = Instant::now();
     let mut tx = s.pool.begin().await?;
     sqlx::query("SET LOCAL synchronous_commit=on")
@@ -640,15 +646,15 @@ impl DevnetRegistry {
     /// Plain-HTTP fixture limited to an IPv4 loopback literal, for local lying-RPC tests.
     /// The runtime only calls `new`, which requires HTTPS.
     pub fn new_loopback_fixture(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
-        let host = url
-            .strip_prefix("http://")
-            .and_then(|rest| rest.split('/').next())
-            .and_then(|authority| authority.rsplit_once(':').map(|(host, _)| host))
-            .ok_or("loopback fixture only")?;
-        if host
-            .parse::<std::net::Ipv4Addr>()
-            .map(|ip| ip.is_loopback())
-            != Ok(true)
+        let parsed = reqwest::Url::parse(url)?;
+        let loopback = parsed
+            .host_str()
+            .and_then(|host| host.parse::<std::net::Ipv4Addr>().ok())
+            .is_some_and(|ip| ip.is_loopback());
+        if parsed.scheme() != "http"
+            || !loopback
+            || !parsed.username().is_empty()
+            || parsed.password().is_some()
         {
             return Err("loopback fixture only".into());
         }
@@ -850,6 +856,8 @@ mod tests {
             "http://10.0.0.1/",
             "https://127.0.0.1/",
             "http://127.0.0.1.evil/",
+            "http://127.0.0.1:80@evil.com/",
+            "http://user@127.0.0.1:9/",
         ] {
             assert!(
                 super::DevnetRegistry::new_loopback_fixture(bad).is_err(),
@@ -872,6 +880,17 @@ mod tests {
             assert!(client.contains(pin), "pin drift: {pin}");
         }
         assert!(client.contains(&format!("\"sbf_size\":{}", super::SBF_SIZE)));
+        let decode = paranoid_key_protocol::identity_v3::base58_decode32;
+        let (programdata, _) = paranoid_key_protocol::identity_v3::program_address(
+            &[&decode(super::PROGRAM).unwrap()],
+            &decode(super::LOADER).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            paranoid_key_protocol::identity_v3::base58_encode(&programdata),
+            super::PROGRAMDATA,
+            "ProgramData must be the loader PDA of the pinned program"
+        );
         assert_eq!(super::PROGRAMDATA_CAP, 98_460 + 16_384);
     }
 }

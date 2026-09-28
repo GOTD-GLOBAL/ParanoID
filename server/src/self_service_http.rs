@@ -179,7 +179,8 @@ pub(crate) fn routes(
             .route("/v2/registration/commit", post(operation));
     }
     router
-        .merge(extra)
+        // RFC-0027 identity routes accept up to 16 KiB (challenge carries a credential).
+        .merge(extra.layer(DefaultBodyLimit::max(16384)))
         .route("/v2/auth/challenge", post(challenge))
         .route("/v2/auth/verify", post(operation))
         .route("/v2/session", post(operation))

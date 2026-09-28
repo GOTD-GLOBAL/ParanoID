@@ -22,3 +22,18 @@ CREATE TABLE id_bindings (
  fingerprint TEXT NOT NULL UNIQUE, olm TEXT NOT NULL UNIQUE, retired BOOLEAN NOT NULL,
  UNIQUE(membership, generation)
 );
+-- A ban (or any leaving of 'active') revokes the member's current transport account in
+-- the same transaction, so every v2 gate that checks ss_accounts.mode also blocks it.
+-- There is no unban: leaving 'banned' is refused.
+CREATE FUNCTION id_membership_state_guard() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+ IF OLD.state = 'banned' AND NEW.state <> 'banned' THEN
+  RAISE EXCEPTION 'identity-v3 has no unban';
+ END IF;
+ IF NEW.state = 'banned' THEN
+  UPDATE ss_accounts SET mode='revoked' WHERE account=NEW.account;
+ END IF;
+ RETURN NEW;
+END; $$;
+CREATE TRIGGER id_membership_state AFTER UPDATE OF state ON id_memberships
+ FOR EACH ROW EXECUTE FUNCTION id_membership_state_guard();

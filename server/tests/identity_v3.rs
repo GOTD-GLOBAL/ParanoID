@@ -485,6 +485,72 @@ async fn replacement_revokes_every_session_operation_of_the_old_device() {
 }
 
 #[tokio::test]
+async fn challenge_accepts_bodies_up_to_16_kib() {
+    let s = server().await;
+    let r = serde_json::to_string(&request(
+        &user("pad_user"),
+        &device(),
+        Purpose::Enroll,
+        "0",
+        &op(),
+    ))
+    .unwrap();
+    let padded = |size: usize| format!("{r}{}", " ".repeat(size - r.len()));
+    for (size, expected) in [(12_000, 200), (16_384, 200), (16_385, 413)] {
+        tokio::time::sleep(std::time::Duration::from_millis(140)).await;
+        let status = s
+            .http
+            .post(format!("{}/v3/identity/challenge", s.url))
+            .header("content-type", "application/json")
+            .body(padded(size))
+            .send()
+            .await
+            .unwrap()
+            .status()
+            .as_u16();
+        assert_eq!(status, expected, "{size} bytes");
+    }
+}
+
+#[tokio::test]
+async fn initialization_ignores_a_hostile_search_path() {
+    let (db, url) = database().await;
+    sqlx::query("CREATE SCHEMA shadow")
+        .execute(&db)
+        .await
+        .unwrap();
+    let name = url
+        .split('/')
+        .nth(3)
+        .unwrap()
+        .split('?')
+        .next()
+        .unwrap()
+        .to_owned();
+    sqlx::QueryBuilder::<sqlx::Postgres>::new(format!(
+        "ALTER DATABASE {name} SET search_path = shadow"
+    ))
+    .build()
+    .execute(&db)
+    .await
+    .unwrap();
+    db.close().await;
+    let db = PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&url)
+        .await
+        .unwrap();
+    paranoid_server::identity_v3::initialize(&db, REALM, &"a".repeat(64))
+        .await
+        .unwrap();
+    let placed: bool = sqlx::query_scalar("SELECT to_regclass('public.id_meta') IS NOT NULL AND to_regclass('shadow.id_meta') IS NULL")
+        .fetch_one(&db)
+        .await
+        .unwrap();
+    assert!(placed, "schema must be created in public");
+}
+
+#[tokio::test]
 async fn initialization_requires_empty_database_and_v2_runtime_refuses_v3() {
     let (db, _) = database().await;
     paranoid_server::identity_v3::initialize(&db, REALM, &"a".repeat(64))
@@ -907,18 +973,14 @@ async fn replacement_cooldown_and_banned_membership() {
         (409, Some("replacement_limit")),
         "24h cooldown"
     );
-    // Fixture-only ban (no operator API): state + revoked transport under ss_meta.
+    // Fixture-only ban (no operator API): ONLY the membership state changes. The
+    // database itself must revoke the current transport account (RFC-0027 review B5).
     let mut tx = s.db.begin().await.unwrap();
     sqlx::query("SELECT id FROM ss_meta WHERE id=1 FOR UPDATE")
         .execute(&mut *tx)
         .await
         .unwrap();
     sqlx::query("UPDATE id_memberships SET state='banned'")
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE ss_accounts SET mode='revoked' WHERE account=$1")
-        .bind(&d2.credential.account)
         .execute(&mut *tx)
         .await
         .unwrap();

@@ -28,8 +28,25 @@ implemented. Deviations from the text below, reported rather than silently chose
 - The v2 `/v2/session` route answers a revoked binding with the existing 409
   `binding_conflict` (not 401); no session is issued. Sessions are published while
   the issuing transaction holds the `ss_meta` lock.
-- AUTH items below remain the full acceptance list. Local evidence covers parts of
-  AUTH-01..05 and 08 only; AUTH-06/07 (E2EE and Android/phones) are NOT RUN.
+- Transport gates: v2 routes check `ss_accounts.mode='active'` plus the exact stored
+  credential under the `ss_meta` lock; they do not read `id_*` tables. This is
+  equivalent only because of two enforced invariants: in this mode `ss_accounts`
+  rows are created solely by the identity commit, and any change of a membership to
+  `banned` revokes its current transport account in the same transaction (database
+  trigger; unban is refused). Sessions are not tagged with a generation.
+- Admission: there is no `self-admission` flag and no `admission_denied` path yet.
+  The local mode admits any finalized registry owner up to 128 memberships. Any
+  non-local mode requires an explicit admission policy decision first.
+- Pins are duplicated from the Devnet client; a unit test fails on drift and checks
+  that ProgramData is the loader PDA of the pinned program.
+- Additional error codes: `membership_banned`, `verification_budget`,
+  `mutation_budget`, `capacity`, `challenge_capacity`, `randomness_unavailable`.
+- Residual availability risks: any self-generated owner can fill the 64 pending
+  challenges or the 8-per-minute verification starts; a member can probe whether a
+  device UUID or Olm key is taken via `identity_invalid`.
+- The AUTH items below remain the full acceptance list. Local evidence covers parts
+  of AUTH-01..05 and 08; AUTH-06/07 (E2EE and Android/phones) are NOT RUN. The
+  closing sentence "All are planned, NOT RUN" is superseded by this paragraph.
 
 ## Boundary and principal model
 
