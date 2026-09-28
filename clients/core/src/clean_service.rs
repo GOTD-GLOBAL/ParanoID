@@ -113,6 +113,12 @@ enum Operation {
     UpgradeV2,
     PrepareContactV2,
     View,
+    /// RFC-0027 device proof; read-only, returns only the signature.
+    IdentityDeviceProofV3 {
+        intent: Box<paranoid_key_protocol::identity_v3::ChallengeRequestV3>,
+        challenge: Box<paranoid_key_protocol::identity_v3::IdentityChallengeV3>,
+        now: i64,
+    },
     SignRequestV2 {
         challenge: Box<paranoid_key_protocol::ChallengeV2>,
         method: String,
@@ -756,6 +762,30 @@ fn sign_session(
         .to_base64();
     Ok(json!({"authorization":format!("ParanoidSessionV2 {}.{}.{}",session.id,nonce,signature),"method":method,"path":path,"body":body}).to_string())
 }
+fn identity_device_proof(
+    legacy: &Client,
+    intent: &paranoid_key_protocol::identity_v3::ChallengeRequestV3,
+    challenge: &paranoid_key_protocol::identity_v3::IdentityChallengeV3,
+    now: i64,
+) -> Result<String> {
+    use paranoid_key_protocol::identity_v3::ProofRole;
+    let identity = legacy.identity.as_ref().ok_or("invalid_state")?;
+    let own = &identity.credential;
+    if intent.credential_object != *own {
+        return Err("credential_mismatch");
+    }
+    // Server trust comes from the snapshot, never from the challenge.
+    if !challenge.matches_request(intent, &own.realm, &own.pin, now) {
+        return Err("challenge_mismatch");
+    }
+    let key = vodozemac::Ed25519SecretKey::from_base64(&identity.auth_secret)
+        .map_err(|_| "invalid_state")?;
+    let signature = key
+        .sign(&challenge.transcript(ProofRole::Device)?)
+        .to_base64();
+    Ok(json!({"device_signature": signature}).to_string())
+}
+
 pub(super) fn command(raw: &str, request: &str) -> Result<String> {
     let op: Operation = serde_json::from_str(request).map_err(|_| "invalid_request")?;
     let version = serde_json::from_str::<Value>(raw).map_err(|_| "invalid_state")?["version"]
@@ -763,6 +793,23 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
         .ok_or("invalid_state")?;
     if version == 2 {
         return Err("unsupported_state");
+    }
+    if let Operation::IdentityDeviceProofV3 {
+        intent,
+        challenge,
+        now,
+    } = &op
+    {
+        // The transport credential lives in the retained legacy identity for both the
+        // pristine (v0) and upgraded (v3) snapshots.
+        let legacy: Client = if version == 0 {
+            serde_json::from_str(raw).map_err(|_| "invalid_state")?
+        } else {
+            let s: State = serde_json::from_str(raw).map_err(|_| "invalid_state")?;
+            s.legacy
+        };
+        super::self_service::validate(&legacy)?;
+        return identity_device_proof(&legacy, intent, challenge, *now);
     }
     if let Operation::SignRequestV2 {
         challenge,
@@ -804,6 +851,8 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
     };
     match op {
         Operation::UpgradeV2 | Operation::View => {}
+        // Answered read-only before any state decoding above.
+        Operation::IdentityDeviceProofV3 { .. } => return Err("invalid_request"),
         Operation::SignRequestV2 {
             challenge,
             method,
