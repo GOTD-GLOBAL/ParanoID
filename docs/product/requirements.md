@@ -30,7 +30,7 @@ are complete.
 | REQ-ID-003 | A human-readable username or nickname must be anchored in a blockchain registry. | Confirmed direction |
 | REQ-ID-004 | Identity registration must have sustainable cost and abuse controls that do not allow unlimited founder-subsidized registrations. | Confirmed direction |
 | REQ-ID-005 | Create identity inside the phone with locally owned keys and automatic proof-of-possession authentication; no end-user SSH, role selection or manually fetched bearer. | Confirmed user correction; technical design proposed |
-| REQ-ID-006 | Key possession alone grants no server admission or legacy-slot ownership; bound closed-alpha enrollment must preserve existing identities and history. | Proposed admission/migration constraint |
+| REQ-ID-006 | Key possession alone grants no server admission or legacy-slot ownership; bound closed-alpha enrollment must preserve existing identities and history. | Proposed admission/migration constraint; owner-approved exception for the local Devnet identity-v3 test mode only (ADR-0016, PR #60) |
 | REQ-ID-007 | Add contacts through explicitly verified public QR key bindings; enrollment, server trust and contact verification must remain separate. | Confirmed user direction; technical design proposed |
 | REQ-ID-008 | Registration on the common default server must be self-service: create ID in the app, add a contact and message without operator approval or a manually transferred admission code. | Confirmed product correction; clean-candidate registration locally tested |
 | REQ-MSG-001 | The product must support text, images, files, video, audio, and voice messages. | Draft |

@@ -59,14 +59,23 @@ Decision owner `martadvix-web` approved on GitHub, PR #60:
 > человека, не чаще одной смены в сутки. Публичный режим, Mainnet и
 > развёртывание этим решением не разрешаются.
 
-Covered: login with the same Devnet identity, single-device replacement, no
-history/contact transfer, the 128/8/one-per-day limits, local test data only; no
-public mode, Mainnet or deployment. NOT yet covered by that text, so status is
-`proposed`, not `accepted`: the REQ-ID-006 conflict (the local profile admits any
-finalized Devnet registry owner, i.e. key possession grants admission), the Sybil
-and availability risks above, RPC trust, inter-server correlation and takeover by
-a compromised old device holding the seed. Acceptance also needs AUTH-06/07
-evidence for delivered behavior. No accepted marker is fabricated. REQ-ID-006 scoped reconciliation
+Second approval, same PR:
+<https://github.com/GOTD-GLOBAL/ParanoID/pull/60#issuecomment-5874338268>
+(2026-09-28T16:35:22Z). Exact text:
+
+> Дополнительно принимаю для той же локальной закрытой альфы на Devnet с тестовыми
+> данными: вход открыт любому владельцу ника, зарегистрированного в Devnet, без
+> приглашения — это осознанное отступление от REQ-ID-006 только для локального
+> режима; риски: чужие бесплатные ники могут занять все 128 мест и блокировать
+> вход другим; сервер доверяет Solana RPC; один и тот же ID виден на разных
+> серверах; старый телефон с сохранённой фразой может снова перехватить вход. Для
+> публичного режима нужна отдельная политика допуска.
+
+Together these cover the decision, limits, the scoped REQ-ID-006 exception and the
+named residual risks for the local private Devnet test scope only. Status stays
+`proposed` until AUTH-06/07 (two-phone E2EE messaging/calls through Android login)
+pass; delivered-behavior acceptance criteria cannot be approved in advance.
+Public mode, Mainnet and any deployment remain unauthorized by these approvals. REQ-ID-006 scoped reconciliation
 and all limits above must be included in that disposition. Fresh independent
 Opus5.5 technical review must close blockers; AUTH-01..08 and code/artifact review
 must precede relevant delivery claims. Policy ADR0003 is not application approval.
