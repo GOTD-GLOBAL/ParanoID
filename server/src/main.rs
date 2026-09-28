@@ -268,7 +268,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let app = if identity_v3 {
         let rpc = env::var("PARANOID_REGISTRY_RPC")
             .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
-        let registry = std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?);
+        let registry =
+            std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?);
         paranoid_server::identity_v3::app(pool, turn, push, registry).await?
     } else if self_service {
         paranoid_server::self_service::app_with_services(pool, turn, push).await?

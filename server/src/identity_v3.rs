@@ -170,13 +170,14 @@ async fn challenge(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<V
     let checked = request
         .validate(&s.realm, &s.pin)
         .map_err(|_| crate::invalid())?;
-    let challenge = IdentityChallengeV3::issue(
+    let challenge = IdentityChallengeV3::try_issue(
         &checked,
         &s.realm,
         &s.pin,
         &s.epoch,
         now() + CHALLENGE_SECONDS,
-    );
+    )
+    .map_err(|_| fail(StatusCode::SERVICE_UNAVAILABLE, "randomness_unavailable"))?;
     let mut pending = v3(&s).pending.lock().unwrap();
     pending.retain(|_, (_, _, t)| t.elapsed() < Duration::from_secs(CHALLENGE_SECONDS as u64));
     if pending.len() >= MAX_PENDING {
@@ -600,11 +601,61 @@ const PROGRAMDATA_HEADER: usize = 45;
 const PROGRAMDATA_CAP: usize = 4 * (PROGRAMDATA_HEADER + SBF_SIZE).div_ceil(3) + 16_384;
 const RESPONSE_CAP: usize = 65_536;
 
+/// Upgradeable-loader Program = [2,0,0,0]+ProgramData address (36 bytes, executable).
+/// ProgramData = [3,0,0,0] + slot u64 LE + Some(authority) tag 1 + 32-byte authority +
+/// exactly the pinned ELF (not executable). Any extension, missing/other authority or
+/// ELF change fails; the deployment slot is intentionally not pinned.
+fn check_artifact(
+    code: &[u8],
+    code_executable: bool,
+    meta: &[u8],
+    meta_executable: bool,
+    elf_sha256: &str,
+) -> bool {
+    use sha2::{Digest, Sha256};
+    let decode = paranoid_key_protocol::identity_v3::base58_decode32;
+    let (Ok(programdata), Ok(authority)) = (decode(PROGRAMDATA), decode(AUTHORITY)) else {
+        return false;
+    };
+    code_executable
+        && !meta_executable
+        && code.len() == 36
+        && code[..4] == [2, 0, 0, 0]
+        && code[4..] == programdata
+        && meta.len() == PROGRAMDATA_HEADER + SBF_SIZE
+        && meta[..4] == [3, 0, 0, 0]
+        && meta[12] == 1
+        && meta[13..PROGRAMDATA_HEADER] == authority
+        && format!("{:x}", Sha256::digest(&meta[PROGRAMDATA_HEADER..])) == elf_sha256
+}
+
 impl DevnetRegistry {
     pub fn new(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
         if !url.starts_with("https://") {
             return Err("registry RPC must be HTTPS".into());
         }
+        Self::build(url)
+    }
+
+    /// Plain-HTTP fixture limited to an IPv4 loopback literal, for local lying-RPC tests.
+    /// The runtime only calls `new`, which requires HTTPS.
+    pub fn new_loopback_fixture(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let host = url
+            .strip_prefix("http://")
+            .and_then(|rest| rest.split('/').next())
+            .and_then(|authority| authority.rsplit_once(':').map(|(host, _)| host))
+            .ok_or("loopback fixture only")?;
+        if host
+            .parse::<std::net::Ipv4Addr>()
+            .map(|ip| ip.is_loopback())
+            != Ok(true)
+        {
+            return Err("loopback fixture only".into());
+        }
+        Self::build(url)
+    }
+
+    fn build(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             http: reqwest::Client::builder()
                 .redirect(reqwest::redirect::Policy::none())
@@ -658,7 +709,6 @@ impl DevnetRegistry {
 
     async fn check(&self, owner: [u8; 32], name: &str) -> Result<(), RegistryFailure> {
         use base64::{engine::general_purpose::STANDARD, Engine};
-        use sha2::{Digest, Sha256};
         use RegistryFailure::{Invalid, Unavailable};
         let derived = paranoid_key_protocol::identity_v3::derive_registry(&owner, name)
             .map_err(|_| Invalid)?;
@@ -695,23 +745,17 @@ impl DevnetRegistry {
         let (code, meta) = (&program[0], &program[1]);
         let code_bytes = data(code, LOADER).map_err(|_| Unavailable)?;
         let meta_bytes = data(meta, LOADER).map_err(|_| Unavailable)?;
-        let programdata = paranoid_key_protocol::identity_v3::base58_decode32(PROGRAMDATA)
-            .map_err(|_| Unavailable)?;
-        let authority = paranoid_key_protocol::identity_v3::base58_decode32(AUTHORITY)
-            .map_err(|_| Unavailable)?;
-        let expected_code = [&[2u8, 0, 0, 0][..], &programdata[..]].concat();
-        if code["executable"] != true
-            || code_bytes != expected_code
-            || meta["executable"] != false
-            || meta_bytes.len() != PROGRAMDATA_HEADER + SBF_SIZE
-            || meta_bytes[..4] != [3, 0, 0, 0]
-            || meta_bytes[12] != 1
-            || meta_bytes[13..PROGRAMDATA_HEADER] != authority
-            || format!("{:x}", Sha256::digest(&meta_bytes[PROGRAMDATA_HEADER..])) != SBF_SHA256
-        {
-            return Err(Unavailable);
+        if check_artifact(
+            &code_bytes,
+            code["executable"] == true,
+            &meta_bytes,
+            meta["executable"] == true,
+            SBF_SHA256,
+        ) {
+            Ok(())
+        } else {
+            Err(Unavailable)
         }
-        Ok(())
     }
 }
 
@@ -723,6 +767,97 @@ impl RegistryVerifier for DevnetRegistry {
 
 #[cfg(test)]
 mod tests {
+    use super::{check_artifact, PROGRAMDATA_HEADER};
+
+    fn artifact() -> (Vec<u8>, Vec<u8>, String) {
+        use sha2::{Digest, Sha256};
+        let pd = paranoid_key_protocol::identity_v3::base58_decode32(super::PROGRAMDATA).unwrap();
+        let auth = paranoid_key_protocol::identity_v3::base58_decode32(super::AUTHORITY).unwrap();
+        let code = [&[2u8, 0, 0, 0][..], &pd[..]].concat();
+        let elf: Vec<u8> = (0..super::SBF_SIZE).map(|i| (i % 251) as u8).collect();
+        let mut meta = vec![3u8, 0, 0, 0];
+        meta.extend_from_slice(&42u64.to_le_bytes());
+        meta.push(1);
+        meta.extend_from_slice(&auth);
+        meta.extend_from_slice(&elf);
+        let sha = format!("{:x}", Sha256::digest(&elf));
+        (code, meta, sha)
+    }
+
+    #[test]
+    fn artifact_check_accepts_exact_layout_and_rejects_each_deviation() {
+        let (code, meta, sha) = artifact();
+        assert!(check_artifact(&code, true, &meta, false, &sha));
+        assert!(
+            !check_artifact(&code, false, &meta, false, &sha),
+            "program not executable"
+        );
+        assert!(
+            !check_artifact(&code, true, &meta, true, &sha),
+            "programdata executable"
+        );
+        let mut c = code.clone();
+        c[0] = 3;
+        assert!(!check_artifact(&c, true, &meta, false, &sha), "program tag");
+        let mut c = code.clone();
+        c[20] ^= 1;
+        assert!(
+            !check_artifact(&c, true, &meta, false, &sha),
+            "programdata address"
+        );
+        let mut c = code.clone();
+        c.push(0);
+        assert!(
+            !check_artifact(&c, true, &meta, false, &sha),
+            "program length"
+        );
+        for (index, value, why) in [
+            (0, 2u8, "programdata tag"),
+            (12, 0, "authority removed"),
+            (12, 2, "Option tag 2"),
+            (13, 0, "authority byte"),
+            (PROGRAMDATA_HEADER, 0xff, "elf byte"),
+        ] {
+            let mut m = meta.clone();
+            m[index] = value;
+            assert!(!check_artifact(&code, true, &m, false, &sha), "{why}");
+        }
+        let mut m = meta.clone();
+        m.push(0);
+        assert!(
+            !check_artifact(&code, true, &m, false, &sha),
+            "extended allocation"
+        );
+        assert!(
+            !check_artifact(&code, true, &meta[..meta.len() - 1], false, &sha),
+            "short"
+        );
+        assert!(
+            !check_artifact(&code, true, &meta, false, super::SBF_SHA256),
+            "wrong artifact"
+        );
+        // The slot field is not pinned: any deployment slot is accepted.
+        let mut m = meta.clone();
+        m[4..12].copy_from_slice(&7u64.to_le_bytes());
+        assert!(check_artifact(&code, true, &m, false, &sha));
+    }
+
+    #[test]
+    fn loopback_fixture_constructor_refuses_remote_hosts() {
+        assert!(super::DevnetRegistry::new_loopback_fixture("http://127.0.0.1:9/").is_ok());
+        for bad in [
+            "http://api.devnet.solana.com/",
+            "http://10.0.0.1/",
+            "https://127.0.0.1/",
+            "http://127.0.0.1.evil/",
+        ] {
+            assert!(
+                super::DevnetRegistry::new_loopback_fixture(bad).is_err(),
+                "{bad}"
+            );
+        }
+    }
+
     #[test]
     fn server_pins_match_the_android_devnet_client_source() {
         let client = include_str!("../../blockchain/solana/client/src/lib.rs");

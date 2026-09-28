@@ -208,7 +208,11 @@ fn request_validation_is_strict_and_context_bound() {
         |r| r.operation = r.operation.to_uppercase(),
         |r| r.operation = "00000000-0000-0000-0000-000000000000".into(),
         |r| r.credential_object.realm = "https://other.invalid".into(),
-        |r| r.credential_object.signature = r.credential_object.signature.replace('A', "B"),
+        |r| {
+            let s = &mut r.credential_object.signature;
+            let first = if s.starts_with('A') { "B" } else { "A" };
+            s.replace_range(0..1, first);
+        },
         |r| r.owner = "11111111111111111111111111111111".into(),
     ];
     for (index, mutate) in mutations.iter().enumerate() {
@@ -292,6 +296,55 @@ fn issued_challenge_proofs_are_role_purpose_and_request_bound() {
     assert!(status_challenge
         .verify_proofs(&checked_status, None, &device_sig)
         .is_err());
+}
+
+#[test]
+fn owner_keys_must_be_canonical_prime_order_points() {
+    use curve25519_dalek::{constants::EIGHT_TORSION, edwards::CompressedEdwardsY};
+    let f = fixture();
+    let pin = "a".repeat(64);
+    let valid = f.owner.public_key();
+    let point = CompressedEdwardsY(*valid.as_bytes()).decompress().unwrap();
+    // Mixed order: a valid key plus an order-8 torsion component.
+    let mixed = (point + EIGHT_TORSION[1]).compress().to_bytes();
+    // Non-canonical y (y + p) for a point with small canonical y.
+    let p_minus = |y: u8| {
+        let mut b = [0xffu8; 32];
+        b[31] = 0x7f;
+        b[0] = 0xed + y; // p = 2^255 - 19 = ed ff .. ff 7f; y + p for y <= 18
+        b
+    };
+    let noncanonical = (2u8..=18)
+        .map(p_minus)
+        .find(|b| {
+            CompressedEdwardsY(*b)
+                .decompress()
+                .is_some_and(|q| !q.is_small_order())
+        })
+        .expect("a decompressible non-canonical encoding");
+    for bad in [mixed, noncanonical] {
+        let mut r = request(&f, Purpose::Enroll, "0");
+        r.owner = base58_encode(&bad);
+        r.identity = base58_encode(&derive_registry(&bad, &r.name).unwrap().identity);
+        assert!(r.validate(REALM, &pin).is_err(), "accepted {}", r.owner);
+    }
+}
+
+#[test]
+fn hostile_expiry_does_not_overflow() {
+    let f = fixture();
+    let pin = "a".repeat(64);
+    let r = request(&f, Purpose::Enroll, "0");
+    let mut c = IdentityChallengeV3::issue(
+        &r.validate(REALM, &pin).unwrap(),
+        REALM,
+        &pin,
+        &epoch(),
+        100,
+    );
+    c.expires = i64::MAX;
+    assert!(!c.matches_request(&r, REALM, &pin, i64::MIN));
+    assert!(!c.matches_request(&r, REALM, &pin, -1));
 }
 
 #[test]

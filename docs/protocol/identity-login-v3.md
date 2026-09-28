@@ -7,13 +7,29 @@ last_reviewed: 2026-09-24
 
 # Identity login v3 — private Devnet candidate
 
-Implementation status (2026-09-24): server candidate only, local mode
-`identity-v3-local`; see [current state](../project/current-state.md). Deviations:
-the fixture-only ban has no API; `recipient_retired` is 409 with that code.
-
 Companion to [RFC-0027](../rfcs/0027-solana-server-authentication.md).
 This document replaces the initial RFC's exchange, not deployed v2 behavior.
-No implementation, normative acceptance, migration or deployment is claimed.
+Draft: no normative acceptance, migration or deployment is claimed.
+
+## Implementation status and recorded deviations (2026-09-24)
+
+A local server candidate and shared Rust validator exist; executed checks are
+listed in [current state](../project/current-state.md). Android login is not
+implemented. Deviations from the text below, reported rather than silently chosen:
+
+- Mode name: the implementation's only mode is `identity-v3-local` (loopback bind,
+  reusing the v2-local profile). `solana-devnet-v3` below names the future
+  non-local mode, which is NOT implemented; any public mode needs its own review.
+- `binding_used` (409) is returned only when the candidate credential is already
+  the caller's OWN current binding (it proves the same owner). Every collision with
+  another membership is the generic 403 `identity_invalid`, as required above.
+- `recipient_retired` is 409; banned recipients get the unchanged generic 400.
+- The ban transition is fixture-only (no API), as specified.
+- The v2 `/v2/session` route answers a revoked binding with the existing 409
+  `binding_conflict` (not 401); no session is issued. Sessions are published while
+  the issuing transaction holds the `ss_meta` lock.
+- AUTH items below remain the full acceptance list. Local evidence covers parts of
+  AUTH-01..05 and 08 only; AUTH-06/07 (E2EE and Android/phones) are NOT RUN.
 
 ## Boundary and principal model
 
@@ -221,8 +237,8 @@ No positive/negative registry or artifact cache in this first slice.
 
 One semaphore limits RPC verification to two concurrent commits, zero waiter queue.
 Whole verification budget is 6 seconds (includes genesis, loader and PDA calls).
-The pinned SBF size from blockchain/solana/client/src/lib.rs program_info is
-73800 bytes is the ELF length, not a freely extensible allocation. The current
+The pinned SBF size from blockchain/solana/client/src/lib.rs `program_info` is
+73800 bytes. That is the ELF length, not a freely extensible allocation. The current
 RFC0026 deployment pins allocation with no spare bytes; require exact decoded
 ProgramData length 45+73800 and request encoding="base64", never base64+zstd.
 Any extension requires reviewed pin/cap changes, not automatic acceptance.

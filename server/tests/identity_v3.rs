@@ -273,6 +273,217 @@ async fn send_message(s: &Server, from: &Identity, to: &str) -> (u16, Value) {
     (status, r.json().await.unwrap_or(Value::Null))
 }
 
+async fn open_session(s: &Server, d: &Identity) -> paranoid_key_protocol::SessionV2 {
+    let (status, ch) = post(
+        s,
+        "/v2/auth/challenge",
+        &json!({"account": d.credential.account, "device": d.credential.device,
+            "credential": d.credential.fingerprint(), "purpose": "session", "method": "POST",
+            "path": "/v2/session", "body": paranoid_key_protocol::digest(b"{}")}),
+    )
+    .await;
+    assert_eq!(status, 200, "{ch}");
+    let c: paranoid_key_protocol::ChallengeV2 = serde_json::from_value(ch).unwrap();
+    let sig = Ed25519SecretKey::from_base64(&d.auth_secret)
+        .unwrap()
+        .sign(&c.bytes())
+        .to_base64();
+    tokio::time::sleep(std::time::Duration::from_millis(140)).await;
+    s.http
+        .post(format!("{}/v2/session", s.url))
+        .header("authorization", format!("ParanoidV2 {}.{sig}", c.id))
+        .body("{}")
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap()
+}
+
+async fn session_call(
+    s: &Server,
+    d: &Identity,
+    session: &paranoid_key_protocol::SessionV2,
+    method: &str,
+    path: &str,
+    body: &str,
+) -> u16 {
+    let nonce = uuid::Uuid::new_v4().to_string();
+    let bytes = session.bytes(
+        &nonce,
+        method,
+        path,
+        &paranoid_key_protocol::digest(body.as_bytes()),
+    );
+    let sig = Ed25519SecretKey::from_base64(&d.auth_secret)
+        .unwrap()
+        .sign(&bytes)
+        .to_base64();
+    tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+    let request = if method == "GET" {
+        s.http.get(format!("{}{path}", s.url))
+    } else {
+        s.http
+            .post(format!("{}{path}", s.url))
+            .body(body.to_owned())
+    };
+    request
+        .header(
+            "authorization",
+            format!("ParanoidSessionV2 {}.{nonce}.{sig}", session.id),
+        )
+        .send()
+        .await
+        .unwrap()
+        .status()
+        .as_u16()
+}
+
+#[tokio::test]
+async fn v2_auth_routes_cannot_register_accounts_in_v3_mode() {
+    let s = server().await;
+    let d = device();
+    for (path, body) in [
+        (
+            "/v2/auth/challenge",
+            json!({"credential": d.credential, "purpose": "register",
+            "method": "POST", "path": "/v2/registration/commit",
+            "body": paranoid_key_protocol::digest(b"{}")}),
+        ),
+        (
+            "/v2/auth/challenge",
+            json!({"account": d.credential.account, "device": d.credential.device,
+            "credential": d.credential.fingerprint(), "purpose": "register", "method": "POST",
+            "path": "/v2/registration/commit", "body": paranoid_key_protocol::digest(b"{}")}),
+        ),
+        (
+            "/v2/auth/challenge",
+            json!({"account": d.credential.account, "device": d.credential.device,
+            "credential": d.credential.fingerprint(), "purpose": "status", "method": "POST",
+            "path": "/v2/auth/verify", "body": paranoid_key_protocol::digest(b"{}")}),
+        ),
+    ] {
+        let (status, _) = post(&s, path, &body).await;
+        assert_eq!(status, 401, "{path} {body}");
+    }
+    for path in ["/v2/auth/verify", "/v2/session"] {
+        assert_eq!(post(&s, path, &json!({})).await.0, 401);
+    }
+    let accounts: i64 = sqlx::query_scalar("SELECT (SELECT count(*) FROM ss_accounts)+(SELECT count(*) FROM ss_devices)+(SELECT count(*) FROM id_memberships)+(SELECT count(*) FROM id_bindings)")
+        .fetch_one(&s.db)
+        .await
+        .unwrap();
+    assert_eq!(accounts, 0, "no rows created without a v3 commit");
+}
+
+#[tokio::test]
+async fn replacement_revokes_every_session_operation_of_the_old_device() {
+    let s = server().await;
+    let alice = user("alice_sess");
+    s.registry.register(&alice);
+    let (old, new) = (device(), device());
+    call(&s, &alice, &old, Purpose::Enroll, "0", &op()).await;
+    let session = open_session(&s, &old).await;
+    let push = r#"{"platform":"fcm","token":"t"}"#;
+    assert_eq!(
+        session_call(
+            &s,
+            &old,
+            &session,
+            "GET",
+            "/v2/messages?after=0&limit=20",
+            ""
+        )
+        .await,
+        200,
+        "session works before replacement"
+    );
+    call(&s, &alice, &new, Purpose::Replace, "1", &op()).await;
+    for (method, path, body) in [
+        ("GET", "/v2/messages?after=0&limit=20", ""),
+        ("GET", "/v2/events?after=0&limit=20", ""),
+        ("POST", "/v2/push", push),
+        ("GET", "/v2/voice/turn", ""),
+        (
+            "POST",
+            "/v2/messages",
+            r#"{"id":"11111111-1111-4111-8111-111111111111","recipient":"00","ciphertext":"AQ=="}"#,
+        ),
+    ] {
+        assert_eq!(
+            session_call(&s, &old, &session, method, path, body).await,
+            401,
+            "{method} {path} after replacement"
+        );
+    }
+    // A proof for a session obtained BEFORE replacement but redeemed after it must fail:
+    // the session is inserted only after the binding is rechecked under the lock.
+    let body = "{}";
+    let (status, ch) = post(
+        &s,
+        "/v2/auth/challenge",
+        &json!({"account": new.credential.account, "device": new.credential.device,
+            "credential": new.credential.fingerprint(), "purpose": "session", "method": "POST",
+            "path": "/v2/session", "body": paranoid_key_protocol::digest(body.as_bytes())}),
+    )
+    .await;
+    assert_eq!(status, 200);
+    let pending: paranoid_key_protocol::ChallengeV2 = serde_json::from_value(ch).unwrap();
+    let newer = device();
+    let mut tx = s.db.begin().await.unwrap();
+    sqlx::query("UPDATE id_memberships SET last_replace=NULL")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    call(&s, &alice, &newer, Purpose::Replace, "2", &op()).await;
+    let sig = Ed25519SecretKey::from_base64(&new.auth_secret)
+        .unwrap()
+        .sign(&pending.bytes())
+        .to_base64();
+    let late = s
+        .http
+        .post(format!("{}/v2/session", s.url))
+        .header("authorization", format!("ParanoidV2 {}.{sig}", pending.id))
+        .body(body)
+        .send()
+        .await
+        .unwrap();
+    // Existing v2 contract: a revoked binding is a 409 conflict. No session is issued.
+    assert_eq!(
+        late.status().as_u16(),
+        409,
+        "stale proof redeemed after replacement"
+    );
+    let late: Value = late.json().await.unwrap();
+    assert_eq!(late["error"], "binding_conflict");
+    assert!(late.get("id").is_none());
+    // The old device cannot open a new session either.
+    let (status, _) = post(
+        &s,
+        "/v2/auth/challenge",
+        &json!({"account": old.credential.account, "device": old.credential.device,
+            "credential": old.credential.fingerprint(), "purpose": "session", "method": "POST",
+            "path": "/v2/session", "body": paranoid_key_protocol::digest(b"{}")}),
+    )
+    .await;
+    assert_eq!(status, 401);
+    let fresh = open_session(&s, &newer).await;
+    assert_eq!(
+        session_call(
+            &s,
+            &newer,
+            &fresh,
+            "GET",
+            "/v2/messages?after=0&limit=20",
+            ""
+        )
+        .await,
+        200
+    );
+}
+
 #[tokio::test]
 async fn initialization_requires_empty_database_and_v2_runtime_refuses_v3() {
     let (db, _) = database().await;
@@ -721,6 +932,22 @@ async fn replacement_cooldown_and_banned_membership() {
     assert_eq!(
         (status, e["error"].as_str()),
         (403, Some("membership_banned"))
+    );
+    // A banned member is NOT "retired": senders get the generic recipient error.
+    let bob = user("bob_eleven");
+    s.registry.register(&bob);
+    let peer = device();
+    call(&s, &bob, &peer, Purpose::Enroll, "0", &op()).await;
+    let (status, e) = send_message(&s, &peer, &d2.credential.account).await;
+    assert_eq!(
+        (status, e["error"].as_str()),
+        (400, Some("invalid_envelope"))
+    );
+    // The genuinely retired generation-1 device is still reported as retired.
+    let (status, e) = send_message(&s, &peer, &d1.credential.account).await;
+    assert_eq!(
+        (status, e["error"].as_str()),
+        (409, Some("recipient_retired"))
     );
 }
 

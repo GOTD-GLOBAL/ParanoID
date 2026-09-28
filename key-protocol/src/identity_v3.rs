@@ -145,10 +145,16 @@ fn on_curve(bytes: &[u8; 32]) -> bool {
     CompressedEdwardsY(*bytes).decompress().is_some()
 }
 
-/// Accept only a decompressable, non-small-order Ed25519 point.
+/// Accept only a canonically encoded, prime-order (torsion-free) Ed25519 point.
 fn owner_key(bytes: &[u8; 32]) -> crate::Result<()> {
     match CompressedEdwardsY(*bytes).decompress() {
-        Some(point) if !point.is_small_order() => Ok(()),
+        Some(point)
+            if !point.is_small_order()
+                && point.is_torsion_free()
+                && point.compress().to_bytes() == *bytes =>
+        {
+            Ok(())
+        }
         _ => Err("invalid_owner"),
     }
 }
@@ -288,7 +294,8 @@ impl ChallengeRequestV3 {
         if c.realm != realm || c.pin != pin {
             return Err("wrong_server");
         }
-        if key32(&c.root)? == owner || key32(&c.auth)? == owner {
+        let (root, auth) = (key32(&c.root)?, key32(&c.auth)?);
+        if root == owner || auth == owner || root == auth {
             return Err("key_reuse");
         }
         Ok(CheckedRequest {
@@ -360,18 +367,21 @@ pub struct IdentityChallengeV3 {
 
 impl IdentityChallengeV3 {
     /// Server-side issuance with fresh OS randomness; `expires` is the absolute wall time.
-    pub fn issue(
+    /// Fails (instead of panicking) if the operating system cannot supply randomness.
+    pub fn try_issue(
         checked: &CheckedRequest,
         realm: &str,
         pin: &str,
         epoch: &str,
         expires: i64,
-    ) -> Self {
+    ) -> crate::Result<Self> {
         let mut nonce = [0u8; 32];
-        getrandom::getrandom(&mut nonce).expect("operating system randomness");
+        let mut id = [0u8; 16];
+        getrandom::getrandom(&mut nonce).map_err(|_| "randomness_unavailable")?;
+        getrandom::getrandom(&mut id).map_err(|_| "randomness_unavailable")?;
         let r = &checked.request;
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
+        Ok(Self {
+            id: uuid::Builder::from_random_bytes(id).into_uuid().to_string(),
             nonce: STANDARD.encode(nonce),
             epoch: epoch.into(),
             expires,
@@ -388,7 +398,18 @@ impl IdentityChallengeV3 {
             device: r.credential_object.device.clone(),
             credential_fingerprint: checked.fingerprint.clone(),
             expected_generation: r.expected_generation.clone(),
-        }
+        })
+    }
+
+    /// Test/fixture convenience; production servers use `try_issue`.
+    pub fn issue(
+        checked: &CheckedRequest,
+        realm: &str,
+        pin: &str,
+        epoch: &str,
+        expires: i64,
+    ) -> Self {
+        Self::try_issue(checked, realm, pin, epoch, expires).expect("operating system randomness")
     }
 
     fn echoes(&self, r: &ChallengeRequestV3, fingerprint: &str, realm: &str, pin: &str) -> bool {
@@ -430,7 +451,10 @@ impl IdentityChallengeV3 {
         self.well_formed()
             && self.echoes(r, &checked.fingerprint, realm, pin)
             && self.expires > now
-            && self.expires - now <= CHALLENGE_SECONDS
+            && self
+                .expires
+                .checked_sub(now)
+                .is_some_and(|lifetime| lifetime <= CHALLENGE_SECONDS)
     }
 
     /// Same intent digest as `CheckedRequest::intent_digest`, from the stored challenge.

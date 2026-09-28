@@ -37,9 +37,10 @@ impl Service {
     /// Drop every live session of a retired account. Its later operations already fail
     /// the locked binding check; this only releases capacity and wakes its waiters.
     pub(crate) fn retire_sessions(&self, account: &str) {
+        // Runs after a durable commit: never panic here, even on a poisoned lock.
         self.sessions
             .lock()
-            .unwrap()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .retain(|_, session| session.context.account != account);
         self.changed.notify_waiters();
     }
@@ -456,8 +457,10 @@ async fn operation(
         }
         return Ok(Json(result));
     }
-    tx.commit().await?;
-    if ch.purpose == "session" {
+    // A new session is published while this transaction still holds the ss_meta lock,
+    // so a concurrent identity-v3 replacement either precedes it (the binding check above
+    // fails) or follows it and then drops it with `retire_sessions` (RFC-0027 review).
+    let issued = if ch.purpose == "session" {
         let mut sessions = s.sessions.lock().unwrap();
         sessions.retain(|_, session| session.alive());
         if sessions.len() >= 64
@@ -483,11 +486,22 @@ async fn operation(
             context.id.clone(),
             Session {
                 context: context.clone(),
-                credential: c,
+                credential: c.clone(),
                 issued: Instant::now(),
                 nonces: HashSet::new(),
             },
         );
+        Some(context)
+    } else {
+        None
+    };
+    if let Err(error) = tx.commit().await {
+        if let Some(context) = &issued {
+            s.sessions.lock().unwrap().remove(&context.id);
+        }
+        return Err(error.into());
+    }
+    if let Some(context) = issued {
         return Ok(Json(serde_json::to_value(context).map_err(|_| denied())?));
     }
     Ok(Json(
