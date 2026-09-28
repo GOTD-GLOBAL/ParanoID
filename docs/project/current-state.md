@@ -1,8 +1,8 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-22
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-09-28
+last_reviewed_scope: iOS refusals named where they happen; older dated records retained
 ---
 
 # Current project state
@@ -14,9 +14,11 @@ inside its alert, with the reason the core gave, instead of returning the text
 silently and publishing one sentence to a sheet the chat cannot open. The
 untrue «Контакт уже добавлен.» for `peer_already_pinned` is replaced by a
 statement that the account is already saved with other keys and that the saved
-contact is unchanged. Nothing is persisted; core, server and protocol are
-unchanged. The wording is proposed, awaits the owner and carries the `ios`
-caption origin until Android names the same refusals. Evidence is contributor
+contact is unchanged. Nothing is persisted: a note lives in memory for one
+conversation until the text is edited, a new send starts or a re-read finds the
+reason gone. Core, server and protocol are unchanged. The wording is proposed,
+awaits the owner and carries the `ios` caption origin until Android names the
+same refusals. Evidence is contributor
 Mac execution on the host and a simulator, recorded in the
 [receipt](evidence/ios-client-20260928/honest-refusals-mac.md); a physical phone
 is not run. Refused incoming events, the status line and 507/409 wording are the

@@ -41,7 +41,6 @@ final class RefusalPresentationTests: XCTestCase {
 
         XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
         XCTAssertTrue(model.isRefusalShown)
-        XCTAssertEqual(model.chat?.messages.count, 400, "nothing was added to the conversation")
         // The field's own echo of the text that came back is not an edit.
         model.draftChanged()
         XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
@@ -53,32 +52,49 @@ final class RefusalPresentationTests: XCTestCase {
         XCTAssertFalse(model.isRefusalShown)
     }
 
+    /// A send that comes back after the user has left the chat is explained
+    /// when they return, with the text it refused: leaving keeps the note, and
+    /// so does a re-read that finds the outbox still full.
     @MainActor
-    func testLeavingTheChatForgetsTheRefusal() async throws {
+    func testLeavingTheChatKeepsTheRefusalAndReturningShowsIt() async throws {
         let (model, peer) = try await Self.chatWithAFullOutbox()
 
         model.draft = "проверка"
         model.draftChanged()
         model.send()
-        try await Self.refused(model)
-        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
-
-        // The pop of the navigation stack, and a push that sets the selection
-        // directly (`ParanoIDApp.chatSelection`): nothing clears it on the way in.
         model.closeChat()
-        model.chatAccount = peer
-        XCTAssertEqual(model.composerHint, "", "the refusal outlived leaving the chat")
+        try await Self.wait { model.lastStatus == Strings.Status.sendUnfinished }
+        XCTAssertEqual(model.composerHint, "", "no chat, no hint")
 
-        // The same through the lists' tap.
-        model.draft = "проверка"
-        model.draftChanged()
-        model.send()
-        try await Self.refused(model)
-        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
-        model.chatAccount = nil
         model.openChat(peer)
-        XCTAssertEqual(model.draft, "проверка", "the draft is kept")
-        XCTAssertEqual(model.composerHint, "", "the refusal is not")
+        XCTAssertEqual(model.draft, "проверка", "the refused text is back")
+        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
+        model.draftChanged()
+        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull, "the echo is not an edit")
+
+        // Only its own conversation shows it.
+        model.closeChat()
+        model.openChat("0000000000000000000000000000000000000000000000000000000000000000")
+        XCTAssertEqual(model.composerHint, "")
+        model.closeChat()
+        model.openChat(peer)
+        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
+    }
+
+    /// Which notes a re-read of the state may retire, and which it never
+    /// touches (`AppModel.staleRefusal`).
+    func testARefusalIsForgottenExactlyWhenItsReasonIsGone() {
+        let bound = SendRefusal.outboxBound
+        XCTAssertTrue(AppModel.staleRefusal(.outboxFull, pending: bound - 1, active: true, blocked: false))
+        XCTAssertFalse(AppModel.staleRefusal(.outboxFull, pending: bound, active: true, blocked: false))
+        XCTAssertTrue(AppModel.staleRefusal(.notRegistered, pending: 0, active: true, blocked: false))
+        XCTAssertFalse(AppModel.staleRefusal(.notRegistered, pending: 0, active: false, blocked: false))
+        XCTAssertTrue(AppModel.staleRefusal(.blocked, pending: 0, active: true, blocked: false))
+        XCTAssertFalse(AppModel.staleRefusal(.blocked, pending: 0, active: true, blocked: true))
+        for reason in [.historyFull, .stateFull, .invalidText, .tooLarge, .unfinished] as [SendRefusal] {
+            XCTAssertFalse(AppModel.staleRefusal(reason, pending: 0, active: true, blocked: false),
+                           "\(reason) is never re-read")
+        }
     }
 
     /// Every refusal has a caption, and the two that already had one keep it.

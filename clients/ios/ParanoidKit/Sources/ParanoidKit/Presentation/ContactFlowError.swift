@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The refusal itself always comes from the core: `contact_text_v2` reads the
 /// text and `pair_contact_v2` pairs with it
-/// (`clients/core/src/clean_service.rs:830-848`), and both answer
+/// (`clients/core/src/clean_service.rs:859-879`), and both answer
 /// `{"error":"<code>"}` for anything they will not take — a text that is not a
 /// contact, a contact bound to another realm, a peer key that is not canonical
 /// (`contact_v2.rs:43-71`), a conversation limit. This type is the one place
@@ -12,8 +12,8 @@ import Foundation
 /// named, and one honest fallback names the code instead of guessing.
 ///
 /// Android shows one status line for every one of them
-/// (`TextEngine.userError`, `MainActivity.java:499-504`, through
-/// `TextEngine.java:198-207`). This client shows a modal alert **inside** the
+/// (`TextEngine.submit` and `userError`, `TextEngine.java:265-269,300-309`).
+/// This client shows a modal alert **inside** the
 /// scanner or the paste sheet instead, because the sheet covers the status
 /// line and a refusal the user never sees is a refusal that gets scanned
 /// again. The sheet stays open until «Понятно»; nothing about the identity,
@@ -33,18 +33,21 @@ public enum ContactFlowError: Error, Equatable, Sendable, CustomStringConvertibl
     case otherKeys
     /// 64 contacts are the most one device keeps (`clean_service.rs:364-365`).
     case contactLimit
-    /// The sealed local state would pass its 8 MiB bound
-    /// (`clean_service.rs:311-316`).
+    /// The sealed local state would pass its 8 MiB bound with this contact
+    /// in it (`clean_service.rs:311-317`, checked by `reply` at `:319`).
     case stateFull
     /// This device's registration has not finished. `pair_contact_v2` is
     /// always sent verified, so its `peer_not_verified` means the enrollment
-    /// is missing (`clean_service.rs:870-871`); `prepare_contact_first` means
-    /// the contact of this device has not been prepared yet (`:183-187`).
+    /// is missing (`clean_service.rs:870-871`); `prepare_contact_first`
+    /// (raised at `:186`, reached from `add_peer` at `:376`) means the server
+    /// has answered but `prepare_contact_v2` has not committed yet, which
+    /// `resumeOnboarding` does before anything is sent. Neither names the
+    /// server: the sentence says only that registration is not finished.
     case notRegistered
-    /// The contact names another realm or pin, or its keys do not fit
-    /// together (`contact_v2.rs:50-59`). This device's own contact fails the
-    /// same check and is recognised before the core is asked
-    /// (``isOwnContact(_:ownAccount:ownContact:)``).
+    /// The contact names another realm or pin, is of a kind this build does
+    /// not read, or its keys do not fit together (`contact_v2.rs:50-59`).
+    /// This device's own contact fails the same check and is recognised
+    /// before the core is asked (``isOwnContact(_:ownAccount:ownContact:)``).
     case otherServer
     /// The native bridge failed; nothing about the contact is known.
     case internalFailure
@@ -69,11 +72,11 @@ public enum ContactFlowError: Error, Equatable, Sendable, CustomStringConvertibl
         case .contactLimit:
             return "Контакт не добавлен: на этом телефоне достигнут предел числа контактов."
         case .stateFull:
-            return "Контакт не добавлен: данные ParanoID на этом телефоне достигли предельного размера."
+            return "Контакт не добавлен: с ним данные ParanoID на этом телефоне превысили бы предельный размер."
         case .notRegistered:
-            return "Контакт не добавлен: регистрация ID на сервере ещё не завершена. Повторите позже."
+            return "Контакт не добавлен: регистрация ID ещё не завершена. Повторите позже."
         case .otherServer:
-            return "Контакт не добавлен: он создан для другого сервера ParanoID или повреждён."
+            return "Контакт не добавлен: он создан для другого сервера ParanoID, повреждён или не подходит этой версии приложения."
         case .internalFailure:
             return "Контакт не добавлен из-за внутренней ошибки приложения."
         case .refused(let code):
@@ -86,7 +89,7 @@ public enum ContactFlowError: Error, Equatable, Sendable, CustomStringConvertibl
     /// The codes that mean "this is not a contact": the text did not parse,
     /// it was longer than a contact may be, it is a QR of another kind, or the
     /// material inside it is not well-formed key material
-    /// (`clean_service.rs:830-848`, `contact_v2.rs:61-70`,
+    /// (`clean_service.rs:859-879`, `contact_v2.rs:61-70`,
     /// `key-protocol/src/lib.rs:52,118,125,153`).
     private static let notContactCodes: Set<String> = [
         "invalid_contact", "qr_limit", "wrong_qr_type", "invalid_credential",
@@ -101,7 +104,6 @@ public enum ContactFlowError: Error, Equatable, Sendable, CustomStringConvertibl
         "local_state_full": .stateFull,
         "peer_not_verified": .notRegistered,
         "prepare_contact_first": .notRegistered,
-        "registration_required": .notRegistered,
         "contact_binding_mismatch": .otherServer,
     ]
 
@@ -125,8 +127,7 @@ public enum ContactFlowError: Error, Equatable, Sendable, CustomStringConvertibl
     /// themselves in one lower-case phrase and none of them carries a
     /// snapshot, an account or a key.
     private static func label(_ error: any Error) -> String {
-        if let described = error as? any CustomStringConvertible { return described.description }
-        return String(describing: error)
+        String(describing: error)
     }
 
     /// Whether this text is this device's own contact, decided before the core

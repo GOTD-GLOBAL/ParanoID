@@ -12,12 +12,14 @@ public contract is declared.
 
 - A text the core refuses is named above the composer, in red and read by
   VoiceOver: a full outbox to the contact, the 1000 sent texts of a
-  conversation, the local state size bound, a text that does not fit one
-  envelope after encryption, or an ID not yet registered. Before, the text came
-  back into the field without a word and the only sentence went to the
-  «Подключение» sheet, which the chat cannot open. Other codes keep Android's
+  conversation, the local state size bound, an empty or over-2048-byte text, a
+  text that does not fit one envelope after encryption, or an ID not yet
+  registered. Before, the text came back into the field without a word and the
+  only sentence went to the «Подключение» sheet, which the chat cannot open. A
+  blocked contact keeps its existing hint; other codes keep Android's
   «Отправка не завершена; сохранённая очередь не удалена.» The refusal is kept
-  in memory only.
+  in memory only, one per conversation, until the text is edited, a new send
+  starts or a re-read finds the reason gone.
 - «Контакт уже добавлен.» is retired: the same QR again is accepted, and
   `peer_already_pinned` is the same account with other keys, now said as such
   with the note that the saved contact is unchanged. The contact-limit,

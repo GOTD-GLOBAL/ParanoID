@@ -5,11 +5,15 @@ import XCTest
 /// The refusals of «Отправить» and of «Отпечаток совпадает», produced by the
 /// real core rather than typed in.
 ///
-/// Each test drives `SelfServiceClient` or the bridge into the situation a
-/// user can actually reach and classifies the error the core answers with, so
-/// a sentence on the screen is tied to a refusal that exists
+/// The first two tests are tables over hand-built errors: every code the send
+/// path can answer with has a case. The rest drive `SelfServiceClient` or the
+/// bridge into the situation a user can actually reach — a full outbox, a
+/// full history, a blocked contact, a missing registration, a second contact
+/// of one account — and classify the error that comes back, so the sentence
+/// on the screen is tied to a refusal that exists
 /// (`clients/core/src/clean_service.rs`, `docs/product/self-service-messenger.md`
-/// «Errors must be understandable»; REQ-CLIENT-004).
+/// «Errors must be understandable»; REQ-CLIENT-004). `local_state_full`,
+/// `invalid_text` and `introduction_limit` are classified from the table only.
 final class SendRefusalTests: XCTestCase {
     private static let realm = "https://127.0.0.2:38443"
     private static let pin = String(repeating: "ab", count: 32)
@@ -65,6 +69,28 @@ final class SendRefusalTests: XCTestCase {
         XCTAssertEqual(try first.client.pending().count, 400)
     }
 
+    /// 1000 texts to one contact are the most a conversation ever sends. The
+    /// receipt commitment each one leaves is never removed — not when the
+    /// server accepts the envelope and the outbox empties, not by anything —
+    /// so the refusal is for good (`clean_service.rs:410-411,464,907-913`).
+    func testTheThousandAndFirstTextIsRefusedForGoodEvenWithAnEmptyOutbox() throws {
+        let (first, second) = try SelfServiceClientTests.pairedDevices()
+        let peer = try second.account()
+        for index in 0..<1000 {
+            try first.client.send(account: peer, text: "история \(index)")
+            let envelope = try XCTUnwrap(try first.client.pending().last)
+            try first.client.accepted(envelope: envelope,
+                                      response: ["id": envelope["id"] as Any, "sequence": index + 1])
+        }
+        XCTAssertEqual(try first.client.pending().count, 0, "the server accepted every envelope")
+        XCTAssertEqual(try ClientView.read(first.client).dialog(peer)?.messages.count, 1000)
+
+        XCTAssertThrowsError(try first.client.send(account: peer, text: "ещё одно")) { error in
+            XCTAssertEqual(error as? CoreError, .rejected("local_history_full"))
+            XCTAssertEqual(SendRefusal.classify(error), .historyFull)
+        }
+    }
+
     func testABlockedContactIsRefusedByTheCoreAsBlocked() throws {
         let (first, second) = try SelfServiceClientTests.pairedDevices()
         let peer = try second.account()
@@ -75,6 +101,9 @@ final class SendRefusalTests: XCTestCase {
         }
     }
 
+    /// The Swift adapter refuses before the core is asked
+    /// (`SelfServiceClient.send`, `registrationRequired`); the core's own
+    /// `registration_required` (`clean_service.rs:885-886`) is in the table.
     func testAClientWithoutRegistrationIsRefusedAsNotRegistered() throws {
         let device = try Device(name: "unregistered",
                                 trust: try ServiceTrust(realm: Self.realm, pin: Self.pin))

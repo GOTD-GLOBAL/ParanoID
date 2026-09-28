@@ -260,8 +260,8 @@ final class PresentationTests: XCTestCase {
         // `pair_contact_v2` is always sent verified (`AppModel.pairPendingContact`),
         // so its `peer_not_verified` means the enrollment is missing
         // (`clean_service.rs:870-871`), as `prepare_contact_first` does for a
-        // registration that has not prepared this device's contact yet.
-        for code in ["peer_not_verified", "prepare_contact_first", "registration_required"] {
+        // registration whose `prepare_contact_v2` has not committed yet.
+        for code in ["peer_not_verified", "prepare_contact_first"] {
             XCTAssertEqual(ContactFlowError.classify(CoreError.rejected(code)), .notRegistered, code)
         }
         XCTAssertEqual(ContactFlowError.classify(ContactFlowError.ownContact), .ownContact)
@@ -287,8 +287,7 @@ final class PresentationTests: XCTestCase {
     /// A refusal a user can do something about is a sentence, not a code.
     func testNamedContactRefusalsCarryNoRawCode() {
         for code in ["peer_already_pinned", "contact_limit", "local_state_full",
-                     "peer_not_verified", "prepare_contact_first", "registration_required",
-                     "contact_binding_mismatch"] {
+                     "peer_not_verified", "prepare_contact_first", "contact_binding_mismatch"] {
             let message = ContactFlowError.classify(CoreError.rejected(code)).message
             XCTAssertFalse(message.contains("("), "\(code): \(message)")
             XCTAssertFalse(message.contains("_"), "\(code): \(message)")

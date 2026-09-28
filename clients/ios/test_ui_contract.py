@@ -357,25 +357,32 @@ class UiContract(unittest.TestCase):
         self.present('refuse(ticket.account, error)', send, 'AppModel.send()')
         self.present('SendRefusal.classify(error)', send, 'AppModel.refuse(_:_:)')
         self.present('lastStatus = Strings.Status.sendUnfinished', send, 'AppModel.send()')
-        # A new send forgets the last refusal before its first await.
-        self.assertLess(send.index('refusal = nil'), send.index('Task {'),
+        # A new send forgets the refusal of its conversation before its first await.
+        self.assertLess(send.index('refusals[account] = nil'), send.index('Task {'),
                         'a new send still shows the refusal of the one before')
         # VoiceOver hears it; otherwise only the text coming back is heard.
         self.present('UIAccessibility.post(notification: .announcement', send, 'AppModel.refuse(_:_:)')
         # The composer names it last, and its colour follows the same branch.
-        self.present('if let reason = shownRefusal { return (Strings.Chat.refusal(reason), true) }',
-                     model, MODEL)
+        self.present('if let chatAccount, let note = refusals[chatAccount] {', model, MODEL)
+        self.present('return (Strings.Chat.refusal(note.reason), true)', model, MODEL)
         self.present('model.isOverLimit || model.isRefusalShown', self.sources[CHAT], CHAT)
         # Only a real edit forgets it: the field reports the text a failed send
         # put back as a change too.
         changed = model[model.index('    func draftChanged() {'):
                         model.index('    /// Opens a conversation')]
-        self.present('refusal.draft != draft', changed, 'AppModel.draftChanged()')
-        # Leaving the conversation forgets it.
+        self.present('note.draft != draft', changed, 'AppModel.draftChanged()')
+        # Leaving the conversation keeps it, so a send that came back after
+        # the user had left is explained when they return.
         for name, end in (('    func openChat(', '    /// Leaves the conversation'),
                           ('    func closeChat() {', '    /// One tap on «Отправить»')):
             body = model[model.index(name):model.index(end)]
-            self.present('refusal = nil', body, name.strip())
+            self.absent('refusals', body, name.strip())
+        # A re-read retires a note whose reason is gone, and nothing else does.
+        reload = model[model.index('    private func reloadNow() async {'):
+                       model.index('    /// Records a freeze that happened behind an operation')]
+        self.present('forgetStaleRefusals(pendingTo: state.pendingTo)', reload, 'AppModel.reloadNow()')
+        self.assertEqual(model.count('refusals[account] = nil'), 2,
+                         'a note is dropped by a new send and by staleness, nowhere else')
         # Memory only: the refusal reaches no defaults, no file and no core.
         kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/SendRefusal.swift']
         for forbidden in ('UserDefaults', 'FileManager', 'LocalMetadataStore', 'CoreBridge'):

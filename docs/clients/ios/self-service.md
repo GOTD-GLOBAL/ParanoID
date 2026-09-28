@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-28
 ---
 
 # iOS client: storage, registration, contacts and text
@@ -273,9 +273,9 @@ says so: «Этот аккаунт уже есть в контактах с др
 контакт не изменён: сообщения по-прежнему шифруются для прежних ключей.» The
 core refuses it before anything changes, so the saved contact, its channel and
 its history stay as they were. The contact-limit, state-size,
-unfinished-registration and other-server refusals have sentences of their own;
-anything else keeps «Не удалось добавить контакт (код).» Android shows one
-generic status line for all of them.
+unfinished-registration, other-server and native-failure refusals have
+sentences of their own; any other core code keeps «Не удалось добавить контакт
+(код).» Android shows one generic status line for all of them.
 
 ## Text, receipts and the lanes
 
@@ -304,14 +304,23 @@ task and hands the finished answer back through `perform`.
   into the field (unless something else was typed there meanwhile) and the
   line above the composer names the reason, in red, and VoiceOver reads it:
   the 400-envelope outbox to this contact is full, the conversation reached its
-  1000 sent texts (the receipt commitment of each is never removed), the local
-  state reached its 8 MiB bound, the text does not fit one envelope after
-  encryption, or the ID is not registered yet (`SendRefusal`). Any other code
+  1000 sent texts (the receipt commitment of each is never removed, not even
+  when the server accepts the envelope), the local state would pass its 8 MiB
+  bound, the text is empty or over 2048 bytes, the text does not fit one
+  envelope after encryption, or the ID is not registered yet (`SendRefusal`).
+  A blocked contact keeps the composer's existing blocked hint. Any other code
   keeps Android's «Отправка не завершена; сохранённая очередь не удалена.»,
-  which the connection sheet also shows. The refusal lives in memory only and
-  is forgotten on a real edit, a new send or leaving the chat; the field's echo
-  of the text put back is not an edit. A failed commit shows no refusal: the
-  frozen screen replaces the chat.
+  which the connection sheet also shows. The outbox sentence states the rule —
+  space frees only when the server accepts — and promises nothing: an account
+  over its lifetime quota (507) or a recipient the server no longer serves
+  (400) keeps that envelope for good. The refusal lives in memory only, one per
+  conversation, and is forgotten on a real edit of the text it belongs to, on
+  a new send, or when a re-read of the state finds its reason gone — the outbox
+  below 400, the ID active, the contact unblocked; a full history is permanent
+  and the text-bound refusals are not re-read. Leaving the chat keeps it, so a
+  send that came back after the user had left is explained when they return;
+  the field's echo of the text put back is not an edit. A failed commit shows
+  no refusal: the frozen screen replaces the chat.
 - **Time.** Under every bubble stands the instant this phone wrote or received
   the message, in its own time zone (`14:32`), with a pill where the day turns
   («Сегодня», «Вчера», «12 сентября») and the same instant on the conversation

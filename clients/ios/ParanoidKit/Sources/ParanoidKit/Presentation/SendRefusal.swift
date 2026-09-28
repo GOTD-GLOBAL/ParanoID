@@ -3,7 +3,7 @@ import Foundation
 /// Why a text the user sent did not become an envelope.
 ///
 /// `send_v2` answers `{"error":"<code>"}` before it commits anything
-/// (`clients/core/src/clean_service.rs:880-892`, `enqueue` at `:393-472`), so
+/// (`clients/core/src/clean_service.rs:880-892`, `enqueue` at `:393-483`), so
 /// a refused text is never in the conversation, never in the outbox and never
 /// counted as a rejected incoming event. This type turns that code into the
 /// situation the chat names above the composer; the words themselves are the
@@ -21,8 +21,8 @@ public enum SendRefusal: Equatable, Sendable {
     /// 400 envelopes to this contact wait for the server; each one leaves the
     /// outbox when the server accepts it (`clean_service.rs:399-400,913`).
     case outboxFull
-    /// The sealed local state would pass its 8 MiB bound
-    /// (`clean_service.rs:311-316`).
+    /// The sealed local state would pass its 8 MiB bound with this text in it
+    /// (`clean_service.rs:311-317`, checked by `reply` at `:319`).
     case stateFull
     /// The contact is blocked (`clean_service.rs:396-397`).
     case blocked
@@ -38,6 +38,10 @@ public enum SendRefusal: Equatable, Sendable {
     case notRegistered
     /// Anything else: nothing the user can act on is known.
     case unfinished
+
+    /// How many envelopes to one contact the outbox holds before `outbox_full`
+    /// (`clean_service.rs:399-400`).
+    public static let outboxBound = 400
 
     /// The refusal of one send, or `nil` when the local state froze: a failed
     /// commit replaces the whole screen, so the chat has nothing to add.
