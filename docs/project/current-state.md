@@ -9,6 +9,16 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 ## Solana login protocol draft — 2026-09-24
 
+Independent [R2 review](evidence/identity-login-v3/r2-opus55.md) required three
+narrow corrections; [R3 delta review](evidence/identity-login-v3/r3-opus55.md)
+closed those blockers as APPROVE_FOR_LOCAL_IMPLEMENTATION only. RFC/ADR remain
+draft, human disposition and deployment authority pending. Local implementation
+has begun: shared Rust canonical generation parser and typed LP transcript encoder
+match seven independent Python/OpenSSL primitive fixtures. Two Rust tests pass;
+this is not full context/PDA/registry validation, server authorization or Android
+login. The encoder is not a signing/acceptance API. SQL/RPC/route and phone checks
+remain NOT RUN. Existing service and data are untouched.
+
 [RFC-0027](../rfcs/0027-solana-server-authentication.md) records the owner-requested
 next milestone: server login before Android-driven owner-server deployment.
 Current test-chat/contact migration is waived, not an instruction to wipe data.

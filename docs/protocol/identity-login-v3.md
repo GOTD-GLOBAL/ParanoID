@@ -26,7 +26,12 @@ canonical name, random membership UUID, state (`active` or `banned`), generation
 current transport account and the operation that created the current generation.
 Absence is a query result, not a stored membership. `banned` blocks new grants,
 replacement and ordinary traffic, but authenticated status remains available.
-There is no self-service unban or delete/recreate-membership route.
+There is no self-service unban or delete/recreate-membership route. In this
+local slice banned is exercised only by test fixtures; no operator ban API/tool
+is delivered. Fixture transition active->banned holds ss_meta first, leaves all
+bindings inactive, deletes push tokens, invalidates sessions/notifies waiters
+and blocks grants exactly as replacement. Status/inspect still report banned.
+Banned memberships retain all eight reserved slots; no automatic quota release.
 
 Generation is a canonical decimal STRING in JSON and LP, range 0..9223372036854775807.
 Zero means absent. Mutation increments once, checked for overflow. No wrapping,
@@ -34,6 +39,12 @@ reuse or lowering, including rollback. Transport account/root/device/auth/Olm ar
 independent of blockchain authority. New enrollment/replacement generates a fresh
 transport credential; only exact active-device status reuses it.
 
+Enforce UNIQUE constraints on the lifetime binding table for root, account,
+device, auth, credential fingerprint and Olm digest; mutation operation UUIDs
+are also globally UNIQUE on historical bindings. Device UUID and Olm digest
+uniqueness is first-claim reservation, not cryptographic possession: malicious
+registered users may preclaim visible victim identifiers, denying enrollment.
+Fresh client keys/UUIDs mitigate accidental overlap, not this deliberate attack.
 Every account, root, device UUID, auth key and credential fingerprint is globally
 unique across memberships and all historical generations in this database.
 Retired bindings remain immutable tombstones. Neither v3 nor v2 can assign any
@@ -46,7 +57,9 @@ canonical decoding. No registry-key-to-Olm derivation or secret transfer exists.
 
 All control routes are POST, with no query/redirect/method override. Body cap is
 16384 bytes. Raw strict typed JSON rejects duplicate/unknown fields recursively,
-including the nested credential; no JSONObject preprocessing. All fields below
+including the nested credential; no JSONObject preprocessing. Proof owner_signature and device_signature encode exactly 64 bytes as canonical
+unpadded Base64. Empty operation is allowed ONLY in the absent status response;
+all other operation fields are UUIDv4. All fields below
 are strings except `credential_object`, a strict existing Credential, and
 `expires`, a nonnegative JSON integer within signed 64-bit range. UUIDs are
 canonical lowercase UUIDv4. Hashes are lowercase 64-hex; nonce is canonical
@@ -128,7 +141,9 @@ state, independently of challenge consumption.
 
 ## Inspect, status and immutable intent recovery
 
-Inspect requires both proofs. Under ss_meta transaction lock, returns exactly:
+Inspect requires both proofs. A bounded read-only statement (no ss_meta lock)
+looks up membership ONLY by `(genesis, program, identity PDA)` derived from the
+verified owner. Never search by name, candidate device or Olm digest. It returns exactly:
 `{mode, generation}` where mode is `absent`, `active`, or `banned`; absence gives
 `0`. It does not perform RPC or grant admission. Owner proof only discloses the
 membership of that owner/identity. For existing membership require stored owner,
@@ -154,7 +169,7 @@ Only the current generation stores the full immutable mutation intent digest and
 success result; retired binding tombstones retain original operation, generation,
 identity and credential. No durable entries for inspect/status or failed mutations.
 An exact retry of a current mutation returns its original success BEFORE comparing
-current generation, quotas or doing RPC, but AFTER dual proof, current admission,
+current generation, quotas or doing RPC, but AFTER dual proof, current admission (only membership not banned),
 full intent digest and binding validation. A banned membership returns banned.
 A retired candidate always returns `device_revoked`; never reactivate it.
 Different intent with current operation or reuse of a retired operation for the
@@ -176,16 +191,42 @@ fails closed, preserving bytes, never recreating keys or dropping pending intent
 Commit consumes dual-proof challenge, then cheaply checks DB for exact current
 retry or terminal conflicts before RPC. This preliminary read is only a hint;
 no mutation/result permission relies on it without the final ss_meta lock check.
+Before successful finalized registry verification, hints/errors may reveal only
+the proven owner identity: exact own retry, own banned/generation/cooldown/cap,
+or own retired candidate. Never check cross-membership name/binding uniqueness
+for externally distinguishable errors before RPC. Those conflicts are checked
+only under the final ss_meta lock after successful registry verification; a
+name collision fails closed as generic identity_invalid. All cross-membership
+post-RPC binding collisions also return generic identity_invalid; do not identify
+which foreign field collided. Own-identity stale candidate remains device_revoked. Foreign-name inspect
+with a caller-owned owner/PDA is indistinguishable from an absent random name.
+Fresh mutations first reserve a global verification-start budget: at most eight
+starts per fixed 60-second monotonic window, persisted with conservative wall-time
+restart handling; clock rollback denies starts until the stored window expires.
+This is separate from success counters, has no identity/IP map, and is consumed
+on failed attempts too. Exhaustion returns 429 before any RPC. Reserve a semaphore
+permit without waiting before spending a start token.
 Fresh mutations query only configured HTTPS Devnet RPC (no redirects), verify
 expected genesis and the pinned loader/ProgramData owner/authority/size/artifact
-from the same shared Rust `program_info` source as RFC0026. Fetch both identity/name
+from the same shared Rust `program_info` source as RFC0026. Call order is mandatory: first fetch both identity/name
 PDAs in one finalized response and fully validate canonical derivation, owner,
 layout, name, mutual links and padding. No client-supplied RPC result is trusted.
+Only after the pair is structurally valid and matches the signed owner/name
+perform genesis and loader/ProgramData verification. No success before ALL checks.
 No positive/negative registry or artifact cache in this first slice.
 
 One semaphore limits RPC verification to two concurrent commits, zero waiter queue.
 Whole verification budget is 6 seconds (includes genesis, loader and PDA calls).
-Each response max 2 MiB, streaming cap before JSON decode; reject larger responses.
+The pinned SBF size from blockchain/solana/client/src/lib.rs program_info is
+73800 bytes is the ELF length, not a freely extensible allocation. The current
+RFC0026 deployment pins allocation with no spare bytes; require exact decoded
+ProgramData length 45+73800 and request encoding="base64", never base64+zstd.
+Any extension requires reviewed pin/cap changes, not automatic acceptance.
+ProgramData has the loader metadata prefix (45 bytes), so the current
+base64 payload bound is `4 * ceil((73800 + 45) / 3)`. Allow an additional 16384
+bytes for its JSON envelope. Derive this cap from the same pinned size rather
+than keeping a second artifact constant. Other RPC responses cap at 65536 bytes.
+Streaming caps apply before JSON decode; oversized replies fail closed.
 Before DB commit recheck proof expiry and require verification completed at most
 2 monotonic seconds ago. If lock acquisition misses that freshness window, return
 retryable registry_unavailable; do not hold SQL locks during RPC or retry infinitely.
@@ -250,7 +291,9 @@ and expose its actual bound separately before phone release.
 For messages, the SAME locked transaction checks recipient is active before insert.
 A retired recipient yields `recipient_retired`, no insert or one-check ACK. Other
 missing/banned recipients yield existing generic recipient error. This intentionally
-reveals retirement to authenticated senders who know an opaque account ID, not a
+reveals retirement to authenticated senders who know an opaque account ID.
+Existing v2 challenge/401 behavior can additionally reveal active/retired status
+to anyone holding the public contact credential; this is a disclosed residual, not a
 public name directory. No name->account directory or automatic contact replacement.
 
 Push deletion stops new lookups; an FCM request already dispatched before revocation
@@ -262,7 +305,8 @@ behind an impossible atomic database/external-FCM promise.
 ## Explicit resource budget
 
 Retain existing total ingress 20/s, auth ingress 8/s, global limiter windows and
-no attacker-indexed IP/identity map. Max 64 pending v3 challenges globally, 60s TTL,
+no attacker-indexed IP/identity map. The v3 pool is separate from all v2 challenge/session pools. Max 64 pending v3
+challenges globally, 60s TTL,
 no unexpired eviction; replay attempts fail. Two RPCs as above, 10s total handler
 budget; existing event timeout unchanged. Apply caps before expensive work.
 
@@ -325,9 +369,12 @@ Actual canonical full-identity and parser-negative vectors remain implementation
 AUTH-01: independent LP/hash/Ed25519 vectors, exact types/limits, duplicate/unknown
 fields, field-by-field mutations, role/purpose/path separation.
 AUTH-02: exact pins/PDA/layout, RPC lies/outages/size/timeout/freshness, no pre-proof RPC.
-AUTH-03: replay/expiry/restart, challenge oracle equivalence, global capacity bounds.
+AUTH-03: replay/expiry/restart, challenge oracle equivalence, global capacity bounds;
+foreign name with owned owner/PDA vs random absent name; no pre-RPC cross-membership
+binding conflicts and bounded failed verification starts, including valid-proof
+challenge consumption followed by start-budget 429 (requires a fresh challenge).
 AUTH-04: PostgreSQL races, lost commit replies, same immutable retry, crash boundaries,
-retired operation replay, status with absent/retired/current candidate and locked owner.
+retired operation replay, status with absent/retired/current candidate and locked Android owner-key storage (not a SQL lock).
 AUTH-05: every route/session/realtime recipient gate; rebind old identifiers via a
 second identity; lock ordering; push token deletion and bounded in-flight disclosure.
 AUTH-06: E2EE first contact/reply/receipts, fresh-contact replacement, retired-recipient

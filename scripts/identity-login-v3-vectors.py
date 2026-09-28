@@ -64,7 +64,7 @@ if __name__ == '__main__':
     result = json.dumps(generate(), indent=2) + '\n'
     if '--check' in sys.argv:
         assert OUT.read_text() == result, 'public vectors differ'
-        print('PASS: 7 role/purpose vectors and all single-byte transcript mutations')
+        print('PASS: 7 role/purpose vectors and one-bit XOR mutation at every transcript byte')
     else:
         OUT.write_text(result)
         print(OUT)

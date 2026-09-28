@@ -9,7 +9,8 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 ## Proposed Solana server login boundary — 2026-09-24
 
-[RFC-0027](../rfcs/0027-solana-server-authentication.md) adds a draft analysis of
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) and its
+[threat delta](identity-login-v3-threats.md) add a draft analysis of
 public-identity correlation, trusted RPC, dual proof, membership generations,
 atomic revocation and immutable E2EE contact pins. Its AUTH-01 through AUTH-08
 gates are NOT RUN. Server revocation cannot erase downloaded data or necessarily

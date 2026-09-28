@@ -36,6 +36,16 @@ not contain membership, device list, server address or social graph.
 
 ## Residual risks and review exit
 
+The local self-admission profile is vulnerable to cheap Sybil exhaustion: free
+Devnet identities can consume all 128 memberships permanently. Global mutation/RPC
+start quotas and the separate 64-entry v3 challenge pool can be monopolized by
+self-signed requests indefinitely, denying legitimate login/status/replacement.
+Post-proof is not post-admission. Caps bound resource cost, not fair availability.
+V2 traffic uses separate challenge/session pools but still shares total ingress;
+no availability guarantee under attack. Non-local self-admission policy and these
+risks require explicit owner disposition; no public rollout follows local tests.
+Banned memberships retain reserved slots. Ban lifecycle is fixture-only here.
+
 Seed/owner-phone compromise allows competing replacement; current registry cannot
 rotate owner. One/day cooldown can block a legitimate recovery too. Eight-generation
 cap can exhaust future recovery, while existing traffic/status remains available.
