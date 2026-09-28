@@ -5,16 +5,16 @@ decision_owner: martadvix-web
 last_reviewed: 2026-09-26
 ---
 
-# iOS push delivery threat delta (RFC-0027, draft)
+# iOS push delivery threat delta (RFC-0028, draft)
 
 Delta for threat-model boundary 8 (*mobile client to platform push
 notification services*) on the iOS client, proposed by
-[RFC-0027](../rfcs/0027-ios-background-delivery.md). It extends
+[RFC-0028](../rfcs/0028-ios-background-delivery.md). It extends
 [the threat model](threat-model.md), [the iOS client delta](ios-client-threats.md)
 and [the push wake delta](push-wake-threats.md); everything in those remains
 required.
 
-**Status: draft.** Nothing here is implemented or accepted. Until ADR-0016 is
+**Status: draft.** Nothing here is implemented or accepted. Until the push ADR is
 accepted, the recorded state stays: the iOS client does not use boundary 8
 (`docs/security/ios-client-threats.md:82-98`,
 `docs/security/threat-model.md:290-297`). Every check below is `NOT RUN`.

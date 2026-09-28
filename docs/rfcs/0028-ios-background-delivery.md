@@ -8,15 +8,16 @@ required_reviewers: []
 last_reviewed: 2026-09-26
 ---
 
-# RFC-0027: Content-free iOS background delivery through APNs
+# RFC-0028: Content-free iOS background delivery through APNs
 
 This is a draft. Nothing in it is accepted, implemented, deployed or measured.
-It proposes a decision that only a future ADR-0016 could record, and only with
+It proposes a decision that only a future ADR could record, and only with
 the human decision owner's exact approval. The author is the contributor
-`Cooldom66671`. The numbers RFC-0027 and ADR-0016 were free on all 50 published
-heads of the repository on 2026-09-26 (every head was present locally and
-scanned with the procedure in [the RFC index](README.md#naming)); they are
-re-checked before `proposed`.
+`Cooldom66671`. This draft was opened as RFC-0027 on 2026-09-26; then the
+Solana server-authentication pull request (#60) took RFC-0027 and ADR-0016, so
+it is renumbered RFC-0028 on 2026-09-28 and names no ADR number: the push ADR
+gets the next free number when it is drafted. Numbers are re-checked before
+`proposed` with the procedure in [the RFC index](README.md#naming).
 
 ## Summary
 
@@ -64,7 +65,7 @@ Before this RFC moves to `proposed`:
    passed, and its owner decision is recorded as "not yet approved as ADR"
    (`:21`). This RFC extends that gateway and changes its Android behaviour
    (decisions 9 to 11), so it must not treat RFC-0020 as accepted. The owner
-   either rules on RFC-0020 by its own ADR first, or decides that ADR-0016
+   either rules on RFC-0020 by its own ADR first, or decides that one push ADR
    covers the push gateway for both platforms (decision 1).
 2. **Apple team, App ID and key custody** are recorded
    ([ownership](#apple-team-app-id-and-key-ownership), decision 5).
@@ -1186,7 +1187,7 @@ Residual risks the owner is asked to accept or refuse:
 10. R10: Spam-driven load on the auth budget until the server mitigations of
     P15 exist.
 
-When ADR-0016 is accepted, `docs/security/ios-client-threats.md` boundary 8
+When the push ADR is accepted, `docs/security/ios-client-threats.md` boundary 8
 (`:82-98`) and its diagram line (`:33`) are replaced by a link to the delta;
 `docs/security/threat-model.md:290-297` and `:353-364` record boundary 8 as
 used by both clients; `docs/security/push-wake-threats.md` gains P3a and the
@@ -1199,7 +1200,7 @@ The decision owner is `martadvix-web`. Items marked "precondition" block
 
 | # | Decision | Owner | Needed by |
 | --- | --- | --- | --- |
-| 1 | Rule on RFC-0020 first by its own ADR, or have ADR-0016 cover the push gateway for FCM and APNs together. This RFC does not treat RFC-0020 as accepted. | martadvix-web | precondition |
+| 1 | Rule on RFC-0020 first by its own ADR, or have one push ADR cover the push gateway for FCM and APNs together. This RFC does not treat RFC-0020 as accepted. | martadvix-web | precondition |
 | 2 | Accept Apple (APNs) as a new observer for iOS: the recipient device and Apple Account, the gateway address, the time of every wake, and the timing patterns of residual P13. This reverses the recorded foreground-only property (`docs/security/ios-client-threats.md:82-98`). | martadvix-web | 2026-10-15 |
 | 3 | Accept a visible, system-rendered alert push class for iOS, although RFC-0020 chose data-only for Android, including the forged-banner surface P3. | martadvix-web | 2026-10-15 |
 | 4 | Confirm REQ-CLIENT-005: its ID and its three clauses, with the call clause conditional on the filtering entitlement. | martadvix-web | 2026-10-15 |
@@ -1253,7 +1254,7 @@ none of which exists yet:
    but cannot review his own proposal, and the delegation does not cover
    product scope or server actions.
 3. No unresolved blocking finding.
-4. This RFC, ADR-0016, the versioned contract delta, the
+4. This RFC, the push ADR, the versioned contract delta, the
    [threat delta](../security/ios-push-threats.md), a requirement-to-test
    mapping and real device evidence, with every unmeasured item marked
    `NOT RUN`.
@@ -1302,7 +1303,7 @@ Scope proposed for the owner's approval:
   `docs/security/ios-client-threats.md:33`, `:82-98`;
   `docs/security/threat-model.md:290-297`, `:353-364`;
   `docs/decisions/0014-ios-client.md:162-166`, which gets a transparent link to
-  ADR-0016 (ADR-0014 is still `proposed`);
+  the push ADR (ADR-0014 is still `proposed`);
   `docs/rfcs/0021-ios-client.md:177-180`, `:358-359`;
   `docs/project/current-state.md:737-740`; `docs/clients/ios/README.md:71-73`;
   the comments in `clients/ios/App/ParanoID/AppLifecycle.swift:33-37`,
@@ -1322,7 +1323,7 @@ Scope proposed for the owner's approval:
 1. **Phase 0, documents and decisions.** This draft RFC, the threat delta and
    the index row, on a documentation branch that is not `feat/ios-*`. Then:
    re-check the numbers, an independent AI review, the owner's answers, the
-   move to `proposed`, ADR-0016 as `proposed`, and a transparent link from
+   move to `proposed`, the push ADR as `proposed`, and a transparent link from
    ADR-0014.
 2. **Apple steps, by the owner of the Apple team.** The production
    topic-specific key, a sandbox key for the local stand, and the filtering
@@ -1347,8 +1348,8 @@ Scope proposed for the owner's approval:
    identity review and the owner's separate approval: the core
    `classify_v2` and `sign_read_v2` (their own pull request), the mirror, the
    extension, PushKit, CallKit, the audio branch and the protected-data guard.
-8. **Phase 5, closure.** Evidence gathered; ADR-0016 `accepted` with the
-   owner's exact approval, RFC-0027 `completed`, and the decision-log entry,
+8. **Phase 5, closure.** Evidence gathered; the push ADR `accepted` with the
+   owner's exact approval, RFC-0028 `completed`, and the decision-log entry,
    in one pull request.
 
 **Rollback.** The server flip back to FCM-only restores today's behaviour; the
@@ -1588,7 +1589,7 @@ These are carried as assumptions until measured or sourced:
   scope or server actions).
 - Required-review evidence permalinks: none yet; an independent AI review is
   to be recorded in the pull request.
-- Resulting ADR: ADR-0016, to be drafted as `proposed` (number re-checked
+- Resulting ADR: the push ADR, to be drafted as `proposed` (number re-checked
   before use).
 - Closure rationale: not applicable.
 - Replacement RFC: not applicable.
