@@ -8,6 +8,22 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS call screen after the call, proposed — 2026-09-28
+
+- The screen of an ended call closes itself: two seconds for an outcome that
+  only needs to be read, five for one that names a problem; «Закрыть» works
+  the whole time, «К переписке» and «Перезвонить» cancel it, and a call that
+  starts meanwhile is never closed by it.
+- «Перезвонить» on the screen of an own call that got no answer, found the
+  peer busy or never connected, through the same confirmation as «Позвонить»,
+  for the same peer and kind of call.
+- A call put away with «К переписке» stands on a line over every screen
+  («Звонок · имя · 02:31 · Вернуться»); one tap brings the screen back.
+- A connected call the system's audio interruption ended says «Звонок прерван
+  другим вызовом или приложением» instead of «Не удалось установить связь».
+  Controller, protocol, peer and server are unchanged; Android should receive
+  the same request. The wording is a proposal for the owner.
+
 ### Android alpha caption follow-up
 
 - Remove the stale «До 200 сообщений в диалоге.» sentence from «Мой ID» →

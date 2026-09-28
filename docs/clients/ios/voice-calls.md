@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-28
 ---
 
 # iOS client: calls (call-v2 audio and camera video)
@@ -204,6 +204,46 @@ The camera is opened by `Включить камеру` or an explicit video-cal
 by nothing else. A refusal never ends a call: the video section was negotiated
 `a=sendrecv` and stays `a=sendrecv`, carrying no frames, while a `media`
 control tells the peer what this camera is doing.
+
+## The screen after the call, and the call behind the screens
+
+The call screen is a full-screen cover raised once per call and put away with
+«К переписке» (`MainActivity.java:519`); Android does the same. Three things
+this client adds on top, none of them touching the controller, the protocol
+or the peer:
+
+- **The screen of an ended call closes itself.** The outcome stays two
+  seconds when it only needs to be read («Звонок завершён», «Вызов отменён»,
+  «Звонок отклонён») and five when it names a problem (no answer, busy, no
+  connection). «Закрыть» works the whole time; «К переписке» and
+  «Перезвонить» cancel the countdown; a call that starts meanwhile is never
+  closed by it, and neither is the screen taken away from under the
+  microphone alert. One ended call starts one countdown however often its
+  view is republished (`AppModel.scheduleCallClose`).
+- **«Перезвонить»** stands above «Закрыть» on the screen of a call this device
+  placed that got no answer, found the peer busy or never connected
+  (`AppModel.callBackOffer`, from the call's `CallTermination`). It opens the
+  same confirmation «Позвонить» does — the privacy sentence is read again —
+  for the same peer and the same kind of call: the controller opens no camera
+  before media, so an unanswered video call ends with both cameras off, and
+  the kind is remembered from the intent that placed it. Nothing is placed
+  without the confirmation, and a blocked or unregistered contact gets no
+  offer.
+- **A call put away with «К переписке» stands on a line over every screen**
+  — «Звонок · Сергей · 02:31 · Вернуться» — with the same name and status the
+  call screen shows, and one tap brings the screen back. Android has a
+  system notification for a running call instead (`VoiceCallService.java`);
+  this client raises no notification, so without the line a running call
+  would be visible nowhere.
+
+One caption is this client's own: a connected call whose audio the system
+took away — a cellular call, Siri, an alarm, another application — ends as
+`failed` on both clients (`CallCoordinator.interrupted`,
+`WebRtcAudioEngine.java:320-326`) and the peer is told so; Android's screen
+then says «Не удалось установить связь». This screen says «Звонок прерван
+другим вызовом или приложением» for that call and keeps Android's words for
+every other failure. `CallScreenLifeTests` drives all of it through the
+production `AppModel` with the controller's own published values.
 
 ## Screen capture: what this client cannot match
 

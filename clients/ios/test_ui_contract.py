@@ -839,6 +839,51 @@ class UiContract(unittest.TestCase):
         self.assertEqual(app.count('.fullScreenCover('), 1,
                          f'{ENTRY}: a second full-screen cover')
 
+    def test_the_call_screen_closes_itself_and_the_call_stays_reachable(self):
+        model = self.sources[MODEL]
+        screen = self.sources[CALL]
+        app = self.sources[ENTRY]
+        # One ended call, one countdown, and a live call cancels it.
+        changed = model[model.index('    func callChanged(_ presentation: CallPresentation) {'):
+                        model.index('    /// Closes the screen of an ended call by itself')]
+        self.present('presentation.callId != closingCall', changed, 'AppModel.callChanged')
+        self.present('scheduleCallClose(reason: presentation.reason)', changed, 'AppModel.callChanged')
+        # The countdown waits for the microphone alert and never closes a live call.
+        close = model[model.index('    private func scheduleCallClose('):
+                      model.index('    private func cancelCallClose() {')]
+        self.present('self.microphoneRefused', close, 'AppModel.scheduleCallClose')
+        self.present('!self.isCallActive else { return }', close, 'AppModel.scheduleCallClose')
+        # «Закрыть», «К переписке» and «Перезвонить» all stop it.
+        for name, end in (('    func endCall() {', '    /// «К переписке»'),
+                          ('    func closeCallScreen() {', '    /// The audio of the call was taken away'),
+                          ('    func callBack() {', '    /// The trust line of the call screen')):
+            self.present('cancelCallClose()', model[model.index(name):model.index(end)], name.strip())
+        # «Перезвонить» is on the screen only when there is something to call
+        # back, above the red button, and opens the one confirmation.
+        self.present('if model.callBackOffer != nil { callBack }\n                terminal\n', screen, CALL)
+        self.present('.accessibilityIdentifier("call-back-again")', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: true))', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: false))', app, ENTRY)
+        self.present('get: { model.showsCall == overCall ? model.callPrompt : nil }', app, ENTRY)
+        self.assertEqual(app.count('.modifier(CallConfirmation(') + screen.count('.modifier(CallConfirmation('),
+                         2, 'the confirmation is attached somewhere else')
+        # The offer is for this device's own call that did not go through.
+        self.present('last.callId == call.callId, last.outgoing,', model, MODEL)
+        self.present('[.timeout, .busy, .failed, .unavailable].contains(last.reason)', model, MODEL)
+        self.present('if !answer { placedCallVideo = video }', model, MODEL)
+        # The line over the screens shows the same name and status the screen
+        # does, and only while the screen is away.
+        self.present('guard isCallActive, !showsCall, let call else { return nil }', model, MODEL)
+        self.present('status: callLabel)', model, MODEL)
+        self.present('CallReturnBar(line: line, onReturn: model.returnToCall)', app, ENTRY)
+        self.present('.accessibilityIdentifier("call-return-bar")', app, ENTRY)
+        # An interrupted call is named for it, before the controller ends it.
+        coordinator = self.sources[COORDINATOR]
+        self.before('model?.callInterrupted(callId)', 'controller.mediaState(generation, .failed)',
+                    coordinator, COORDINATOR)
+        self.present('call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed',
+                     model, MODEL)
+
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()
         plist = plistlib.loads(raw.encode())

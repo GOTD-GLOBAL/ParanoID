@@ -451,6 +451,21 @@ enum Strings {
         static let cancelled = "Вызов отменён"
         static let ended = "Звонок завершён"
 
+        /// A connected call whose audio the system took away — a cellular
+        /// call, Siri, an alarm, another application. Android ends it the same
+        /// way (`WebRtcAudioEngine.java:320-326`) and says «Не удалось
+        /// установить связь», which is not what happened; this client names
+        /// it, so the caption is its own.
+        static let interrupted = "Звонок прерван другим вызовом или приложением"
+        /// The line over the screens while a call runs behind them, and the
+        /// way back to it. Android has a system notification for a running
+        /// call instead (`VoiceCallService.java`), so both are this client's.
+        static func returnBar(title: String, status: String) -> String {
+            "Звонок · \(title) · \(status)"
+        }
+        static let returnToCall = "Вернуться"
+        static let returnToCallAction = "Вернуться к звонку"
+
         /// `"%02d:%02d · %s"` (`MainActivity.java:504`), on the invariant
         /// locale, so the separator and the digits are the phone's.
         static func elapsed(seconds: Int64, kind: String) -> String {

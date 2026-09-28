@@ -47,14 +47,7 @@ struct RootView: View {
             // «Позвонить собеседнику?» / «Видеозвонок собеседнику?»: the
             // privacy sentence is the message, so it is read before the
             // microphone is ever asked for (`MainActivity.java:380-382`).
-            .alert(item: $model.callPrompt) { prompt in
-                Alert(title: Text(prompt.title),
-                      message: Text(prompt.privacy),
-                      primaryButton: .default(Text(prompt.confirm)) { model.confirmCall(prompt) },
-                      secondaryButton: .cancel(Text(Strings.Call.cancel)) {
-                          model.cancelCallPrompt()
-                      })
-            }
+            .modifier(CallConfirmation(model: model, overCall: false))
             // The microphone was refused. Настройки is the only place that
             // answer can be changed (`MainActivity.java:534`).
             .modifier(MicrophoneRefusal(model: model, overCall: false))
@@ -88,19 +81,27 @@ struct RootView: View {
     }
 
     private var running: some View {
-        NavigationStack {
-            Group {
-                if model.view.hasIdentity {
-                    tabs
-                } else {
-                    WelcomeScreen(model: model)
+        VStack(spacing: 0) {
+            // A call that runs behind the screens says so over every one of
+            // them, and is one tap away (`AppModel.callReturnBar`).
+            if let line = model.callReturnBar {
+                CallReturnBar(line: line, onReturn: model.returnToCall)
+            }
+            NavigationStack {
+                Group {
+                    if model.view.hasIdentity {
+                        tabs
+                    } else {
+                        WelcomeScreen(model: model)
+                    }
+                }
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationDestination(item: chatSelection) { _ in
+                    ChatScreen(model: model)
                 }
             }
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(item: chatSelection) { _ in
-                ChatScreen(model: model)
-            }
         }
+        .animation(.default, value: model.callReturnBar == nil)
         .sheet(item: $model.sheet) { sheet in
             content(of: sheet)
         }
@@ -293,6 +294,69 @@ private struct ContactRefusal: ViewModifier {
         } message: { failure in
             Text(failure.message)
         }
+    }
+}
+
+/// The confirmation a call is never placed without: «Позвонить собеседнику?»
+/// / «Видеозвонок собеседнику?», the privacy sentence as its message, and
+/// the positive button naming the kind (`MainActivity.java:380-382`).
+///
+/// It is attached twice, like the microphone refusal: to the root, for
+/// «Позвонить» in the chat, and to the call screen, for «Перезвонить» — an
+/// alert attached below a full-screen cover never reaches it. Each copy
+/// presents only in its own place, so the one prompt is never presented
+/// twice. The prompt is handed to `confirmCall` rather than read back:
+/// `.alert(item:)` clears its binding before the button's action runs.
+struct CallConfirmation: ViewModifier {
+    @Bindable var model: AppModel
+    /// Whether this copy is the one inside the call screen.
+    let overCall: Bool
+
+    func body(content: Content) -> some View {
+        content.alert(item: Binding(
+            get: { model.showsCall == overCall ? model.callPrompt : nil },
+            set: { prompt in if prompt == nil { model.callPrompt = nil } })) { prompt in
+            Alert(title: Text(prompt.title),
+                  message: Text(prompt.privacy),
+                  primaryButton: .default(Text(prompt.confirm)) { model.confirmCall(prompt) },
+                  secondaryButton: .cancel(Text(Strings.Call.cancel)) {
+                      model.cancelCallPrompt()
+                  })
+        }
+    }
+}
+
+/// The line over the screens while a call runs and its screen is put away:
+/// «Звонок · Сергей · 02:31 · Вернуться». Tapping it brings the call screen
+/// back. Android shows a system notification for a running call instead
+/// (`VoiceCallService.java`); this client has none, so without this line a
+/// call put away with «К переписке» would be visible nowhere.
+struct CallReturnBar: View {
+    let line: String
+    let onReturn: () -> Void
+
+    var body: some View {
+        Button(action: onReturn) {
+            HStack(spacing: 8) {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(line)
+                    .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 8)
+                Text(Strings.Call.returnToCall)
+                    .font(.system(size: 13, weight: .semibold))
+                    .underline()
+            }
+            .foregroundStyle(Color.white)
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(Color.green)
+        }
+        .accessibilityLabel(Strings.Call.returnToCallAction)
+        .accessibilityValue(line)
+        .accessibilityIdentifier("call-return-bar")
     }
 }
 
