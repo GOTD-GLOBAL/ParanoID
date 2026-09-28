@@ -11,10 +11,11 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 The iOS call screen closes itself after the call (two seconds to read an
 outcome, five when it names a problem), offers «Перезвонить» for an own call
-that did not go through — through the same confirmation as «Позвонить» — and a
+that never connected — through the same confirmation as «Позвонить» — and a
 call put away with «К переписке» stands on a line over every screen with the
-way back. A call the system's audio interruption ended is named for it instead
-of «Не удалось установить связь». Controller, protocol, peer and server are
+way back. A call that already had audio and lost it to the system is named for
+it («Звонок прерван: система забрала звук») instead of «Не удалось установить
+связь». Controller, protocol, peer and server are
 unchanged; the captions are proposed and await the owner, and Android should
 receive the same request. Evidence is contributor Mac execution on a
 simulator, recorded in the

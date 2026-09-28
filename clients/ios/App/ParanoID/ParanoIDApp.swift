@@ -299,7 +299,7 @@ private struct ContactRefusal: ViewModifier {
 
 /// The confirmation a call is never placed without: «Позвонить собеседнику?»
 /// / «Видеозвонок собеседнику?», the privacy sentence as its message, and
-/// the positive button naming the kind (`MainActivity.java:380-382`).
+/// the positive button naming the kind (`MainActivity.java:391-393`).
 ///
 /// It is attached twice, like the microphone refusal: to the root, for
 /// «Позвонить» in the chat, and to the call screen, for «Перезвонить» — an
@@ -327,8 +327,8 @@ struct CallConfirmation: ViewModifier {
 }
 
 /// The line over the screens while a call runs and its screen is put away:
-/// «Звонок · Сергей · 02:31 · Вернуться». Tapping it brings the call screen
-/// back. Android shows a system notification for a running call instead
+/// «Звонок · Сергей · 02:31 · Соединение установлено», with «Вернуться» at
+/// its right. Tapping it brings the call screen back. Android shows a system notification for a running call instead
 /// (`VoiceCallService.java`); this client has none, so without this line a
 /// call put away with «К переписке» would be visible nowhere.
 struct CallReturnBar: View {

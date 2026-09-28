@@ -867,9 +867,18 @@ class UiContract(unittest.TestCase):
         self.present('get: { model.showsCall == overCall ? model.callPrompt : nil }', app, ENTRY)
         self.assertEqual(app.count('.modifier(CallConfirmation(') + screen.count('.modifier(CallConfirmation('),
                          2, 'the confirmation is attached somewhere else')
-        # The offer is for this device's own call that did not go through.
-        self.present('last.callId == call.callId, last.outgoing,', model, MODEL)
+        # The offer is for this device's own call that never connected, to a
+        # peer a call may be placed to now.
+        self.present('last.callId == call.callId, last.outgoing, !last.connected,', model, MODEL)
         self.present('[.timeout, .busy, .failed, .unavailable].contains(last.reason)', model, MODEL)
+        offer = model[model.index('    var callBackOffer: CallPrompt? {'):
+                      model.index('    /// «Перезвонить»: the confirmation')]
+        self.present('DialogPolicy.canReply(view.dialog(last.account)', offer, 'AppModel.callBackOffer')
+        # A refused start publishes an ended view with an empty identifier;
+        # neither sentinel may be the empty string, or it would match it.
+        self.present('private var closingCall: String?\n', model, MODEL)
+        self.present('private var interruptedCall: String?\n', model, MODEL)
+        self.present('guard !callId.isEmpty else { return }', model, MODEL)
         self.present('if !answer { placedCallVideo = video }', model, MODEL)
         # The line over the screens shows the same name and status the screen
         # does, and only while the screen is away.

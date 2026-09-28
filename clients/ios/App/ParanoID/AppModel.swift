@@ -153,8 +153,9 @@ final class AppModel {
     /// The selected tab.
     var tab: Tab = .dialogs
     /// Whether the call screen is on top of everything (Android's
-    /// `callDialog`, `MainActivity.java:443`). An ended call keeps it until
-    /// «Закрыть», so that the reason can be read.
+    /// `callDialog`, `MainActivity.java:455`). An ended call keeps it long
+    /// enough for the outcome to be read, then closes it itself
+    /// (``scheduleCallClose(reason:)``); «Закрыть» closes it at once.
     var showsCall = false
     /// The confirmation that carries the privacy sentence, or `nil`.
     var callPrompt: CallPrompt?
@@ -217,8 +218,10 @@ final class AppModel {
     private var shownCall = ""
     /// The identifier of the ended call the screen is closing itself for, so
     /// that one ended call starts one countdown however many times its view
-    /// is republished.
-    private var closingCall = ""
+    /// is republished. `nil` until the first, and never the empty string: a
+    /// refused start publishes an ended view with an empty identifier
+    /// (`CallController.start`, `lastCallId = ""`), and that one counts too.
+    private var closingCall: String?
     /// The countdown itself (``scheduleCallClose()``).
     private var callClose: Task<Void, Never>?
     /// The terminal facts of the last call, for «Перезвонить»: which way it
@@ -231,7 +234,9 @@ final class AppModel {
     private var placedCallVideo = false
     /// The identifier of the call whose audio the system took away
     /// (``callInterrupted(_:)``), so that its end is named for what it was.
-    private var interruptedCall = ""
+    /// `nil` rather than the empty string, for the same reason as
+    /// ``closingCall``: an ended view with an empty identifier must not match.
+    private var interruptedCall: String?
     /// How many times the scene has been reported as on the screen or off it.
     /// It only grows, and it is what lets the state owner apply those reports
     /// in the order they were taken (``setBackground(_:)``).
@@ -876,9 +881,9 @@ final class AppModel {
         case .reject: return Strings.Call.rejected
         case .timeout: return Strings.Call.timeout
         case .failed, .unavailable:
-            // The one branch Android does not have: a call the system's
-            // audio interruption ended is named, not called a failure to
-            // connect (`CallCoordinator.interrupted`).
+            // The one branch Android does not have: a call whose audio the
+            // system took away is named, not called a failure to connect
+            // (`CallCoordinator.interrupted`).
             return call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed
         case .cancel: return Strings.Call.cancelled
         default: return Strings.Call.ended
@@ -886,8 +891,9 @@ final class AppModel {
     }
 
     /// The line over the screens while a call runs and its screen is put
-    /// away — «Звонок · Сергей · 02:31 · Вернуться» — or `nil`. It reads the
-    /// same name and the same status the call screen shows.
+    /// away — «Звонок · Сергей · 02:31 · Соединение установлено», with
+    /// «Вернуться» beside it — or `nil`. It reads the same name and the same
+    /// status the call screen shows.
     var callReturnBar: String? {
         guard isCallActive, !showsCall, let call else { return nil }
         return Strings.Call.returnBar(title: title(for: call.account), status: callLabel)
@@ -902,13 +908,18 @@ final class AppModel {
 
     /// «Перезвонить» on the screen of a call that did not go through, or
     /// `nil` when there is nothing to call back: the call has to be the one
-    /// on the screen, placed by this device, and ended without an answer,
-    /// busy, or without a connection. The offer is the same confirmation
-    /// «Позвонить» opens, for the same peer and the same kind of call.
+    /// on the screen, placed by this device, never connected, and ended
+    /// without an answer, busy, or without a connection — and the peer has to
+    /// be one a call may be placed to now, by the rule «Позвонить» itself
+    /// follows (`DialogPolicy.canReply`), so the button is never there for a
+    /// contact blocked since. The offer is the same confirmation «Позвонить»
+    /// opens, for the same peer and the same kind of call.
     var callBackOffer: CallPrompt? {
         guard let call, call.state == .ended, let last = lastTermination,
-              last.callId == call.callId, last.outgoing,
-              [.timeout, .busy, .failed, .unavailable].contains(last.reason)
+              last.callId == call.callId, last.outgoing, !last.connected,
+              [.timeout, .busy, .failed, .unavailable].contains(last.reason),
+              DialogPolicy.canReply(view.dialog(last.account), active: view.isActive,
+                                    broken: isBroken, sending: false)
         else { return nil }
         return CallPrompt(account: last.account, video: last.video || placedCallVideo)
     }
@@ -916,10 +927,7 @@ final class AppModel {
     /// «Перезвонить»: the confirmation, over the call screen. The screen
     /// stops closing itself, because the user is doing something on it.
     func callBack() {
-        guard let offer = callBackOffer, !isCallActive,
-              DialogPolicy.canReply(view.dialog(offer.account), active: view.isActive,
-                                    broken: isBroken, sending: false)
-        else { return }
+        guard let offer = callBackOffer, !isCallActive else { return }
         cancelCallClose()
         callPrompt = offer
     }
@@ -1001,6 +1009,7 @@ final class AppModel {
     /// (`CallCoordinator.interrupted`). Only the caption changes: the peer is
     /// told `failed`, as before.
     func callInterrupted(_ callId: String) {
+        guard !callId.isEmpty else { return }
         interruptedCall = callId
     }
 

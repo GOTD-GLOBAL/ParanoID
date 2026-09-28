@@ -451,12 +451,15 @@ enum Strings {
         static let cancelled = "Вызов отменён"
         static let ended = "Звонок завершён"
 
-        /// A connected call whose audio the system took away — a cellular
-        /// call, Siri, an alarm, another application. Android ends it the same
-        /// way (`WebRtcAudioEngine.java:320-326`) and says «Не удалось
-        /// установить связь», which is not what happened; this client names
-        /// it, so the caption is its own.
-        static let interrupted = "Звонок прерван другим вызовом или приложением"
+        /// A call that already had audio and lost it to the system — an
+        /// interruption (a cellular call, Siri, an alarm, another application,
+        /// a muted built-in microphone, a route that went away) or a
+        /// media-services reset; both reach `CallCoordinator.interrupted` and
+        /// neither is told apart there. Android ends it the same way
+        /// (`WebRtcAudioEngine.java:323-326`) and says «Не удалось установить
+        /// связь», which is not what happened; this client names what it
+        /// knows, so the caption is its own.
+        static let interrupted = "Звонок прерван: система забрала звук"
         /// The line over the screens while a call runs behind them, and the
         /// way back to it. Android has a system notification for a running
         /// call instead (`VoiceCallService.java`), so both are this client's.

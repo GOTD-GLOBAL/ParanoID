@@ -59,7 +59,9 @@ final class CallScreenLifeTests: XCTestCase {
     @MainActor
     func testCloseWorksAtOnceAndANewCallCancelsTheCountdown() async throws {
         let (model, peer) = try await Self.modelWithAContact()
+        model.callChanged(Self.call(.outgoing, peer, "c3"))
         model.callChanged(Self.call(.ended, peer, "c3", reason: .cancel))
+        XCTAssertTrue(model.showsCall)
         model.endCall()
         XCTAssertFalse(model.showsCall, "«Закрыть» does not wait")
 
@@ -78,15 +80,38 @@ final class CallScreenLifeTests: XCTestCase {
     @MainActor
     func testARepublishedEndedViewStartsNoSecondCountdown() async throws {
         let (model, peer) = try await Self.modelWithAContact()
-        model.callChanged(Self.call(.connected, peer, "c6", elapsed: 1_000))
-        model.callChanged(Self.call(.ended, peer, "c6", reason: .hangup))
+        model.callChanged(Self.call(.outgoing, peer, "c6"))
+        model.callChanged(Self.call(.ended, peer, "c6", reason: .timeout))
         XCTAssertTrue(model.showsCall)
-        try await Self.wait(seconds: 1) { !model.showsCall }
+        try await Self.wait(seconds: 2) { !model.showsCall }
         XCTAssertTrue(model.showsCall)
-        // The same ended call again, as the controller republishes its view.
-        model.callChanged(Self.call(.ended, peer, "c6", reason: .hangup))
-        try await Self.wait(seconds: 1.5) { !model.showsCall }
-        XCTAssertFalse(model.showsCall, "two seconds from the first publication, not the last")
+        // The same ended call again, as the controller republishes its view:
+        // a restarted countdown would run to seven seconds, the one countdown
+        // runs to five.
+        model.callChanged(Self.call(.ended, peer, "c6", reason: .timeout))
+        try await Self.wait(seconds: 2) { !model.showsCall }
+        XCTAssertTrue(model.showsCall, "four seconds in, still up either way")
+        try await Self.wait(seconds: 2) { !model.showsCall }
+        XCTAssertFalse(model.showsCall, "five seconds from the first publication, not the last")
+    }
+
+    /// A start the controller refused publishes an ended view with an empty
+    /// identifier (`CallController.start`, `lastCallId = ""`), and the
+    /// application raises the screen for it. It is an ordinary failure to
+    /// connect, and it closes itself like any other.
+    @MainActor
+    func testARefusedStartIsAFailureToConnectAndClosesItself() async throws {
+        let (model, peer) = try await Self.modelWithAContact()
+        // Nothing has been interrupted yet: the sentinel is at its initial
+        // value, and an empty identifier must not match it.
+        model.callChanged(Self.call(.ended, peer, "", reason: .unavailable))
+        model.showsCall = true
+        XCTAssertEqual(model.callLabel, Strings.Call.failed, "an empty identifier matches nothing")
+        XCTAssertNil(model.callBackOffer)
+        try await Self.wait(seconds: 3) { !model.showsCall }
+        XCTAssertTrue(model.showsCall)
+        try await Self.wait(seconds: 4) { !model.showsCall }
+        XCTAssertFalse(model.showsCall, "a refused start counts down like any problem")
     }
 
     // MARK: - «Перезвонить»
@@ -122,6 +147,8 @@ final class CallScreenLifeTests: XCTestCase {
             (true, false, .reject, false),
             (true, false, .cancel, false),
             (true, true, .hangup, false),
+            (true, true, .failed, false),
+            (true, true, .timeout, false),
             (false, false, .timeout, false),
             (false, false, .busy, false),
             (false, true, .hangup, false),
@@ -140,6 +167,23 @@ final class CallScreenLifeTests: XCTestCase {
         model.callFinished(Self.termination(peer, "x", outgoing: true, reason: .timeout))
         model.callChanged(Self.call(.ended, peer, "y", reason: .timeout))
         XCTAssertNil(model.callBackOffer)
+    }
+
+    /// A peer blocked since the call gets no «Перезвонить»: the offer follows
+    /// the rule «Позвонить» does, so the button is never inert.
+    @MainActor
+    func testABlockedPeerGetsNoCallBack() async throws {
+        let (model, peer) = try await Self.modelWithAContact()
+        model.callFinished(Self.termination(peer, "k1", outgoing: true, reason: .timeout))
+        model.callChanged(Self.call(.ended, peer, "k1", reason: .timeout))
+        XCTAssertNotNil(model.callBackOffer)
+
+        model.block(account: peer, blocked: true)
+        try await Self.wait(seconds: 20) { model.view.dialog(peer)?.isBlocked == true }
+        XCTAssertEqual(model.view.dialog(peer)?.isBlocked, true)
+        XCTAssertNil(model.callBackOffer)
+        model.callBack()
+        XCTAssertNil(model.callPrompt)
     }
 
     @MainActor
@@ -202,7 +246,7 @@ final class CallScreenLifeTests: XCTestCase {
         model.callInterrupted("i1")
         model.callChanged(Self.call(.ended, peer, "i1", reason: .failed))
         XCTAssertEqual(model.callLabel, Strings.Call.interrupted)
-        XCTAssertEqual(model.callLabel, "Звонок прерван другим вызовом или приложением")
+        XCTAssertEqual(model.callLabel, "Звонок прерван: система забрала звук")
 
         model.callChanged(Self.call(.ended, peer, "i2", reason: .failed))
         XCTAssertEqual(model.callLabel, Strings.Call.failed, "another call's failure keeps Android's words")

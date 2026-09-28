@@ -207,8 +207,9 @@ control tells the peer what this camera is doing.
 
 ## The screen after the call, and the call behind the screens
 
-The call screen is a full-screen cover raised once per call and put away with
-«К переписке» (`MainActivity.java:519`); Android does the same. Three things
+The call screen is a full-screen cover raised once per call
+(`MainActivity.java:529`) and put away with «К переписке» (`:486`); Android
+does the same. Three things
 this client adds on top, none of them touching the controller, the protocol
 or the peer:
 
@@ -221,28 +222,32 @@ or the peer:
   microphone alert. One ended call starts one countdown however often its
   view is republished (`AppModel.scheduleCallClose`).
 - **«Перезвонить»** stands above «Закрыть» on the screen of a call this device
-  placed that got no answer, found the peer busy or never connected
-  (`AppModel.callBackOffer`, from the call's `CallTermination`). It opens the
-  same confirmation «Позвонить» does — the privacy sentence is read again —
-  for the same peer and the same kind of call: the controller opens no camera
-  before media, so an unanswered video call ends with both cameras off, and
-  the kind is remembered from the intent that placed it. Nothing is placed
-  without the confirmation, and a blocked or unregistered contact gets no
-  offer.
+  placed that never connected: no answer, busy, or no connection
+  (`AppModel.callBackOffer`, from the call's `CallTermination`; a call that
+  connected and then dropped gets no offer). It opens the same confirmation
+  «Позвонить» does — the privacy sentence is read again — for the same peer
+  and the same kind of call: the controller opens no camera before media, so
+  an unanswered video call ends with both cameras off, and the kind is
+  remembered from the intent that placed it. Nothing is placed without the
+  confirmation, and the offer follows the rule «Позвонить» follows
+  (`DialogPolicy.canReply`), so a contact blocked since gets no button.
 - **A call put away with «К переписке» stands on a line over every screen**
-  — «Звонок · Сергей · 02:31 · Вернуться» — with the same name and status the
-  call screen shows, and one tap brings the screen back. Android has a
+  — «Звонок · Сергей · 02:31 · Соединение установлено», with «Вернуться» at
+  its right — with the same name and status the call screen shows, and one
+  tap brings the screen back. Android has a
   system notification for a running call instead (`VoiceCallService.java`);
   this client raises no notification, so without the line a running call
   would be visible nowhere.
 
-One caption is this client's own: a connected call whose audio the system
-took away — a cellular call, Siri, an alarm, another application — ends as
-`failed` on both clients (`CallCoordinator.interrupted`,
-`WebRtcAudioEngine.java:320-326`) and the peer is told so; Android's screen
-then says «Не удалось установить связь». This screen says «Звонок прерван
-другим вызовом или приложением» for that call and keeps Android's words for
-every other failure. `CallScreenLifeTests` drives all of it through the
+One caption is this client's own: a call that already had audio and lost it
+to the system — an interruption (a cellular call, Siri, an alarm, another
+application, a muted built-in microphone, a route that went away) or a
+media-services reset, neither told apart — ends as `failed` on both clients
+(`CallCoordinator.interrupted`, `WebRtcAudioEngine.java:323-326`) and the
+peer is told so; Android's screen then says «Не удалось установить связь».
+This screen says «Звонок прерван: система забрала звук» for that call and
+keeps Android's words for every other failure, including a start the
+controller refused. `CallScreenLifeTests` drives all of it through the
 production `AppModel` with the controller's own published values.
 
 ## Screen capture: what this client cannot match

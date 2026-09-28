@@ -86,7 +86,7 @@ the shared [core contract](../core/self-service.md) and
   answered by the owner's agents in
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)).
 - The call screen closes itself after the call, offers «Перезвонить» for an
-  own call that did not go through, and a call put away with «К переписке»
+  own call that never connected, and a call put away with «К переписке»
   stands on a line over the screens ([voice-calls.md](voice-calls.md#the-screen-after-the-call-and-the-call-behind-the-screens)).
   Android keeps its dialog until «Закрыть» and shows a system notification for
   a running call; the same request stands for Android.
