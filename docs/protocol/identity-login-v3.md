@@ -7,6 +7,10 @@ last_reviewed: 2026-09-24
 
 # Identity login v3 — private Devnet candidate
 
+Implementation status (2026-09-24): server candidate only, local mode
+`identity-v3-local`; see [current state](../project/current-state.md). Deviations:
+the fixture-only ban has no API; `recipient_retired` is 409 with that code.
+
 Companion to [RFC-0027](../rfcs/0027-solana-server-authentication.md).
 This document replaces the initial RFC's exchange, not deployed v2 behavior.
 No implementation, normative acceptance, migration or deployment is claimed.

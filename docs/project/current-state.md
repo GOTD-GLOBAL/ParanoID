@@ -7,6 +7,21 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Current project state
 
+## Solana login server candidate — 2026-09-24
+
+Local, not deployed. Shared Rust validator (`key-protocol/src/identity_v3.rs`,
+8 tests) and server mode `identity-v3-local` (`server/src/identity_v3.rs`) implement
+the [v3 contract](../protocol/identity-login-v3.md). 14 real-PostgreSQL tests cover
+enroll, transport reuse, membership-independent challenge, route-bound single-use
+proofs, identity-only inspect, replacement/retirement on all transport paths, lost-reply
+retries, rebind refusal, fail-closed registry, global start budget, cooldown, fixture
+ban and the eight-generation cap. Eight deliberate guard removals were each caught by a
+failing test. A read-only live Devnet check accepted the owner's real test name and
+rejected a wrong name and wrong owner. The full server suite result is recorded in the
+PR. RPC here is a fake in integration tests; real RPC outage/lie/timeout behavior,
+Android login, phones, independent code review, human ADR disposition and any
+deployment remain NOT RUN.
+
 ## Solana login protocol draft — 2026-09-24
 
 Independent [R2 review](evidence/identity-login-v3/r2-opus55.md) required three

@@ -49,6 +49,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if env::args().nth(1).as_deref() == Some("self-service-init") {
         return paranoid_server::self_service::init_cli().await;
     }
+    if env::args().nth(1).as_deref() == Some("identity-v3-init") {
+        return paranoid_server::identity_v3::init_cli().await;
+    }
     if env::args().nth(1).as_deref() == Some("self-service-capabilities") {
         use sha2::{Digest, Sha256};
         println!(
@@ -121,7 +124,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         println!("Local key schema initialized; old startup is blocked");
         return Ok(());
     }
-    let self_service_local = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
+    // RFC-0027: identity-v3 reuses the self-service transport; only the local
+    // (loopback) profile exists. No public identity-v3 mode is defined yet.
+    let identity_v3 = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3-local");
+    let self_service_local =
+        identity_v3 || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
     let self_service_public = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
     let self_service = self_service_local || self_service_public;
     let turn_secret = env::var_os("PARANOID_TURN_SECRET_FILE").map(std::path::PathBuf::from);
@@ -258,7 +265,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
-    let app = if self_service {
+    let app = if identity_v3 {
+        let rpc = env::var("PARANOID_REGISTRY_RPC")
+            .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
+        let registry = std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?);
+        paranoid_server::identity_v3::app(pool, turn, push, registry).await?
+    } else if self_service {
         paranoid_server::self_service::app_with_services(pool, turn, push).await?
     } else if key_mode {
         paranoid_server::registration::key_app(pool, tokens, quota).await?

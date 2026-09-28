@@ -13,6 +13,7 @@ pub(crate) async fn messages(
     method: &str,
     uri: &Uri,
     body: &[u8],
+    report_retired: bool,
 ) -> Result<Value, Failure> {
     if method == "GET" {
         let Query(c) = Query::<Cursor>::try_from_uri(uri).map_err(|_| invalid())?;
@@ -69,6 +70,20 @@ pub(crate) async fn messages(
     .fetch_one(&mut **tx)
     .await?;
     if !exists {
+        // RFC-0027: an identity-v3 replacement retires the old transport account.
+        // Report it explicitly instead of a durable one-check acceptance that the
+        // retired device can never read. v2 keeps its unchanged generic error.
+        if report_retired {
+            let retired: bool = sqlx::query_scalar(
+                "SELECT EXISTS(SELECT 1 FROM id_bindings WHERE account=$1 AND retired)",
+            )
+            .bind(&i.recipient)
+            .fetch_one(&mut **tx)
+            .await?;
+            if retired {
+                return Err(Failure(StatusCode::CONFLICT, "recipient_retired"));
+            }
+        }
         return Err(invalid());
     }
     let (a, b) = if sender < i.recipient.as_str() {

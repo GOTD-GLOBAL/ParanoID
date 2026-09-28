@@ -15,6 +15,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 pub mod android_updates;
+pub mod identity_v3;
 mod key_http;
 mod key_transport;
 pub mod push_fcm;

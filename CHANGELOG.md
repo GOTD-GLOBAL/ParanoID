@@ -8,6 +8,19 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Solana identity login — server candidate (RFC-0027, draft) — 2026-09-24
+
+- New local-only server mode `identity-v3-local` with offline `identity-v3-init` on an
+  EMPTY database. Legacy self-registration routes are absent (404); accounts are created
+  only by a dual owner/device proof over `/v3/identity/{challenge,inspect,status,commit}`.
+  The existing v2 transport (messages, sessions, events, push, TURN) is reused unchanged.
+- Replacement retires the old transport account, deletes its push token, drops its
+  sessions and rejects new messages to it with `recipient_retired`.
+- The live verifier reads the paired registry records from finalized Devnet first, then
+  genesis and the pinned program artifact; exact byte checks, fail closed.
+- v2 and v3 runtimes refuse each other's databases. No public mode, deployment,
+  Android login, or accepted ADR yet; existing hosted service unchanged.
+
 ### iOS captions that stopped being true — 2026-09-23
 
 - «Мой ID» no longer states a numeric conversation limit. #45 removed the
