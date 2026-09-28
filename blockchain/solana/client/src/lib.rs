@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use solana_address::Address;
 use std::str::FromStr;
 use zeroize::Zeroizing;
+mod identity_v3;
 
 pub const PROGRAM: &str = "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas";
 pub const GENESIS: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -49,6 +50,14 @@ enum Command {
         name: String,
         blockhash: String,
         genesis: String,
+    },
+    IdentityOwnerProofV3 {
+        entropy: String,
+        intent: Box<paranoid_key_protocol::identity_v3::ChallengeRequestV3>,
+        challenge: Box<paranoid_key_protocol::identity_v3::IdentityChallengeV3>,
+        realm: String,
+        pin: String,
+        now: i64,
     },
 }
 
@@ -238,6 +247,20 @@ fn run(input: Command) -> Result<Value, &'static str> {
                 json!({"owner":public(&bytes)?.to_string(),"identity":addresses(&public(&bytes)?,"aaa").0.to_string(),"program":PROGRAM,"genesis":GENESIS,"rpc":RPC}),
             )
         }
+        Command::IdentityOwnerProofV3 {
+            entropy: e,
+            intent,
+            challenge,
+            realm,
+            pin,
+            now,
+        } => {
+            let encoded = Zeroizing::new(e);
+            let bytes = entropy(&encoded)?;
+            let seed = secret(&bytes)?;
+            let signature = identity_v3::sign_owner(&seed, &intent, &challenge, &realm, &pin, now)?;
+            Ok(json!({"owner_signature": signature}))
+        }
         Command::Recover { mnemonic: m } => {
             let text = Zeroizing::new(m);
             let phrase = Mnemonic::parse_in_normalized(Language::English, &text)
@@ -251,7 +274,7 @@ fn run(input: Command) -> Result<Value, &'static str> {
     }
 }
 pub fn command(input: &str) -> String {
-    if input.len() > 8192 {
+    if input.len() > 16384 {
         return json!({"error":"input_limit"}).to_string();
     }
     let result = serde_json::from_str(input)
@@ -375,7 +398,7 @@ mod tests {
             assert!(out.get("transaction").is_none());
         }
         for m in ["abandon abandon", "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"] {let out:Value=serde_json::from_str(&command(&json!({"op":"recover","mnemonic":m}).to_string())).unwrap();assert_eq!(out["error"],"invalid_mnemonic");}
-        assert!(command(&"x".repeat(8193)).contains("input_limit"));
+        assert!(command(&"x".repeat(16385)).contains("input_limit"));
         assert!(
             command(r#"{"op":"identity","op":"recover","entropy":"AAAA"}"#)
                 .contains("invalid_request")
