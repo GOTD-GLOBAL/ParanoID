@@ -97,6 +97,11 @@ the shared [core contract](../core/self-service.md) and
   ([self-service.md](self-service.md#contacts-and-qr)). Android keeps the
   core's order, one unbroken fingerprint and no clipboard button; the same
   request stands for Android.
+- The call screen closes itself after the call, offers «Перезвонить» for an
+  own call that never connected, and a call put away with «К переписке»
+  stands on a line over the screens ([voice-calls.md](voice-calls.md#the-screen-after-the-call-and-the-call-behind-the-screens)).
+  Android keeps its dialog until «Закрыть» and shows a system notification for
+  a running call; the same request stands for Android.
 - Screen capture: Android's `FLAG_SECURE` has no iOS equivalent. This client
   covers the video stage while the screen is recorded, mirrored or AirPlayed
   and leaves the controls reachable; a screenshot and the app-switcher snapshot
