@@ -2,7 +2,7 @@ import ParanoidKit
 import SwiftUI
 
 /// The `dialogs` screen: «Чаты», the list Android renders in
-/// `renderLists()` (`MainActivity.java:545-575`).
+/// `renderLists()` (`MainActivity.java:630-654`).
 ///
 /// A row is a conversation, and the three things on it come from the core and
 /// from this phone alone: the contact's name — the one typed here through
@@ -15,7 +15,7 @@ import SwiftUI
 /// Under the status line stands the one line Android does not have: this
 /// client has no background delivery, so «Входящие приходят, пока приложение
 /// открыто» takes the place of Android's «Входящие в фоне отключены —
-/// включить» banner (`MainActivity.java:150-153`) and opens the connection
+/// включить» banner (`MainActivity.java:172-175`) and opens the connection
 /// sheet, which explains it in full.
 struct DialogsScreen: View {
     let model: AppModel
@@ -36,15 +36,16 @@ struct DialogsScreen: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 8)
-                    ForEach(model.view.dialogs) { dialog in
+                    ForEach(model.orderedDialogs) { dialog in
                         ConversationRow(dialog: dialog,
                                         title: model.title(for: dialog.account),
                                         subtitle: model.preview(for: dialog) ?? Self.preview(dialog),
+                                        isAlert: model.isMissedCallPreview(for: dialog),
                                         time: model.listTime(for: dialog),
                                         trailing: Self.trailing(dialog),
                                         unseen: model.unseenCount(for: dialog))
                         .contentShape(Rectangle())
-                        .onTapGesture { model.openChat(dialog.account) }
+                        .rowButton("dialog-\(dialog.account)") { model.openChat(dialog.account) }
                     }
                 }
             }
@@ -54,7 +55,7 @@ struct DialogsScreen: View {
         .accessibilityIdentifier("dialogs")
     }
 
-    /// The preview line of a row (`MainActivity.java:555-556`), for a
+    /// The preview line of a row (`MainActivity.java:643-644`), for a
     /// conversation whose last event is a message. A call that happened after
     /// it takes the line instead (`AppModel.preview(for:)`).
     static func preview(_ dialog: Dialog) -> String {
@@ -64,7 +65,7 @@ struct DialogsScreen: View {
     }
 
     /// The badge or the tick at the end of a row
-    /// (`MainActivity.java:567-569`).
+    /// (`MainActivity.java:664-666`).
     static func trailing(_ dialog: Dialog) -> ConversationRow.Trailing {
         if dialog.isBlocked { return .badge(Strings.Dialogs.blockedBadge) }
         if dialog.isVerified { return .badge(Strings.Dialogs.verifiedBadge) }
@@ -74,7 +75,7 @@ struct DialogsScreen: View {
 }
 
 /// One row of «Чаты» or «Контакты» (`MainActivity.conversationRow`,
-/// `:561-571`).
+/// `:655-667`).
 struct ConversationRow: View {
     /// What stands at the end of the row.
     enum Trailing: Equatable {
@@ -91,6 +92,11 @@ struct ConversationRow: View {
     /// otherwise the default label (`AppModel.title(for:)`).
     let title: String
     let subtitle: String
+    /// Whether the subtitle names a missed call, which is drawn in red so it
+    /// is seen in the list and not only in the chat
+    /// (`AppModel.isMissedCallPreview(for:)`). Android draws the same line
+    /// muted; the same request stands for it.
+    var isAlert = false
     /// When the last message of this conversation happened, or the empty string
     /// for untimed history or a call preview (`AppModel.listTime(for:)`).
     var time: String = ""
@@ -113,7 +119,7 @@ struct ConversationRow: View {
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(isAlert ? Color.red : Color.secondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
@@ -143,8 +149,9 @@ struct ConversationRow: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 10)
         .frame(minHeight: 74)
+        // The identifier is the button's (`RowButton`), so that one element
+        // answers to `dialog-<account>`.
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("dialog-\(dialog.account)")
     }
 
     /// The badge or the mark at the end of the row.
@@ -165,7 +172,7 @@ struct ConversationRow: View {
     }
 }
 
-/// The card an empty list shows (`MainActivity.empty`, `:572-576`).
+/// The card an empty list shows (`MainActivity.empty`, `:669-673`).
 struct EmptyStateCard: View {
     let title: String
     let message: String

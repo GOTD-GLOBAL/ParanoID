@@ -131,6 +131,9 @@ struct ChatScreen: View {
         VStack(spacing: 0) {
             trust
             history
+                // The keyboard follows the finger down the history, as it
+                // does in the system's own Messages.
+                .scrollDismissesKeyboard(.interactively)
             composer
         }
         // SwiftUI propagates an accessibility modifier to every element under
@@ -314,7 +317,13 @@ struct ChatScreen: View {
         .accessibilityIdentifier("scroll-to-new")
     }
 
-    /// The composer (`MainActivity.java:227-235,341-352`).
+    /// The composer (`MainActivity.java:252-260,372-384`).
+    ///
+    /// What is sent is the draft trimmed at its ends
+    /// (`MessagePresentation.trimmed`), and the byte counter under the field
+    /// measures that; it stands from 1800 bytes, when the limit is close
+    /// enough to matter, and turns red over it. A short message is not told
+    /// how short it is. Dragging the history down takes the keyboard with it.
     private var composer: some View {
         VStack(spacing: 0) {
             if !model.composerHint.isEmpty {
@@ -348,12 +357,16 @@ struct ChatScreen: View {
                 .accessibilityLabel(Strings.Chat.sendAction)
                 .accessibilityIdentifier("send")
             }
-            Text(Strings.Chat.counter(bytes: MessagePresentation.byteCount(model.draft)))
-                .font(.system(size: 12))
-                .foregroundStyle(model.isOverLimit ? Color.red : Color.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.top, 4)
-                .accessibilityIdentifier("compose-counter")
+            // The counter stands only near the limit: from 1800 bytes in a
+            // warning colour, red over 2048 (`MessagePresentation.showsCounter`).
+            if MessagePresentation.showsCounter(model.draft) {
+                Text(Strings.Chat.counter(bytes: MessagePresentation.bytesToSend(model.draft)))
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.isOverLimit ? Color.red : Color.orange)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 4)
+                    .accessibilityIdentifier("compose-counter")
+            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
@@ -362,42 +375,107 @@ struct ChatScreen: View {
     }
 }
 
-/// One message (`MainActivity.java:588-592`).
+/// One message (`MainActivity.java:704-717`).
+///
+/// The bubble is as wide as its text and no wider, up to the room the row
+/// leaves it: Android wraps the bubble around its content with a 40 dp
+/// margin on the far side (`:707`), and this row is the same — the spacer is
+/// the margin, the outer frame is a cap, and the bubble inside it takes the
+/// width its text needs. A bubble that stretched to the row made «ок» a
+/// full-width plate. Inside, the text stands at the leading edge and the
+/// footer — the time, and the delivery mark of an own message — at the
+/// trailing edge, as in Android's column with its `END` footer row
+/// (`:706-716`); ``BubbleLayout`` does that without a spacer, which would
+/// take the row again.
 struct MessageBubble: View {
     let message: Message
     let isOwn: Bool
 
+    /// The cap on the bubble. Android caps the text at `dp(440)`
+    /// (`MainActivity.java:708`), which the row's room reaches first on any
+    /// phone; this cap is on the bubble with its padding, and the 160 dp
+    /// floor of that rule is not reproduced.
+    static let maxWidth: CGFloat = 440
+
     var body: some View {
         HStack {
             if isOwn { Spacer(minLength: 40) }
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(message.text)
-                    .font(.system(size: 16))
-                    .foregroundStyle(isOwn ? Color.white : Color.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                HStack(spacing: 5) {
-                    let time = MessagePresentation.time(message.localMilliseconds)
-                    if !time.isEmpty {
-                        Text(time)
-                            .font(.system(size: 11))
-                            .monospacedDigit()
-                            .foregroundStyle(isOwn ? Color.white.opacity(0.75) : Color.secondary)
-                    }
-                    if isOwn {
-                        ReceiptMark(mark: MessagePresentation.mark(message))
-                            .foregroundStyle(Color.white.opacity(0.85))
-                            .accessibilityLabel(MessagePresentation.delivery(message))
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .background(isOwn ? Color.accentColor : Color(.secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 18))
+            bubble
+                .frame(maxWidth: Self.maxWidth, alignment: isOwn ? .trailing : .leading)
             if !isOwn { Spacer(minLength: 40) }
         }
+    }
+
+    /// The bubble itself, one accessibility element carrying the text, the
+    /// time and the delivery words, and the element whose frame is the
+    /// bubble's — which is what the simulator flow measures.
+    private var bubble: some View {
+        BubbleLayout {
+            Text(message.text)
+                .font(.system(size: 16))
+                .foregroundStyle(isOwn ? Color.white : Color.primary)
+                .textSelection(.enabled)
+            HStack(spacing: 5) {
+                let time = MessagePresentation.time(message.localMilliseconds)
+                if !time.isEmpty {
+                    Text(time)
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .foregroundStyle(isOwn ? Color.white.opacity(0.75) : Color.secondary)
+                }
+                if isOwn {
+                    ReceiptMark(mark: MessagePresentation.mark(message))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .accessibilityLabel(MessagePresentation.delivery(message))
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(isOwn ? Color.accentColor : Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 18))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The two rows of a bubble — the text and its footer — as wide as the wider
+/// of the two: the text at the leading edge, the footer at the trailing edge.
+///
+/// A stack cannot lay this out without a spacer, and a spacer takes all the
+/// width the row proposes, which is the plate this layout exists to remove.
+/// Here the text is measured at the proposed width, so a long one wraps
+/// there, and the footer at its own size; the bubble is the wider of the two
+/// and their heights, and nothing in it asks for more. Android's column does
+/// the same with a wrap-content body and a full-width `END` footer row
+/// (`MainActivity.java:706-716`).
+struct BubbleLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (text, footer) = sizes(proposal.width, subviews)
+        let gap = footer.height > 0 ? spacing : 0
+        return CGSize(width: max(text.width, footer.width),
+                      height: text.height + gap + footer.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+                       cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let (text, footer) = sizes(bounds.width, subviews)
+        subviews[0].place(at: bounds.origin, proposal: ProposedViewSize(text))
+        let gap = footer.height > 0 ? spacing : 0
+        subviews[1].place(at: CGPoint(x: bounds.maxX - footer.width,
+                                      y: bounds.minY + text.height + gap),
+                          proposal: ProposedViewSize(footer))
+    }
+
+    /// The text at the proposed width (it wraps there) and the footer at its
+    /// own size.
+    private func sizes(_ width: CGFloat?, _ subviews: Subviews) -> (CGSize, CGSize) {
+        guard subviews.count == 2 else { return (.zero, .zero) }
+        let text = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        let footer = subviews[1].sizeThatFits(.unspecified)
+        return (text, footer)
     }
 }

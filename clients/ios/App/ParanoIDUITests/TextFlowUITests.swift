@@ -62,6 +62,8 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertEqual(qr.label, "QR моего контакта")
         let account = try fixture.hexadecimal(app.staticTexts["identity-account"], "account")
         _ = try fixture.hexadecimal(app.staticTexts["identity-fingerprint"], "fingerprint")
+        // The six characters a peer sees this phone under, over the QR.
+        XCTAssertEqual(app.staticTexts["identity-short"].label, "Вы: " + account.prefix(6))
         try fixture.shot("02-identity")
         try fixture.note("account", account)
 
@@ -95,6 +97,28 @@ final class TextFlowUITests: XCTestCase {
         XCTAssertTrue(paste.waitForExistence(timeout: Timeout.screen),
                       "«Добавить контакт» did not open: " + Diagnosis.of(app))
         try fixture.shot("03-add-contact")
+        paste.tap()
+        // The system's paste control reads the pasteboard on the tap and goes
+        // straight to the fingerprint; «Отмена» there brings the sheet back
+        // for the field path below, which is kept because a pasteboard is
+        // not the only way a contact arrives.
+        UIPasteboard.general.string = fixture.peerContact
+        let clipboard = app.buttons["paste-clipboard"]
+        XCTAssertTrue(clipboard.waitForExistence(timeout: Timeout.screen),
+                      "no paste control in the sheet: " + Diagnosis.of(app))
+        // The control enables itself once the pasteboard holds a string.
+        XCTAssertTrue(fixture.enabled(clipboard),
+                      "the paste control stayed disabled with a contact on the pasteboard")
+        clipboard.tap()
+        let pasted = app.staticTexts["confirm-fingerprint"]
+        XCTAssertTrue(pasted.waitForExistence(timeout: Timeout.screen),
+                      "the paste control did not read the contact: " + Diagnosis.of(app))
+        XCTAssertEqual(pasted.label, fixture.peerFingerprint)
+        try fixture.shot("04a-pasted-from-clipboard")
+        app.buttons["confirm-cancel"].tap()
+        app.buttons["bar-add-contact"].tap()
+        XCTAssertTrue(paste.waitForExistence(timeout: Timeout.screen),
+                      "«Добавить контакт» did not open again: " + Diagnosis.of(app))
         paste.tap()
         try fixture.fill(app, with: fixture.peerContact)
         try fixture.shot("04-paste")
@@ -137,6 +161,13 @@ final class TextFlowUITests: XCTestCase {
         // accessibility tree, which is what a screen reader gets.
         XCTAssertNotNil(sent.label.range(of: "[0-9]{2}:[0-9]{2}", options: .regularExpression),
                         "the first message carries no time: «\(sent.label)»")
+        // The bubble is as wide as its text: a short message is not a
+        // full-width plate. The row leaves the bubble the screen minus its
+        // margins (92 pt); the element measured here is the bubble itself.
+        let room = app.frame.width - 92
+        XCTAssertLessThan(sent.frame.width, room - 40,
+                          "the bubble stretches to the row: \(sent.frame.width) of \(room)")
+        XCTAssertGreaterThan(sent.frame.width, 60, "the bubble has no width to speak of")
         let today = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Сегодня")).firstMatch
         XCTAssertTrue(today.waitForExistence(timeout: Timeout.screen),
@@ -196,6 +227,30 @@ final class TextFlowUITests: XCTestCase {
                        "Контакт заблокирован. Откройте сведения, чтобы разблокировать.")
         XCTAssertFalse(app.buttons["send"].isEnabled, "a blocked contact can still be written to")
         try fixture.shot("12-blocked")
+
+        // «Контакты» while the peer is blocked: not in the list, in the folded
+        // «Заблокированные (1)» section, with «Разблокировать контакт» inside.
+        // The system's back button: the tabs have no title, so its label is
+        // the system's word; the first button of the bar is it.
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["tab-contacts"].waitForExistence(timeout: Timeout.screen),
+                      "the chat did not go back to the tabs: " + Diagnosis.of(app))
+        app.buttons["tab-contacts"].tap()
+        let section = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Заблокированные (1)")).firstMatch
+        XCTAssertTrue(section.waitForExistence(timeout: Timeout.screen),
+                      "no blocked section: " + Diagnosis.of(app))
+        XCTAssertFalse(app.descendants(matching: .any)["dialog-\(fixture.peerAccount)"].exists,
+                       "the blocked contact is still in the list")
+        section.tap()
+        let inSection = app.buttons["unblock-\(fixture.peerAccount)"]
+        XCTAssertTrue(inSection.waitForExistence(timeout: Timeout.screen),
+                      "the section did not open with «Разблокировать контакт»: " + Diagnosis.of(app))
+        XCTAssertEqual(inSection.label, "Разблокировать контакт")
+        try fixture.shot("12a-blocked-section")
+        app.descendants(matching: .any)["dialog-\(fixture.peerAccount)"].tap()
+        XCTAssertTrue(fixture.wait(trust, label: "Личность проверена · Заблокирован"),
+                      "the chat did not open from the blocked section: \(trust.label)")
 
         app.buttons["contact-details"].tap()
         let unblock = app.buttons["details-block"]
@@ -637,6 +692,17 @@ private struct Fixture {
         }
         XCTAssertEqual(field.value as? String, contact,
                        "the contact did not reach the field: " + Diagnosis.of(app))
+    }
+
+    /// Whether `element` becomes enabled within a few seconds.
+    @MainActor
+    func enabled(_ element: XCUIElement) -> Bool {
+        let deadline = Date().addingTimeInterval(5)
+        while Date() < deadline {
+            if element.isEnabled { return true }
+            Thread.sleep(forTimeInterval: 0.2)
+        }
+        return element.isEnabled
     }
 
     @MainActor

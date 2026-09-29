@@ -812,7 +812,19 @@ plist is processed, not copied. The one shared scheme `ParanoID`
   remote at full frame, local in the corner — appears only while a camera is
   actually on. The red button is «Отклонить», «Завершить» or «Закрыть»
   depending on where the call is, and «К переписке» leaves it running behind
-  the conversation. One Android behaviour has **no** iOS equivalent and is not
+  the conversation. Three things stand on top of that and on Android do not
+  (`docs/clients/ios/voice-calls.md`, «The screen after the call»): the
+  screen of an ended call closes itself — two seconds after an outcome that
+  only needs reading, five after one that names a problem — with «Закрыть»
+  working the whole time and «К переписке» or «Перезвонить» cancelling it
+  (`AppModel.scheduleCallClose`); «Перезвонить» stands on the screen of an
+  own call that never connected and opens the same confirmation as
+  «Позвонить» (`AppModel.callBackOffer`); and a call put away with
+  «К переписке» stands on a line over every screen with the way back
+  (`CallReturnBar`), where Android has its ongoing-call notification. A call
+  that already had audio and lost it to the system says «Звонок прерван:
+  система забрала звук» where Android says «Не удалось установить связь».
+  One Android behaviour has **no** iOS equivalent and is not
   claimed to: `MainActivity.java:478`, in the merged Android tree of this
   branch, puts `FLAG_SECURE` on the call window — and on no other window in
   that client — which takes it out of screenshots, recordings and mirroring.

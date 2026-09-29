@@ -1490,4 +1490,26 @@ public struct CallPresentation: Equatable, Sendable {
     public let localVideo: Bool
     /// What the peer's last authenticated `media` control claimed.
     public let remoteVideo: Bool
+
+    /// The value as the controller publishes it. It is public so that a screen
+    /// test can hand a model the view of a call without a controller, a media
+    /// engine and a peer behind it; nothing in the application builds one.
+    public init(state: CallController.State, account: String, callId: String,
+                generation: CallGeneration, muted: Bool = false, speaker: Bool = false,
+                reconnecting: Bool = false, reason: CallBody.EndReason? = nil,
+                mediaActive: Bool = false, elapsedMillis: Int64 = 0,
+                localVideo: Bool = false, remoteVideo: Bool = false) {
+        self.state = state
+        self.account = account
+        self.callId = callId
+        self.generation = generation
+        self.muted = muted
+        self.speaker = speaker
+        self.reconnecting = reconnecting
+        self.reason = reason
+        self.mediaActive = mediaActive
+        self.elapsedMillis = elapsedMillis
+        self.localVideo = localVideo
+        self.remoteVideo = remoteVideo
+    }
 }

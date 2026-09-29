@@ -125,6 +125,11 @@ enum Strings {
         static let explanation = "Сканируйте QR собеседника или вставьте его контакт. Входящие сообщения появятся в чатах автоматически."
         static let emptyTitle = "Пока нет контактов"
         static let emptyBody = "Контакт можно добавить по QR или вставить из сообщения собеседника."
+        /// The section at the bottom of the list that holds the blocked
+        /// contacts, folded by default. Android keeps them among the others
+        /// with a «Блок» badge (`MainActivity.java:664`); the same request
+        /// stands for it.
+        static func blocked(count: Int) -> String { "Заблокированные (\(count))" }
     }
 
     // MARK: - my ID (`MainActivity.java:187-214`)
@@ -139,6 +144,10 @@ enum Strings {
         static let copy = "Копировать контакт"
         static let fingerprint = "Отпечаток контакта"
         static let fingerprintPlaceholder = "Появится после регистрации"
+        /// «Вы: 7c85ae» over the QR: the six characters a peer with no name
+        /// for this phone sees it under. The word is Android's preview prefix
+        /// (`MainActivity.java:644`); the line is this client's.
+        static let short = "Вы: "
         static let application = "Приложение"
         static let about = "О приложении"
 
@@ -234,7 +243,7 @@ enum Strings {
         static let receiptHint = "Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает."
         static let receiptHintAction = "Понятно"
 
-        /// `MainActivity.java:350`.
+        /// `MainActivity.java:382`.
         static func tooLong(bytes: Int) -> String {
             "Сообщение слишком длинное: \(bytes) из 2048 байт."
         }
@@ -249,6 +258,9 @@ enum Strings {
         static let title = "Добавить контакт"
         static let scan = "Сканировать QR"
         static let paste = "Вставить контакт"
+        /// What VoiceOver calls the system's paste control in the paste
+        /// sheet; the control draws its own label in the system's language.
+        static let pasteFromClipboard = "Вставить из буфера"
         static let cancel = "Отмена"
         static let confirmTitle = "Проверка контакта"
         static let confirmBody = "Сравните полный отпечаток с экраном собеседника лично или по доверенному каналу. Один пересланный QR не доказывает личность."
@@ -477,6 +489,24 @@ enum Strings {
         static let failed = "Не удалось установить связь"
         static let cancelled = "Вызов отменён"
         static let ended = "Звонок завершён"
+
+        /// A call that already had audio and lost it to the system — an
+        /// interruption (a cellular call, Siri, an alarm, another application,
+        /// a muted built-in microphone, a route that went away) or a
+        /// media-services reset; both reach `CallCoordinator.interrupted` and
+        /// neither is told apart there. Android ends it the same way
+        /// (`WebRtcAudioEngine.java:323-326`) and says «Не удалось установить
+        /// связь», which is not what happened; this client names what it
+        /// knows, so the caption is its own.
+        static let interrupted = "Звонок прерван: система забрала звук"
+        /// The line over the screens while a call runs behind them, and the
+        /// way back to it. Android has a system notification for a running
+        /// call instead (`VoiceCallService.java`), so both are this client's.
+        static func returnBar(title: String, status: String) -> String {
+            "Звонок · \(title) · \(status)"
+        }
+        static let returnToCall = "Вернуться"
+        static let returnToCallAction = "Вернуться к звонку"
 
         /// `"%02d:%02d · %s"` (`MainActivity.java:504`), on the invariant
         /// locale, so the separator and the digits are the phone's.
