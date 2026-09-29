@@ -1,3 +1,4 @@
+import ParanoidKit
 import SwiftUI
 
 /// The `confirm` sheet: the fingerprint of a contact that has been read but
@@ -32,10 +33,14 @@ struct ConfirmContactSheet: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .padding(.top, 12)
-            Text(fingerprint)
+            // Eight groups of eight, four to a line, so the two screens are
+            // compared group by group; the label stays the whole fingerprint
+            // (`MessagePresentation.groupedFingerprint`).
+            Text(MessagePresentation.groupedFingerprint(fingerprint))
                 .font(.system(size: 14, design: .monospaced))
                 .textSelection(.enabled)
                 .padding(.top, 16)
+                .accessibilityLabel(fingerprint)
                 .accessibilityIdentifier("confirm-fingerprint")
             HStack {
                 Button(Strings.AddContact.cancel, action: onCancel)

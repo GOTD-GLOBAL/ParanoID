@@ -2,10 +2,22 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-09-29
-last_reviewed_scope: iOS chat list by recency; older dated records retained
+last_reviewed_scope: iOS contacts; older dated records retained
 ---
 
 # Current project state
+
+## iOS contacts — 2026-09-29
+
+On iOS «Контакты» is in Russian alphabetical order of the local names with the
+blocked contacts in a folded section (they stay in «Чаты»), the fingerprint is
+shown in groups of eight everywhere and in the contact's own sheet, «Мой ID»
+names the owner's six characters, and the paste sheet has the system's paste
+control. Core, protocol and the shared contact text are unchanged; Android
+keeps the core's order and should receive the same request. Evidence is
+contributor Mac execution, recorded in the
+[receipt](evidence/ios-client-20260929/contacts-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#contacts-and-qr).
 
 ## iOS chat list by recency — 2026-09-29
 

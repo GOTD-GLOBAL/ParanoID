@@ -8,6 +8,22 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS contacts, proposed — 2026-09-29
+
+- «Контакты» stands in Russian alphabetical order of the names this phone
+  gave the contacts, the named first; the blocked contacts stand in a folded
+  «Заблокированные (N)» section at the bottom with «Разблокировать контакт»
+  at hand, and stay in «Чаты» with their badge.
+- The fingerprint is shown in eight groups of eight digits — on «Мой ID», in
+  the confirmation, in «О приложении» and now in the contact's own sheet —
+  every digit there and in order, unbroken for a screen reader.
+- «Мой ID» names the six characters a peer sees this phone under («Вы: …»).
+- The paste sheet has the system's paste control: one tap reads the
+  pasteboard and goes to the fingerprint, without the system's notice.
+  Android keeps the core's order, one unbroken fingerprint and no clipboard
+  button; the same request stands for it. Core, protocol and the shared
+  contact text are unchanged.
+
 ### iOS chat list by recency, proposed — 2026-09-29
 
 - «Чаты» is ordered by the time stamped on each conversation's last message,
