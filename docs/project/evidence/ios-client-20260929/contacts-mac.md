@@ -29,7 +29,7 @@ Python source was that commit's. The environment:
 | Check | Result |
 | --- | --- |
 | `ContactOrderTests` and `ContactsListTests` on the base | Do not compile there: `ContactOrder`, `groupedFingerprint`, `Dialog.fingerprint`, `orderedContacts` and `blockedContacts` do not exist. The behavioural RED is the mutation table below. |
-| `test_ui_contract.py` with the new check on the base | 26 tests: the new check fails at its first rule (`orderedContacts` is absent), and the two new captions have no Swift literal («Вставить из буфера», «Заблокированные (»). |
+| `test_ui_contract.py` with the new check on the base | 26 tests, 3 failures and 1 error: the new check errors on the missing `ContactOrder.swift`, #64's list check fails on `ForEach(model.orderedContacts)`, and the two new captions have no Swift literal («Вставить из буфера», «Заблокированные (»). |
 | The paste control in the simulator flow | The mutation below that removes it: the new step finds no `paste-clipboard` and the flow ends RED. |
 
 ## GREEN on the change
