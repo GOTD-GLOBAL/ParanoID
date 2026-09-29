@@ -285,7 +285,8 @@ public final class TextEngine {
     public String identityLogin(IdentityLoginStep step)throws Exception {
         java.util.concurrent.Future<String> result=((java.util.concurrent.ExecutorService)worker).submit(()->{
             if(broken||client==null)throw new IOException("local state unavailable");
-            if(!client.hasIdentity())throw new IOException("identity_required");
+            // Fresh install: the device ID is created bound to the identity-v3 server right here.
+            if(!client.hasIdentity())client.createIdentity(KeyClient.IDENTITY_TEST_REALM,KeyClient.IDENTITY_TEST_PIN);
             if(!client.realm().equals(KeyClient.IDENTITY_TEST_REALM))throw new IOException("not_identity_server");
             String mode=step.run(client.identityDevice(),client.identityHttp());
             publish(client.registered()?"Вход выполнен":"Вход не завершён");startConnection();

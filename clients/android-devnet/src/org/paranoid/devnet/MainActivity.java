@@ -24,7 +24,7 @@ public final class MainActivity extends Activity {
     private LinearLayout controls;
     private interface Work { String run(DevnetStore s,long ticket)throws Exception; }
     @Override public void onCreate(Bundle bundle) {
-        super.onCreate(bundle);getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        super.onCreate(bundle);
         ScrollView scroll=new ScrollView(this);LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(24,40,24,24);scroll.addView(root);setContentView(scroll);
         TextView heading=new TextView(this);heading.setText("ParanoID · Ник в Devnet\nЗарегистрируйте уникальный ник в тестовой сети Solana. Только тестовые SOL.\nЧаты и звонки используют прежний ID. Эти 24 слова восстанавливают ник, не переписку.");root.addView(heading);
         status=new TextView(this);status.setTextIsSelectable(true);status.setPadding(0,24,0,24);root.addView(status);
