@@ -43,6 +43,21 @@ public enum MessagePresentation {
         return String(String.UnicodeScalarView(line.unicodeScalars.prefix(80))) + "…"
     }
 
+    /// A fingerprint as the eye compares it: the 64 digits in eight groups of
+    /// eight, four groups to a line, so that two people reading two screens
+    /// can go group by group instead of losing their place in one unbroken
+    /// string. The digits are all there and in order — the comparison rule
+    /// («Сравните полный отпечаток») is unchanged; only the spacing is added,
+    /// and a screen reader is given the digits without it. Any other length
+    /// is grouped the same way.
+    public static func groupedFingerprint(_ fingerprint: String) -> String {
+        let digits = Array(fingerprint)
+        let groups = stride(from: 0, to: digits.count, by: 8).map { String(digits[$0..<min($0 + 8, digits.count)]) }
+        return stride(from: 0, to: groups.count, by: 4)
+            .map { groups[$0..<min($0 + 4, groups.count)].joined(separator: " ") }
+            .joined(separator: "\n")
+    }
+
     /// The size the core measures a message by
     /// (`MessagePresentation.java:18`).
     public static func byteCount(_ text: String) -> Int {

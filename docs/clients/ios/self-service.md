@@ -257,6 +257,23 @@ session keeps scanning; cancelling touches neither the identity nor the
 snapshot nor the network. A denied or restricted camera offers the paste field
 and the Settings link instead, and leaves the identity untouched.
 
+The paste sheet also carries the system's own paste control, which reads the
+pasteboard only when tapped, as a paste the user made rather than a
+programmatic read — so without the system's notice — and hands what it read
+the way «Продолжить» does: checked, then to the fingerprint. Its label is the
+system's, in the system's language.
+
+The fingerprint is shown in eight groups of eight digits, four to a line, on
+«Мой ID», in the confirmation, in «О приложении» and — new — in the contact's
+own sheet (`Dialog.fingerprint`, the value the core publishes per
+conversation), so that two people compare group by group; every digit is
+there and in order, a screen reader gets them unbroken, and the rule is
+unchanged: the full fingerprint is compared. «Мой ID» also names the six
+characters a peer with no name for this phone sees it under («Вы: 7c85ae»,
+`MessagePresentation.title`'s own rule), so the owner knows what to say. The
+shared and copied contact text stays the core's, byte for byte: a line in
+front of it would fail the strict parser on both clients.
+
 Pairing requires the user's explicit `Отпечаток совпадает` confirmation
 (REQ-ID-007). The core verifies the root credential, the account derivation,
 the Olm binding, the realm and pin, the canonical encodings and the device
@@ -308,6 +325,28 @@ task and hands the finished answer back through `perform`.
   dragging the history down takes the keyboard with it.
   Android sends the text as typed and shows a hint only over the limit; the
   same request stands for it for the trimming and the counter.
+- **The list.** «Чаты» is ordered by the time stamped on each conversation's
+  last message, newest first — the same local instant the bubble shows, and a
+  fourth client-only reading of it (RFC-0023 lists the bubble, the day pill
+  and the row date). That is the conversation with the newest message
+  whenever this phone's clock ran forward between messages; a clock set back
+  leaves the later message with the smaller stamp, and the list follows the
+  stamp, as the bubble does. Conversations with no messages, or whose last
+  entry was written by a build that kept no time, follow in the core's order;
+  nothing invents a time for them. A call moves no conversation: the call log
+  keeps no wall-clock time (`CallRecord`, RFC-0023 «Privacy»), so a chat whose
+  last event is a call stands where its last message puts it. When the row's
+  preview is a missed call it is drawn in red (`DialogOrder`,
+  `AppModel.isMissedCallPreview`). «Контакты» stands in the order of the
+  names this phone gave the contacts — Russian alphabetical, case and
+  diacritics aside, numbers by value, the named first and the unnamed after
+  them by account
+  (`ContactOrder.alphabetical`) — with the blocked contacts in their own
+  folded section at the bottom, each with «Разблокировать контакт» at hand;
+  they stay in «Чаты» with their «Блок» badge, because a block keeps the
+  history and the pins. Both lists' rows are buttons that show a grey fill
+  while pressed. Android keeps the core's order in both lists and draws the
+  missed line muted; the same request stands for it.
 - **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
   anywhere in this client (REQ-MSG-003). The three states are drawn

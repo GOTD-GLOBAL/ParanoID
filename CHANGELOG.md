@@ -22,6 +22,51 @@ public contract is declared.
   the text as typed; the same request stands for it. Core, protocol and the
   2048-byte wire limit are unchanged.
 
+### iOS contacts, proposed — 2026-09-29
+
+- «Контакты» stands in Russian alphabetical order of the names this phone
+  gave the contacts, the named first; the blocked contacts stand in a folded
+  «Заблокированные (N)» section at the bottom with «Разблокировать контакт»
+  at hand, and stay in «Чаты» with their badge.
+- The fingerprint is shown in eight groups of eight digits — on «Мой ID», in
+  the confirmation, in «О приложении» and now in the contact's own sheet —
+  every digit there and in order, unbroken for a screen reader.
+- «Мой ID» names the six characters a peer sees this phone under («Вы: …»).
+- The paste sheet has the system's paste control: one tap reads the
+  pasteboard and goes to the fingerprint, without the system's notice.
+  Android keeps the core's order, one unbroken fingerprint and no clipboard
+  button; the same request stands for it. Core, protocol and the shared
+  contact text are unchanged.
+
+### iOS chat list by recency, proposed — 2026-09-29
+
+- «Чаты» is ordered by the time stamped on each conversation's last message,
+  newest first — the local time the core already stores for each message
+  (RFC-0023); conversations without a timed message follow in the core's
+  order, and nothing invents a time. A call moves no chat, because the call
+  log keeps no time.
+- A missed call in a row's preview is drawn in red.
+- Rows of «Чаты» and «Контакты» are buttons that show a grey fill while
+  pressed, as Android's rows ripple. Android keeps the core's order and a muted line;
+  the same request stands for it. Core, protocol and server are unchanged.
+
+### iOS call screen after the call, proposed — 2026-09-28
+
+- The screen of an ended call closes itself: two seconds for an outcome that
+  only needs to be read, five for one that names a problem; «Закрыть» works
+  the whole time, «К переписке» and «Перезвонить» cancel it, and a call that
+  starts meanwhile is never closed by it.
+- «Перезвонить» on the screen of an own call that never connected — no
+  answer, busy, no connection — through the same confirmation as «Позвонить»,
+  for the same peer and kind of call; a contact blocked since gets no button.
+- A call put away with «К переписке» stands on a line over every screen
+  («Звонок · имя · 02:31 · Соединение установлено», with «Вернуться»); one
+  tap brings the screen back.
+- A call that already had audio and lost it to the system says «Звонок
+  прерван: система забрала звук» instead of «Не удалось установить связь».
+  Controller, protocol, peer and server are unchanged; Android should receive
+  the same request. The wording is a proposal for the owner.
+
 ### Android alpha caption follow-up
 
 - Remove the stale «До 200 сообщений в диалоге.» sentence from «Мой ID» →

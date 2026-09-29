@@ -873,6 +873,141 @@ class UiContract(unittest.TestCase):
         # The keyboard follows the finger down the history.
         self.present('.scrollDismissesKeyboard(.interactively)', chat, CHAT)
 
+    def test_the_chat_list_is_ordered_by_recency_and_its_rows_are_buttons(self):
+        model = self.sources[MODEL]
+        dialogs = self.sources['App/ParanoID/Screens/Dialogs.swift']
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        button = self.sources['App/ParanoID/Screens/RowButton.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogOrder.swift']
+        # Both lists are sorted by the model: «Чаты» by recency, «Контакты» by name.
+        self.present('ForEach(model.orderedDialogs)', dialogs, 'Screens/Dialogs.swift')
+        self.present('ForEach(model.orderedContacts)', contacts, 'Screens/Contacts.swift')
+        self.present('DialogOrder.byRecency(view.dialogs)', model, MODEL)
+        # The key is the last message's own time and nothing invented: an
+        # untimed last message sorts with the empty conversations.
+        self.present('dialog.last?.localMilliseconds ?? 0', kit, 'DialogOrder.swift')
+        self.present('.filter { key($0.element) == 0 }', kit, 'DialogOrder.swift')
+        for forbidden in ('Date()', 'CallLog', 'callLog'):
+            self.absent(forbidden, kit, 'DialogOrder.swift')
+        # A missed call in the preview is red; the preview rule itself is
+        # unchanged and still what the row's time is decided from.
+        self.present('isAlert: model.isMissedCallPreview(for: dialog)', dialogs, 'Screens/Dialogs.swift')
+        self.present('.foregroundStyle(isAlert ? Color.red : Color.secondary)', dialogs,
+                     'Screens/Dialogs.swift')
+        self.present('previewedCall(for: dialog)?.kind.isMissed == true', model, MODEL)
+        self.present('isCallPreview: preview(for: dialog) != nil', model, MODEL)
+        # Both lists are buttons with a pressed state, each row one element
+        # under its identifier.
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.present('.rowButton("dialog-\\(dialog.account)") { model.openChat(dialog.account) }',
+                         text, name)
+            self.absent('.onTapGesture', text, name)
+        self.present('Button(action: action) { content }', button, 'Screens/RowButton.swift')
+        self.present('configuration.isPressed ? Color(.systemGray5) : Color.clear', button,
+                     'Screens/RowButton.swift')
+        self.present('.accessibilityIdentifier(identifier)', button, 'Screens/RowButton.swift')
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.assertEqual(text.count('.accessibilityIdentifier("dialog-'), 0,
+                             f'{name}: a second element under dialog-<account>')
+
+    def test_contacts_are_alphabetical_the_blocked_have_a_section_and_the_fingerprint_is_grouped(self):
+        model = self.sources[MODEL]
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/ContactOrder.swift']
+        # «Контакты» by this phone's names, the named first, the blocked apart;
+        # both lists through one row builder, so the name has one site here.
+        self.present('ContactOrder.alphabetical(view.dialogs.filter { !$0.isBlocked }, name: name(for:))',
+                     model, MODEL)
+        self.present('ContactOrder.alphabetical(view.dialogs.filter(\\.isBlocked), name: name(for:))',
+                     model, MODEL)
+        self.present('Locale(identifier: "ru_RU")', kit, 'ContactOrder.swift')
+        self.present('[.caseInsensitive, .diacriticInsensitive, .numeric]', kit, 'ContactOrder.swift')
+        self.present('ForEach(model.blockedContacts)', contacts, 'Screens/Contacts.swift')
+        self.present('model.block(account: dialog.account, blocked: false)', contacts, 'Screens/Contacts.swift')
+        self.present('Text(Strings.Details.unblock)', contacts, 'Screens/Contacts.swift')
+        self.present('.accessibilityIdentifier("blocked-section")', contacts, 'Screens/Contacts.swift')
+        self.assertEqual(contacts.count('ConversationRow('), 1, 'Screens/Contacts.swift: two row sites')
+        # The fingerprint is grouped for the eye and whole for the label,
+        # wherever it is shown, and the details sheet shows it.
+        for name in ('App/ParanoID/Screens/Identity.swift', 'App/ParanoID/Screens/About.swift',
+                     'App/ParanoID/Screens/ConfirmContact.swift', 'App/ParanoID/Screens/ContactDetails.swift'):
+            self.present('MessagePresentation.groupedFingerprint(', self.sources[name], name)
+        self.present('.accessibilityLabel(fingerprint)', self.sources['App/ParanoID/Screens/ConfirmContact.swift'],
+                     'Screens/ConfirmContact.swift')
+        self.present('.accessibilityIdentifier("details-fingerprint")', self.sources[DETAILS], DETAILS)
+        self.present('fingerprint: raw["fingerprint"] as? String ?? ""',
+                     self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogPolicy.swift'],
+                     'DialogPolicy.swift')
+        # «Вы: 7c85ae» over the QR, the same six characters and case a peer sees.
+        identity = self.sources['App/ParanoID/Screens/Identity.swift']
+        self.present('Strings.Identity.short + model.view.account.prefix(6)', identity,
+                     'Screens/Identity.swift')
+        self.present('.accessibilityElement(children: .contain)', contacts, 'Screens/Contacts.swift')
+        self.absent('.uppercased()', identity, 'Screens/Identity.swift')
+        # The shared contact text is the core's, byte for byte: no line is put
+        # in front of it.
+        self.absent('ParanoID ·', self.sources['App/ParanoID/Qr/ContactQrView.swift'], 'Qr/ContactQrView.swift')
+        # The system's paste control reads the pasteboard only on the tap and
+        # goes the way «Продолжить» goes.
+        sheet = self.sources['App/ParanoID/Qr/PasteContactSheet.swift']
+        self.present('PasteButton(payloadType: String.self)', sheet, 'Qr/PasteContactSheet.swift')
+        self.present('.accessibilityIdentifier("paste-clipboard")', sheet, 'Qr/PasteContactSheet.swift')
+        self.absent('UIPasteboard', sheet, 'Qr/PasteContactSheet.swift')
+
+    def test_the_call_screen_closes_itself_and_the_call_stays_reachable(self):
+        model = self.sources[MODEL]
+        screen = self.sources[CALL]
+        app = self.sources[ENTRY]
+        # One ended call, one countdown, and a live call cancels it.
+        changed = model[model.index('    func callChanged(_ presentation: CallPresentation) {'):
+                        model.index('    /// Closes the screen of an ended call by itself')]
+        self.present('presentation.callId != closingCall', changed, 'AppModel.callChanged')
+        self.present('scheduleCallClose(reason: presentation.reason)', changed, 'AppModel.callChanged')
+        # The countdown waits for the microphone alert and never closes a live call.
+        close = model[model.index('    private func scheduleCallClose('):
+                      model.index('    private func cancelCallClose() {')]
+        self.present('self.microphoneRefused', close, 'AppModel.scheduleCallClose')
+        self.present('!self.isCallActive else { return }', close, 'AppModel.scheduleCallClose')
+        # «Закрыть», «К переписке» and «Перезвонить» all stop it.
+        for name, end in (('    func endCall() {', '    /// «К переписке»'),
+                          ('    func closeCallScreen() {', '    /// The audio of the call was taken away'),
+                          ('    func callBack() {', '    /// The trust line of the call screen')):
+            self.present('cancelCallClose()', model[model.index(name):model.index(end)], name.strip())
+        # «Перезвонить» is on the screen only when there is something to call
+        # back, above the red button, and opens the one confirmation.
+        self.present('if model.callBackOffer != nil { callBack }\n                terminal\n', screen, CALL)
+        self.present('.accessibilityIdentifier("call-back-again")', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: true))', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: false))', app, ENTRY)
+        self.present('get: { model.showsCall == overCall ? model.callPrompt : nil }', app, ENTRY)
+        self.assertEqual(app.count('.modifier(CallConfirmation(') + screen.count('.modifier(CallConfirmation('),
+                         2, 'the confirmation is attached somewhere else')
+        # The offer is for this device's own call that never connected, to a
+        # peer a call may be placed to now.
+        self.present('last.callId == call.callId, last.outgoing, !last.connected,', model, MODEL)
+        self.present('[.timeout, .busy, .failed, .unavailable].contains(last.reason)', model, MODEL)
+        offer = model[model.index('    var callBackOffer: CallPrompt? {'):
+                      model.index('    /// «Перезвонить»: the confirmation')]
+        self.present('DialogPolicy.canReply(view.dialog(last.account)', offer, 'AppModel.callBackOffer')
+        # A refused start publishes an ended view with an empty identifier;
+        # neither sentinel may be the empty string, or it would match it.
+        self.present('private var closingCall: String?\n', model, MODEL)
+        self.present('private var interruptedCall: String?\n', model, MODEL)
+        self.present('guard !callId.isEmpty else { return }', model, MODEL)
+        self.present('if !answer { placedCallVideo = video }', model, MODEL)
+        # The line over the screens shows the same name and status the screen
+        # does, and only while the screen is away.
+        self.present('guard isCallActive, !showsCall, let call else { return nil }', model, MODEL)
+        self.present('status: callLabel)', model, MODEL)
+        self.present('CallReturnBar(line: line, onReturn: model.returnToCall)', app, ENTRY)
+        self.present('.accessibilityIdentifier("call-return-bar")', app, ENTRY)
+        # An interrupted call is named for it, before the controller ends it.
+        coordinator = self.sources[COORDINATOR]
+        self.before('model?.callInterrupted(callId)', 'controller.mediaState(generation, .failed)',
+                    coordinator, COORDINATOR)
+        self.present('call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed',
+                     model, MODEL)
+
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()
         plist = plistlib.loads(raw.encode())
