@@ -30,6 +30,16 @@ fn self_service_bind_allowed(address: SocketAddr, reviewed_ip: Option<&str>) -> 
         && reviewed_ip == Some(address.ip().to_string().as_str())
 }
 
+/// RFC-0027 test server: its own port (never the v2 service's 38443) on exactly the
+/// operator-reviewed IPv4 address.
+fn identity_v3_bind_allowed(address: SocketAddr, reviewed_ip: Option<&str>) -> bool {
+    address.is_ipv4()
+        && address.port() == 38444
+        && !address.ip().is_unspecified()
+        && !address.ip().is_multicast()
+        && reviewed_ip == Some(address.ip().to_string().as_str())
+}
+
 #[tokio::main]
 async fn main() {
     if run().await.is_err() {
@@ -124,12 +134,16 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         println!("Local key schema initialized; old startup is blocked");
         return Ok(());
     }
-    // RFC-0027: identity-v3 reuses the self-service transport; only the local
-    // (loopback) profile exists. No public identity-v3 mode is defined yet.
-    let identity_v3 = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3-local");
+    // RFC-0027: identity-v3 reuses the self-service transport. `identity-v3-local` is the
+    // loopback test profile; `identity-v3` is the private Devnet phone test server on
+    // port 38444 and an exact reviewed IPv4 (separate DB/service from the v2 server).
+    let identity_v3_local = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3-local");
+    let identity_v3_remote = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3");
+    let identity_v3 = identity_v3_local || identity_v3_remote;
     let self_service_local =
-        identity_v3 || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
-    let self_service_public = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
+        identity_v3_local || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
+    let self_service_public =
+        identity_v3_remote || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
     let self_service = self_service_local || self_service_public;
     let turn_secret = env::var_os("PARANOID_TURN_SECRET_FILE").map(std::path::PathBuf::from);
     let turn_relay = env::var_os("PARANOID_TURN_RELAY_IP");
@@ -204,7 +218,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::var("PARANOID_BIND")
         .unwrap_or_else(|_| "127.0.0.1:38300".into())
         .parse()?;
-    let allowed = if self_service_public {
+    let allowed = if identity_v3_remote {
+        identity_v3_bind_allowed(
+            address,
+            env::var("PARANOID_REVIEWED_IDENTITY_V3_IP").ok().as_deref(),
+        )
+    } else if self_service_public {
         self_service_bind_allowed(
             address,
             env::var("PARANOID_REVIEWED_SELF_SERVICE_IP")
@@ -359,6 +378,35 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod deployment_tests {
+    #[test]
+    fn identity_v3_bind_is_exact_reviewed_ipv4_on_its_own_port() {
+        use super::identity_v3_bind_allowed as allowed;
+        assert!(allowed(
+            "127.0.0.1:38444".parse().unwrap(),
+            Some("127.0.0.1")
+        ));
+        assert!(allowed(
+            "157.180.49.125:38444".parse().unwrap(),
+            Some("157.180.49.125")
+        ));
+        assert!(allowed(
+            "192.0.2.10:38444".parse().unwrap(),
+            Some("192.0.2.10")
+        ));
+        for (address, reviewed) in [
+            ("157.180.49.125:38444", None),
+            ("157.180.49.125:38444", Some("157.180.49.126")),
+            // Never the port of the existing v2 service.
+            ("157.180.49.125:38443", Some("157.180.49.125")),
+            ("0.0.0.0:38444", Some("0.0.0.0")),
+            ("224.0.0.1:38444", Some("224.0.0.1")),
+            ("[::]:38444", Some("::")),
+            ("[::1]:38444", Some("::1")),
+        ] {
+            assert!(!allowed(address.parse().unwrap(), reviewed), "{address}");
+        }
+    }
+
     #[test]
     fn self_service_public_bind_is_exact_and_separate_from_legacy_opt_in() {
         use super::self_service_bind_allowed as allowed;
