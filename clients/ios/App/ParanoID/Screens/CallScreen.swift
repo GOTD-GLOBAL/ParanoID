@@ -96,6 +96,7 @@ struct CallScreen: View {
                 if isRinging { ringing }
                 controls
                 cameraControls
+                if model.callBackOffer != nil { callBack }
                 terminal
                 Button(action: model.closeCallScreen) {
                     Text(Strings.Call.back)
@@ -129,6 +130,9 @@ struct CallScreen: View {
         }
         .animation(.default, value: model.notice)
         .modifier(MicrophoneRefusal(model: model, overCall: true))
+        // «Перезвонить» opens the same confirmation «Позвонить» does, and an
+        // alert attached to the root below this cover never reaches it.
+        .modifier(CallConfirmation(model: model, overCall: true))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("call")
         .onAppear { captured = CallScreen.isScreenCaptured }
@@ -215,6 +219,22 @@ struct CallScreen: View {
             .accessibilityIdentifier("call-switch-camera")
         }
         .padding(.top, 12)
+    }
+
+    /// «Перезвонить», above «Закрыть», on the screen of an outgoing call that
+    /// got no answer, found the peer busy or never connected
+    /// (`AppModel.callBackOffer`). It leads through the same confirmation as
+    /// «Позвонить»: the privacy sentence is read again, and the call it
+    /// places is of the kind the last one was.
+    private var callBack: some View {
+        Button(action: model.callBack) {
+            Text(Strings.CallRow.callBack)
+                .font(.system(size: 17, weight: .semibold))
+                .frame(maxWidth: .infinity, minHeight: 50)
+        }
+        .buttonStyle(.borderedProminent)
+        .padding(.top, 16)
+        .accessibilityIdentifier("call-back-again")
     }
 
     /// The red button: «Отклонить» while ringing, «Завершить» during a call,

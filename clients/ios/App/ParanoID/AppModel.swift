@@ -153,8 +153,9 @@ final class AppModel {
     /// The selected tab.
     var tab: Tab = .dialogs
     /// Whether the call screen is on top of everything (Android's
-    /// `callDialog`, `MainActivity.java:443`). An ended call keeps it until
-    /// «Закрыть», so that the reason can be read.
+    /// `callDialog`, `MainActivity.java:455`). An ended call keeps it long
+    /// enough for the outcome to be read, then closes it itself
+    /// (``scheduleCallClose(reason:)``); «Закрыть» closes it at once.
     var showsCall = false
     /// The confirmation that carries the privacy sentence, or `nil`.
     var callPrompt: CallPrompt?
@@ -215,6 +216,27 @@ final class AppModel {
     /// The identifier the call screen was last raised for, so that one call
     /// raises it once (`MainActivity.displayedCall`).
     private var shownCall = ""
+    /// The identifier of the ended call the screen is closing itself for, so
+    /// that one ended call starts one countdown however many times its view
+    /// is republished. `nil` until the first, and never the empty string: a
+    /// refused start publishes an ended view with an empty identifier
+    /// (`CallController.start`, `lastCallId = ""`), and that one counts too.
+    private var closingCall: String?
+    /// The countdown itself (``scheduleCallClose()``).
+    private var callClose: Task<Void, Never>?
+    /// The terminal facts of the last call, for «Перезвонить»: which way it
+    /// was placed and with which peer.
+    private(set) var lastTermination: CallTermination?
+    /// Whether the last call this device placed was asked for as a video call.
+    /// The controller opens no camera before media, so a video call that was
+    /// never answered ends with both cameras off and its termination cannot
+    /// tell; the intent can.
+    private var placedCallVideo = false
+    /// The identifier of the call whose audio the system took away
+    /// (``callInterrupted(_:)``), so that its end is named for what it was.
+    /// `nil` rather than the empty string, for the same reason as
+    /// ``closingCall``: an ended view with an empty identifier must not match.
+    private var interruptedCall: String?
     /// How many times the scene has been reported as on the screen or off it.
     /// It only grows, and it is what lets the state owner apply those reports
     /// in the order they were taken (``setBackground(_:)``).
@@ -227,6 +249,11 @@ final class AppModel {
     static let callIntentWindow = Duration.seconds(10)
     /// How often that wait looks again (`MainActivity.java:417`).
     static let callIntentPoll = Duration.milliseconds(100)
+    /// How long the screen of an ended call stays before it closes itself:
+    /// two seconds for an outcome that only needs to be read, five for one
+    /// that offers something to do.
+    static let endedCallLinger = Duration.seconds(2)
+    static let endedCallLingerWithAction = Duration.seconds(5)
     /// How often the screens re-read the committed state when nothing is
     /// published: Android's `poll` runnable (`MainActivity.java:74`). Every
     /// message, receipt and delivery mark also arrives through the listener,
@@ -674,6 +701,7 @@ final class AppModel {
     /// which preserves its position without inventing a call timestamp
     /// (`ChatRow.rows(messages:calls:)`).
     func callFinished(_ termination: CallTermination) {
+        lastTermination = termination
         let anchor = CallLog.anchor(messages: isBroken ? nil : view.dialog(termination.account)?.messages)
         callLog.record(termination.record(afterMessageId: anchor))
     }
@@ -870,10 +898,56 @@ final class AppModel {
         case .busy: return Strings.Call.busy
         case .reject: return Strings.Call.rejected
         case .timeout: return Strings.Call.timeout
-        case .failed, .unavailable: return Strings.Call.failed
+        case .failed, .unavailable:
+            // The one branch Android does not have: a call whose audio the
+            // system took away is named, not called a failure to connect
+            // (`CallCoordinator.interrupted`).
+            return call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed
         case .cancel: return Strings.Call.cancelled
         default: return Strings.Call.ended
         }
+    }
+
+    /// The line over the screens while a call runs and its screen is put
+    /// away — «Звонок · Сергей · 02:31 · Соединение установлено», with
+    /// «Вернуться» beside it — or `nil`. It reads the same name and the same
+    /// status the call screen shows.
+    var callReturnBar: String? {
+        guard isCallActive, !showsCall, let call else { return nil }
+        return Strings.Call.returnBar(title: title(for: call.account), status: callLabel)
+    }
+
+    /// «Вернуться» on that line: the call screen again, for the call that is
+    /// still running.
+    func returnToCall() {
+        guard isCallActive else { return }
+        showsCall = true
+    }
+
+    /// «Перезвонить» on the screen of a call that did not go through, or
+    /// `nil` when there is nothing to call back: the call has to be the one
+    /// on the screen, placed by this device, never connected, and ended
+    /// without an answer, busy, or without a connection — and the peer has to
+    /// be one a call may be placed to now, by the rule «Позвонить» itself
+    /// follows (`DialogPolicy.canReply`), so the button is never there for a
+    /// contact blocked since. The offer is the same confirmation «Позвонить»
+    /// opens, for the same peer and the same kind of call.
+    var callBackOffer: CallPrompt? {
+        guard let call, call.state == .ended, let last = lastTermination,
+              last.callId == call.callId, last.outgoing, !last.connected,
+              [.timeout, .busy, .failed, .unavailable].contains(last.reason),
+              DialogPolicy.canReply(view.dialog(last.account), active: view.isActive,
+                                    broken: isBroken, sending: false)
+        else { return nil }
+        return CallPrompt(account: last.account, video: last.video || placedCallVideo)
+    }
+
+    /// «Перезвонить»: the confirmation, over the call screen. The screen
+    /// stops closing itself, because the user is doing something on it.
+    func callBack() {
+        guard let offer = callBackOffer, !isCallActive else { return }
+        cancelCallClose()
+        callPrompt = offer
     }
 
     /// The trust line of the call screen (`MainActivity.java:522`): the peer's
@@ -934,15 +1008,27 @@ final class AppModel {
     func endCall() {
         cancelCallIntent()
         guard let call, isCallActive else {
+            cancelCallClose()
             showsCall = false
             return
         }
         Task { await calls?.end(callId: call.callId, generation: call.generation) }
     }
 
-    /// «К переписке»: the call keeps running behind the conversation.
+    /// «К переписке»: the call keeps running behind the conversation, and
+    /// ``callReturnBar`` says so over it.
     func closeCallScreen() {
+        cancelCallClose()
         showsCall = false
+    }
+
+    /// The audio of the call was taken away by the system — a cellular call,
+    /// Siri, an alarm, another application — and the call is ending for it
+    /// (`CallCoordinator.interrupted`). Only the caption changes: the peer is
+    /// told `failed`, as before.
+    func callInterrupted(_ callId: String) {
+        guard !callId.isEmpty else { return }
+        interruptedCall = callId
     }
 
     /// «Выключить микрофон» / «Включить микрофон» (`MainActivity.java:466`).
@@ -1089,6 +1175,7 @@ final class AppModel {
         // waits. The controller revalidates both values on its final owner hop.
         let answerGeneration = answer && call?.callId == callId ? call?.generation : nil
         guard !answer || answerGeneration != nil else { return }
+        if !answer { placedCallVideo = video }
         cancelCallIntent()
         let generation = callIntentGeneration
         callIntent = Task { [weak self] in
@@ -1203,6 +1290,42 @@ final class AppModel {
             showsCall = true
         }
         if presentation.state == .idle { showsCall = false }
+        // One ended call, one countdown: the view of an ended call is
+        // republished, and every republication would otherwise start over.
+        if presentation.state == .ended, presentation.callId != closingCall {
+            closingCall = presentation.callId
+            scheduleCallClose(reason: presentation.reason)
+        }
+    }
+
+    /// Closes the screen of an ended call by itself, after the outcome has
+    /// had its time on the screen: two seconds for one that is only read
+    /// («Звонок завершён», «Вызов отменён», «Звонок отклонён»), five for one
+    /// that names a problem and may offer «Перезвонить» (no answer, busy, no
+    /// connection). «Закрыть» works the whole time; «Перезвонить» and
+    /// «К переписке» cancel it; a call that starts meanwhile is never closed
+    /// by it, because it closes nothing while a call is live. The screen is
+    /// not taken away from under the microphone alert either.
+    private func scheduleCallClose(reason: CallBody.EndReason?) {
+        cancelCallClose()
+        let linger: Duration = switch reason {
+        case .timeout, .busy, .failed, .unavailable: AppModel.endedCallLingerWithAction
+        default: AppModel.endedCallLinger
+        }
+        callClose = Task { [weak self] in
+            try? await Task.sleep(for: linger)
+            while let self, !Task.isCancelled, self.microphoneRefused {
+                try? await Task.sleep(for: AppModel.callIntentPoll)
+            }
+            guard let self, !Task.isCancelled, !self.isCallActive else { return }
+            self.showsCall = false
+            self.callClose = nil
+        }
+    }
+
+    private func cancelCallClose() {
+        callClose?.cancel()
+        callClose = nil
     }
 
     /// The microphone, asked for exactly once per answer iOS keeps
