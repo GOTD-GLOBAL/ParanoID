@@ -202,6 +202,26 @@ public final class SelfServiceClient {
         apply(new JSONObject().put("op","accepted_v2").put("id",envelope.getString("id")));
         if(acceptedListener!=null)acceptedListener.accepted(envelope.getString("id"));
     }
+    // RFC-0027 identity-v3 login adapters. The device key stays in the native core;
+    // this only passes public credential/challenge data and commits an active status.
+    public org.paranoid.devnet.IdentityLogin.Device identityDevice(){
+        return new org.paranoid.devnet.IdentityLogin.Device(){
+            public JSONObject credential()throws Exception {
+                healthy();if(state.isEmpty())throw new IOException("identity required");
+                JSONObject out=nativeCall(new JSONObject().put("op","identity_credential_v3"));
+                return new JSONObject(out.getJSONObject("credential").toString()).put("fingerprint",out.getString("fingerprint"));
+            }
+            public String deviceProof(JSONObject intent,JSONObject challenge,long now)throws Exception {
+                JSONObject clean=new JSONObject(intent.toString());
+                JSONObject credential=clean.getJSONObject("credential_object");credential.remove("fingerprint");
+                return nativeCall(new JSONObject().put("op","identity_device_proof_v3").put("intent",clean).put("challenge",challenge).put("now",now)).getString("device_signature");
+            }
+            public void active(JSONObject status)throws Exception {registrationResult(status);}
+        };
+    }
+    public org.paranoid.devnet.IdentityLogin.Http identityHttp(){
+        return (path,body)->{healthy();return KeyTransport.call(realm,pin,"POST",path,body,null);};
+    }
     public void received(JSONObject message)throws Exception {
         apply(new JSONObject().put("op","receive_v2").put("message",message).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }

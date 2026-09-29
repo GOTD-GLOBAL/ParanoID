@@ -80,6 +80,18 @@ fn sign(
 }
 
 #[test]
+fn identity_credential_view_returns_public_credential_and_fingerprint_only() {
+    let a = fresh();
+    let out = call(&a["state"], json!({"op":"identity_credential_v3"})).unwrap();
+    let c: paranoid_key_protocol::Credential =
+        serde_json::from_value(out["credential"].clone()).unwrap();
+    assert_eq!(out["fingerprint"], c.fingerprint());
+    assert_eq!(out["credential"], a["request"]["credential"]);
+    assert_eq!(out.as_object().unwrap().len(), 2, "{out}");
+    assert!(!out.to_string().contains("secret"));
+}
+
+#[test]
 fn device_proof_verifies_for_every_purpose_and_returns_only_a_signature() {
     let a = fresh();
     for purpose in [

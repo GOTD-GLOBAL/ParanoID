@@ -589,6 +589,44 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
     Ok(Json(result))
 }
 
+/// Loopback-test registry: a fixed owner->name table from a local JSON file
+/// `{"<base58 owner>":"<name>"}`. Only `identity-v3-local` may use it (see main.rs);
+/// it lets JVM/JNI client tests run the real server without funded chain writes.
+pub struct FixtureRegistry {
+    names: HashMap<[u8; 32], String>,
+}
+
+impl FixtureRegistry {
+    pub fn from_json(raw: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let table: HashMap<String, String> = serde_json::from_str(raw)?;
+        if table.len() > 64 {
+            return Err("fixture too large".into());
+        }
+        let mut names = HashMap::new();
+        for (owner, name) in table {
+            paranoid_key_protocol::identity_v3::canonical_name(&name)
+                .map_err(|_| "fixture name")?;
+            let owner = paranoid_key_protocol::identity_v3::base58_decode32(&owner)
+                .map_err(|_| "fixture owner")?;
+            names.insert(owner, name);
+        }
+        Ok(Self { names })
+    }
+}
+
+impl RegistryVerifier for FixtureRegistry {
+    fn verify<'a>(&'a self, owner: [u8; 32], name: &'a str) -> Verification<'a> {
+        let ok = self.names.get(&owner).is_some_and(|n| n == name);
+        Box::pin(async move {
+            if ok {
+                Ok(())
+            } else {
+                Err(RegistryFailure::Invalid)
+            }
+        })
+    }
+}
+
 /// Live verifier against the pinned Devnet RPC (RFC-0026 pins). Checks the paired PDA
 /// records first, then genesis, then the loader/ProgramData artifact. Fails closed.
 pub struct DevnetRegistry {
@@ -846,6 +884,20 @@ mod tests {
         let mut m = meta.clone();
         m[4..12].copy_from_slice(&7u64.to_le_bytes());
         assert!(check_artifact(&code, true, &m, false, &sha));
+    }
+
+    #[tokio::test]
+    async fn fixture_registry_accepts_only_listed_pairs() {
+        use super::{FixtureRegistry, RegistryFailure, RegistryVerifier};
+        let owner = "n2NGZdM6KZFJE1bBghSapYaMqZM1sb6J1x7CLYei5QJ";
+        let r = FixtureRegistry::from_json(&format!("{{\"{owner}\":\"alice_one\"}}")).unwrap();
+        let key = paranoid_key_protocol::identity_v3::base58_decode32(owner).unwrap();
+        assert_eq!(r.verify(key, "alice_one").await, Ok(()));
+        assert_eq!(
+            r.verify(key, "alice_two").await,
+            Err(RegistryFailure::Invalid)
+        );
+        assert!(FixtureRegistry::from_json(&format!("{{\"{owner}\":\"Bad Name\"}}")).is_err());
     }
 
     #[test]

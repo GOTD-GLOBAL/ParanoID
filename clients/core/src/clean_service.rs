@@ -113,6 +113,8 @@ enum Operation {
     UpgradeV2,
     PrepareContactV2,
     View,
+    /// RFC-0027: public transport credential and its fingerprint; read-only.
+    IdentityCredentialV3,
     /// RFC-0027 device proof; read-only, returns only the signature.
     IdentityDeviceProofV3 {
         intent: Box<paranoid_key_protocol::identity_v3::ChallengeRequestV3>,
@@ -794,6 +796,17 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
     if version == 2 {
         return Err("unsupported_state");
     }
+    if matches!(op, Operation::IdentityCredentialV3) {
+        let legacy: Client = if version == 0 {
+            serde_json::from_str(raw).map_err(|_| "invalid_state")?
+        } else {
+            let s: State = serde_json::from_str(raw).map_err(|_| "invalid_state")?;
+            s.legacy
+        };
+        super::self_service::validate(&legacy)?;
+        let c = &legacy.identity.as_ref().ok_or("invalid_state")?.credential;
+        return Ok(json!({"credential": c, "fingerprint": c.fingerprint()}).to_string());
+    }
     if let Operation::IdentityDeviceProofV3 {
         intent,
         challenge,
@@ -852,7 +865,9 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
     match op {
         Operation::UpgradeV2 | Operation::View => {}
         // Answered read-only before any state decoding above.
-        Operation::IdentityDeviceProofV3 { .. } => return Err("invalid_request"),
+        Operation::IdentityDeviceProofV3 { .. } | Operation::IdentityCredentialV3 => {
+            return Err("invalid_request")
+        }
         Operation::SignRequestV2 {
             challenge,
             method,

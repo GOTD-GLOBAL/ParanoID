@@ -285,10 +285,22 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         None
     };
     let app = if identity_v3 {
-        let rpc = env::var("PARANOID_REGISTRY_RPC")
-            .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
-        let registry =
-            std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?);
+        let fixture = env::var_os("PARANOID_REGISTRY_FIXTURE");
+        let registry: std::sync::Arc<dyn paranoid_server::identity_v3::RegistryVerifier> =
+            match fixture {
+                // Loopback test profile only; never the phone-facing mode.
+                Some(path) if identity_v3_local => {
+                    std::sync::Arc::new(paranoid_server::identity_v3::FixtureRegistry::from_json(
+                        &std::fs::read_to_string(path)?,
+                    )?)
+                }
+                Some(_) => return Err("registry fixture is local-only".into()),
+                None => {
+                    let rpc = env::var("PARANOID_REGISTRY_RPC")
+                        .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
+                    std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?)
+                }
+            };
         paranoid_server::identity_v3::app(pool, turn, push, registry).await?
     } else if self_service {
         paranoid_server::self_service::app_with_services(pool, turn, push).await?
