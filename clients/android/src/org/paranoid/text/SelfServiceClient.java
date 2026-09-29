@@ -77,6 +77,15 @@ public final class SelfServiceClient {
         if(request.getString("op").equals("receive_v2")&&candidate.optString("acceptance").equals("accepted")&&candidate.has("call_event")&&callListener!=null)
             callListener.received(candidate.getJSONObject("call_event"));
     }
+    /** Fresh install only: the user explicitly picked a built-in pinned server before the ID exists.
+     * A saved or already-created identity keeps its realm; there is no free-form unpinned input. */
+    public void createIdentity(String chosenRealm,String chosenPin) throws Exception {
+        healthy();
+        if(state.isEmpty()){realm=KeyClient.checkedRealm(chosenRealm);pin=PinnedTls.checkedPin(chosenPin);}
+        else if(!realm.equals(chosenRealm)||!pin.equals(chosenPin))throw new IOException("identity already bound to another server");
+        createIdentity();
+    }
+    public String realm(){return realm;}
     public void createIdentity() throws Exception {
         healthy();
         if(state.isEmpty() || view().isNull("request"))apply(new JSONObject().put("op","create_identity").put("realm",realm).put("pin",pin));
@@ -153,7 +162,8 @@ public final class SelfServiceClient {
         for(int n=0;n<messages.length();n++)apply(new JSONObject().put("op","receive_v2").put("message",messages.getJSONObject(n)).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }
     public JSONObject publicView() throws Exception {
-        healthy();JSONObject safe=new JSONObject().put("identity",false).put("active",false).put("configured",!state.isEmpty()).put("dialogs",new JSONArray());
+        healthy();JSONObject safe=new JSONObject().put("identity",false).put("active",false).put("configured",!state.isEmpty()).put("dialogs",new JSONArray())
+            .put("identity_login",realm.equals(KeyClient.IDENTITY_TEST_REALM));
         if(!state.isEmpty()) {
             JSONObject v=view();JSONObject request=v.optJSONObject("request");
             safe.put("identity",request!=null).put("active",active()).put("request",request)

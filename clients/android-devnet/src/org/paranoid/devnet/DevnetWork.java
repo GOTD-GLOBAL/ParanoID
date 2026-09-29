@@ -15,6 +15,10 @@ final class DevnetWork {
             if("invalid_mnemonic".equals(code))return "Не удалось проверить 24 слова. Проверьте английские слова и их порядок. Не вводите фразу реального кошелька.";
             if("backup_confirmation_required".equals(code))return "Сначала сохраните 24 слова Devnet и подтвердите, что записали их.";
             if("identity_already_exists".equals(code))return "На этом телефоне уже есть Devnet-ключ. Его не заменяем и не удаляем; используйте проверку ника или показ слов.";
+            if("nick_required".equals(code))return "Сначала зарегистрируйте и проверьте ник, затем нажмите «Войти этим ID».";
+            if("not_identity_server".equals(code))return "Этот ID создан для основного сервера. Вход через Solana работает только с ID, созданным кнопкой «Создать ID для входа через Solana» при новой установке.";
+            if("identity_required".equals(code))return "Сначала создайте ID в ParanoID.";
+            if(failure instanceof org.paranoid.text.SyncCycle.Rejected){org.paranoid.text.SyncCycle.Rejected x=(org.paranoid.text.SyncCycle.Rejected)failure;return "Сервер отказал во входе: "+x.status+" "+x.code+". Ключи сохранены.";}
             if("different_name_pending".equals(code))return "Предыдущая регистрация ещё может подтвердиться. Пока нельзя выбрать другой ник — проверьте результат позже.";
             if("name_conflict_or_partial_record".equals(code))return "Ник занят либо записи не совпадают. Новый ник можно выбрать только после завершения или истечения предыдущей попытки. Сохранённый ключ не меняем.";
             return "Операция Devnet не завершена. Если транзакция уже отправлена, нажмите проверку ника. ("+failure.getClass().getSimpleName()+")";

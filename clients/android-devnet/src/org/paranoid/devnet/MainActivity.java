@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
         }));
         button("Зарегистрировать ник",()->confirmRegister());
         button("Проверить ник",()->work((s,ticket)->check(s)));
+        button("Войти этим ID в мессенджер",()->login(false));
         work((s,ticket)->{JSONObject state=s.load();return state==null?"Создайте или восстановите тестовую identity.":describe(state);});
     }
     private void button(String text,Runnable r){Button b=new Button(this);b.setText(text);b.setOnClickListener(v->r.run());controls.addView(b);}
@@ -67,5 +68,24 @@ public final class MainActivity extends Activity {
     private void fund(){work((s,ticket)->{JSONObject state=required(s);if(state.optBoolean("faucet_attempted"))throw new IOException("faucet_attempt_already_used");DevnetRpc rpc=new DevnetRpc();rpc.cluster();rpc.program();String owner=nativeCall("identity","entropy",state.getString("entropy")).getString("owner");state.put("faucet_attempted",true);s.save(state);rpc.call("requestAirdrop",new JSONArray().put(owner).put(100_000_000L));return "Запрос тестовых SOL отправлен. Это не подтверждение регистрации. Проверьте баланс.";});}
     private void confirmRegister(){String n=name.getText().toString().toLowerCase(Locale.ROOT);if(!n.matches("[a-z][a-z0-9_]{2,23}")){status.setText("Неверный ник.");return;}new AlertDialog.Builder(this).setTitle("Зарегистрировать @"+n+"?").setMessage("Только Devnet. Один ник на identity; переименование пока недоступно. Расход ограничен 0.01 тестового SOL плюс комиссия не более 0.0001 тестового SOL.").setPositiveButton("Подтверждаю",(a,b)->work((s,ticket)->register(s,n))).setNegativeButton("Отмена",null).show();}
     private static String check(DevnetStore store)throws Exception { return RegistrationFlow.check(store,new DevnetRpc()); }
+    /** RFC-0027 login of the messenger ID with the registered nick. `replace` is only ever set after the
+     * explicit confirmation below: it retires the other phone logged in with this nick. */
+    private void login(boolean replace){
+        org.paranoid.text.TextEngine engine=org.paranoid.text.TextEngine.get(getApplicationContext());
+        work((s,ticket)->{
+            JSONObject state=required(s);String nick=state.optString("name");
+            if(nick.isEmpty())throw new IOException("nick_required");
+            String entropy=state.getString("entropy");
+            String mode=engine.identityLogin((device,http)->IdentityLogin.run(device,http,entropy,nick,replace));
+            if(IdentityLogin.REPLACE_REQUIRED.equals(mode)){post(ticket,this::confirmReplace);return "Ник @"+nick+" уже вошёл на другом телефоне.";}
+            if(IdentityLogin.ACTIVE.equals(mode))return "Вход выполнен: @"+nick+". Вернитесь в ParanoID.";
+            if(IdentityLogin.REVOKED.equals(mode))return "Этот телефон отключён от ника. Нужна новая установка.";
+            return "Вход запрещён сервером.";
+        });
+    }
+    private void confirmReplace(){
+        new AlertDialog.Builder(this).setTitle("Заменить другой телефон?").setMessage("Ник уже используется на другом телефоне. Если продолжить, тот телефон будет отключён от этого ника и больше не сможет войти.")
+            .setPositiveButton("Заменить",(a,b)->login(true)).setNegativeButton("Отмена",null).show();
+    }
     private static String register(DevnetStore store,String name)throws Exception { return RegistrationFlow.register(store,new DevnetRpc(),name); }
 }
