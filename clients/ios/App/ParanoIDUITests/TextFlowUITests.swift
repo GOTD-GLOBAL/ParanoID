@@ -341,6 +341,29 @@ final class TextFlowUITests: XCTestCase {
         down.tap()
         XCTAssertTrue(fixture.becomesVisible(dragged), "«↓» did not lead to the new message")
 
+        // The new-message markers and the composer together: the reader
+        // scrolls up again, the peer writes, and with «↓» still on the screen
+        // the reader answers with blanks at both ends of the text. What leaves
+        // is the text without them (`Ticket.text`), the reader's own message
+        // takes the history down to it, and «↓» goes, because the bottom — the
+        // peer's new message with it — has now been on the screen.
+        for _ in 0..<3 where fixture.visible(dragged) { app.scrollViews.firstMatch.swipeDown() }
+        XCTAssertFalse(fixture.visible(dragged), "the history could not be scrolled up again")
+        try fixture.ask("peer-send", fixture.aboveText)
+        XCTAssertTrue(down.waitForExistence(timeout: Timeout.delivery),
+                      "«↓» did not appear for the message before the reply")
+        try fixture.compose(app, "  " + fixture.trimmedText + " \n")
+        XCTAssertTrue(down.exists, "«↓» went before the reply was sent: " + Diagnosis.of(app))
+        app.buttons["send"].tap()
+        let answer = try fixture.bubble(app, fixture.trimmedText, marked: "Сохранено сервером",
+                                        "the reply written while scrolled up")
+        XCTAssertTrue(fixture.becomesVisible(answer),
+                      "the reader's own reply did not take the history down to it")
+        XCTAssertTrue(fixture.goes(down), "«↓» outlived a reply that took the reader to the bottom")
+        XCTAssertEqual(try fixture.ask("peer-expect", fixture.trimmedText), "1",
+                       "the peer did not receive the reply once, trimmed at its ends")
+        try fixture.shot("19c-reply-while-scrolled-up")
+
         // Leaving after the bottom was on the screen clears the count.
         fixture.back(app)
         XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { !counted($0) },
@@ -426,6 +449,11 @@ private struct Fixture {
     let unseenTexts: [String]
     /// The peer's text that arrives while the reader is scrolled up.
     let dragText: String
+    /// The peer's text that arrives while the reader is scrolled up a second
+    /// time, and that the reader answers without scrolling down first.
+    let aboveText: String
+    /// That answer, as it must leave: it is typed with blanks at both ends.
+    let trimmedText: String
     let previousAccount: String?
 
     static func fromEnvironment() throws -> Fixture {
@@ -454,6 +482,8 @@ private struct Fixture {
             unseenTexts: try XCTUnwrap(value("PARANOID_SIM_UNSEEN_TEXTS"))
                 .split(separator: ",").map(String.init),
             dragText: try XCTUnwrap(value("PARANOID_SIM_DRAG_TEXT")),
+            aboveText: try XCTUnwrap(value("PARANOID_SIM_ABOVE_TEXT")),
+            trimmedText: try XCTUnwrap(value("PARANOID_SIM_TRIMMED_TEXT")),
             previousAccount: value("PARANOID_SIM_PREVIOUS_ACCOUNT"))
     }
 
@@ -518,6 +548,17 @@ private struct Fixture {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             if visible(element) { return true }
+            Thread.sleep(forTimeInterval: 0.25)
+        }
+        return false
+    }
+
+    /// Waits until `element` is gone from the screen's tree.
+    @MainActor
+    func goes(_ element: XCUIElement, timeout: TimeInterval = Timeout.screen) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if !element.exists { return true }
             Thread.sleep(forTimeInterval: 0.25)
         }
         return false

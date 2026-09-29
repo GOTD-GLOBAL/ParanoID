@@ -35,7 +35,9 @@ One run does, in order:
    tap on «Отправить» → «Сохранено сервером» → the peer answers → its bubble
    and «Доставлено» → a
    double tap on «Отправить» → exactly one bubble, one envelope on the server
-   and one «Доставлено» → «Заблокировать контакт» and back;
+   and one «Доставлено» → «Заблокировать контакт» and back → «Новые
+   сообщения» and «↓» → a reply typed with blanks at its ends while scrolled
+   up, which leaves trimmed and takes the history down;
 5. `reinstall`: uninstall again, launch again, «Создать ID» again — no freeze
    over the retained Keychain key, and an account that is not the first one's.
 
@@ -105,7 +107,11 @@ DOUBLE = 'sim-text-double-tap'
 SEEN = 'sim-text-seen-while-open'
 UNSEEN = tuple(f'sim-text-unseen-{n:02d}' for n in range(1, 13))
 DRAG = 'sim-text-while-scrolled-up'
-PEER_TEXTS = (REPLY, SEEN) + UNSEEN + (DRAG,)
+ABOVE = 'sim-text-before-the-reply'
+#: The application's answer to ABOVE. The test types it with blanks at both
+#: ends; this is what must leave, and all that the peer may hold.
+TRIMMED = 'sim-text-trimmed-reply'
+PEER_TEXTS = (REPLY, SEEN) + UNSEEN + (DRAG, ABOVE)
 
 ACCOUNT = re.compile(r'\A[0-9a-f]{64}\Z')
 # How long one `xcodebuild test-without-building` may take. How long the test
@@ -491,6 +497,9 @@ CHECKS = {
         'message below it, «↓» leads down and the count clears after the bottom was shown; a '
         'message that arrives while the reader is scrolled up leaves the history where it is and '
         'brings up «↓»',
+        'a reply typed with blanks at both ends while scrolled up with «↓» on the screen leaves '
+        'trimmed, reaches the peer once and only trimmed, takes the history down to it and '
+        'clears «↓»',
     ],
     'reinstall': [
         'xcrun simctl uninstall leaves the Keychain item and takes the container: the next launch '
@@ -567,6 +576,8 @@ def run(args):
                 'PARANOID_SIM_SEEN_TEXT': SEEN,
                 'PARANOID_SIM_UNSEEN_TEXTS': ','.join(UNSEEN),
                 'PARANOID_SIM_DRAG_TEXT': DRAG,
+                'PARANOID_SIM_ABOVE_TEXT': ABOVE,
+                'PARANOID_SIM_TRIMMED_TEXT': TRIMMED,
             }
             shots = []
             notes = {}
@@ -613,12 +624,17 @@ def run(args):
             history = peer.history()
             texts = [message['text'] for message in history]
             rows = database.messages()
-            plaintext = sum(database.rows_carrying(text) for text in (FIRST, DOUBLE) + PEER_TEXTS)
+            plaintext = sum(database.rows_carrying(text)
+                            for text in (FIRST, DOUBLE, TRIMMED) + PEER_TEXTS)
             require(texts.count(FIRST) == 1, f'the peer holds {texts.count(FIRST)} first messages')
             require(texts.count(DOUBLE) == 1,
                     f'a double tap reached the peer {texts.count(DOUBLE)} times')
             for text in PEER_TEXTS:
                 require(texts.count(text) == 1, f'the peer does not hold its own {text!r} once')
+            require(texts.count(TRIMMED) == 1,
+                    f'the peer holds {texts.count(TRIMMED)} trimmed replies, expected one')
+            untrimmed = [text for text in texts if text != TRIMMED and text.strip() == TRIMMED]
+            require(not untrimmed, f'the peer holds the reply with its blanks: {untrimmed!r}')
             require(plaintext == 0, f'{plaintext} rows of the cluster carry a plaintext of this run')
 
             payload = {
@@ -635,7 +651,7 @@ def run(args):
                          'enrollment_mode': peer_facts['enrollment_mode'],
                          'session': peer_facts['session']['issued'],
                          'contact_bytes': len(peer.contact)},
-                'messages': {'sent_by_application': 2,
+                'messages': {'sent_by_application': 3,
                              'sent_by_peer': len(PEER_TEXTS),
                              'copies_of_the_double_tap': texts.count(DOUBLE),
                              'peer_history': len(history)},
