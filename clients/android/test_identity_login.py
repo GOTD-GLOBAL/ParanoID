@@ -29,6 +29,8 @@ PG = Path('/usr/lib/postgresql/16/bin')
 # Two public test entropies (never funded, never on chain).
 ENTROPY = {'alice': base64.b64encode(bytes([1]) * 32).decode(), 'bob': base64.b64encode(bytes([2]) * 32).decode()}
 NAMES = {'alice': 'alice_login', 'bob': 'bob_login'}
+ENTROPY2 = {'carol': base64.b64encode(bytes([3]) * 32).decode(), 'dave': base64.b64encode(bytes([4]) * 32).decode()}
+NAMES2 = {'carol': 'carol_loop', 'dave': 'dave_loop'}
 
 
 def main():
@@ -39,11 +41,12 @@ def main():
     host = ANDROID / 'out/host-identity'
     host.mkdir(parents=True, exist_ok=True)
     cp = ':'.join(str(p) for p in [host, ANDROID / 'out/deps/json-20240303.jar', ANDROID / 'out/deps/zxing-core-3.5.3.jar'])
-    names = ['CoreBridge', 'PinnedTls', 'SnapshotCodec', 'StorageGuard', 'SyncCycle', 'KeyClient', 'KeyTransport', 'SelfServiceClient', 'QrCodec']
+    names = ['CoreBridge', 'PinnedTls', 'SnapshotCodec', 'StorageGuard', 'SyncCycle', 'KeyClient', 'KeyTransport', 'SelfServiceClient', 'QrCodec',
+             'RealtimeLoop', 'RealtimeTransport', 'VoiceRelayConfig', 'VoiceRelayTransport']
     subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-cp', cp, '-d', str(host)]
                    + [str(ANDROID / f'src/org/paranoid/text/{n}.java') for n in names]
                    + [str(DEVNET / f'src/org/paranoid/devnet/{n}.java') for n in ['SolanaBridge', 'IdentityLogin']]
-                   + [str(ANDROID / 'test/IdentityLoginBridge.java')], check=True)
+                   + [str(ANDROID / 'test/IdentityLoginBridge.java'), str(ANDROID / 'test/IdentityRealtimeSmoke.java')], check=True)
     libs = ':'.join(str(ROOT / p) for p in ['clients/core/target/debug', 'blockchain/solana/client/target/debug'])
     env = {k: v for k, v in os.environ.items() if not k.startswith(('PG', 'PARANOID_'))}
     with tempfile.TemporaryDirectory(prefix='paranoid-identity-v3-') as tmp:
@@ -80,6 +83,10 @@ def main():
                 out = subprocess.run(['java', '-Djava.library.path=' + libs, '-cp', cp, 'IdentityLoginBridge', '--owner', entropy], check=True, capture_output=True, text=True)
                 owner_of[who] = out.stdout.strip()
                 assert 32 <= len(owner_of[who]) <= 44, 'public owner address expected'
+            owner_of2 = {}
+            for who, entropy in ENTROPY2.items():
+                out = subprocess.run(['java', '-Djava.library.path=' + libs, '-cp', cp, 'IdentityLoginBridge', '--owner', entropy], check=True, capture_output=True, text=True)
+                owner_of2[who] = out.stdout.strip()
             (root / 'registry.json').write_text(json.dumps({owner_of[w]: NAMES[w] for w in ENTROPY}))
             env.update(PARANOID_DATABASE_URL=f'postgresql://{getpass.getuser()}@localhost/postgres?host={sock}',
                        PARANOID_KEY_REALM=realm, PARANOID_KEY_PIN=pin, PARANOID_MODE='identity-v3-local',
@@ -166,9 +173,16 @@ def main():
             rpc('three', 'sync')
             v = rpc('two', 'sync')
             assert any(m.get('text') == 'Я на новом телефоне' for d in v['dialogs'] for m in d['messages'])
+            # 6. Real background loop on the same server: idles until ID login, then delivers.
+            (root / 'registry.json').write_text(json.dumps({**{owner_of[w]: NAMES[w] for w in ENTROPY}, **{owner_of2[w]: NAMES2[w] for w in ENTROPY2}}))
+            server.terminate(); server.wait(timeout=10); server = start_server()
+            loop = subprocess.run(['timeout', '-s', 'QUIT', '-k', '5', '120', 'java', '-Djava.library.path=' + libs, '-cp', cp, 'IdentityRealtimeSmoke', realm, pin,
+                                   ENTROPY2['carol'], NAMES2['carol'], ENTROPY2['dave'], NAMES2['dave']],
+                                  capture_output=True, text=True, timeout=180)
+            assert loop.returncode == 0 and 'PASS' in loop.stdout, (loop.stdout[-1500:], loop.stderr[-3000:])
             print('PASS identity-v3 real server + Android JVM/JNI: login without v2 registration, idempotent retry, '
                   'E2EE text both ways, restart persistence, explicit replacement retiring the old phone, new phone '
-                  'messaging. NOT a physical-phone, live-Devnet or call test.')
+                  'messaging, background loop idles until login then delivers. NOT a physical-phone, live-Devnet or call test.')
         finally:
             if bridge is not None:
                 bridge.stdin.close(); bridge.wait(timeout=10)

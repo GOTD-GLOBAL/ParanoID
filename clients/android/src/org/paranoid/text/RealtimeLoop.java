@@ -42,6 +42,7 @@ public final class RealtimeLoop implements AutoCloseable {
     private Session pushedSession;private String pushedToken="";
     public void pushToken(String token){pushToken=token==null?"":token;kick();}
     private volatile boolean discoveryNeeded=true,realtime;
+    private volatile Boolean identityServer;
     private long discoveryAt,lastProof;
     private volatile long legacyUntil;
     private static final class Session {
@@ -187,15 +188,21 @@ public final class RealtimeLoop implements AutoCloseable {
             guard(run);
             if(!state(run,client::hasIdentity))throw new Idle();
             if(transport==null){String[] trust=state(run,client::updateTrust);transport=new RealtimeTransport(trust[0],trust[1]);}
-            if(!state(run,client::registered)) {
-                JSONObject status=proof(run,"register","POST","/v2/registration/commit","{}");
-                state(run,()->{client.registrationResult(status);listener.changed(true,"Подключено");return null;});
-            }
-            if(discoveryNeeded||System.nanoTime()-discoveryAt>60_000_000_000L) {
+            if(discoveryNeeded||identityServer==null||System.nanoTime()-discoveryAt>60_000_000_000L) {
                 JSONObject health=transport.call("GET","/health","",null);
-                if(!health.optString("protocol").equals("paranoid-self-service-v2")||!health.optString("status").equals("ok"))throw new IOException("server protocol mismatch");
+                String protocol=health.optString("protocol");
+                // RFC-0027 identity-v3 servers reuse the v2 transport but never offer v2 registration.
+                if(!(protocol.equals("paranoid-self-service-v2")||protocol.equals("paranoid-identity-v3"))||!health.optString("status").equals("ok"))throw new IOException("server protocol mismatch");
+                identityServer=protocol.equals("paranoid-identity-v3");
                 realtime=health.optString("realtime").equals("signed-long-poll-v1");discoveryNeeded=false;discoveryAt=System.nanoTime();
                 if(!realtime)session=null;
+            }
+            if(!state(run,client::registered)) {
+                // On an identity-v3 server the account is created only by the user's
+                // explicit "Войти этим ID" action; wait for it instead of registering.
+                if(identityServer)throw new Idle();
+                JSONObject status=proof(run,"register","POST","/v2/registration/commit","{}");
+                state(run,()->{client.registrationResult(status);listener.changed(true,"Подключено");return null;});
             }
             if(!realtime||System.nanoTime()<legacyUntil)return null;
             Session existing=session;if(existing!=null&&!existing.renew())return existing;
