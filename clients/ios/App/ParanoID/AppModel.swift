@@ -487,9 +487,10 @@ final class AppModel {
                               sending: drafts.isSending) && MessagePresentation.canSend(draft)
     }
 
-    /// The line above the composer (`MainActivity.java:350`).
+    /// The line above the composer (`MainActivity.java:382`). The bytes are
+    /// those of what would be sent — the draft trimmed at its ends.
     var composerHint: String {
-        let bytes = MessagePresentation.byteCount(draft)
+        let bytes = MessagePresentation.bytesToSend(draft)
         if chat?.isBlocked == true { return Strings.Chat.blockedHint }
         if isBroken { return Strings.Chat.brokenHint }
         if bytes > MessagePresentation.byteLimit { return Strings.Chat.tooLong(bytes: bytes) }
@@ -497,9 +498,9 @@ final class AppModel {
     }
 
     /// Whether the composer's hint is the over-limit one, which is the only
-    /// one drawn in the danger colour (`MainActivity.java:351`).
+    /// one drawn in the danger colour (`MainActivity.java:383`).
     var isOverLimit: Bool {
-        MessagePresentation.byteCount(draft) > MessagePresentation.byteLimit
+        MessagePresentation.bytesToSend(draft) > MessagePresentation.byteLimit
     }
 
     // MARK: - actions

@@ -49,13 +49,44 @@ public enum MessagePresentation {
         text.utf8.count
     }
 
+    /// The text that is sent for what was typed: the same text without the
+    /// whitespace at its ends — Java's `trim()`, every character at or below
+    /// U+0020 — and with everything inside it, line breaks included, as it
+    /// was. A trailing return or a leading space is a slip of the thumb, not
+    /// part of the message, and it would count against the limit and stand
+    /// as an empty line in the peer's bubble. Android sends the text as
+    /// typed (`TextEngine.send`, `SelfServiceClient.java:98-103`); the same
+    /// request stands for it.
+    public static func trimmed(_ text: String) -> String {
+        let scalars = text.unicodeScalars
+        guard let first = scalars.firstIndex(where: { $0.value > 0x20 }),
+              let last = scalars.lastIndex(where: { $0.value > 0x20 })
+        else { return "" }
+        return String(String.UnicodeScalarView(scalars[first...last]))
+    }
+
+    /// The size of what would be sent for this text: the bytes of its trimmed
+    /// form, which is what the composer counts and the core measures.
+    public static func bytesToSend(_ text: String) -> Int {
+        byteCount(trimmed(text))
+    }
+
     /// Whether this text is one the core would take
-    /// (`MessagePresentation.java:19`).
-    ///
-    /// Blank is refused and the limit is measured on the text **as typed**,
-    /// not on a trimmed copy, because the untrimmed text is what is sent.
+    /// (`MessagePresentation.java:19`): not blank, and at most 2048 bytes
+    /// once trimmed, because the trimmed text is what is sent.
     public static func canSend(_ text: String) -> Bool {
-        !isBlank(text) && byteCount(text) <= byteLimit
+        !isBlank(text) && bytesToSend(text) <= byteLimit
+    }
+
+    /// From how many bytes the composer shows its counter. Below it the
+    /// counter would only say that a short message is short; from here the
+    /// limit is close enough to matter (Android shows a hint only over the
+    /// limit, `MainActivity.java:382`).
+    public static let byteWarning = 1800
+
+    /// Whether the composer shows «N из 2048 байт» for this text.
+    public static func showsCounter(_ text: String) -> Bool {
+        bytesToSend(text) >= byteWarning
     }
 
     /// The delivery state in words, for the line under a bubble and for the
@@ -192,15 +223,20 @@ public enum MessagePresentation {
     public struct Ticket: Equatable, Sendable {
         /// The conversation this text was written in.
         public let account: String
-        /// The text, exactly as it was typed — untrimmed, because that is
-        /// what the core is given.
+        /// The text the core is given: the draft trimmed at its ends
+        /// (`MessagePresentation.trimmed`).
         public let text: String
+        /// The draft exactly as it was typed, which a failed send puts back —
+        /// not the trimmed text, so a slip of the thumb is still the user's
+        /// to see and not silently corrected.
+        public let draft: String
         /// The draft counter this ticket was minted at.
         public let revision: Int64
 
-        fileprivate init(account: String, text: String, revision: Int64) {
+        fileprivate init(account: String, draft: String, revision: Int64) {
             self.account = account
-            self.text = text
+            self.text = MessagePresentation.trimmed(draft)
+            self.draft = draft
             self.revision = revision
         }
     }
@@ -213,14 +249,17 @@ public enum MessagePresentation {
     /// the same run loop turn finds `isSending` already true and returns `nil`
     /// — there is no interval in which two taps both pass. Android reaches the
     /// same place through `DialogPolicy.canReply(..., drafts.sending())` and
-    /// `drafts.started(ticket)` (`MainActivity.java:327-333`).
+    /// `drafts.started(ticket)` (`MainActivity.java:376-379`).
     ///
-    /// iOS differs from Android in one visible way, which is this client's
-    /// rule (step 30): the composer is cleared at the instant of the tap
-    /// rather than when the commit returns, and a failed send puts the text
-    /// back. Android leaves the text in the field until the commit lands.
-    /// Everything else — one pending send, the revision check before a
-    /// restore, no text kept for an empty account — is unchanged.
+    /// iOS differs from Android in two visible ways, both this client's
+    /// rules. The composer is cleared at the instant of the tap rather than
+    /// when the commit returns, and a failed send puts the text back (step
+    /// 30); Android leaves the text in the field until the commit lands. And
+    /// the text is sent trimmed at its ends (`Ticket.text`), while the draft
+    /// put back after a failure is the one typed (`Ticket.draft`); Android
+    /// sends the text as typed. Everything else — one pending send, the
+    /// revision check before a restore, no text kept for an empty account —
+    /// is unchanged.
     @MainActor
     public final class Drafts {
         private var texts: [String: String] = [:]
@@ -260,7 +299,7 @@ public enum MessagePresentation {
             guard canReply, !isSending, MessagePresentation.canSend(text) else { return nil }
             update(account: account, text: text)
             clear(account)
-            let ticket = Ticket(account: account, text: text, revision: revision)
+            let ticket = Ticket(account: account, draft: text, revision: revision)
             pending = ticket
             return ticket
         }
@@ -268,14 +307,14 @@ public enum MessagePresentation {
         /// The answer to `begin` (`MessagePresentation.java:35`).
         ///
         /// A committed send leaves the cleared composer alone. A failed one
-        /// puts the text back, unless the user has typed something else into
-        /// that conversation while it was in flight.
+        /// puts the draft back as it was typed, unless the user has typed
+        /// something else into that conversation while it was in flight.
         public func finished(_ ticket: Ticket, committed: Bool) {
             guard pending == ticket else { return }
             pending = nil
             guard !committed, revisions[ticket.account] == ticket.revision else { return }
             revision += 1
-            texts[ticket.account] = ticket.text
+            texts[ticket.account] = ticket.draft
             revisions[ticket.account] = revision
         }
 

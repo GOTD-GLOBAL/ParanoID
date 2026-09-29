@@ -1,11 +1,23 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-22
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-09-29
+last_reviewed_scope: iOS chat composer and bubbles; older dated records retained
 ---
 
 # Current project state
+
+## iOS chat composer and bubbles — 2026-09-29
+
+On iOS a bubble is as wide as its text (Android's margin, a 440-point cap on
+the bubble where Android caps the text), the byte
+counter stands only from 1800 bytes and turns red over 2048, dragging the
+history down dismisses the keyboard, and the text is sent trimmed at its ends
+with the draft put back as typed after a failed send. Core, protocol and the
+2048-byte wire limit are unchanged; Android sends the text as typed and should
+receive the same request. Evidence is contributor Mac execution, recorded in
+the [receipt](evidence/ios-client-20260929/chat-composer-mac.md); a physical
+phone is not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
 
 ## PR54 closure preparation — 2026-09-22
 

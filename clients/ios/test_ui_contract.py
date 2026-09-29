@@ -839,6 +839,40 @@ class UiContract(unittest.TestCase):
         self.assertEqual(app.count('.fullScreenCover('), 1,
                          f'{ENTRY}: a second full-screen cover')
 
+    def test_the_composer_sends_the_trimmed_text_and_the_bubble_hugs_it(self):
+        model = self.sources[MODEL]
+        chat = self.sources[CHAT]
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/MessagePresentation.swift']
+        # What is sent is the draft trimmed at its ends; what comes back after
+        # a failure is the draft as typed.
+        self.present('self.text = MessagePresentation.trimmed(draft)', kit, 'MessagePresentation.swift')
+        self.present('texts[ticket.account] = ticket.draft', kit, 'MessagePresentation.swift')
+        self.present('!isBlank(text) && bytesToSend(text) <= byteLimit', kit, 'MessagePresentation.swift')
+        # The composer measures what would be sent, everywhere it measures.
+        self.present('let bytes = MessagePresentation.bytesToSend(draft)', model, MODEL)
+        self.present('MessagePresentation.bytesToSend(draft) > MessagePresentation.byteLimit', model, MODEL)
+        self.present('Strings.Chat.counter(bytes: MessagePresentation.bytesToSend(model.draft))', chat, CHAT)
+        self.absent('MessagePresentation.byteCount(model.draft)', chat, CHAT)
+        # The counter stands only near the limit.
+        self.present('if MessagePresentation.showsCounter(model.draft) {', chat, CHAT)
+        self.present('bytesToSend(text) >= byteWarning', kit, 'MessagePresentation.swift')
+        # The bubble hugs its text: nothing inside it asks for the row's width,
+        # the cap is Android's, and the bubble is the accessibility element.
+        bubble = chat[chat.index('struct MessageBubble: View {'):]
+        self.absent('.frame(maxWidth: .infinity', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('static let maxWidth: CGFloat = 440', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('.frame(maxWidth: Self.maxWidth, alignment: isOwn ? .trailing : .leading)',
+                     bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('.accessibilityElement(children: .combine)', bubble, 'Screens/Chat.swift: MessageBubble')
+        # Inside the bubble the text stands at the leading edge and the footer
+        # at the trailing edge, without a spacer, which would take the row.
+        self.present('BubbleLayout {', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('subviews[0].place(at: bounds.origin', bubble, 'Screens/Chat.swift: BubbleLayout')
+        self.present('x: bounds.maxX - footer.width', bubble, 'Screens/Chat.swift: BubbleLayout')
+        self.absent('Spacer(', bubble[bubble.index('private var bubble'):], 'Screens/Chat.swift: bubble')
+        # The keyboard follows the finger down the history.
+        self.present('.scrollDismissesKeyboard(.interactively)', chat, CHAT)
+
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()
         plist = plistlib.loads(raw.encode())

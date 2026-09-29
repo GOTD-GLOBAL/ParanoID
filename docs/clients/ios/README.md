@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-29
 ---
 
 # iOS client documentation (candidate, RFC-0021)
@@ -85,6 +85,12 @@ the shared [core contract](../core/self-service.md) and
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,
   answered by the owner's agents in
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)).
+- The text is sent trimmed at its ends and the byte counter stands only near
+  the limit ([self-service.md](self-service.md#text-receipts-and-the-lanes));
+  Android sends the text as typed and shows a hint only over the limit. The
+  same request stands for Android. The bubble hugs its text as Android's
+  does (its 440-point cap is on the bubble, Android's on the text), and the
+  keyboard follows a drag down the history.
 - Screen capture: Android's `FLAG_SECURE` has no iOS equivalent. This client
   covers the video stage while the screen is recorded, mirrored or AirPlayed
   and leaves the controls reachable; a screenshot and the app-switcher snapshot
