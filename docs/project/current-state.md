@@ -7,6 +7,23 @@ last_reviewed_scope: iOS composer, contacts, chat-list and call-screen candidate
 
 # Current project state
 
+## iOS staged integration candidate — 2026-09-29
+
+The PR63 → PR64 → PR66 → PR65 → PR59 chain is reconciled locally with normal
+merge commits, preserving all feature and test additions. The
+[stack integration evidence](evidence/ios-client-20260929/stack-integration.md)
+records the frozen code checkpoints, conflict dispositions and passing Linux
+source gates. Exact-head combined Mac acceptance remains NOT RUN; the original
+per-feature receipts do not cover the newly combined source. PR58 stays a
+separate draft proposal and PR62 is excluded. Product wording and behavior
+choices remain for the owner; no RFC/ADR disposition changes.
+
+PR60 was still open/draft, not merged into `origin/main`, when checked. A pinned
+external health check observed its v3 protocol on a separate test VPS and the
+existing v2 protocol on the original endpoint; the installed SHA was not exposed.
+The iOS stack does not add Solana login or change either service. Neither a main
+merge nor any deployment is performed by this integration candidate.
+
 ## iOS new-message marks, in memory only — 2026-09-26
 
 At Yaroslav's request the iOS client counts new messages: a row of «Чаты»
