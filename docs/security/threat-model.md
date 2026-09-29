@@ -46,7 +46,11 @@ upgrade authority, allocation size and SBF SHA256 before signing. Negative host
 fixtures reject substitutions and corrupted code. This is detection against the
 configured trusted RPC, not cryptographic chain verification: dishonest RPC and
 upgrade-after-check races remain residual risks. No secrets cross this pin API;
-mnemonic export uses a separate explicit UI-only operation. Phone persistence and
+mnemonic export uses a separate explicit UI-only operation. Since 2026-09-29 new
+Devnet identities use 12 BIP39 words (128-bit entropy, matching the Ed25519
+security level); 24-word identities remain recoverable. Guessing a 12-word phrase
+is not a practical attack; phrase disclosure (screen, photo, clipboard) remains
+the relevant risk and is mitigated only by FLAG_SECURE on the words screens. Phone persistence and
 lifecycle are not proved by the host/JNI tests.
 
 The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)

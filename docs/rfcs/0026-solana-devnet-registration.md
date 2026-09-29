@@ -9,6 +9,20 @@ last_reviewed: 2026-09-21
 
 # RFC-0026: Fresh Solana Devnet nickname registration
 
+## Revision 2026-09-29: 12-word recovery phrase
+
+Owner `martadvix-web` (Сергей Мальцев) asked in the ParanoID Telegram thread on
+2026-09-29 whether 12 words can replace 24, and answered «Да» to the proposal:
+new Devnet identities get 12 words; recovery accepts 12 or 24 so existing
+identities are kept. Rationale: 128-bit BIP39 entropy matches the ~128-bit
+security level of the Ed25519 key it derives and is the common Solana wallet
+default. Derivation path, passphrase, storage and screenshot protection are
+unchanged. Evidence: crate test `twelve_word_public_recovery_vector` pins the
+public `abandon…about` vector to owner
+`HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk`, independently reproduced with
+Python `hashlib`/`hmac` PBKDF2 + SLIP-0010 and `cryptography` Ed25519 (which
+also reproduced the existing 24-word vector). Devnet-only scope is unchanged.
+
 ## Owner scope and non-goals
 
 Sergey Maltsev directed starting Solana Devnet and explicitly stated that current
@@ -120,7 +134,11 @@ Olm key, APK signer or any real-money wallet. Recovery uses a standard reviewed
 BIP39/SLIP-0010 construction with explicit derivation path and public vectors;
 no custom cryptographic primitive or reuse of historical experimental salts.
 The selected path is `m/44'/501'/0'/0'`, hardened-only ed25519 SLIP-0010,
-24 English BIP39 words and empty BIP39 passphrase. Pin `bip39=3.0.0` and
+English BIP39 words and empty BIP39 passphrase. New identities use 12 words
+(128-bit entropy); identities created before 2026-09-29 used 24 words (256-bit)
+and remain recoverable: recovery accepts exactly 12 or 24 words, nothing else.
+The same entropy always yields the same key, so a 24-word phrase can never be
+shortened to 12 words; switching length means a new owner address. Pin `bip39=3.0.0` and
 `ed25519-dalek-bip32=0.3.0`; verify published SLIP-0010 vectors and an independent
 public 32-byte-entropy BIP39/path reproduction before generating phone keys.
 This is a Devnet-only construction, not adoption of historical HKDF salts.

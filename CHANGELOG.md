@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v31: nick onboarding and 12-word recovery phrase — 2026-09-29
+
+- Fresh install opens a one-step-per-screen flow: create or restore nick → recovery
+  words → nick → automatic Devnet funding/registration → server choice → login.
+  Invite and own-server options are shown as upcoming, not implemented.
+- New Devnet identities use 12 BIP39 words; recovery accepts 12 or 24 so identities
+  created earlier keep working (RFC-0026 revision 2026-09-29, owner-approved).
+- Screenshots are allowed except on the recovery-word display and entry screens.
+
 ### Solana identity login — server candidate (RFC-0027, draft) — 2026-09-24
 
 - New local-only server mode `identity-v3-local` with offline `identity-v3-init` on an

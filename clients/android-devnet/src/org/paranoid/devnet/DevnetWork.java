@@ -12,8 +12,8 @@ final class DevnetWork {
             if("storage_frozen".equals(code)||"incomplete_retained_state".equals(code))return "Хранилище Devnet заблокировано после незавершённой записи. Чаты и звонки не затронуты. В этой версии нет безопасного сброса только Devnet. Не очищайте данные ParanoID: это удалит ID мессенджера и локальную переписку. Сообщите об ошибке; не переустанавливайте приложение.";
             if("insufficient_devnet_sol".equals(code))return "Недостаточно тестовых SOL. Нажмите «Получить тестовые SOL» или скопируйте публичный адрес для пополнения в Devnet. Реальные SOL не нужны.";
             if("rpc_rate_limit".equals(code)||"faucet_attempt_already_used".equals(code))return "Кран Devnet ограничил запрос или попытка уже использована. Не повторяем автоматически. Скопируйте публичный адрес для пополнения тестовыми SOL.";
-            if("invalid_mnemonic".equals(code))return "Не удалось проверить 24 слова. Проверьте английские слова и их порядок. Не вводите фразу реального кошелька.";
-            if("backup_confirmation_required".equals(code))return "Сначала сохраните 24 слова Devnet и подтвердите, что записали их.";
+            if("invalid_mnemonic".equals(code))return "Не удалось проверить слова: нужно 12 или 24. Проверьте английские слова и их порядок. Не вводите фразу реального кошелька.";
+            if("backup_confirmation_required".equals(code))return "Сначала сохраните слова восстановления Devnet и подтвердите, что записали их.";
             if("identity_already_exists".equals(code))return "На этом телефоне уже есть Devnet-ключ. Его не заменяем и не удаляем; используйте проверку ника или показ слов.";
             if("nick_required".equals(code))return "Сначала зарегистрируйте и проверьте ник, затем нажмите «Войти этим ID».";
             if("not_identity_server".equals(code))return "Этот ID создан для основного сервера. Вход через Solana работает только с ID, созданным кнопкой «Создать ID для входа через Solana» при новой установке.";

@@ -72,7 +72,7 @@ public final class OnboardingActivity extends Activity {
         busy("Создаём ключ…");
         run((s,t)->{
             if(s.load()==null){
-                byte[] e=new byte[32];new SecureRandom().nextBytes(e);String entropy=Base64.encodeToString(e,Base64.NO_WRAP);Arrays.fill(e,(byte)0);
+                byte[] e=new byte[16];new SecureRandom().nextBytes(e);/* 12 words (RFC-0026 rev. 2026-09-29) */String entropy=Base64.encodeToString(e,Base64.NO_WRAP);Arrays.fill(e,(byte)0);
                 s.save(new JSONObject().put("entropy",entropy).put("program",DevnetRpc.PROGRAM).put("genesis",DevnetRpc.GENESIS).put("backup",false).put("attempts",new JSONArray()));
             }
             post(t,this::resume);return null;
@@ -81,11 +81,11 @@ public final class OnboardingActivity extends Activity {
 
     private void words(String mnemonic){
         clear();secure(true);
-        step("Шаг 1 из 3");title("Запишите 24 слова");
+        step("Шаг 1 из 3");title("Запишите 12 слов");
         body("Только по ним можно вернуть ник на новом телефоне. Никому их не показывайте. Скриншот этого экрана запрещён.");
         gap(16);
         String[] w=mnemonic.split(" ");StringBuilder out=new StringBuilder();
-        for(int i=0;i<w.length;i++)out.append(String.format(Locale.ROOT,"%2d. %s%s",i+1,w[i],i%2==1?"\n":"\t\t"));
+        for(int i=0;i<w.length;i++)out.append(String.format(Locale.ROOT,"%2d. %-10s%s",i+1,w[i],i%2==1?"\n":"  "));
         TextView list=label(out.toString(),17,text,false);list.setTypeface(Typeface.MONOSPACE);list.setPadding(dp(16),dp(16),dp(16),dp(16));list.setBackground(round(surface,16));list.setSaveEnabled(false);page.addView(list,full());
         gap(24);
         primary("Я записал слова",()->new AlertDialog.Builder(this).setTitle("Точно записали?").setMessage("Без этих слов ник восстановить невозможно.")
@@ -162,7 +162,7 @@ public final class OnboardingActivity extends Activity {
     private void restore(){
         clear();secure(true);
         title("Восстановить ник");
-        body("Введите 24 слова через пробел. Скриншот этого экрана запрещён.");
+        body("Введите 12 слов через пробел (или 24, если ник создан в прежней версии). Скриншот этого экрана запрещён.");
         gap(20);
         EditText in=new EditText(this);in.setMinLines(4);in.setGravity(Gravity.TOP);in.setSaveEnabled(false);
         in.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);

@@ -61,19 +61,19 @@ enum Command {
     },
 }
 
-fn entropy(encoded: &str) -> Result<Zeroizing<[u8; 32]>, &'static str> {
+/// BIP39 entropy: 16 bytes (12 words, default for new identities since RFC-0026
+/// revision 2026-09-29) or 32 bytes (24 words, identities created earlier).
+fn entropy(encoded: &str) -> Result<Zeroizing<Vec<u8>>, &'static str> {
     let bytes = Zeroizing::new(STANDARD.decode(encoded).map_err(|_| "invalid_entropy")?);
-    if bytes.len() != 32 || STANDARD.encode(bytes.as_slice()) != encoded {
+    if !(bytes.len() == 16 || bytes.len() == 32) || STANDARD.encode(bytes.as_slice()) != encoded {
         return Err("invalid_entropy");
     }
-    let mut result = Zeroizing::new([0u8; 32]);
-    result.copy_from_slice(&bytes);
-    Ok(result)
+    Ok(bytes)
 }
-fn mnemonic(bytes: &[u8; 32]) -> Result<Mnemonic, &'static str> {
+fn mnemonic(bytes: &[u8]) -> Result<Mnemonic, &'static str> {
     Mnemonic::from_entropy_in(Language::English, bytes).map_err(|_| "invalid_entropy")
 }
-fn secret(bytes: &[u8; 32]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
+fn secret(bytes: &[u8]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
     let phrase = mnemonic(bytes)?;
     let seed = Zeroizing::new(phrase.to_seed_normalized(""));
     let path = DerivationPath::from_str("m/44'/501'/0'/0'").map_err(|_| "derivation")?;
@@ -82,7 +82,7 @@ fn secret(bytes: &[u8; 32]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
         .map_err(|_| "derivation")?;
     Ok(Zeroizing::new(child.signing_key.to_bytes()))
 }
-fn public(bytes: &[u8; 32]) -> Result<Address, &'static str> {
+fn public(bytes: &[u8]) -> Result<Address, &'static str> {
     let seed = secret(bytes)?;
     let key = solana_keypair::Keypair::new_from_array(*seed);
     use solana_signer::Signer;
@@ -265,7 +265,7 @@ fn run(input: Command) -> Result<Value, &'static str> {
             let text = Zeroizing::new(m);
             let phrase = Mnemonic::parse_in_normalized(Language::English, &text)
                 .map_err(|_| "invalid_mnemonic")?;
-            if phrase.word_count() != 24 {
+            if phrase.word_count() != 12 && phrase.word_count() != 24 {
                 return Err("invalid_mnemonic");
             }
             let bytes = Zeroizing::new(phrase.to_entropy());
@@ -388,6 +388,10 @@ mod tests {
             ("name", "1abc"),
             ("blockhash", "invalid"),
             ("entropy", "AAAA"),
+            (
+                "entropy",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+            ),
             ("program", "11111111111111111111111111111111"),
             ("transaction", "arbitrary"),
         ] {
@@ -397,7 +401,9 @@ mod tests {
             assert!(out.get("error").is_some(), "{field}");
             assert!(out.get("transaction").is_none());
         }
-        for m in ["abandon abandon", "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"] {let out:Value=serde_json::from_str(&command(&json!({"op":"recover","mnemonic":m}).to_string())).unwrap();assert_eq!(out["error"],"invalid_mnemonic");}
+        // 15/18/21 words, wrong checksum and fragments stay rejected; 12 and 24 are accepted.
+        for m in ["abandon abandon", "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon",
+                  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon address"] {let out:Value=serde_json::from_str(&command(&json!({"op":"recover","mnemonic":m}).to_string())).unwrap();assert_eq!(out["error"],"invalid_mnemonic");}
         assert!(command(&"x".repeat(16385)).contains("input_limit"));
         assert!(
             command(r#"{"op":"identity","op":"recover","entropy":"AAAA"}"#)
@@ -441,6 +447,35 @@ mod tests {
         assert!(out.get("mnemonic").is_none());
         assert!(out.get("entropy").is_none());
     }
+    /// BIP39 public vector "abandon x11 about" (entropy 0x00 x16) at m/44'/501'/0'/0'.
+    /// The owner address is reproduced independently (hashlib PBKDF2 + HMAC SLIP-0010 +
+    /// cryptography Ed25519) in the PR evidence, not only by this crate.
+    #[test]
+    fn twelve_word_public_recovery_vector() {
+        let e16 = "AAAAAAAAAAAAAAAAAAAAAA==";
+        let backup: Value = serde_json::from_str(&command(
+            &json!({"op":"export_mnemonic","entropy":e16}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(
+            backup["mnemonic"],
+            format!("{} about", vec!["abandon"; 11].join(" "))
+        );
+        let restored: Value = serde_json::from_str(&command(
+            &json!({"op":"recover","mnemonic":backup["mnemonic"]}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(restored["entropy"], e16);
+        let id: Value = serde_json::from_str(&command(
+            &json!({"op":"identity","entropy":e16}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(id["owner"], TWELVE_WORD_VECTOR_OWNER);
+        // A 12-word identity signs registration the same way as a 24-word one.
+        let tx: Value = serde_json::from_str(&command(&json!({"op":"register","entropy":e16,"name":"abc","blockhash":"11111111111111111111111111111111","genesis":GENESIS}).to_string())).unwrap();
+        assert_eq!(tx["owner"], TWELVE_WORD_VECTOR_OWNER);
+    }
+    const TWELVE_WORD_VECTOR_OWNER: &str = "HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk";
     #[test]
     fn standard_public_recovery_vector() {
         let value: Value = serde_json::from_str(&command(
