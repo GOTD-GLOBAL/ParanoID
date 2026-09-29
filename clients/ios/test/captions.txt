@@ -72,11 +72,7 @@ MainActivity.java "Отпечаток контакта"
 MainActivity.java "Появится после регистрации"
 MainActivity.java "Приложение"
 MainActivity.java "О приложении"
-# «Мой ID» → «Приложение». Android still says «До 200 сообщений в диалоге.»
-# (MainActivity.java:205). Neither 200 nor 1000 is a total-history ceiling.
-# The line is this client's until Android also removes the numeric sentence;
-# then its origin returns to MainActivity.java. Core limits are unchanged.
-ios "\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+MainActivity.java "\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
 ios "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
 MainActivity.java "Закрыть"
 MainActivity.java "Отпечаток идентичности"
