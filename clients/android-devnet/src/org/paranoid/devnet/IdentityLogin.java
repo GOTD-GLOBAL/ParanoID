@@ -8,14 +8,8 @@ import org.json.JSONObject;
  * The owner key never leaves the Devnet library; the device key never leaves the core.
  */
 public final class IdentityLogin {
-    /** Pinned TLS HTTP to the saved messenger server; throws SyncCycle.Rejected on non-200. */
-    public interface Http { JSONObject post(String path,String body)throws Exception; }
-    /** The messenger core: public credential, device proof and committing an active status. */
-    public interface Device {
-        JSONObject credential()throws Exception;
-        String deviceProof(JSONObject intent,JSONObject challenge,long now)throws Exception;
-        void active(JSONObject status)throws Exception;
-    }
+    public interface Http extends org.paranoid.text.IdentityPorts.Http {}
+    public interface Device extends org.paranoid.text.IdentityPorts.Device {}
     public static final String ACTIVE="active",REPLACE_REQUIRED="replace_required",REVOKED="revoked",BANNED="banned";
     public static final String GENESIS="EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",PROGRAM="C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas";
     private IdentityLogin(){}
@@ -33,7 +27,7 @@ public final class IdentityLogin {
 
     /** Server auth ingress is 8 requests/second shared by every client; pace this flow and
      * retry only a bounded number of 429s with backoff. Never retry other failures here. */
-    private static JSONObject paced(Http http,String path,String body)throws Exception {
+    private static JSONObject paced(org.paranoid.text.IdentityPorts.Http http,String path,String body)throws Exception {
         for(int attempt=0;;attempt++) {
             Thread.sleep(attempt==0?200:1000L*attempt);
             try{return http.post(path,body);}
@@ -49,7 +43,7 @@ public final class IdentityLogin {
 
     /** One signed round: challenge, both proofs, then the purpose route. A 429 on the
      * challenge is retried; a proof is posted once (a consumed challenge is not reusable). */
-    private static JSONObject round(Http http,Device device,String entropy,JSONObject intent,String realm,String pin)throws Exception {
+    private static JSONObject round(org.paranoid.text.IdentityPorts.Http http,org.paranoid.text.IdentityPorts.Device device,String entropy,JSONObject intent,String realm,String pin)throws Exception {
         // The same intent (same operation id) may be retried: the server treats an exact
         // repeat as idempotent and a rate-limited attempt left nothing committed.
         for(int attempt=0;;attempt++) {
@@ -57,7 +51,7 @@ public final class IdentityLogin {
             catch(Exception e){if(attempt<3&&status(e)==429){Thread.sleep(1500L*(attempt+1));continue;}throw e;}
         }
     }
-    private static JSONObject once(Http http,Device device,String entropy,JSONObject intent,String realm,String pin)throws Exception {
+    private static JSONObject once(org.paranoid.text.IdentityPorts.Http http,org.paranoid.text.IdentityPorts.Device device,String entropy,JSONObject intent,String realm,String pin)throws Exception {
         JSONObject challenge=paced(http,"/v3/identity/challenge",intent.toString());
         long now=now();
         String purpose=intent.getString("purpose");
@@ -76,7 +70,7 @@ public final class IdentityLogin {
 
     /** Log this phone in with the verified Devnet nickname. `replace` must be an explicit
      * user choice: it retires the other phone. Returns one of the public constants. */
-    public static String run(Device device,Http http,String entropy,String name,boolean replace)throws Exception {
+    public static String run(org.paranoid.text.IdentityPorts.Device device,org.paranoid.text.IdentityPorts.Http http,String entropy,String name,boolean replace)throws Exception {
         if(name==null||!name.matches("[a-z][a-z0-9_]{2,23}"))throw new IOException("nick_not_verified");
         JSONObject credential=device.credential();
         String realm=credential.getString("realm"),pin=credential.getString("pin");

@@ -16,7 +16,7 @@ def run(*args, success=True):
     return p.stdout
 
 def main():
-    sources=[ROOT/'src/org/paranoid/text'/f'{n}.java' for n in ['UpdateManifest','UpdatePolicy','UpdateClient','PinnedTls','KeyClient','CoreBridge','KeyTransport','SyncCycle','SelfServiceClient']]
+    sources=[ROOT/'src/org/paranoid/text'/f'{n}.java' for n in ['UpdateManifest','UpdatePolicy','UpdateClient','PinnedTls','KeyClient','CoreBridge','KeyTransport','SyncCycle','SelfServiceClient','IdentityPorts']]
     sources += list((ROOT/'test').glob('Update*Smoke.java'))
     (ROOT/'out/update-host').mkdir(exist_ok=True,parents=True)
     subprocess.run(['javac','--release','8','-Xlint:-options','-cp',str(ROOT/'out/deps/json-20240303.jar'),'-d',str(ROOT/'out/update-host'),*map(str,sources)],check=True)

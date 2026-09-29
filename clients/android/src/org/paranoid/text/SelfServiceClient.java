@@ -204,8 +204,8 @@ public final class SelfServiceClient {
     }
     // RFC-0027 identity-v3 login adapters. The device key stays in the native core;
     // this only passes public credential/challenge data and commits an active status.
-    public org.paranoid.devnet.IdentityLogin.Device identityDevice(){
-        return new org.paranoid.devnet.IdentityLogin.Device(){
+    public IdentityPorts.Device identityDevice(){
+        return new IdentityPorts.Device(){
             public JSONObject credential()throws Exception {
                 healthy();if(state.isEmpty())throw new IOException("identity required");
                 JSONObject out=nativeCall(new JSONObject().put("op","identity_credential_v3"));
@@ -219,7 +219,7 @@ public final class SelfServiceClient {
             public void active(JSONObject status)throws Exception {registrationResult(status);}
         };
     }
-    public org.paranoid.devnet.IdentityLogin.Http identityHttp(){
+    public IdentityPorts.Http identityHttp(){
         return (path,body)->{healthy();return KeyTransport.call(realm,pin,"POST",path,body,null);};
     }
     public void received(JSONObject message)throws Exception {

@@ -41,7 +41,7 @@ def main():
     host = ANDROID / 'out/host-identity'
     host.mkdir(parents=True, exist_ok=True)
     cp = ':'.join(str(p) for p in [host, ANDROID / 'out/deps/json-20240303.jar', ANDROID / 'out/deps/zxing-core-3.5.3.jar'])
-    names = ['CoreBridge', 'PinnedTls', 'SnapshotCodec', 'StorageGuard', 'SyncCycle', 'KeyClient', 'KeyTransport', 'SelfServiceClient', 'QrCodec',
+    names = ['CoreBridge', 'PinnedTls', 'SnapshotCodec', 'StorageGuard', 'SyncCycle', 'KeyClient', 'KeyTransport', 'SelfServiceClient', 'IdentityPorts', 'QrCodec',
              'RealtimeLoop', 'RealtimeTransport', 'VoiceRelayConfig', 'VoiceRelayTransport']
     subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-cp', cp, '-d', str(host)]
                    + [str(ANDROID / f'src/org/paranoid/text/{n}.java') for n in names]
