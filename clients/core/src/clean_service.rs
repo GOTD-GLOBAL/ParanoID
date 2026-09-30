@@ -167,6 +167,47 @@ enum Operation {
         account: String,
         blocked: bool,
     },
+    /// RFC-0028: verify a server directory entry (owner proof + contact card); read-only.
+    VerifyDirectoryEntryV1 {
+        entry: Box<DirectoryEntry>,
+    },
+    /// RFC-0028: add a verified directory entry as a `network_unverified` contact. The
+    /// caller must have separately checked the finalized Solana registry for name->owner.
+    PairDirectoryEntryV1 {
+        entry: Box<DirectoryEntry>,
+    },
+}
+/// One server directory entry exactly as `/v3/directory/search` returns it.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DirectoryEntry {
+    name: String,
+    owner: String,
+    identity: String,
+    contact: ContactV2,
+    proof: paranoid_key_protocol::identity_v3::DirectoryProof,
+}
+/// The server cannot substitute keys: the nickname owner signed, at enroll/replace time,
+/// exactly this server, name, identity and the fingerprint of this credential, which in
+/// turn commits to the Olm identity and one-time key of the contact card. Challenge expiry
+/// is deliberately not checked (historical proof). Registry finality is the caller's.
+fn verify_directory_entry(s: &State, e: &DirectoryEntry) -> Result<()> {
+    paranoid_key_protocol::identity_v3::canonical_name(&e.name)?;
+    let own = &s
+        .legacy
+        .identity
+        .as_ref()
+        .ok_or("invalid_state")?
+        .credential;
+    e.contact.verify(&s.legacy)?;
+    e.proof.verify(
+        &own.realm,
+        &own.pin,
+        &e.name,
+        &e.owner,
+        &e.identity,
+        &e.contact.credential,
+    )
 }
 #[derive(Serialize)]
 struct CallEvent {
@@ -754,6 +795,46 @@ fn sign_session(
                 json!({"platform":"fcm","token":token}).to_string(),
             )
         }
+        // RFC-0028 directory (identity-v3 servers only). Strict, canonical bodies.
+        ("directory_search", Some(raw)) => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Search {
+                query: String,
+                after: Option<String>,
+            }
+            let q: Search = serde_json::from_str(raw).map_err(|_| "invalid_directory_query")?;
+            let prefix = q.query.len() <= 24
+                && q.query
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'_')
+                && q.query
+                    .bytes()
+                    .next()
+                    .is_none_or(|c| c.is_ascii_lowercase());
+            if !prefix
+                || q.after
+                    .as_deref()
+                    .is_some_and(|a| paranoid_key_protocol::identity_v3::canonical_name(a).is_err())
+            {
+                return Err("invalid_directory_query");
+            }
+            (
+                "POST",
+                "/v3/directory/search".to_owned(),
+                json!({"query":q.query,"after":q.after}).to_string(),
+            )
+        }
+        ("directory_visibility", Some(v @ ("true" | "false"))) => (
+            "POST",
+            "/v3/directory/visibility".to_owned(),
+            json!({"visible": v == "true"}).to_string(),
+        ),
+        ("directory_card", None) => (
+            "POST",
+            "/v3/directory/card".to_owned(),
+            serde_json::to_string(&local_contact(s)?).map_err(|_| "state_error")?,
+        ),
         _ => return Err("invalid_session_operation"),
     };
     let nonce = uuid::Uuid::new_v4().to_string();
@@ -978,6 +1059,20 @@ pub(super) fn command(raw: &str, request: &str) -> Result<String> {
             if let Some(h) = c.history.iter_mut().find(|h| h.id == id) {
                 h.accepted = true;
             }
+        }
+        Operation::VerifyDirectoryEntryV1 { entry } => {
+            verify_directory_entry(&s, &entry)?;
+            return Ok(json!({"name":entry.name,"owner":entry.owner,"identity":entry.identity,
+                "account":entry.contact.credential.account,"fingerprint":entry.contact.fingerprint(),
+                "contact":serde_json::to_string(&entry.contact).map_err(|_| "state_error")?})
+            .to_string());
+        }
+        Operation::PairDirectoryEntryV1 { entry } => {
+            if s.enrollment.is_none() {
+                return Err("registration_required");
+            }
+            verify_directory_entry(&s, &entry)?;
+            add_peer(&mut s, entry.contact, Trust::NetworkUnverified)?;
         }
         Operation::BlockContactV2 { account, blocked } => {
             s.conversations
