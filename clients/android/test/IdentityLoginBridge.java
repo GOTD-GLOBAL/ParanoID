@@ -29,6 +29,17 @@ public final class IdentityLoginBridge {
         };
         c=new SelfServiceClient(saved,commit,realm,pin);clients.put(phone,c);return c;
     }
+    /** Host stand-in for the finalized registry: the server's owner->name fixture file. */
+    static IdentityPorts.Registry fixtureRegistry(Path file){
+        return (owner,name,identity)->{
+            JSONObject table=new JSONObject(new String(Files.readAllBytes(file),StandardCharsets.UTF_8));
+            if(!name.equals(table.optString(owner,null)))throw new IOException("name_not_registered");
+            Class<?> bridge=Class.forName("org.paranoid.devnet.SolanaBridge");
+            java.lang.reflect.Method run=bridge.getDeclaredMethod("run",JSONObject.class);run.setAccessible(true);
+            JSONObject lookup=(JSONObject)run.invoke(null,new JSONObject().put("op","lookup").put("owner",owner).put("name",name));
+            if(!lookup.getString("identity").equals(identity))throw new IOException("identity_mismatch");
+        };
+    }
     public static void main(String[] args)throws Exception {
         if(args[0].equals("--owner")) {
             // Public Devnet owner address only; the entropy is a public synthetic test value.
@@ -56,6 +67,17 @@ public final class IdentityLoginBridge {
                     case "send":{JSONObject d=new JSONObject(value);c.send(d.getString("account"),d.getString("text"));out=c.publicView();break;}
                     case "sync":c.sync();out=c.publicView();break;
                     case "view":out=c.publicView();break;
+                    // RFC-0028 directory over a real signed session. `registry` replaces live
+                    // Solana with the same owner->name fixture file the server uses.
+                    case "publish":out=c.directory("directory_card",null);break;
+                    case "visibility":out=c.directory("directory_visibility",value);break;
+                    case "directory":out=c.directory("directory_search",value);break;
+                    case "add_found":{
+                        JSONObject v=new JSONObject(value);JSONObject entry=v.getJSONObject("entry");
+                        JSONObject verified=c.verifyDirectoryEntry(entry);
+                        fixtureRegistry(Paths.get(v.getString("registry"))).verify(entry.getString("owner"),entry.getString("name"),entry.getString("identity"));
+                        c.pairDirectoryEntry(entry);out=c.publicView().put("verified",verified);break;
+                    }
                     default:throw new IOException("unsupported fixture operation");
                 }
             } catch(Throwable e) {

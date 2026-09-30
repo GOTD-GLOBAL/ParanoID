@@ -3,7 +3,8 @@
 PostgreSQL, fixture registry) + real Android Java client classes + real JNI (messenger
 core and Devnet signer). Synthetic keys only; never contacts Devnet or a hosted server.
 
-Covers: login without v2 registration, E2EE text both ways after QR exchange, lost-reply
+Covers: login without v2 registration, RFC-0028 directory find/verify/add/first message,
+E2EE text both ways after QR exchange, lost-reply
 retry, replacement retiring the old phone, new phone messaging, restart persistence.
 NOT a physical-phone test; calls are exercised by existing voice tests over the same
 transport, not here.
@@ -141,7 +142,42 @@ def main():
             assert two['login'] == 'active' and two['active']
             # Lost reply: logging in again from the same phone is idempotent.
             assert login('one', 'alice')['login'] == 'active'
-            # 2. Verified QR exchange and E2EE text both ways.
+            # 2. RFC-0028 server directory: both phones publish their contact card; phone one
+            # lists the server, finds bob by prefix, verifies the owner proof in the core and the
+            # name->owner binding against the registry fixture, adds him as an unverified contact
+            # and sends the first message; phone two receives it.
+            assert rpc('one', 'publish')['published'] is True
+            assert rpc('two', 'publish')['published'] is True
+            listing = rpc('one', 'directory', json.dumps({'query': '', 'after': None}))
+            assert [m['name'] for m in listing['members']] == [NAMES['bob']], listing
+            assert listing['me'] == {'name': NAMES['alice'], 'visible': True, 'card': True}, listing
+            found = rpc('one', 'directory', json.dumps({'query': 'bob', 'after': None}))['members']
+            assert len(found) == 1 and found[0]['owner'] == owner_of['bob'], found
+            # A server that substitutes bob's one-time key, or claims a name the registry does
+            # not bind to that owner, is refused before anything is paired.
+            registry = str(root / 'registry.json')
+            forged = json.loads(json.dumps(found[0]))
+            forged['contact']['bundle']['one_time_key'] = one['contact']['bundle']['one_time_key']
+            error = rpc('one', 'add_found', json.dumps({'entry': forged, 'registry': registry}), ok=False)['error']
+            assert 'contact_binding_mismatch' in error, error
+            (root / 'wrong-registry.json').write_text(json.dumps({owner_of['bob']: 'bob_other'}))
+            error = rpc('one', 'add_found', json.dumps({'entry': found[0], 'registry': str(root / 'wrong-registry.json')}), ok=False)['error']
+            assert 'name_not_registered' in error, error
+            assert rpc('one', 'view')['dialogs'] == [], 'nothing paired from a refused entry'
+            added = rpc('one', 'add_found', json.dumps({'entry': found[0], 'registry': registry}))
+            assert added['verified']['account'] == two['account'], added
+            dialog = [d for d in added['dialogs'] if d['account'] == two['account']]
+            assert dialog and dialog[0]['trust'] == 'network_unverified', added['dialogs']
+            rpc('one', 'send', json.dumps({'account': two['account'], 'text': 'Нашёл тебя в каталоге'}))
+            rpc('one', 'sync')
+            v = rpc('two', 'sync')
+            assert any(m.get('text') == 'Нашёл тебя в каталоге' for d in v['dialogs'] for m in d['messages']), v['dialogs']
+            # Hiding removes bob from the listing; the existing conversation is unaffected.
+            assert rpc('two', 'visibility', 'false')['visible'] is False
+            assert rpc('one', 'directory', json.dumps({'query': '', 'after': None}))['members'] == []
+            assert rpc('two', 'visibility', 'true')['visible'] is True
+            # 2b. Verified QR exchange and E2EE text both ways (after the directory flow above
+            # pinned the same contact as network_unverified, the QR upgrades it).
             rpc('one', 'pair', json.dumps(two['contact']))
             rpc('two', 'pair', json.dumps(one['contact']))
             rpc('one', 'send', json.dumps({'account': two['account'], 'text': 'Привет от alice'}))
@@ -181,7 +217,7 @@ def main():
                                   capture_output=True, text=True, timeout=180)
             assert loop.returncode == 0 and 'PASS' in loop.stdout, (loop.stdout[-1500:], loop.stderr[-3000:])
             print('PASS identity-v3 real server + Android JVM/JNI: login without v2 registration, idempotent retry, '
-                  'E2EE text both ways, restart persistence, explicit replacement retiring the old phone, new phone '
+                  'RFC-0028 directory find -> verify -> add -> first message, E2EE text both ways, restart persistence, explicit replacement retiring the old phone, new phone '
                   'messaging, background loop idles until login then delivers. NOT a physical-phone, live-Devnet or call test.')
         finally:
             if bridge is not None:
