@@ -285,8 +285,9 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
 - `Sources/ParanoidKit/Realtime/` is the owner of that state and the lanes
   around it. `StateOwner` is an `actor` on its own serial queue — the port of
   the single-threaded `TextEngine.worker` — and it holds the client, every
-  bridge call, every commit, the realtime session and the discovered
-  capability. No member of it is `async`, so it cannot wait for a socket; a
+  bridge call after launch, every commit, the realtime session and the
+  discovered capability (before it exists, opening the client validates the
+  saved state and the runtime reads the new-message baseline once). No member of it is `async`, so it cannot wait for a socket; a
   lane is a `Task` that awaits the network in its own task and hands the
   finished answer over through `perform`, which asserts at runtime that it is
   running on the owner. Only `Sendable` values cross: a signed request out, a

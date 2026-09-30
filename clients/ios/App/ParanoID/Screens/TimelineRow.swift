@@ -11,6 +11,9 @@ import SwiftUI
 struct TimelineRow: Identifiable {
     enum Kind {
         case day(String)
+        /// «Новые сообщения»: the first message under it arrived after this
+        /// run last showed the conversation (`SeenMarks`).
+        case unread
         case message(Message)
         case call(CallRecord)
 
@@ -25,6 +28,10 @@ struct TimelineRow: Identifiable {
     let id: String
     let kind: Kind
 
+    /// The identity of the «Новые сообщения» divider before the message at
+    /// `position`. It is also what the chat scrolls to.
+    static func unreadId(_ position: Int) -> String { "u:\(position)" }
+
     init(id: String, kind: Kind) {
         self.id = id
         self.kind = kind
@@ -33,6 +40,25 @@ struct TimelineRow: Identifiable {
     init(id: String, kind row: ChatRow) {
         self.id = id
         self.kind = Kind(row)
+    }
+}
+
+/// «Новые сообщения»: a thin line with the words in the middle, over the first
+/// message this run had not shown when the chat was opened.
+struct UnreadDivider: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            Rectangle().fill(Color.accentColor.opacity(0.4)).frame(height: 1)
+            Text(Strings.Unread.divider)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+                .fixedSize()
+            Rectangle().fill(Color.accentColor.opacity(0.4)).frame(height: 1)
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("unread-divider")
     }
 }
 

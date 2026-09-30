@@ -422,6 +422,78 @@ class UiContract(unittest.TestCase):
         for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus'):
             self.absent(forbidden, rename, 'AppModel.rename(account:to:)')
 
+    def test_new_message_marks_stay_in_memory_and_off_the_wire(self):
+        # «Новые сообщения» (`SeenMarks`): which messages this run has not shown.
+        # The owner has not approved storing a per-conversation mark, so it may
+        # live in memory only, and nothing about reading may reach the core, the
+        # network or the peer (REQ-MSG-003).
+        marks_path = 'ParanoidKit/Sources/ParanoidKit/Presentation/SeenMarks.swift'
+        self.assertTrue(marks_path in self.sources, 'SeenMarks.swift is missing')
+        marks = self.sources[marks_path]
+        for token in ('UserDefaults', 'FileManager', 'Keychain', 'LocalMetadataStore',
+                      'SnapshotStore', 'SelfServiceClient', 'StateOwner', 'URLSession',
+                      'write(to', '@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore',
+                      'Codable', 'Encodable', 'Decodable', 'NSCoding'):
+            self.absent(token, marks, marks_path)
+        # Nothing elsewhere can make it storable or stand in for it.
+        for name, text in self.sources.items():
+            for token in ('@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore',
+                          'extension SeenMarks'):
+                self.absent(token, text, name)
+        # Only the model holds or builds the marks; every screen asks it.
+        uses = re.compile(r'seenMarks|SeenMarks\(|:\s*SeenMarks\b')
+        users = sorted(name for name, text in self.sources.items()
+                       if name != marks_path and uses.search(text))
+        self.assertEqual(users, [MODEL], 'the marks are held outside the model')
+
+        model = self.sources[MODEL]
+        # Every use of the marks in the model, pinned: the declaration, the
+        # divider, the baseline and the four uses in the section below.
+        self.assertEqual(model.count('seenMarks'), 7, 'a new use of the marks in AppModel')
+        self.present('private(set) var seenMarks = SeenMarks()', model, MODEL)
+        self.present('seenMarks = built.seenBaseline', model, MODEL)
+        section = model[model.index('    // MARK: - new messages'):
+                        model.index('    /// When the last message of a conversation happened')]
+        for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus',
+                          'UserDefaults', 'FileManager', 'callLog.record', 'contactNames.rename'):
+            self.absent(forbidden, section, 'AppModel, new messages')
+        self.present('seenMarks.markSeen(chat)', section, 'AppModel.markChatSeen()')
+        # The baseline is one read before a lane or a lifecycle notification
+        # exists, and keeps counts rather than messages.
+        self.before('seenBaseline = (try? client.publicDialogs())',
+                    'let owner = StateOwner(client: client', model, MODEL)
+        self.present('let seenBaseline: SeenMarks', model, MODEL)
+        self.absent('seenBaseline = (try? ClientView.read(client))', model, MODEL)
+
+        # Seen means the bottom was on the screen — asked of the scroll view's
+        # own visible rectangle, since a lazy stack keeps rows it built after
+        # they scroll away — positioned, active and uncovered, asked again on
+        # every change.
+        chat = self.sources[CHAT]
+        for pinned in ('var isSeen: Bool { atBottom && positioned && active && !covered }',
+                       'active: scenePhase == .active,',
+                       'covered: model.showsCall || model.sheet != nil)',
+                       '.onScrollGeometryChange(for: Edge.self) { geometry in',
+                       'return Edge(distance: (furthest - geometry.contentOffset.y).rounded(),',
+                       'let grewUnderReader = new.height > old.height && old.distance <= Self.endSlack',
+                       'let atBottom = grewUnderReader || new.distance <= Self.endSlack',
+                       'static let endSlack: CGFloat = 16',
+                       '.modifier(HistoryScrolling(isAtBottom: $isAtBottom))',
+                       '.onChange(of: seenCondition, initial: true)',
+                       'if condition.isSeen {\n                    model.markChatSeen()',
+                       'guard own || isAtBottom else { return }'):
+            self.present(pinned, chat, CHAT)
+        # The history no longer drags a reader who scrolled up to the bottom.
+        self.absent('withAnimation { scroll.scrollTo(last, anchor: .bottom) }', chat, CHAT)
+
+        # The divider's caption is a literal of its own, not a fragment of the
+        # blocked-contact sentence that also begins «Новые сообщения».
+        self.assertTrue('Новые сообщения' in self.literals,
+                        'the divider caption is not its own literal')
+        unread = self.sources['App/ParanoID/Strings.swift']
+        unread = unread[unread.index('    enum Unread {'):unread.index('    // MARK: - connection')]
+        self.absent('рочит', unread, 'Strings.Unread')
+
     # ------------------------------------------------------------------
     # The call (`MainActivity.java:361-441,443-545`, `docs/protocol/call-v2.md`)
 

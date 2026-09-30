@@ -7,6 +7,39 @@ last_reviewed_scope: iOS composer, contacts, chat-list and call-screen candidate
 
 # Current project state
 
+## iOS staged integration candidate — 2026-09-29
+
+The PR63 → PR64 → PR66 → PR65 → PR59 chain is reconciled locally with normal
+merge commits, preserving all feature and test additions. The
+[stack integration evidence](evidence/ios-client-20260929/stack-integration.md)
+records the frozen code checkpoints, conflict dispositions and passing Linux
+source gates. Exact-head combined Mac acceptance remains NOT RUN; the original
+per-feature receipts do not cover the newly combined source. PR58 stays a
+separate draft proposal and PR62 is excluded. Product wording and behavior
+choices remain for the owner; no RFC/ADR disposition changes.
+
+PR60 was still open/draft, not merged into `origin/main`, when checked. A pinned
+external health check observed its v3 protocol on a separate test VPS and the
+existing v2 protocol on the original endpoint; the installed SHA was not exposed.
+The iOS stack does not add Solana login or change either service. Neither a main
+merge nor any deployment is performed by this integration candidate.
+
+## iOS new-message marks, in memory only — 2026-09-26
+
+At Yaroslav's request the iOS client counts new messages: a row of «Чаты»
+shows how many messages of the peer this run has not shown, the chat opens at
+a «Новые сообщения» divider, a «↓» button leads down to them, and a reader
+scrolled up is not dragged down. The marks live in memory for the current run
+and reach no file, no defaults, no snapshot, no server and no peer;
+REQ-MSG-003 is unchanged — two marks mean delivered, never read. The feature
+and its words are proposed and await the owner; persisting the mark across
+launches is new stored metadata and needs a new RFC unless the owner widens
+RFC-0024. Android has no such markers yet. Evidence is contributor Mac
+execution on a simulator and a local stand, recorded in the
+[receipt](evidence/ios-client-20260926/unread-markers-mac.md); iOS 17, a
+physical phone and spoken VoiceOver are not run.
+[Rule and limits](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
 ## iOS chat composer and bubbles — 2026-09-29
 
 On iOS a bubble is as wide as its text (Android's margin, a 440-point cap on

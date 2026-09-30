@@ -25,6 +25,8 @@
 #       no in-app update check, so «Получать в фоне», «Проверить обновления»
 #       and «Доступна версия …» have no counterpart here and are absent by
 #       design.
+#       This includes «Новые сообщения», whose words are also proposed and
+#       await the owner; Android has no such element yet.
 
 # --- Strings.swift — every caption of the screens
 MainActivity.java "Чаты"
@@ -229,6 +231,14 @@ MessagePresentation.java "Перезвонить"
 
 # --- ContactFlowError.swift — the refusal shown inside the scanner or the paste sheet
 ios "Понятно"
+# «Новые сообщения» (SeenMarks): a screen element Android does not have yet;
+# the words are this client's own and the owner's to approve.
+ios "Новые сообщения"
+ios "К новым сообщениям"
+ios " новое сообщение"
+ios " новых сообщения"
+ios " новых сообщений"
+ios "99+"
 ios "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID»."
 ios "Это ваш собственный контакт."
 ios "Контакт уже добавлен."
