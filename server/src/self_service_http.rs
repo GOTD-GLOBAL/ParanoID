@@ -221,10 +221,13 @@ pub(crate) fn routes(
                             *w = (Instant::now(), 0, 0);
                         }
                         w.1 = w.1.saturating_add(1);
-                        if request.uri().path().starts_with("/v2/auth/")
-                            || request.uri().path().starts_with("/v2/registration/")
-                            || request.uri().path().starts_with("/v3/")
-                            || request.uri().path() == "/v2/session"
+                        // RFC-0028: session-signed directory calls stay in the global
+                        // budget but never starve login in the tight auth bucket.
+                        let path = request.uri().path();
+                        if path.starts_with("/v2/auth/")
+                            || path.starts_with("/v2/registration/")
+                            || (path.starts_with("/v3/") && !path.starts_with("/v3/directory/"))
+                            || path == "/v2/session"
                         {
                             w.2 = w.2.saturating_add(1);
                         }
@@ -549,7 +552,12 @@ fn session_proof(
             (method.as_str(), route),
             ("GET", "/v2/messages" | "/v2/events" | "/v2/voice/turn")
                 | ("POST", "/v2/messages" | "/v2/push")
-        )
+        ) && !(s.v3.is_some()
+            && method == Method::POST
+            && matches!(
+                route,
+                "/v3/directory/search" | "/v3/directory/visibility" | "/v3/directory/card"
+            ))
         || (method == Method::POST && uri.query().is_some())
         || (route == "/v2/voice/turn" && (uri.query().is_some() || !body.is_empty()))
     {
@@ -627,6 +635,17 @@ async fn session_query(
     if !binding_matches(old, credential) {
         s.sessions.lock().unwrap().remove(&context.id);
         return Err(denied());
+    }
+    if uri.path().starts_with("/v3/directory/") {
+        // RFC-0028: identity-v3 only; the route is not mounted in v2 mode.
+        if s.v3.is_none() {
+            return Err(denied());
+        }
+        let result =
+            crate::identity_directory::handle(&mut tx, &s.realm, credential, uri.path(), body)
+                .await?;
+        tx.commit().await?;
+        return result;
     }
     if turn_request {
         let Some(issuer) = &s.turn else {
@@ -753,7 +772,7 @@ impl Drop for WaitGuard {
     }
 }
 
-async fn session_operation(
+pub(crate) async fn session_operation(
     State(s): State<Arc<Service>>,
     method: Method,
     uri: Uri,

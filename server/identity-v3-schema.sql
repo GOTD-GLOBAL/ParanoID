@@ -4,14 +4,25 @@ CREATE TABLE id_meta (
  id SMALLINT PRIMARY KEY CHECK(id=1), version SMALLINT NOT NULL CHECK(version=3),
  genesis TEXT NOT NULL, program TEXT NOT NULL,
  start_window BIGINT NOT NULL DEFAULT 0, starts BIGINT NOT NULL DEFAULT 0 CHECK(starts BETWEEN 0 AND 8),
- success_window BIGINT NOT NULL DEFAULT 0, successes BIGINT NOT NULL DEFAULT 0 CHECK(successes BETWEEN 0 AND 8)
+ success_window BIGINT NOT NULL DEFAULT 0, successes BIGINT NOT NULL DEFAULT 0 CHECK(successes BETWEEN 0 AND 8),
+ -- RFC-0028 server-wide directory budget: fixed 3600 s window, at most 600 requests.
+ directory_window BIGINT NOT NULL DEFAULT 0, directory_count BIGINT NOT NULL DEFAULT 0 CHECK(directory_count BETWEEN 0 AND 600)
 );
+-- RFC-0028 columns: `visible` (member directory opt-out, default visible), `proof` (canonical
+-- JSON {challenge, owner_signature} of the enroll/replace commit that activated the current
+-- generation, written in that same transaction), `card` (the member's own signed contact
+-- card for the current credential, NULL until published and after every replacement), and
+-- the per-member fixed 3600 s directory budget (at most 60 requests).
 CREATE TABLE id_memberships (
  membership TEXT PRIMARY KEY, identity TEXT NOT NULL UNIQUE, owner TEXT NOT NULL UNIQUE,
  name TEXT NOT NULL UNIQUE, state TEXT NOT NULL CHECK(state IN ('active','banned')),
  generation BIGINT NOT NULL CHECK(generation BETWEEN 1 AND 8),
  account TEXT NOT NULL UNIQUE REFERENCES ss_accounts(account),
- operation TEXT NOT NULL UNIQUE, intent TEXT NOT NULL, result TEXT NOT NULL, last_replace BIGINT
+ operation TEXT NOT NULL UNIQUE, intent TEXT NOT NULL, result TEXT NOT NULL, last_replace BIGINT,
+ visible BOOLEAN NOT NULL DEFAULT true,
+ proof TEXT NOT NULL CHECK(octet_length(proof) BETWEEN 2 AND 8192),
+ card TEXT CHECK(card IS NULL OR octet_length(card) BETWEEN 2 AND 4096),
+ directory_window BIGINT NOT NULL DEFAULT 0, directory_count BIGINT NOT NULL DEFAULT 0 CHECK(directory_count BETWEEN 0 AND 60)
 );
 -- Lifetime transport bindings, including retired tombstones. Never deleted or reused.
 CREATE TABLE id_bindings (
