@@ -1,3 +1,4 @@
+import ParanoidKit
 import SwiftUI
 
 /// The `identity` screen: «Мой ID», the port of
@@ -72,6 +73,16 @@ struct IdentityScreen: View {
     /// (`MainActivity.java:169-172`).
     private var card: some View {
         VStack(spacing: 8) {
+            // The six characters a peer with no name for this phone sees it
+            // under — «Контакт 7c85ae» on both clients — so that the owner
+            // knows what to say on the phone. The same characters, the same
+            // case (`MessagePresentation.title`).
+            if !model.view.account.isEmpty {
+                Text(Strings.Identity.short + model.view.account.prefix(6))
+                    .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                    .padding(.bottom, 4)
+                    .accessibilityIdentifier("identity-short")
+            }
             if let contact = model.view.contact, !contact.isEmpty {
                 ContactQrView(contact: contact)
                     .frame(maxWidth: 280)
@@ -103,12 +114,16 @@ struct IdentityScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(Strings.Identity.fingerprint)
                 .font(.system(size: 17, weight: .semibold))
+            // Grouped for the eye, whole for the screen reader and for the
+            // tests that read the label (`MessagePresentation.groupedFingerprint`).
             Text(model.view.fingerprint.isEmpty
                  ? Strings.Identity.fingerprintPlaceholder
-                 : model.view.fingerprint)
+                 : MessagePresentation.groupedFingerprint(model.view.fingerprint))
                 .font(.system(size: 13, design: .monospaced))
                 .foregroundStyle(model.view.fingerprint.isEmpty ? .secondary : .primary)
                 .textSelection(.enabled)
+                .accessibilityLabel(model.view.fingerprint.isEmpty
+                                    ? Strings.Identity.fingerprintPlaceholder : model.view.fingerprint)
                 .accessibilityIdentifier("identity-fingerprint")
         }
         .frame(maxWidth: .infinity, alignment: .leading)

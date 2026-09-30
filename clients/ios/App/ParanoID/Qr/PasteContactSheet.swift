@@ -47,6 +47,23 @@ struct PasteContactSheet: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 8)
             field
+            // The system's own paste control: it reads the pasteboard only
+            // when tapped, and as a paste the user made — not a programmatic
+            // read — so without the system's «вставлено из…» notice. Its
+            // label is the system's, in the system's language; VoiceOver
+            // hears this client's. What it reads goes the same way as
+            // «Продолжить» — checked, then to the fingerprint sheet — so one
+            // tap replaces the long press and the menu.
+            PasteButton(payloadType: String.self) { strings in
+                guard let pasted = strings.first else { return }
+                text = pasted
+                submit()
+            }
+            .buttonBorderShape(.capsule)
+            .labelStyle(.titleAndIcon)
+            .padding(.top, 12)
+            .accessibilityLabel(Strings.AddContact.pasteFromClipboard)
+            .accessibilityIdentifier("paste-clipboard")
             if let problem {
                 Text(problem)
                     .font(.system(size: 13))

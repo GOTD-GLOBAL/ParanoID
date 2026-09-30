@@ -770,10 +770,24 @@ final class AppModel {
     }
 
     /// «Чаты» in the order a person reads them: the conversation with the
-    /// newest message first (`DialogOrder.byRecency`). «Контакты» keeps the
-    /// core's order.
+    /// newest message first (`DialogOrder.byRecency`).
     var orderedDialogs: [Dialog] {
         DialogOrder.byRecency(view.dialogs)
+    }
+
+    /// «Контакты» in the order a phone book reads them: by the name this
+    /// phone gave each contact, the named ones first
+    /// (`ContactOrder.alphabetical`), without the blocked ones, which stand
+    /// in their own section (``blockedContacts``).
+    var orderedContacts: [Dialog] {
+        ContactOrder.alphabetical(view.dialogs.filter { !$0.isBlocked }, name: name(for:))
+    }
+
+    /// The blocked contacts, in the same order, for the section at the bottom
+    /// of «Контакты». They stay in «Чаты» with their «Блок» badge, as on
+    /// Android: a block keeps the history (`Strings.Details.blockBody`).
+    var blockedContacts: [Dialog] {
+        ContactOrder.alphabetical(view.dialogs.filter(\.isBlocked), name: name(for:))
     }
 
     /// Whether the open conversation shows the sentence about the second mark.

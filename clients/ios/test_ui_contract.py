@@ -845,9 +845,9 @@ class UiContract(unittest.TestCase):
         contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
         button = self.sources['App/ParanoID/Screens/RowButton.swift']
         kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogOrder.swift']
-        # «Чаты» is sorted by the model, «Контакты» keeps the core's order.
+        # Both lists are sorted by the model: «Чаты» by recency, «Контакты» by name.
         self.present('ForEach(model.orderedDialogs)', dialogs, 'Screens/Dialogs.swift')
-        self.present('ForEach(model.view.dialogs)', contacts, 'Screens/Contacts.swift')
+        self.present('ForEach(model.orderedContacts)', contacts, 'Screens/Contacts.swift')
         self.present('DialogOrder.byRecency(view.dialogs)', model, MODEL)
         # The key is the last message's own time and nothing invented: an
         # untimed last message sorts with the empty conversations.
@@ -875,6 +875,50 @@ class UiContract(unittest.TestCase):
         for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
             self.assertEqual(text.count('.accessibilityIdentifier("dialog-'), 0,
                              f'{name}: a second element under dialog-<account>')
+
+    def test_contacts_are_alphabetical_the_blocked_have_a_section_and_the_fingerprint_is_grouped(self):
+        model = self.sources[MODEL]
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/ContactOrder.swift']
+        # «Контакты» by this phone's names, the named first, the blocked apart;
+        # both lists through one row builder, so the name has one site here.
+        self.present('ContactOrder.alphabetical(view.dialogs.filter { !$0.isBlocked }, name: name(for:))',
+                     model, MODEL)
+        self.present('ContactOrder.alphabetical(view.dialogs.filter(\\.isBlocked), name: name(for:))',
+                     model, MODEL)
+        self.present('Locale(identifier: "ru_RU")', kit, 'ContactOrder.swift')
+        self.present('[.caseInsensitive, .diacriticInsensitive, .numeric]', kit, 'ContactOrder.swift')
+        self.present('ForEach(model.blockedContacts)', contacts, 'Screens/Contacts.swift')
+        self.present('model.block(account: dialog.account, blocked: false)', contacts, 'Screens/Contacts.swift')
+        self.present('Text(Strings.Details.unblock)', contacts, 'Screens/Contacts.swift')
+        self.present('.accessibilityIdentifier("blocked-section")', contacts, 'Screens/Contacts.swift')
+        self.assertEqual(contacts.count('ConversationRow('), 1, 'Screens/Contacts.swift: two row sites')
+        # The fingerprint is grouped for the eye and whole for the label,
+        # wherever it is shown, and the details sheet shows it.
+        for name in ('App/ParanoID/Screens/Identity.swift', 'App/ParanoID/Screens/About.swift',
+                     'App/ParanoID/Screens/ConfirmContact.swift', 'App/ParanoID/Screens/ContactDetails.swift'):
+            self.present('MessagePresentation.groupedFingerprint(', self.sources[name], name)
+        self.present('.accessibilityLabel(fingerprint)', self.sources['App/ParanoID/Screens/ConfirmContact.swift'],
+                     'Screens/ConfirmContact.swift')
+        self.present('.accessibilityIdentifier("details-fingerprint")', self.sources[DETAILS], DETAILS)
+        self.present('fingerprint: raw["fingerprint"] as? String ?? ""',
+                     self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogPolicy.swift'],
+                     'DialogPolicy.swift')
+        # «Вы: 7c85ae» over the QR, the same six characters and case a peer sees.
+        identity = self.sources['App/ParanoID/Screens/Identity.swift']
+        self.present('Strings.Identity.short + model.view.account.prefix(6)', identity,
+                     'Screens/Identity.swift')
+        self.present('.accessibilityElement(children: .contain)', contacts, 'Screens/Contacts.swift')
+        self.absent('.uppercased()', identity, 'Screens/Identity.swift')
+        # The shared contact text is the core's, byte for byte: no line is put
+        # in front of it.
+        self.absent('ParanoID ·', self.sources['App/ParanoID/Qr/ContactQrView.swift'], 'Qr/ContactQrView.swift')
+        # The system's paste control reads the pasteboard only on the tap and
+        # goes the way «Продолжить» goes.
+        sheet = self.sources['App/ParanoID/Qr/PasteContactSheet.swift']
+        self.present('PasteButton(payloadType: String.self)', sheet, 'Qr/PasteContactSheet.swift')
+        self.present('.accessibilityIdentifier("paste-clipboard")', sheet, 'Qr/PasteContactSheet.swift')
+        self.absent('UIPasteboard', sheet, 'Qr/PasteContactSheet.swift')
 
     def test_the_call_screen_closes_itself_and_the_call_stays_reachable(self):
         model = self.sources[MODEL]

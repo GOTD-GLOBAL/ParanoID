@@ -19,9 +19,12 @@
 #   ios
 #       a screen Android does not have (the frozen screen, the stand guard, the
 #       contact-flow alert) or the foreground rule of this client, whose wording
-#       is the approved mock-up's. iOS has no background delivery and no in-app
-#       update check, so «Получать в фоне», «Проверить обновления» and
-#       «Доступна версия …» have no counterpart here and are absent by design.
+#       is the approved mock-up's; or an element this client adds to a screen
+#       Android has, whose words are proposed and await the owner, with the
+#       same request standing for Android. iOS has no background delivery and
+#       no in-app update check, so «Получать в фоне», «Проверить обновления»
+#       and «Доступна версия …» have no counterpart here and are absent by
+#       design.
 
 # --- Strings.swift — every caption of the screens
 MainActivity.java "Чаты"
@@ -93,10 +96,13 @@ MainActivity.java " из 2048 байт."
 ios " из 2048 байт"
 MainActivity.java "Сканировать QR"
 MainActivity.java "Вставить контакт"
+# VoiceOver's name for the system's paste control, which draws its own label.
+ios "Вставить из буфера"
 MainActivity.java "Отмена"
 MainActivity.java "Проверка контакта"
 MainActivity.java "Сравните полный отпечаток с экраном собеседника лично или по доверенному каналу. Один пересланный QR не доказывает личность."
 MainActivity.java "Отпечаток совпадает"
+ios "Заблокированные ("
 ios "Доверие"
 ios "Шифрование"
 MainActivity.java "Сообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат. Имя контакта хранится только на этом телефоне."
