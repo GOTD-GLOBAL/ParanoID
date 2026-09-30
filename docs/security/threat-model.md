@@ -50,7 +50,12 @@ mnemonic export uses a separate explicit UI-only operation. Since 2026-09-29 new
 Devnet identities use 12 BIP39 words (128-bit entropy, matching the Ed25519
 security level); 24-word identities remain recoverable. Guessing a 12-word phrase
 is not a practical attack; phrase disclosure (screen, photo, clipboard) remains
-the relevant risk and is mitigated only by FLAG_SECURE on the words screens. Phone persistence and
+the relevant risk and is mitigated only by FLAG_SECURE on the words screens.
+Since 2026-09-30 the identity-v3 test server can sponsor Devnet registrations with
+a server-held Devnet key. It co-signs only the rebuilt fixed RegisterV1 message after
+verifying the owner signature, so it cannot register names for itself or others;
+residual risk is test-SOL drain up to the per-process caps (20/h, 60/day, reserve
+0.02 SOL), which reset on restart. Not a Mainnet design. Phone persistence and
 lifecycle are not proved by the host/JNI tests.
 
 The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)

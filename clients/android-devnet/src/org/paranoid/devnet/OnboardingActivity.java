@@ -124,19 +124,15 @@ public final class OnboardingActivity extends Activity {
                 RegistrationFlow.check(s,rpc);st=s.load();
             }
             if(!st.optBoolean("verified")){
-                long bal=balance(rpc,owner);
-                if(bal<5_000_000L){
-                    if(st.optBoolean("faucet_attempted"))throw new IOException("insufficient_devnet_sol");
-                    say(t,progress,"Получаем бесплатные тестовые SOL…");
-                    st.put("faucet_attempted",true);s.save(st);
-                    // The public Devnet faucet is often rate-limited or down (returns "Internal error").
-                    try{rpc.call("requestAirdrop",new JSONArray().put(owner).put(100_000_000L));}
-                    catch(IOException faucet){throw new IOException("insufficient_devnet_sol");}
-                    for(int i=0;i<30&&bal<5_000_000L;i++){Thread.sleep(3000);bal=balance(rpc,owner);}
-                    if(bal<5_000_000L)throw new IOException("insufficient_devnet_sol");
-                }
                 say(t,progress,"Записываем ник в блокчейн…");
-                RegistrationFlow.register(s,rpc,n);
+                // RFC-0026 rev. 2026-09-30: the ParanoID server pays for the nick. Own test SOL
+                // (e.g. a wallet funded earlier) is used only if the sponsor is unavailable.
+                try{RegistrationFlow.registerSponsored(s,rpc,sponsor(),n);}
+                catch(org.paranoid.text.SyncCycle.Rejected refused){
+                    if(refused.code.equals("sponsor_used"))throw new IOException("name_conflict_or_partial_record");
+                    if(balance(rpc,owner)<5_000_000L)throw new IOException("insufficient_devnet_sol");
+                    RegistrationFlow.register(s,rpc,n);
+                }
                 for(int i=0;i<40&&!s.load().optBoolean("verified");i++){
                     say(t,progress,"Ждём подтверждения сети… "+(i*3)+" с");Thread.sleep(3000);RegistrationFlow.check(s,rpc);
                 }
@@ -162,7 +158,7 @@ public final class OnboardingActivity extends Activity {
     private void noFundsScreen(String n,String address,String bal){
         clear();secure(false);
         title("Нужны тестовые SOL");
-        body("Для записи ника нужно ~0,005 тестовых SOL (это не настоящие деньги). Автоматический кран Solana Devnet сейчас не выдаёт монеты.\n\n1. Нажмите «Скопировать адрес».\n2. Нажмите «Открыть кран», вставьте адрес, выберите 0.5 SOL.\n3. Вернитесь и нажмите «Продолжить».");
+        body("Сервер ParanoID сейчас не смог оплатить запись ника (лимит или пустой кошелёк). Можно подождать и нажать «Продолжить» или пополнить свой адрес: нужно ~0,005 тестовых SOL, это не настоящие деньги.\n\n1. Нажмите «Скопировать адрес».\n2. Нажмите «Открыть кран», вставьте адрес, выберите 0.5 SOL.\n3. Вернитесь и нажмите «Продолжить».");
         gap(16);
         TextView addr=label(address,15,text,false);addr.setTypeface(Typeface.MONOSPACE);addr.setTextIsSelectable(true);addr.setPadding(dp(14),dp(12),dp(14),dp(12));addr.setBackground(round(surface,12));page.addView(addr,full());
         gap(6);page.addView(label("Баланс: "+bal+" SOL",14,muted,false));
@@ -232,6 +228,19 @@ public final class OnboardingActivity extends Activity {
         gap(32);primary("Открыть чаты",this::finish);
     }
 
+    /** The built-in identity-v3 server acts as the Devnet sponsor over its pinned TLS. */
+    private static RegistrationFlow.Sponsor sponsor(){
+        String realm=org.paranoid.text.KeyClient.IDENTITY_TEST_REALM,pin=org.paranoid.text.KeyClient.IDENTITY_TEST_PIN;
+        return new RegistrationFlow.Sponsor(){
+            public JSONObject prepare()throws Exception{
+                return org.paranoid.text.KeyTransport.call(realm,pin,"POST","/v3/sponsor/prepare",new JSONObject().put("genesis",DevnetRpc.GENESIS).toString(),null);
+            }
+            public String cosign(String owner,String name,String blockhash,String ownerSignature)throws Exception{
+                return org.paranoid.text.KeyTransport.call(realm,pin,"POST","/v3/sponsor/register",new JSONObject().put("owner",owner).put("name",name)
+                    .put("blockhash",blockhash).put("owner_signature",ownerSignature).toString(),null).getString("payer_signature");
+            }
+        };
+    }
     // ---------- helpers ----------
     private static long balance(DevnetRpc rpc,String owner)throws Exception{
         return RegistrationFlow.integer(((JSONObject)rpc.call("getBalance",new JSONArray().put(owner).put(new JSONObject().put("commitment","confirmed")))).get("value"));

@@ -24,6 +24,7 @@ pub mod self_service;
 mod self_service_http;
 mod self_service_messages;
 mod self_service_migration;
+pub mod sponsor;
 mod voice_turn;
 
 #[derive(Clone)]

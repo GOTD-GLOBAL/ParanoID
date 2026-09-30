@@ -5,7 +5,10 @@
 # a local interface. Installs PostgreSQL (private Unix socket only), the ParanoID server,
 # a coturn voice relay and a ufw firewall, all as dedicated system users.
 #
-#   install.sh --binary ./paranoid-server [--ip 203.0.113.10]
+#   install.sh --binary ./paranoid-server [--ip 203.0.113.10] [--sponsor-keypair ./sponsor.json]
+#
+# --sponsor-keypair installs a Devnet-only Solana keypair the server uses to pay for users'
+# nickname registrations (RFC-0026 rev. 2026-09-30). It is kept across runs like the TLS key.
 #
 # Idempotent and non-destructive: a second run upgrades the binary and restarts services,
 # but NEVER re-initializes the database, regenerates the TLS key (the app pins it) or the
@@ -13,11 +16,12 @@
 set -euo pipefail
 umask 077
 
-BINARY="" IP=""
+BINARY="" IP="" SPONSOR=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --binary) BINARY="$2"; shift 2 ;;
     --ip) IP="$2"; shift 2 ;;
+    --sponsor-keypair) SPONSOR="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -79,6 +83,11 @@ if [ ! -f "$ETC/turn.secret" ]; then
 fi
 chown paranoid:paranoid "$ETC/turn.secret"; chmod 0400 "$ETC/turn.secret"
 
+if [ -n "$SPONSOR" ]; then
+  log "Devnet nickname sponsor keypair"
+  install -m 0400 -o paranoid -g paranoid "$SPONSOR" "$ETC/sponsor.json"
+fi
+
 log "PostgreSQL (private socket, no TCP)"
 if [ ! -f "$BASE/pgdata/PG_VERSION" ]; then
   runuser -u paranoid -- "$PGBIN/initdb" -D "$BASE/pgdata" --auth-local=peer --auth-host=reject --no-locale -E UTF8 >/dev/null
@@ -124,6 +133,7 @@ PARANOID_TLS_KEY=$ETC/tls/server.key
 PARANOID_TURN_SECRET_FILE=$ETC/turn.secret
 PARANOID_TURN_RELAY_IP=$IP
 EOF
+[ -f "$ETC/sponsor.json" ] && echo "PARANOID_SPONSOR_KEYPAIR_FILE=$ETC/sponsor.json" >> "$ETC/identity.env"
 chown root:paranoid "$ETC/identity.env"; chmod 0640 "$ETC/identity.env"
 
 INITIALIZED=$(runuser -u paranoid -- "$PGBIN/psql" -h "$SOCK" -d paranoid -Atqc "SELECT to_regclass('public.id_meta') IS NOT NULL")

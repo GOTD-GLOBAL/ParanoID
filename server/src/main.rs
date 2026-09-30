@@ -301,7 +301,23 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                     std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?)
                 }
             };
-        paranoid_server::identity_v3::app(pool, turn, push, registry).await?
+        let app = paranoid_server::identity_v3::app(pool, turn, push, registry).await?;
+        // RFC-0026 rev. 2026-09-30: optional Devnet nickname sponsor (server pays rent+fee).
+        match env::var_os("PARANOID_SPONSOR_KEYPAIR_FILE") {
+            Some(path) => {
+                let rpc = env::var("PARANOID_REGISTRY_RPC")
+                    .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
+                let sponsor = paranoid_server::sponsor::Sponsor::from_keypair_json(
+                    &std::fs::read_to_string(path)?,
+                    &rpc,
+                )?;
+                println!("Devnet sponsor enabled: {}", sponsor.payer());
+                app.merge(paranoid_server::sponsor::router(std::sync::Arc::new(
+                    sponsor,
+                )))
+            }
+            None => app,
+        }
     } else if self_service {
         paranoid_server::self_service::app_with_services(pool, turn, push).await?
     } else if key_mode {

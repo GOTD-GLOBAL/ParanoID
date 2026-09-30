@@ -51,6 +51,26 @@ enum Command {
         blockhash: String,
         genesis: String,
     },
+    /// Sponsored registration, step 1: the owner signs the fixed registration message
+    /// whose fee payer is the server's sponsor. Returns the message and the owner
+    /// signature only; the owner key never leaves this library.
+    SponsoredSign {
+        entropy: String,
+        name: String,
+        blockhash: String,
+        genesis: String,
+        payer: String,
+    },
+    /// Step 2: assemble the transaction from the SAME message, the owner signature and
+    /// the sponsor signature, and verify both signatures before anything is broadcast.
+    SponsoredAssemble {
+        entropy: String,
+        name: String,
+        blockhash: String,
+        genesis: String,
+        payer: String,
+        payer_signature: String,
+    },
     IdentityOwnerProofV3 {
         entropy: String,
         intent: Box<paranoid_key_protocol::identity_v3::ChallengeRequestV3>,
@@ -88,6 +108,30 @@ fn public(bytes: &[u8]) -> Result<Address, &'static str> {
     use solana_signer::Signer;
     Ok(key.pubkey())
 }
+fn sponsored(
+    e: String,
+    name: &str,
+    blockhash: &str,
+    genesis: &str,
+    payer: &str,
+) -> Result<(solana_keypair::Keypair, solana_message::Message, String), &'static str> {
+    if genesis != GENESIS {
+        return Err("wrong_cluster");
+    }
+    let name = canonical_name(name)?;
+    let payer = Address::from_str(payer).map_err(|_| "invalid_payer")?;
+    let encoded = Zeroizing::new(e);
+    let bytes = entropy(&encoded)?;
+    let seed = secret(&bytes)?;
+    let key = solana_keypair::Keypair::new_from_array(*seed);
+    use solana_signer::Signer;
+    if payer == key.pubkey() {
+        return Err("invalid_payer");
+    }
+    let hash = solana_hash::Hash::from_str(blockhash).map_err(|_| "invalid_blockhash")?;
+    let message = registration_message_paid(payer, key.pubkey(), &name, &hash);
+    Ok((key, message, name))
+}
 fn canonical_name(input: &str) -> Result<String, &'static str> {
     let n = input.to_ascii_lowercase();
     let b = n.as_bytes();
@@ -114,6 +158,16 @@ fn registration_message(
     name: &str,
     hash: &solana_hash::Hash,
 ) -> solana_message::Message {
+    registration_message_paid(owner, owner, name, hash)
+}
+/// Same fixed RegisterV1 instruction; `payer` (account 0, fee payer, rent source) may be a
+/// sponsor. The owner still signs, so a sponsor cannot register a name for itself.
+fn registration_message_paid(
+    payer: Address,
+    owner: Address,
+    name: &str,
+    hash: &solana_hash::Hash,
+) -> solana_message::Message {
     use solana_instruction::{AccountMeta, Instruction};
     let (id, _, nick, _) = addresses(&owner, name);
     let mut data = vec![1, name.len() as u8];
@@ -121,7 +175,7 @@ fn registration_message(
     let ix = Instruction {
         program_id: Address::from_str(PROGRAM).expect("compiled program"),
         accounts: vec![
-            AccountMeta::new(owner, true),
+            AccountMeta::new(payer, true),
             AccountMeta::new_readonly(owner, true),
             AccountMeta::new(id, false),
             AccountMeta::new(nick, false),
@@ -129,7 +183,7 @@ fn registration_message(
         ],
         data,
     };
-    solana_message::Message::new_with_blockhash(&[ix], Some(&owner), hash)
+    solana_message::Message::new_with_blockhash(&[ix], Some(&payer), hash)
 }
 fn run(input: Command) -> Result<Value, &'static str> {
     match input {
@@ -233,6 +287,51 @@ fn run(input: Command) -> Result<Value, &'static str> {
             }
             Ok(
                 json!({"transaction":STANDARD.encode(&wire),"message":STANDARD.encode(tx.message_data()),"signature":tx.signatures[0].to_string(),"owner":owner.to_string(),"identity":id.to_string(),"nickname":nick.to_string(),"name":name}),
+            )
+        }
+        Command::SponsoredSign {
+            entropy: e,
+            name,
+            blockhash,
+            genesis,
+            payer,
+        } => {
+            let (key, message, name) = sponsored(e, &name, &blockhash, &genesis, &payer)?;
+            use solana_signer::Signer;
+            let signature = key.sign_message(&message.serialize());
+            Ok(
+                json!({"message":STANDARD.encode(message.serialize()),"owner":key.pubkey().to_string(),
+                "owner_signature":signature.to_string(),"name":name}),
+            )
+        }
+        Command::SponsoredAssemble {
+            entropy: e,
+            name,
+            blockhash,
+            genesis,
+            payer,
+            payer_signature,
+        } => {
+            let (key, message, name) = sponsored(e, &name, &blockhash, &genesis, &payer)?;
+            use solana_signer::Signer;
+            let owner_signature = key.sign_message(&message.serialize());
+            let payer_signature = solana_signature::Signature::from_str(&payer_signature)
+                .map_err(|_| "invalid_sponsor_signature")?;
+            let tx = solana_transaction::Transaction {
+                signatures: vec![payer_signature, owner_signature],
+                message,
+            };
+            // Both signatures must verify over exactly the message this library built.
+            tx.verify().map_err(|_| "invalid_sponsor_signature")?;
+            let (id, _, nick, _) = addresses(&key.pubkey(), &name);
+            let wire = bincode::serialize(&tx).map_err(|_| "transaction")?;
+            if wire.len() > 1232 {
+                return Err("transaction_limit");
+            }
+            Ok(
+                json!({"transaction":STANDARD.encode(&wire),"message":STANDARD.encode(tx.message_data()),
+                "signature":tx.signatures[0].to_string(),"owner":key.pubkey().to_string(),
+                "identity":id.to_string(),"nickname":nick.to_string(),"name":name}),
             )
         }
         Command::ExportMnemonic { entropy: e } => {
@@ -450,6 +549,75 @@ mod tests {
     /// BIP39 public vector "abandon x11 about" (entropy 0x00 x16) at m/44'/501'/0'/0'.
     /// The owner address is reproduced independently (hashlib PBKDF2 + HMAC SLIP-0010 +
     /// cryptography Ed25519) in the PR evidence, not only by this crate.
+    /// Sponsored flow: the sponsor pays (account 0, fee payer) but the owner must sign;
+    /// assemble rejects a wrong or missing sponsor signature, and the message is the
+    /// same RegisterV1 instruction with only the payer changed.
+    #[test]
+    fn sponsored_registration_needs_both_signatures() {
+        let e16 = "AAAAAAAAAAAAAAAAAAAAAA==";
+        let sponsor = solana_keypair::Keypair::new_from_array([7u8; 32]);
+        use solana_signer::Signer;
+        let payer = sponsor.pubkey().to_string();
+        let base = json!({"entropy":e16,"name":"abc","blockhash":"11111111111111111111111111111111","genesis":GENESIS,"payer":payer});
+        let mut sign = base.clone();
+        sign["op"] = json!("sponsored_sign");
+        let signed: Value = serde_json::from_str(&command(&sign.to_string())).unwrap();
+        let message = STANDARD
+            .decode(signed["message"].as_str().unwrap())
+            .unwrap();
+        let parsed: solana_message::Message = bincode::deserialize(&message).unwrap();
+        assert_eq!(parsed.header.num_required_signatures, 2);
+        assert_eq!(parsed.account_keys[0], sponsor.pubkey());
+        assert_eq!(parsed.account_keys[1].to_string(), TWELVE_WORD_VECTOR_OWNER);
+        let ix = &parsed.instructions[0];
+        assert_eq!(
+            parsed.account_keys[ix.program_id_index as usize].to_string(),
+            PROGRAM
+        );
+        assert_eq!(ix.data, [vec![1, 3], b"abc".to_vec()].concat());
+        assert_eq!(ix.accounts[0], 0);
+        assert_eq!(ix.accounts[1], 1);
+        let good = sponsor.sign_message(&message).to_string();
+        let mut asm = base.clone();
+        asm["op"] = json!("sponsored_assemble");
+        asm["payer_signature"] = json!(good);
+        let out: Value = serde_json::from_str(&command(&asm.to_string())).unwrap();
+        let tx: solana_transaction::Transaction = bincode::deserialize(
+            &STANDARD
+                .decode(out["transaction"].as_str().unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+        tx.verify().unwrap();
+        assert_eq!(out["owner"], TWELVE_WORD_VECTOR_OWNER);
+        // Wrong signer or a signature over a different name is refused.
+        for bad in [
+            solana_keypair::Keypair::new_from_array([8u8; 32])
+                .sign_message(&message)
+                .to_string(),
+            "1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+        ] {
+            let mut a = asm.clone();
+            a["payer_signature"] = json!(bad);
+            let out: Value = serde_json::from_str(&command(&a.to_string())).unwrap();
+            assert_eq!(out["error"], "invalid_sponsor_signature");
+        }
+        let mut other = asm.clone();
+        other["name"] = json!("abd");
+        let out: Value = serde_json::from_str(&command(&other.to_string())).unwrap();
+        assert_eq!(out["error"], "invalid_sponsor_signature");
+        // The owner cannot be named as its own "sponsor".
+        let mut own = sign.clone();
+        own["payer"] = json!(TWELVE_WORD_VECTOR_OWNER);
+        let out: Value = serde_json::from_str(&command(&own.to_string())).unwrap();
+        assert_eq!(out["error"], "invalid_payer");
+        // Fixed cross-crate vector: the server rebuilds exactly these message bytes.
+        assert_eq!(
+            signed["message"], SPONSORED_MESSAGE_VECTOR,
+            "update server/src/sponsor.rs vector together with this one"
+        );
+    }
+    const SPONSORED_MESSAGE_VECTOR: &str = "AgECBupKbGPinFIKvvVQexMuxfmVR3auvr57kkIe6mkURtIs8DYnYkanW53jNJ7UKxXiMvZRj8IPX81PHWToH5vSWPcO93rqgqtxhFFmoWYwjBXLqReo50h00vW2Rj3XgwpRlYpRgLUg35rnbZT0Csoce6Ta0qFNsNl9fU7PGJp//ak9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAClZY1j/0JtcUim1GEeVLhD+t1QPMbPnn5EjhP1o2VvaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQUFAAECAwQFAQNhYmM=";
     #[test]
     fn twelve_word_public_recovery_vector() {
         let e16 = "AAAAAAAAAAAAAAAAAAAAAA==";

@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Server-sponsored Devnet nicknames — 2026-09-30
+
+- The identity-v3 server can pay for users' Devnet nickname registration
+  (`/v3/sponsor/prepare`, `/v3/sponsor/register`, enabled by
+  `PARANOID_SPONSOR_KEYPAIR_FILE`; `install.sh --sponsor-keypair`). The phone no longer
+  needs test SOL; own SOL is only a fallback when the sponsor refuses.
+- Android v33 uses the sponsor by default in the nick onboarding.
+
 ### Android v31: nick onboarding and 12-word recovery phrase — 2026-09-29
 
 - Fresh install opens a one-step-per-screen flow: create or restore nick → recovery

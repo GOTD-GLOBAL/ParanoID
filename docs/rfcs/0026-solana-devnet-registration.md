@@ -9,6 +9,35 @@ last_reviewed: 2026-09-21
 
 # RFC-0026: Fresh Solana Devnet nickname registration
 
+## Revision 2026-09-30: server-sponsored nickname registration
+
+Owner `martadvix-web` (Сергей Мальцев), ParanoID Telegram thread, 2026-09-30, after the
+public faucet failed on a phone: «Наш сервер должен спонсировать получение ников в
+данный момент. Мы получали на наш кошелек солана.» Decision: in this private Devnet
+test the ParanoID identity-v3 server pays rent and fee for a user's registration.
+
+- The registry program is unchanged: account 0 was always a separate payer and the
+  owner must also sign (see Minimal registry contract), so a sponsor cannot take a name.
+- The phone builds and signs the fixed RegisterV1 message with the server as fee payer
+  (`sponsored_sign`); the server rebuilds the identical bytes itself from owner, name and
+  its own recent blockhash, verifies the owner signature over exactly those bytes and
+  returns only its payer signature. It never signs caller-supplied bytes. The phone
+  assembles, verifies both signatures (`sponsored_assemble`), persists the attempt and
+  broadcasts it itself, preserving persist-before-send and reconciliation.
+- Sponsor wallet `4K1ZMDkmXQJxeKXoV2LcoeWBm55LpgkjKFzXSUZgRtmg` is a new Devnet-only key
+  held outside Git/APK, funded with 0.3 test SOL from the existing Devnet deployer on
+  2026-09-30 (signature `5Yot4c39MAfJEWcViqkZSumdwHnUyUv7kDWzqnMFSrqYqpaXEbJA4o1cLSh6QSGnYZhAZg84E1RdTxMh3E4Q9AzF`).
+  It is not the upgrade authority. The earlier ban on a sponsor key inside the app still
+  holds: the key lives only on the server.
+- Abuse bounds (in memory, per process): 20 sponsored registrations per hour, 60 per day,
+  3 distinct names per owner, stop below 0.02 SOL. Cost per registration is ~0.0055 SOL
+  rent + fee. Anyone who can reach the server can spend up to these caps; this is
+  accepted for private Devnet testing and is NOT a Mainnet or public-signup policy.
+- The phone falls back to its own SOL only when the sponsor refuses (limit/empty).
+- Evidence: 600 generated cases produce byte-identical messages in client and server;
+  live Devnet runs registered fresh unfunded owners (`sp9e5bqz`, `spe0tcjj`, `sp8063r`)
+  with finalized paired-record readback and zero owner spend.
+
 ## Revision 2026-09-29: 12-word recovery phrase
 
 Owner `martadvix-web` (Сергей Мальцев) asked in the ParanoID Telegram thread on
