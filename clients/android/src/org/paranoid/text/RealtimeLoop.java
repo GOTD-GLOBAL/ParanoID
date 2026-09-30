@@ -233,6 +233,49 @@ public final class RealtimeLoop implements AutoCloseable {
         } catch(Idle|InterruptedException stop){throw stop;}
         catch(Exception ignored){pushedSession=null;/* retry with the next session */}
     }
+    // RFC-0028 server directory (identity-v3 servers only). The own contact card is published
+    // over the signed realtime session after login and whenever its fingerprint changes; the
+    // result is best effort like push registration and never blocks the send lane.
+    private volatile String directoryName="";
+    private volatile String publishedCard="";
+    private Session cardSession;
+    /** Own nickname as the server's directory knows it; empty until the card is published. */
+    public String directoryName(){return directoryName;}
+    /** null until discovery; TRUE only on an identity-v3 server (the only kind with a directory). */
+    public Boolean identityServer(){return identityServer;}
+    private void publishCard(long run,Session context)throws Exception {
+        if(context==null||!Boolean.TRUE.equals(identityServer))return;
+        String card=state(run,client::cardFingerprint);
+        if(card.isEmpty()||card.equals(publishedCard)||cardSession==context)return;
+        cardSession=context;
+        try{
+            JSONObject result=sessionCall(run,context,"directory_card",null);
+            if(result.optBoolean("published")){publishedCard=card;directoryName=result.optString("name","");}
+        }catch(Idle|InterruptedException stop){throw stop;}
+        catch(Exception ignored){/* retried with the next session */}
+    }
+    /** One signed directory request over the current realtime session. Blocks; never call it on
+     *  the state owner (it waits for the owner). Throws SyncCycle.Rejected(404) off identity-v3. */
+    public JSONObject directory(String operation,String argument)throws Exception {
+        long run;
+        synchronized(lifecycle){if(closed||!enabled)throw new IOException("offline");run=generation;}
+        Session context;
+        try{context=connection(run);}
+        catch(Idle idle){throw new IOException("registration required");}
+        catch(InterruptedException stopped){throw new IOException("offline");}
+        if(!Boolean.TRUE.equals(identityServer))throw new SyncCycle.Rejected(404,"directory_unavailable");
+        if(context==null)throw new SyncCycle.Rejected(429,"session_unavailable");
+        try{
+            JSONObject result=sessionCall(run,context,operation,argument);
+            JSONObject me=result.optJSONObject("me");
+            if(me!=null){
+                if(!me.optString("name").isEmpty())directoryName=me.optString("name");
+                // The server lost or dropped our card (for example after a replacement): republish.
+                if(!me.optBoolean("card",true)){publishedCard="";cardSession=null;kick();}
+            }
+            return result;
+        }catch(InterruptedException stopped){throw new IOException("offline");}
+    }
     private JSONObject sessionCall(long run,Session context,String operation,String id)throws Exception {
         for(int attempt=0;;attempt++) {
             JSONObject request=state(run,()->client.sessionRequest(context.context,operation,id));
@@ -258,6 +301,7 @@ public final class RealtimeLoop implements AutoCloseable {
                 run=awaitEnabled();if(!outbound.tryAcquire(1,TimeUnit.SECONDS))continue;final long selected=run;
                 Session context=connection(run);
                 registerPush(run,context);
+                publishCard(run,context);
                 JSONArray pending=state(run,client::pending);
                 Exception deferred=null;
                 for(int n=0;n<pending.length();n++) {

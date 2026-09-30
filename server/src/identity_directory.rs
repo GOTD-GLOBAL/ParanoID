@@ -133,11 +133,11 @@ pub(crate) async fn handle(
     route: &str,
     body: &[u8],
 ) -> Result<Result<Value, Failure>, Failure> {
-    let caller: Option<(String, bool, Option<String>)> = sqlx::query_as("SELECT m.membership,m.visible,m.card FROM id_memberships m JOIN id_bindings b ON b.account=m.account AND b.membership=m.membership WHERE m.account=$1 AND m.state='active' AND NOT b.retired")
+    let caller: Option<(String, String, bool, Option<String>)> = sqlx::query_as("SELECT m.membership,m.name,m.visible,m.card FROM id_memberships m JOIN id_bindings b ON b.account=m.account AND b.membership=m.membership WHERE m.account=$1 AND m.state='active' AND NOT b.retired")
         .bind(&credential.account)
         .fetch_optional(&mut *conn)
         .await?;
-    let Some((membership, visible, card)) = caller else {
+    let Some((membership, own_name, visible, card)) = caller else {
         return Err(denied());
     };
     // Parse before charging: malformed bodies never reach the database.
@@ -196,7 +196,7 @@ pub(crate) async fn handle(
                 None
             };
             Ok(
-                json!({"members":members,"next":next,"me":{"visible":visible,"card":card.is_some()}}),
+                json!({"members":members,"next":next,"me":{"name":own_name,"visible":visible,"card":card.is_some()}}),
             )
         }
         Request::Visibility(v) => {
@@ -205,7 +205,7 @@ pub(crate) async fn handle(
                 .bind(v)
                 .execute(&mut *conn)
                 .await?;
-            Ok(json!({"visible":v}))
+            Ok(json!({"name":own_name,"visible":v}))
         }
         Request::Card(c) => match check_card(&c, credential, realm) {
             Err(e) => Err(e),
@@ -216,7 +216,7 @@ pub(crate) async fn handle(
                     .bind(&canonical)
                     .execute(&mut *conn)
                     .await?;
-                Ok(json!({"published":true,"card":digest(canonical.as_bytes())}))
+                Ok(json!({"published":true,"name":own_name,"card":digest(canonical.as_bytes())}))
             }
         },
     };

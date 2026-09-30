@@ -232,6 +232,32 @@ public final class SelfServiceClient {
     public IdentityPorts.Http identityHttp(){
         return (path,body)->{healthy();return KeyTransport.call(realm,pin,"POST",path,body,null);};
     }
+    // RFC-0028 server directory. Verification and pairing run in the native core; the
+    // finalized Solana name->owner check is the caller's (IdentityPorts.Registry).
+    /** Read-only: owner proof + contact card check. Returns name/owner/identity/account/fingerprint. */
+    public JSONObject verifyDirectoryEntry(JSONObject entry)throws Exception {
+        return nativeCall(new JSONObject().put("op","verify_directory_entry_v1").put("entry",entry));
+    }
+    /** Adds a verified entry as a network_unverified contact; the core re-verifies it. */
+    public void pairDirectoryEntry(JSONObject entry)throws Exception {
+        if(!active())throw new IOException("registration required");
+        apply(new JSONObject().put("op","pair_directory_entry_v1").put("entry",entry));
+    }
+    /** Contact card fingerprint that `directory_card` publishes, or "" before prepare_contact. */
+    public String cardFingerprint()throws Exception {healthy();return state.isEmpty()?"":view().optString("contact_fingerprint","");}
+    private JSONObject directorySession;private long directorySessionAt;
+    /** Synchronous host/compatibility path (tests, no RealtimeLoop): one cached signed v2
+     * session, renewed after 240 s. The Android app uses RealtimeLoop.directory instead so it
+     * never holds a second session next to the realtime one. */
+    public JSONObject directory(String operation,String argument)throws Exception {
+        healthy();if(!active())throw new IOException("registration required");
+        if(directorySession==null||System.nanoTime()-directorySessionAt>=240_000_000_000L){
+            directorySession=signed("session","POST","/v2/session","{}");directorySessionAt=System.nanoTime();
+        }
+        JSONObject request=sessionRequest(directorySession,operation,argument);
+        if(!request.getString("path").startsWith("/v3/directory/"))throw new IOException("directory request mismatch");
+        return KeyTransport.call(realm,pin,request.getString("method"),request.getString("path"),request.getString("body"),request.getString("authorization"));
+    }
     public void received(JSONObject message)throws Exception {
         apply(new JSONObject().put("op","receive_v2").put("message",message).put("now_ms",Math.max(0,System.currentTimeMillis())));
     }

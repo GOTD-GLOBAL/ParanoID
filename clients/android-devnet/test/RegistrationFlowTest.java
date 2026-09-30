@@ -37,6 +37,11 @@ public final class RegistrationFlowTest {
         JSONObject tx=SolanaBridge.run(new JSONObject().put("op","register").put("entropy",ENTROPY).put("name","test_alice").put("blockhash","11111111111111111111111111111111").put("genesis",GENESIS));
         return new JSONObject().put("transaction",tx.getString("transaction")).put("signature",tx.getString("signature")).put("last_valid_height",100).put("broadcasts",1);
     }
+    static void expectMember(Chain rpc,String owner,String name,String identity,String code)throws Exception {
+        try{RegistrationFlow.verifyMember(rpc,owner,name,identity);}
+        catch(java.io.IOException expected){if(code!=null&&!code.equals(expected.getMessage()))throw expected;return;}
+        throw new AssertionError("unproven member accepted: "+name);
+    }
     public static void main(String[] args)throws Exception {
         JSONObject a=attempt();Store s=new Store(state().put("name","test_alice").put("attempts",new JSONArray().put(a)));Chain rpc=new Chain(s);
         RegistrationFlow.register(s,rpc,"test_alice");
@@ -73,6 +78,20 @@ public final class RegistrationFlowTest {
         String retained=unknown.value.getJSONArray("attempts").getJSONObject(0).getString("transaction");
         Chain retry=new Chain(unknown);RegistrationFlow.register(unknown,retry,"test_alice");
         if(retry.builds!=0||retry.sends!=1||!retained.equals(retry.wire))throw new AssertionError("lost response did not preserve exact wire");
-        System.out.println("REGISTRATION FLOW PASS: same-wire retry, expiry, name switch, storage failure, pending-name guard, broadcast bound, costs/funds and lost response");
+        // RFC-0028 foreign member check: absent, partial, forged records and a server-substituted
+        // identity PDA are all refused (the byte-exact positive path is the same readback as above).
+        String owner=SolanaBridge.run(new JSONObject().put("op","identity").put("entropy",ENTROPY)).getString("owner");
+        String identity=SolanaBridge.run(new JSONObject().put("op","lookup").put("owner",owner).put("name","test_alice")).getString("identity");
+        expectMember(new Chain(new Store(state())),owner,"test_alice",identity,"name_not_registered");
+        expectMember(new Chain(new Store(state())),owner,"test_alice","11111111111111111111111111111111","identity_mismatch");
+        expectMember(new Chain(new Store(state())),owner,"Bad Name",identity,"invalid_name");
+        final JSONObject record=new JSONObject().put("executable",false).put("owner",GENESIS).put("data",new JSONArray().put(java.util.Base64.getEncoder().encodeToString(new byte[128])).put("base64"));
+        expectMember(new Chain(new Store(state())){public Object call(String method,JSONArray args)throws Exception{
+            if(method.equals("getMultipleAccounts"))return new JSONObject().put("value",new JSONArray().put(JSONObject.NULL).put(record));
+            return super.call(method,args);}},owner,"test_alice",identity,"name_conflict_or_partial_record");
+        expectMember(new Chain(new Store(state())){public Object call(String method,JSONArray args)throws Exception{
+            if(method.equals("getMultipleAccounts"))return new JSONObject().put("value",new JSONArray().put(record).put(record));
+            return super.call(method,args);}},owner,"test_alice",identity,null);
+        System.out.println("REGISTRATION FLOW PASS: same-wire retry, expiry, name switch, storage failure, pending-name guard, broadcast bound, costs/funds lost response, foreign member registry check");
     }
 }

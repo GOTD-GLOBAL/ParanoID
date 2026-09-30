@@ -1362,7 +1362,10 @@ async fn directory_lists_prefix_pages_and_hides_hidden_retired_and_banned() {
         "caller itself is not listed"
     );
     assert_eq!(v["next"], Value::Null);
-    assert_eq!(v["me"], json!({"visible": true, "card": true}));
+    assert_eq!(
+        v["me"],
+        json!({"name": "alice_list", "visible": true, "card": true})
+    );
     let entry = &v["members"][0];
     assert_eq!(
         entry["owner"],
@@ -1382,7 +1385,10 @@ async fn directory_lists_prefix_pages_and_hides_hidden_retired_and_banned() {
         &json!({"visible": false}),
     )
     .await;
-    assert_eq!((status, v), (200, json!({"visible": false})));
+    assert_eq!(
+        (status, v),
+        (200, json!({"name": "carol_list", "visible": false}))
+    );
     let (_, v) = search(&s, &alice.device, &alice.session, "", None).await;
     assert_eq!(names(&v), ["bob_list"]);
     let (status, v) = search(&s, &carol.device, &carol.session, "", None).await;
