@@ -125,8 +125,19 @@ fn device_signer_refuses_foreign_credentials_servers_and_stale_challenges() {
     let i = intent(&a, Purpose::Enroll);
     let c = issue(&i);
     let mut stale = c.clone();
-    stale.expires = now() - 1;
+    // Expired by more than the tolerated clock skew (RFC-0027 client check).
+    stale.expires = now() - paranoid_key_protocol::identity_v3::CLOCK_SKEW_SECONDS - 1;
     assert_eq!(sign(&a, &i, &stale), Err("challenge_mismatch"));
+    let mut far = c.clone();
+    far.expires = now()
+        + paranoid_key_protocol::identity_v3::CHALLENGE_SECONDS
+        + paranoid_key_protocol::identity_v3::CLOCK_SKEW_SECONDS
+        + 5;
+    assert_eq!(sign(&a, &i, &far), Err("challenge_mismatch"));
+    // A phone a few seconds behind the server still signs.
+    let mut skewed = c.clone();
+    skewed.expires = now() + paranoid_key_protocol::identity_v3::CHALLENGE_SECONDS + 7;
+    assert!(sign(&a, &i, &skewed).is_ok());
     let mut renamed = c.clone();
     renamed.name = "mallory_x".into();
     assert_eq!(sign(&a, &i, &renamed), Err("challenge_mismatch"));

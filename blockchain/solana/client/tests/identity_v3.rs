@@ -109,8 +109,11 @@ fn owner_signer_refuses_status_mismatch_and_foreign_keys() {
     swapped.name = "mallory_x".into();
     assert_eq!(sign(&i, &swapped, ENTROPY)["error"], "challenge_mismatch");
     let mut stale = ch.clone();
-    stale.expires = now() - 1;
+    stale.expires = now() - paranoid_key_protocol::identity_v3::CLOCK_SKEW_SECONDS - 1;
     assert_eq!(sign(&i, &stale, ENTROPY)["error"], "challenge_mismatch");
+    let mut skewed = ch.clone();
+    skewed.expires = now() + paranoid_key_protocol::identity_v3::CHALLENGE_SECONDS + 7;
+    assert!(sign(&i, &skewed, ENTROPY).get("owner_signature").is_some());
     let mut other_server = ch.clone();
     other_server.realm = "https://evil.invalid".into();
     assert_eq!(

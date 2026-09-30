@@ -8,6 +8,13 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v35: login works with a phone clock off by seconds — 2026-09-30
+
+- Phones checked a login challenge's expiry against their own clock with no tolerance,
+  so a phone a few seconds behind the server could never log in (`challenge_mismatch`).
+  The phone now tolerates ±300 s clock difference; the server still enforces the
+  60 s lifetime on its own clock.
+
 ### Server-sponsored Devnet nicknames — 2026-09-30
 
 - The identity-v3 server can pay for users' Devnet nickname registration

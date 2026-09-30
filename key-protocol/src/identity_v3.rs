@@ -15,6 +15,11 @@ pub const PROGRAM: &str = "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas";
 pub const GENESIS: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 /// Challenge lifetime in seconds.
 pub const CHALLENGE_SECONDS: i64 = 60;
+/// Tolerated difference between the phone clock and the server clock when the phone
+/// checks a challenge expiry before signing. The server enforces the real lifetime on its
+/// own clock; the phone check only rejects absurd values. Phone test 2026-09-30: a phone
+/// a few seconds behind the server refused every challenge (`challenge_mismatch`).
+pub const CLOCK_SKEW_SECONDS: i64 = 300;
 const ALPHABET: &[u8; 58] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 const RECORD_BYTES: usize = 128;
 
@@ -442,7 +447,8 @@ impl IdentityChallengeV3 {
     }
 
     /// Client check before signing: every field equals the retained intent/configuration,
-    /// identifiers are canonical and expiry is in the future and at most 60 s away.
+    /// identifiers are canonical, and the expiry lies within the challenge lifetime of the
+    /// phone clock allowing ±`CLOCK_SKEW_SECONDS` of clock difference with the server.
     pub fn matches_request(
         &self,
         r: &ChallengeRequestV3,
@@ -455,11 +461,9 @@ impl IdentityChallengeV3 {
         };
         self.well_formed()
             && self.echoes(r, &checked.fingerprint, realm, pin)
-            && self.expires > now
-            && self
-                .expires
-                .checked_sub(now)
-                .is_some_and(|lifetime| lifetime <= CHALLENGE_SECONDS)
+            && self.expires.checked_sub(now).is_some_and(|left| {
+                left > -CLOCK_SKEW_SECONDS && left <= CHALLENGE_SECONDS + CLOCK_SKEW_SECONDS
+            })
     }
 
     /// Same intent digest as `CheckedRequest::intent_digest`, from the stored challenge.

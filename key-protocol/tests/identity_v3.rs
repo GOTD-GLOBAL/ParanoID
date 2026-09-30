@@ -254,7 +254,25 @@ fn issued_challenge_proofs_are_role_purpose_and_request_bound() {
     let checked = r.validate(REALM, &pin).unwrap();
     let challenge = IdentityChallengeV3::issue(&checked, REALM, &pin, &epoch(), 100);
     assert!(challenge.matches_request(&r, REALM, &pin, 90));
-    assert!(!challenge.matches_request(&r, REALM, &pin, 100));
+    // Phone clock skew (issued at server time 40, expires 100): a phone behind or ahead of
+    // the server within CLOCK_SKEW_SECONDS still signs; beyond it the challenge is refused.
+    use paranoid_key_protocol::identity_v3::{CHALLENGE_SECONDS, CLOCK_SKEW_SECONDS};
+    assert!(challenge.matches_request(&r, REALM, &pin, 100)); // phone ahead, at expiry
+    assert!(challenge.matches_request(&r, REALM, &pin, 30)); // phone 10 s behind
+    assert!(challenge.matches_request(
+        &r,
+        REALM,
+        &pin,
+        100 - CHALLENGE_SECONDS - CLOCK_SKEW_SECONDS
+    ));
+    assert!(!challenge.matches_request(
+        &r,
+        REALM,
+        &pin,
+        100 - CHALLENGE_SECONDS - CLOCK_SKEW_SECONDS - 1
+    ));
+    assert!(challenge.matches_request(&r, REALM, &pin, 100 + CLOCK_SKEW_SECONDS - 1));
+    assert!(!challenge.matches_request(&r, REALM, &pin, 100 + CLOCK_SKEW_SECONDS));
     let mut other = r.clone();
     other.name = "alice_tesu".into();
     assert!(!challenge.matches_request(&other, REALM, &pin, 90));

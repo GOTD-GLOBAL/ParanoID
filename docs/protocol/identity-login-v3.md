@@ -160,7 +160,12 @@ T(role) = LP("paranoid-identity-v3-" + role,
 
 Roles are exactly `owner` or `device`. Decimal expires is canonical in LP. Client
 compares ALL challenge fields with retained intent/config and its candidate keys,
-including lifetime plausibility, before constructing bytes locally. Owner signs
+including lifetime plausibility, before constructing bytes locally. Lifetime
+plausibility tolerates phone/server clock difference: with the phone clock `now`,
+`expires-now` must lie in `(-300, 60+300]` seconds (`CLOCK_SKEW_SECONDS=300`). The
+server alone enforces the real 60 s lifetime on its wall and monotonic clocks.
+Revision 2026-09-30: the earlier strict `(0, 60]` check made any phone a few seconds
+behind the server refuse every challenge (`challenge_mismatch`). Owner signs
 T(owner); device auth signs T(device). Purposes and paths prevent cross-operation
 reuse. A transcript beginning with LP is not a valid Solana transaction message;
 no Solana transaction is signed for authentication.
