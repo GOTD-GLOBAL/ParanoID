@@ -7,6 +7,19 @@ last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; o
 
 # Current project state
 
+## Server member directory and contact links candidate (RFC-0028) — 2026-09-30
+
+Branch `feat/server-directory-links` (draft PR #67), not merged or deployed.
+Implements [RFC-0028](../rfcs/0028-server-directory-and-links.md): member-only directory
+routes on identity-v3 servers with stored owner proofs and contact cards, rate limits,
+core verification of entries (`verify_directory_entry_v1`/`pair_directory_entry_v1`),
+Android v36 search/add/visibility/share-link UI and `paranoid.global` App Link templates.
+Evidence: real-PostgreSQL server tests, core tests and the JVM/JNI end-to-end test
+(find -> verify -> add -> first message) pass locally. NOT run: physical phones,
+live Devnet registry check of a found member, deployed `assetlinks.json` verification,
+independent AI code review required by RFC-0028 before phone release. The test VPS
+database must be re-initialized (new schema, empty-database only) before deployment.
+
 ## Solana ID login and sponsored nicknames on the test VPS — 2026-09-30
 
 PR60 merges the identity-v3 login candidate into `main`. On the private Devnet test

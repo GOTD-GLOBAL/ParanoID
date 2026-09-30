@@ -16,6 +16,10 @@ import org.json.*;
 
 /** Internal Devnet nickname screen in the main messenger. Not server login/Mainnet. */
 public final class MainActivity extends Activity {
+    /** RFC-0028: finalized Devnet registry check for a directory member, for the messenger. */
+    public static org.paranoid.text.IdentityPorts.Registry directoryRegistry(){
+        return (owner,name,identity)->RegistrationFlow.verifyMember(new DevnetRpc(),owner,name,identity);
+    }
     private static final ExecutorService OWNER=Executors.newSingleThreadExecutor();
     private static DevnetStore store;
     private TextView status;

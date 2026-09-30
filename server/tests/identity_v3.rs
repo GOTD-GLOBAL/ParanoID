@@ -532,7 +532,7 @@ async fn ban_trigger_cannot_be_bypassed_by_application_sql() {
     );
     assert!(
         sqlx::query(
-            "INSERT INTO id_memberships VALUES('m','i','o','n','banned',1,$1,'op','x','{}',NULL)"
+            "INSERT INTO id_memberships(membership,identity,owner,name,state,generation,account,operation,intent,result,last_replace,proof) VALUES('m','i','o','n','banned',1,$1,'op','x','{}',NULL,'{}')"
         )
         .bind(&d2.credential.account)
         .execute(&s.db)
@@ -1127,5 +1127,625 @@ async fn generation_cap_blocks_ninth_generation_but_keeps_traffic() {
         v2_status(&s, &last).await,
         200,
         "current generation keeps working"
+    );
+}
+
+// ---------------------------------------------------------------------------------------
+// RFC-0028 server member directory.
+
+/// Device whose credential commits to a known (curve, one-time key) pair, so a test can
+/// publish a matching contact card. The server checks binding and signature only.
+fn card_device() -> (Identity, String) {
+    let prekey = uuid::Uuid::new_v4().to_string();
+    let d = Identity::create(REALM, &"a".repeat(64), "curve", &prekey).unwrap();
+    (d, prekey)
+}
+
+fn card(d: &Identity, prekey: &str) -> Value {
+    let c = &d.credential;
+    let bytes = paranoid_key_protocol::transcript(&[
+        "paranoid-contact-v2",
+        &c.fingerprint(),
+        "unassigned",
+        REALM,
+        "curve",
+        prekey,
+        "fallback",
+    ]);
+    let signature = Ed25519SecretKey::from_base64(&d.auth_secret)
+        .unwrap()
+        .sign(&bytes)
+        .to_base64();
+    json!({"type":"paranoid-contact-v2","credential":c,
+        "bundle":{"device":"unassigned","realm":REALM,"curve":"curve","one_time_key":prekey},
+        "fallback_key":"fallback","signature":signature})
+}
+
+async fn session_json(
+    s: &Server,
+    d: &Identity,
+    session: &paranoid_key_protocol::SessionV2,
+    path: &str,
+    body: &Value,
+) -> (u16, Value) {
+    let body = body.to_string();
+    let nonce = uuid::Uuid::new_v4().to_string();
+    let bytes = session.bytes(
+        &nonce,
+        "POST",
+        path,
+        &paranoid_key_protocol::digest(body.as_bytes()),
+    );
+    let sig = Ed25519SecretKey::from_base64(&d.auth_secret)
+        .unwrap()
+        .sign(&bytes)
+        .to_base64();
+    tokio::time::sleep(std::time::Duration::from_millis(60)).await;
+    let r = s
+        .http
+        .post(format!("{}{path}", s.url))
+        .header(
+            "authorization",
+            format!("ParanoidSessionV2 {}.{nonce}.{sig}", session.id),
+        )
+        .body(body)
+        .send()
+        .await
+        .unwrap();
+    let status = r.status().as_u16();
+    (status, r.json().await.unwrap_or(Value::Null))
+}
+
+async fn search(
+    s: &Server,
+    d: &Identity,
+    session: &paranoid_key_protocol::SessionV2,
+    query: &str,
+    after: Option<&str>,
+) -> (u16, Value) {
+    session_json(
+        s,
+        d,
+        session,
+        "/v3/directory/search",
+        &json!({"query": query, "after": after}),
+    )
+    .await
+}
+
+fn names(v: &Value) -> Vec<String> {
+    v["members"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["name"].as_str().unwrap().to_owned())
+        .collect()
+}
+
+/// A logged-in member with a published card and an open session.
+struct Member {
+    user: User,
+    device: Identity,
+    session: paranoid_key_protocol::SessionV2,
+}
+
+async fn member(s: &Server, name: &str) -> Member {
+    let user = user(name);
+    s.registry.register(&user);
+    let (device, prekey) = card_device();
+    let (status, v) = call(s, &user, &device, Purpose::Enroll, "0", &op()).await;
+    assert_eq!(status, 200, "{v}");
+    let session = open_session(s, &device).await;
+    let (status, v) = session_json(
+        s,
+        &device,
+        &session,
+        "/v3/directory/card",
+        &card(&device, &prekey),
+    )
+    .await;
+    assert_eq!(status, 200, "{v}");
+    Member {
+        user,
+        device,
+        session,
+    }
+}
+
+/// Synthetic active member rows for paging (no RPC or enrollment budget needed).
+async fn synthetic_member(s: &Server, name: &str) {
+    let id = uuid::Uuid::new_v4().simple().to_string();
+    sqlx::query("INSERT INTO ss_accounts VALUES($1,$2,'active')")
+        .bind(&id)
+        .bind(format!("root{id}"))
+        .execute(&s.db)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO id_memberships(membership,identity,owner,name,state,generation,account,operation,intent,result,proof,card) VALUES($1,$2,$3,$4,'active',1,$1,$5,'i','{}','{}','{}')")
+        .bind(&id).bind(format!("id{id}")).bind(format!("ow{id}")).bind(name).bind(format!("op{id}"))
+        .execute(&s.db).await.unwrap();
+    sqlx::query("INSERT INTO id_bindings VALUES($1,$1,1,$2,$3,$4,$5,$6,$7,false)")
+        .bind(&id)
+        .bind(format!("op{id}"))
+        .bind(format!("root{id}"))
+        .bind(format!("dev{id}"))
+        .bind(format!("auth{id}"))
+        .bind(format!("fp{id}"))
+        .bind(format!("olm{id}"))
+        .execute(&s.db)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn directory_refuses_unauthenticated_and_non_member_callers() {
+    let s = server().await;
+    let alice = member(&s, "alice_dir").await;
+    for path in [
+        "/v3/directory/search",
+        "/v3/directory/visibility",
+        "/v3/directory/card",
+    ] {
+        let (status, _) = post(&s, path, &json!({"query":"","after":null})).await;
+        assert_eq!(status, 401, "{path} without a session");
+        let r = s
+            .http
+            .post(format!("{}{path}", s.url))
+            .header("authorization", "ParanoidSessionV2 x.y.z")
+            .body("{}")
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(r.status().as_u16(), 401, "{path} with a forged session");
+    }
+    // GET and query strings are not part of the signed allowlist.
+    assert_eq!(
+        session_call(
+            &s,
+            &alice.device,
+            &alice.session,
+            "GET",
+            "/v3/directory/search",
+            ""
+        )
+        .await,
+        405
+    );
+    // Signature over a different body is refused.
+    let (status, _) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(status, 200);
+    let bad = session_call(
+        &s,
+        &alice.device,
+        &alice.session,
+        "POST",
+        "/v3/directory/search?x=1",
+        r#"{"query":"","after":null}"#,
+    )
+    .await;
+    assert_eq!(bad, 401);
+    // Malformed requests are rejected strictly.
+    for body in [
+        json!({"query":"A","after":null}),
+        json!({"query":"%","after":null}),
+        json!({"query":"","after":"Bad"}),
+        json!({"query":"","after":null,"extra":1}),
+        json!({"query":"a".repeat(25),"after":null}),
+    ] {
+        let (status, _) = session_json(
+            &s,
+            &alice.device,
+            &alice.session,
+            "/v3/directory/search",
+            &body,
+        )
+        .await;
+        assert_eq!(status, 400, "{body}");
+    }
+}
+
+#[tokio::test]
+async fn directory_lists_prefix_pages_and_hides_hidden_retired_and_banned() {
+    let s = server().await;
+    let alice = member(&s, "alice_list").await;
+    let bob = member(&s, "bob_list").await;
+    let carol = member(&s, "carol_list").await;
+    // A member without a published card is not listed.
+    let dan = user("dan_nocard");
+    s.registry.register(&dan);
+    call(&s, &dan, &device(), Purpose::Enroll, "0", &op()).await;
+    let (status, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(status, 200, "{v}");
+    assert_eq!(
+        names(&v),
+        ["bob_list", "carol_list"],
+        "caller itself is not listed"
+    );
+    assert_eq!(v["next"], Value::Null);
+    assert_eq!(
+        v["me"],
+        json!({"name": "alice_list", "visible": true, "card": true})
+    );
+    let entry = &v["members"][0];
+    assert_eq!(
+        entry["owner"],
+        base58_encode(bob.user.owner.public_key().as_bytes())
+    );
+    assert_eq!(entry["contact"]["credential"], json!(bob.device.credential));
+    let (_, v) = search(&s, &alice.device, &alice.session, "car", None).await;
+    assert_eq!(names(&v), ["carol_list"]);
+    let (_, v) = search(&s, &alice.device, &alice.session, "zzz", None).await;
+    assert_eq!(names(&v), Vec::<String>::new());
+    // Hidden: absent for others, still able to search itself.
+    let (status, v) = session_json(
+        &s,
+        &carol.device,
+        &carol.session,
+        "/v3/directory/visibility",
+        &json!({"visible": false}),
+    )
+    .await;
+    assert_eq!(
+        (status, v),
+        (200, json!({"name": "carol_list", "visible": false}))
+    );
+    let (_, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(names(&v), ["bob_list"]);
+    let (status, v) = search(&s, &carol.device, &carol.session, "", None).await;
+    assert_eq!(status, 200);
+    assert_eq!(v["me"]["visible"], false);
+    // Retired: bob replaces his phone; the old phone is refused, bob is absent until the new
+    // phone publishes a card for the new credential.
+    sqlx::query("UPDATE id_memberships SET last_replace=NULL")
+        .execute(&s.db)
+        .await
+        .unwrap();
+    let (new_bob, prekey) = card_device();
+    assert_eq!(
+        call(&s, &bob.user, &new_bob, Purpose::Replace, "1", &op())
+            .await
+            .0,
+        200
+    );
+    assert_eq!(
+        search(&s, &bob.device, &bob.session, "", None).await.0,
+        401,
+        "retired caller"
+    );
+    let (_, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(
+        names(&v),
+        Vec::<String>::new(),
+        "replacement drops the old card"
+    );
+    let new_session = open_session(&s, &new_bob).await;
+    // The old credential's card cannot be published for the new generation.
+    let stale = card(&bob.device, "whatever");
+    assert_eq!(
+        session_json(&s, &new_bob, &new_session, "/v3/directory/card", &stale)
+            .await
+            .0,
+        409
+    );
+    assert_eq!(
+        session_json(
+            &s,
+            &new_bob,
+            &new_session,
+            "/v3/directory/card",
+            &card(&new_bob, &prekey)
+        )
+        .await
+        .0,
+        200
+    );
+    let (_, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(names(&v), ["bob_list"]);
+    assert_eq!(
+        v["members"][0]["contact"]["credential"],
+        json!(new_bob.credential)
+    );
+    // Banned: absent and refused.
+    sqlx::query("UPDATE id_memberships SET state='banned' WHERE name='bob_list'")
+        .execute(&s.db)
+        .await
+        .unwrap();
+    let (_, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!(names(&v), Vec::<String>::new());
+    assert_eq!(
+        search(&s, &new_bob, &new_session, "", None).await.0,
+        401,
+        "banned caller"
+    );
+    // Paging: 55 synthetic visible members -> 50 + 5, ordered by name, `next` cursor.
+    for n in 0..55 {
+        synthetic_member(&s, &format!("page_{n:02}")).await;
+    }
+    let (_, first) = search(&s, &alice.device, &alice.session, "page_", None).await;
+    let first_names = names(&first);
+    assert_eq!(first_names.len(), 50);
+    assert_eq!(first_names[0], "page_00");
+    assert_eq!(first["next"], "page_49");
+    let (_, second) = search(&s, &alice.device, &alice.session, "page_", Some("page_49")).await;
+    assert_eq!(
+        names(&second),
+        ["page_50", "page_51", "page_52", "page_53", "page_54"]
+    );
+    assert_eq!(second["next"], Value::Null);
+}
+
+#[tokio::test]
+async fn directory_rate_limits_member_and_server_windows() {
+    let s = server().await;
+    let alice = member(&s, "alice_rate").await;
+    let bob = member(&s, "bob_rate").await;
+    // `member` published one card (1 request). 59 more succeed, the 61st is refused.
+    for n in 0..59 {
+        let (status, v) = search(&s, &alice.device, &alice.session, "", None).await;
+        assert_eq!(status, 200, "request {n}: {v}");
+    }
+    let (status, v) = search(&s, &alice.device, &alice.session, "", None).await;
+    assert_eq!((status, v["error"].clone()), (429, json!("directory_rate")));
+    // Other members are unaffected by alice's window.
+    assert_eq!(search(&s, &bob.device, &bob.session, "", None).await.0, 200);
+    // Server window: exhaust it directly and every member is refused without charge.
+    sqlx::query("UPDATE id_meta SET directory_count=600, directory_window=floor(extract(epoch FROM clock_timestamp()))::bigint")
+        .execute(&s.db).await.unwrap();
+    let before: i64 =
+        sqlx::query_scalar("SELECT directory_count FROM id_memberships WHERE name='bob_rate'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    let (status, v) = search(&s, &bob.device, &bob.session, "", None).await;
+    assert_eq!((status, v["error"].clone()), (429, json!("directory_rate")));
+    let after: i64 =
+        sqlx::query_scalar("SELECT directory_count FROM id_memberships WHERE name='bob_rate'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    assert_eq!(before, after, "refused request consumes nothing");
+    // Review P2-1: an exhausted server window never blocks hiding or re-publishing a card.
+    let (status, v) = session_json(
+        &s,
+        &bob.device,
+        &bob.session,
+        "/v3/directory/visibility",
+        &json!({"visible": false}),
+    )
+    .await;
+    assert_eq!(
+        status, 200,
+        "hiding must not depend on the server window: {v}"
+    );
+    let (status, v) = session_json(
+        &s,
+        &bob.device,
+        &bob.session,
+        "/v3/directory/visibility",
+        &json!({"visible": true}),
+    )
+    .await;
+    assert_eq!(status, 200, "{v}");
+    // Directory requests never use the tight login ingress bucket (8/s): a concurrent burst
+    // of 12 signed searches within one second all succeed (global budget is 20/s).
+    sqlx::query("UPDATE id_meta SET directory_count=0")
+        .execute(&s.db)
+        .await
+        .unwrap();
+    let carol = member(&s, "carol_rate").await;
+    tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+    let burst = (0..12).map(|_| {
+        let body = json!({"query":"","after":null}).to_string();
+        let nonce = uuid::Uuid::new_v4().to_string();
+        let bytes = carol.session.bytes(
+            &nonce,
+            "POST",
+            "/v3/directory/search",
+            &paranoid_key_protocol::digest(body.as_bytes()),
+        );
+        let sig = Ed25519SecretKey::from_base64(&carol.device.auth_secret)
+            .unwrap()
+            .sign(&bytes)
+            .to_base64();
+        s.http
+            .post(format!("{}/v3/directory/search", s.url))
+            .header(
+                "authorization",
+                format!("ParanoidSessionV2 {}.{nonce}.{sig}", carol.session.id),
+            )
+            .body(body)
+            .send()
+    });
+    let started = std::time::Instant::now();
+    let statuses: Vec<u16> = futures_join(burst).await;
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(1),
+        "burst must fit one ingress window"
+    );
+    assert_eq!(statuses, vec![200; 12]);
+}
+
+async fn futures_join<F>(requests: impl Iterator<Item = F>) -> Vec<u16>
+where
+    F: std::future::Future<Output = reqwest::Result<reqwest::Response>> + Send + 'static,
+{
+    let tasks: Vec<_> = requests.map(tokio::spawn).collect();
+    let mut out = Vec::new();
+    for t in tasks {
+        out.push(t.await.unwrap().unwrap().status().as_u16());
+    }
+    out
+}
+
+#[tokio::test]
+async fn directory_owner_proof_is_stored_on_enroll_and_replace_and_verifies() {
+    use paranoid_key_protocol::identity_v3::DirectoryProof;
+    let s = server().await;
+    let alice = member(&s, "alice_proof").await;
+    let viewer = member(&s, "viewer_proof").await;
+    let pin = "a".repeat(64);
+    let owner = base58_encode(alice.user.owner.public_key().as_bytes());
+    let identity = base58_encode(
+        &derive_registry(alice.user.owner.public_key().as_bytes(), "alice_proof")
+            .unwrap()
+            .identity,
+    );
+    let (_, v) = search(&s, &viewer.device, &viewer.session, "alice", None).await;
+    let entry = &v["members"][0];
+    let proof: DirectoryProof = serde_json::from_value(entry["proof"].clone()).unwrap();
+    assert_eq!(proof.challenge.purpose, Purpose::Enroll);
+    assert_eq!(entry["owner"], owner);
+    assert_eq!(entry["identity"], identity);
+    proof
+        .verify(
+            REALM,
+            &pin,
+            "alice_proof",
+            &owner,
+            &identity,
+            &alice.device.credential,
+        )
+        .unwrap();
+    // Stored JSON equals the served proof.
+    let stored: String =
+        sqlx::query_scalar("SELECT proof FROM id_memberships WHERE name='alice_proof'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&stored).unwrap(),
+        entry["proof"]
+    );
+    // Replace: the stored proof is replaced in the same commit and binds the new credential.
+    sqlx::query("UPDATE id_memberships SET last_replace=NULL")
+        .execute(&s.db)
+        .await
+        .unwrap();
+    let (next, prekey) = card_device();
+    assert_eq!(
+        call(&s, &alice.user, &next, Purpose::Replace, "1", &op())
+            .await
+            .0,
+        200
+    );
+    let stored: String =
+        sqlx::query_scalar("SELECT proof FROM id_memberships WHERE name='alice_proof'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    let replaced: DirectoryProof = serde_json::from_str(&stored).unwrap();
+    assert_eq!(replaced.challenge.purpose, Purpose::Replace);
+    replaced
+        .verify(
+            REALM,
+            &pin,
+            "alice_proof",
+            &owner,
+            &identity,
+            &next.credential,
+        )
+        .unwrap();
+    assert!(replaced
+        .verify(
+            REALM,
+            &pin,
+            "alice_proof",
+            &owner,
+            &identity,
+            &alice.device.credential
+        )
+        .is_err());
+    let session = open_session(&s, &next).await;
+    assert_eq!(
+        session_json(
+            &s,
+            &next,
+            &session,
+            "/v3/directory/card",
+            &card(&next, &prekey)
+        )
+        .await
+        .0,
+        200
+    );
+    let (_, v) = search(&s, &viewer.device, &viewer.session, "alice", None).await;
+    assert_eq!(
+        v["members"][0]["proof"],
+        serde_json::to_value(&replaced).unwrap()
+    );
+}
+
+#[tokio::test]
+async fn directory_card_must_match_the_active_credential() {
+    let s = server().await;
+    let alice = member(&s, "alice_card").await;
+    let (other, other_prekey) = card_device();
+    // Somebody else's (validly self-signed) card.
+    let (status, v) = session_json(
+        &s,
+        &alice.device,
+        &alice.session,
+        "/v3/directory/card",
+        &card(&other, &other_prekey),
+    )
+    .await;
+    assert_eq!((status, v["error"].clone()), (409, json!("card_mismatch")));
+    // Own credential but a substituted one-time key (Olm digest mismatch).
+    let mut swapped = card(&alice.device, "substituted");
+    swapped["bundle"]["one_time_key"] = json!("other");
+    assert_eq!(
+        session_json(
+            &s,
+            &alice.device,
+            &alice.session,
+            "/v3/directory/card",
+            &swapped
+        )
+        .await
+        .0,
+        409
+    );
+    // Own binding but a forged signature.
+    let stored: String =
+        sqlx::query_scalar("SELECT card FROM id_memberships WHERE name='alice_card'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    let mut forged: Value = serde_json::from_str(&stored).unwrap();
+    forged["fallback_key"] = json!("changed");
+    assert_eq!(
+        session_json(
+            &s,
+            &alice.device,
+            &alice.session,
+            "/v3/directory/card",
+            &forged
+        )
+        .await
+        .0,
+        400
+    );
+    let mut extra: Value = serde_json::from_str(&stored).unwrap();
+    extra["extra"] = json!(1);
+    assert_eq!(
+        session_json(
+            &s,
+            &alice.device,
+            &alice.session,
+            "/v3/directory/card",
+            &extra
+        )
+        .await
+        .0,
+        400
+    );
+    let after: String =
+        sqlx::query_scalar("SELECT card FROM id_memberships WHERE name='alice_card'")
+            .fetch_one(&s.db)
+            .await
+            .unwrap();
+    assert_eq!(
+        after, stored,
+        "rejected cards never replace the published one"
     );
 }

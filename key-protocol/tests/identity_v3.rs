@@ -387,3 +387,99 @@ fn intent_digest_binds_intent_and_excludes_ephemeral_challenge() {
 fn epoch() -> String {
     uuid::Uuid::new_v4().to_string()
 }
+
+/// RFC-0028: a stored enroll/replace owner proof binds name, owner, identity, server and
+/// the exact transport credential; expiry is intentionally not checked.
+#[test]
+fn directory_proof_binds_server_identity_and_exact_credential() {
+    use paranoid_key_protocol::identity_v3::DirectoryProof;
+    let f = fixture();
+    let pin = "a".repeat(64);
+    let r = request(&f, Purpose::Enroll, "0");
+    let checked = r.validate(REALM, &pin).unwrap();
+    // Long expired: historical proofs stay valid.
+    let challenge =
+        IdentityChallengeV3::issue(&checked, REALM, &pin, &uuid::Uuid::new_v4().to_string(), 1);
+    let owner_signature = f
+        .owner
+        .sign(&challenge.transcript(ProofRole::Owner).unwrap())
+        .to_base64();
+    let proof = DirectoryProof {
+        challenge,
+        owner_signature,
+    };
+    let c = &f.device.credential;
+    let ok =
+        |p: &DirectoryProof, realm: &str, pin: &str, name: &str, owner: &str, identity: &str, c| {
+            p.verify(realm, pin, name, owner, identity, c)
+        };
+    assert_eq!(
+        ok(&proof, REALM, &pin, &r.name, &r.owner, &r.identity, c),
+        Ok(())
+    );
+    assert!(ok(
+        &proof,
+        "https://other.invalid:1",
+        &pin,
+        &r.name,
+        &r.owner,
+        &r.identity,
+        c
+    )
+    .is_err());
+    assert!(ok(
+        &proof,
+        REALM,
+        &"b".repeat(64),
+        &r.name,
+        &r.owner,
+        &r.identity,
+        c
+    )
+    .is_err());
+    assert!(ok(&proof, REALM, &pin, "mallory_x", &r.owner, &r.identity, c).is_err());
+    let other = base58_encode(vodozemac::Ed25519SecretKey::new().public_key().as_bytes());
+    assert!(ok(&proof, REALM, &pin, &r.name, &other, &r.identity, c).is_err());
+    let substitute = Identity::create(REALM, &pin, "curve", "other").unwrap();
+    assert!(ok(
+        &proof,
+        REALM,
+        &pin,
+        &r.name,
+        &r.owner,
+        &r.identity,
+        &substitute.credential
+    )
+    .is_err());
+    let mut tampered = proof.clone();
+    tampered.owner_signature = f.owner.sign(b"other").to_base64();
+    assert!(ok(&tampered, REALM, &pin, &r.name, &r.owner, &r.identity, c).is_err());
+    let mut tampered = proof.clone();
+    tampered.challenge.nonce = proof.challenge.id.clone();
+    assert!(ok(&tampered, REALM, &pin, &r.name, &r.owner, &r.identity, c).is_err());
+    // A status (device-only) challenge is never an owner proof.
+    let mut status = proof.clone();
+    status.challenge.purpose = Purpose::Status;
+    assert!(ok(&status, REALM, &pin, &r.name, &r.owner, &r.identity, c).is_err());
+    // A replace proof for the same owner is accepted.
+    let rr = request(&f, Purpose::Replace, "1");
+    let ch = IdentityChallengeV3::issue(
+        &rr.validate(REALM, &pin).unwrap(),
+        REALM,
+        &pin,
+        &uuid::Uuid::new_v4().to_string(),
+        5,
+    );
+    let sig = f
+        .owner
+        .sign(&ch.transcript(ProofRole::Owner).unwrap())
+        .to_base64();
+    let replace = DirectoryProof {
+        challenge: ch,
+        owner_signature: sig,
+    };
+    assert_eq!(
+        ok(&replace, REALM, &pin, &rr.name, &rr.owner, &rr.identity, c),
+        Ok(())
+    );
+}

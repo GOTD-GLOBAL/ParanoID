@@ -4,12 +4,12 @@
 //! routed; transport accounts are created only by a dual-proof identity commit. The
 //! existing v2 transport (auth proofs, sessions, messages, events, push, TURN) is reused
 //! unchanged and enforces retirement through the locked `ss_accounts.mode` check.
-use crate::self_service_http::{routes, service, Service};
+use crate::self_service_http::{routes, service, session_operation, Service};
 use crate::Failure;
 use axum::{body::Bytes, extract::State, http::StatusCode, routing::post, Json, Router};
 use paranoid_key_protocol::identity_v3::{
-    base58_encode, verify_records, ChallengeRequestV3, CheckedRequest, IdentityChallengeV3,
-    Purpose, CHALLENGE_SECONDS, GENESIS, PROGRAM,
+    base58_encode, verify_records, ChallengeRequestV3, CheckedRequest, DirectoryProof,
+    IdentityChallengeV3, Purpose, CHALLENGE_SECONDS, GENESIS, PROGRAM,
 };
 use serde_json::{json, Value};
 use sqlx::{PgConnection, PgPool};
@@ -153,7 +153,10 @@ pub async fn app(
         .route("/v3/identity/challenge", post(challenge))
         .route("/v3/identity/inspect", post(inspect))
         .route("/v3/identity/status", post(status))
-        .route("/v3/identity/commit", post(commit));
+        .route("/v3/identity/commit", post(commit))
+        .route("/v3/directory/search", post(session_operation))
+        .route("/v3/directory/visibility", post(session_operation))
+        .route("/v3/directory/card", post(session_operation));
     Ok(routes(
         s,
         false,
@@ -210,7 +213,7 @@ fn take(
     s: &Service,
     path: &str,
     bytes: &[u8],
-) -> Result<(IdentityChallengeV3, CheckedRequest), Failure> {
+) -> Result<(IdentityChallengeV3, CheckedRequest, Option<String>), Failure> {
     let proof: Proof = serde_json::from_slice(bytes).map_err(|_| denied())?;
     let mut pending = v3(s).pending.lock().unwrap();
     let (ch, checked, issued) = pending.get(&proof.id).ok_or_else(denied)?;
@@ -227,7 +230,7 @@ fn take(
     )
     .map_err(|_| denied())?;
     let (ch, checked, _) = pending.remove(&proof.id).ok_or_else(denied)?;
-    Ok((ch, checked))
+    Ok((ch, checked, proof.owner_signature))
 }
 
 type MembershipRow = (
@@ -280,7 +283,7 @@ async fn membership(
 }
 
 async fn inspect(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Value>, Failure> {
-    let (_, checked) = take(&s, Purpose::Inspect.path(), &bytes)?;
+    let (_, checked, _) = take(&s, Purpose::Inspect.path(), &bytes)?;
     // Read-only, lock-free, looked up ONLY by the proven owner's identity PDA.
     let mut conn = s.pool.acquire().await?;
     let found = membership(&mut conn, &checked.request().identity).await?;
@@ -304,7 +307,7 @@ type StatusRow = (
 );
 
 async fn status(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Value>, Failure> {
-    let (_, checked) = take(&s, Purpose::Status.path(), &bytes)?;
+    let (_, checked, _) = take(&s, Purpose::Status.path(), &bytes)?;
     let r = checked.request();
     let row: Option<StatusRow> = sqlx::query_as("SELECT b.generation,b.operation,b.retired,m.state,m.generation,m.operation,m.identity,m.name,d.credential FROM id_bindings b JOIN id_memberships m USING(membership) JOIN ss_devices d ON d.account=b.account WHERE b.fingerprint=$1")
         .bind(checked.credential_fingerprint())
@@ -423,7 +426,7 @@ async fn take_window(conn: &mut PgConnection, successes: bool) -> Result<bool, F
 }
 
 async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Value>, Failure> {
-    let (ch, checked) = take(&s, "/v3/identity/commit", &bytes)?;
+    let (ch, checked, owner_signature) = take(&s, "/v3/identity/commit", &bytes)?;
     let intent = checked.intent_digest();
     // Unlocked hint: exact retries and own-identity terminal states need no RPC.
     {
@@ -507,6 +510,12 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
     });
     let stored = result.to_string();
     let raw = serde_json::to_string(c).map_err(|_| crate::invalid())?;
+    // RFC-0028: keep the exact verified owner proof of this generation for the directory.
+    let proof = serde_json::to_string(&DirectoryProof {
+        challenge: ch.clone(),
+        owner_signature: owner_signature.ok_or_else(denied)?,
+    })
+    .map_err(|_| crate::invalid())?;
     sqlx::query("INSERT INTO ss_accounts VALUES($1,$2,'active')")
         .bind(&c.account)
         .bind(&c.root)
@@ -523,7 +532,7 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
     let retired = match &existing {
         None => {
             sqlx::query(
-                "INSERT INTO id_memberships VALUES($1,$2,$3,$4,'active',1,$5,$6,$7,$8,NULL)",
+                "INSERT INTO id_memberships(membership,identity,owner,name,state,generation,account,operation,intent,result,last_replace,proof) VALUES($1,$2,$3,$4,'active',1,$5,$6,$7,$8,NULL,$9)",
             )
             .bind(&membership_id)
             .bind(&r.identity)
@@ -533,6 +542,7 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
             .bind(&r.operation)
             .bind(&intent)
             .bind(&stored)
+            .bind(&proof)
             .execute(&mut *tx)
             .await?;
             None
@@ -557,7 +567,8 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
                     .await?;
             }
             let replaced_at = db_now(&mut tx).await?;
-            sqlx::query("UPDATE id_memberships SET generation=$2,account=$3,operation=$4,intent=$5,result=$6,last_replace=$7 WHERE membership=$1")
+            // The old contact card names the retired credential: drop it with the generation.
+            sqlx::query("UPDATE id_memberships SET generation=$2,account=$3,operation=$4,intent=$5,result=$6,last_replace=$7,proof=$8,card=NULL WHERE membership=$1")
                 .bind(&m.id)
                 .bind(generation)
                 .bind(&c.account)
@@ -565,6 +576,7 @@ async fn commit(State(s): State<Arc<Service>>, bytes: Bytes) -> Result<Json<Valu
                 .bind(&intent)
                 .bind(&stored)
                 .bind(replaced_at)
+                .bind(&proof)
                 .execute(&mut *tx)
                 .await?;
             Some(m.account.clone())
