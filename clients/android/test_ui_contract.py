@@ -43,11 +43,43 @@ class OnboardingContract(unittest.TestCase):
         publish=engine.split('private void publish(String status) {',1)[1]
         self.assertIn('lastPublishedStatus=status;',publish)
 
+    def test_rfc0028_directory_is_verified_opt_out_and_identity_v3_only(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        loop=(ROOT/'src/org/paranoid/text/RealtimeLoop.java').read_text()
+        manifest=(ROOT/'AndroidManifest.xml').read_text()
+        for caption in ['Найти на сервере','Добавить @','Показывать меня в поиске на этом сервере','Поделиться моей ссылкой','Этот сервер не подключён']:
+            self.assertIn(caption,ui)
+        # Only identity-v3 servers offer the directory; older servers keep QR/paste only.
+        chooser=ui[ui.index('private void addContact(){'):ui.index('private android.app.Dialog directoryDialog;')]
+        self.assertIn('latest.optBoolean("directory")',chooser)
+        self.assertIn('Boolean.TRUE.equals(loop.identityServer())',engine)
+        # A tapped member is verified (core owner proof + Solana registry) BEFORE the add prompt.
+        check=ui[ui.index('private void checkMember(JSONObject member){'):ui.index('private String pendingLink;')]
+        self.assertLess(check.index('engine.verifyFound('),check.index('"Добавить @"+name+"?"'))
+        self.assertLess(check.index('"Добавить @"+name+"?"'),check.index('engine.pairFound('))
+        verify=engine[engine.index('public void verifyFound('):engine.index('public void pairFound(')]
+        self.assertLess(verify.index('client.verifyDirectoryEntry(entry)'),verify.index('directoryRegistry().verify('))
+        # Directory network waits never run on the state owner or UI thread.
+        self.assertIn('newSingleThreadExecutor(r->{Thread t=new Thread(r,"paranoid-directory")',engine)
+        # Card publishing is automatic over the signed session, best effort, never blocking sends.
+        self.assertIn('publishCard(run,context);',loop)
+        self.assertIn('catch(Exception ignored){/* retried with the next session */}',loop)
+        # Links: verified App Link + custom scheme, never auto-join an unknown server.
+        self.assertIn('android:autoVerify="true"',manifest)
+        self.assertIn('android:host="paranoid.global" android:pathPrefix="/c/"',manifest)
+        self.assertIn('android:scheme="paranoid" android:host="c"',manifest)
+        link=ui[ui.index('private void openPendingLink(){'):ui.index('private void shareLink(){')]
+        self.assertLess(link.index('Этот сервер не подключён'),link.index('engine.directorySearch('))
+        self.assertIn('https://paranoid.global/c/"+server+"/"+name',ui)
+        # Visible by default (owner decision 2026-09-30, option «а»).
+        self.assertIn('getBoolean(VISIBLE_KEY,true)',ui)
+
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="35"',manifest)
-        self.assertIn('android:versionName="0.0.35-solana-id"',manifest)
+        self.assertIn('android:versionCode="36"',manifest)
+        self.assertIn('android:versionName="0.0.36-solana-id"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
