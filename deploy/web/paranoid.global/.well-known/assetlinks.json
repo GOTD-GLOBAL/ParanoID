@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "global.paranoid.messenger",
+      "sha256_cert_fingerprints": [
+        "82:B2:9C:C0:29:B1:86:CB:7A:C4:04:A0:24:08:D0:C9:9E:21:4A:B1:80:62:20:0D:1F:27:36:5E:E8:9C:59:26"
+      ]
+    }
+  }
+]

@@ -238,7 +238,7 @@ public final class RealtimeLoop implements AutoCloseable {
     // result is best effort like push registration and never blocks the send lane.
     private volatile String directoryName="";
     private volatile String publishedCard="";
-    private Session cardSession;
+    private Session cardSession;private String attemptedCard="";
     /** Own nickname as the server's directory knows it; empty until the card is published. */
     public String directoryName(){return directoryName;}
     /** null until discovery; TRUE only on an identity-v3 server (the only kind with a directory). */
@@ -246,8 +246,9 @@ public final class RealtimeLoop implements AutoCloseable {
     private void publishCard(long run,Session context)throws Exception {
         if(context==null||!Boolean.TRUE.equals(identityServer))return;
         String card=state(run,client::cardFingerprint);
-        if(card.isEmpty()||card.equals(publishedCard)||cardSession==context)return;
-        cardSession=context;
+        // One attempt per (session, card): a changed card is retried at once, a failed one with the next session.
+        if(card.isEmpty()||card.equals(publishedCard)||(cardSession==context&&card.equals(attemptedCard)))return;
+        cardSession=context;attemptedCard=card;
         try{
             JSONObject result=sessionCall(run,context,"directory_card",null);
             if(result.optBoolean("published")){publishedCard=card;directoryName=result.optString("name","");}
