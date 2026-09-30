@@ -627,7 +627,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             backup["mnemonic"],
-            format!("{} about", vec!["abandon"; 11].join(" "))
+            format!("{} about", ["abandon"; 11].join(" "))
         );
         let restored: Value = serde_json::from_str(&command(
             &json!({"op":"recover","mnemonic":backup["mnemonic"]}).to_string(),
