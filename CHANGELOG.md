@@ -8,6 +8,43 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v35: login works with a phone clock off by seconds — 2026-09-30
+
+- Phones checked a login challenge's expiry against their own clock with no tolerance,
+  so a phone a few seconds behind the server could never log in (`challenge_mismatch`).
+  The phone now tolerates ±300 s clock difference; the server still enforces the
+  60 s lifetime on its own clock.
+
+### Server-sponsored Devnet nicknames — 2026-09-30
+
+- The identity-v3 server can pay for users' Devnet nickname registration
+  (`/v3/sponsor/prepare`, `/v3/sponsor/register`, enabled by
+  `PARANOID_SPONSOR_KEYPAIR_FILE`; `install.sh --sponsor-keypair`). The phone no longer
+  needs test SOL; own SOL is only a fallback when the sponsor refuses.
+- Android v33 uses the sponsor by default in the nick onboarding.
+
+### Android v31: nick onboarding and 12-word recovery phrase — 2026-09-29
+
+- Fresh install opens a one-step-per-screen flow: create or restore nick → recovery
+  words → nick → automatic Devnet funding/registration → server choice → login.
+  Invite and own-server options are shown as upcoming, not implemented.
+- New Devnet identities use 12 BIP39 words; recovery accepts 12 or 24 so identities
+  created earlier keep working (RFC-0026 revision 2026-09-29, owner-approved).
+- Screenshots are allowed except on the recovery-word display and entry screens.
+
+### Solana identity login — server candidate (RFC-0027, draft) — 2026-09-24
+
+- New local-only server mode `identity-v3-local` with offline `identity-v3-init` on an
+  EMPTY database. Legacy self-registration routes are absent (404); accounts are created
+  only by a dual owner/device proof over `/v3/identity/{challenge,inspect,status,commit}`.
+  The existing v2 transport (messages, sessions, events, push, TURN) is reused unchanged.
+- Replacement retires the old transport account, deletes its push token, drops its
+  sessions and rejects new messages to it with `recipient_retired`.
+- The live verifier reads the paired registry records from finalized Devnet first, then
+  genesis and the pinned program artifact; exact byte checks, fail closed.
+- v2 and v3 runtimes refuse each other's databases. No public mode, deployment,
+  Android login, or accepted ADR yet; existing hosted service unchanged.
+
 ### iOS new-message marks, proposed — 2026-09-26
 
 - A row of «Чаты» counts the peer's messages this run has not shown yet and

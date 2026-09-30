@@ -22,7 +22,7 @@ def main():
     args = parser.parse_args()
     args.evidence_dir.mkdir(parents=True, exist_ok=False)
     names = ["CoreBridge", "PinnedTls", "SnapshotCodec", "StorageGuard", "SyncCycle",
-             "KeyClient", "KeyTransport", "SelfServiceClient", "RealtimeLoop", "RealtimeTransport",
+             "KeyClient", "KeyTransport", "SelfServiceClient","IdentityPorts", "RealtimeLoop", "RealtimeTransport",
              "VoiceRelayConfig", "VoiceRelayTransport"]
     sources = [ANDROID / f"src/org/paranoid/text/{name}.java" for name in names]
     sources.append(ANDROID / "test/VoiceRelayLaneSmoke.java")

@@ -15,6 +15,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use subtle::ConstantTimeEq;
 pub mod android_updates;
+pub mod identity_v3;
 mod key_http;
 mod key_transport;
 pub mod push_fcm;
@@ -23,6 +24,7 @@ pub mod self_service;
 mod self_service_http;
 mod self_service_messages;
 mod self_service_migration;
+pub mod sponsor;
 mod voice_turn;
 
 #[derive(Clone)]

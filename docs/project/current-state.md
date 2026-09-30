@@ -1,11 +1,62 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-29
-last_reviewed_scope: iOS composer, contacts, chat-list and call-screen candidates; older dated records retained
+last_reviewed: 2026-09-30
+last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
 ---
 
 # Current project state
+
+## Solana ID login and sponsored nicknames on the test VPS — 2026-09-30
+
+PR60 merges the identity-v3 login candidate into `main`. On the private Devnet test
+VPS `138.16.180.53:38444` (installed by `deploy/one-touch/install.sh`) the server
+runs identity-v3 with server-sponsored Devnet nickname registration
+([RFC-0026 revision 2026-09-30](../rfcs/0026-solana-devnet-registration.md)).
+Android v35 opens a one-step-per-screen onboarding (create/restore nick with 12
+words, sponsored registration, server choice, login) and tolerates ±300 s phone
+clock skew on login challenges. Owner phone test 2026-09-30: phone 1 registered
+`first` and logged in; phone 2 registered a nick and first failed login with
+`challenge_mismatch` (fixed in v35, not yet re-run on the phone). Two-phone
+messaging and calls through this server are NOT yet confirmed. ADR-0016 stays
+`proposed`; the original v2 production service is unchanged. Invite and own-server
+options are shown in the app as upcoming, not implemented.
+
+## Solana login server candidate — 2026-09-24
+
+Local, not deployed. Shared Rust validator (`key-protocol/src/identity_v3.rs`,
+8 tests) and server mode `identity-v3-local` (`server/src/identity_v3.rs`) implement
+the [v3 contract](../protocol/identity-login-v3.md). 14 real-PostgreSQL tests cover
+enroll, transport reuse, membership-independent challenge, route-bound single-use
+proofs, identity-only inspect, replacement/retirement on all transport paths, lost-reply
+retries, rebind refusal, fail-closed registry, global start budget, cooldown, fixture
+ban and the eight-generation cap. Eight deliberate guard removals were each caught by a
+failing test. A read-only live Devnet check accepted the owner's real test name and
+rejected a wrong name and wrong owner. Three Fable code-review rounds; the last
+returned APPROVE_FOR_LOCAL_CANDIDATE and its recommendations were applied. The
+full server suite result is recorded in the PR. RPC here is a fake in integration tests; real RPC outage/lie/timeout behavior,
+Android login, phones, independent code review, human ADR disposition and any
+deployment remain NOT RUN.
+
+## Solana login protocol draft — 2026-09-24
+
+Independent [R2 review](evidence/identity-login-v3/r2-opus55.md) required three
+narrow corrections; [R3 delta review](evidence/identity-login-v3/r3-opus55.md)
+closed those blockers as APPROVE_FOR_LOCAL_IMPLEMENTATION only. RFC/ADR remain
+draft, human disposition and deployment authority pending. Local implementation
+has begun: shared Rust canonical generation parser and typed LP transcript encoder
+match seven independent Python/OpenSSL primitive fixtures. Two Rust tests pass;
+this is not full context/PDA/registry validation, server authorization or Android
+login. The encoder is not a signing/acceptance API. SQL/RPC/route and phone checks
+remain NOT RUN. Existing service and data are untouched.
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) records the owner-requested
+next milestone: server login before Android-driven owner-server deployment.
+Current test-chat/contact migration is waived, not an instruction to wipe data.
+The draft proposes stable membership with a fresh transport account on device
+replacement, preserving immutable peer pins. New contact exchange after recovery
+is a disclosed proposal requiring owner disposition, not seamless chat recovery.
+Protocol review, ADR disposition, implementation/tests and deployment are pending.
 
 ## iOS staged integration candidate — 2026-09-29
 

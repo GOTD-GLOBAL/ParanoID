@@ -30,6 +30,16 @@ fn self_service_bind_allowed(address: SocketAddr, reviewed_ip: Option<&str>) -> 
         && reviewed_ip == Some(address.ip().to_string().as_str())
 }
 
+/// RFC-0027 test server: its own port (never the v2 service's 38443) on exactly the
+/// operator-reviewed IPv4 address.
+fn identity_v3_bind_allowed(address: SocketAddr, reviewed_ip: Option<&str>) -> bool {
+    address.is_ipv4()
+        && address.port() == 38444
+        && !address.ip().is_unspecified()
+        && !address.ip().is_multicast()
+        && reviewed_ip == Some(address.ip().to_string().as_str())
+}
+
 #[tokio::main]
 async fn main() {
     if run().await.is_err() {
@@ -48,6 +58,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     if env::args().nth(1).as_deref() == Some("self-service-init") {
         return paranoid_server::self_service::init_cli().await;
+    }
+    if env::args().nth(1).as_deref() == Some("identity-v3-init") {
+        return paranoid_server::identity_v3::init_cli().await;
     }
     if env::args().nth(1).as_deref() == Some("self-service-capabilities") {
         use sha2::{Digest, Sha256};
@@ -121,8 +134,16 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         println!("Local key schema initialized; old startup is blocked");
         return Ok(());
     }
-    let self_service_local = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
-    let self_service_public = env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
+    // RFC-0027: identity-v3 reuses the self-service transport. `identity-v3-local` is the
+    // loopback test profile; `identity-v3` is the private Devnet phone test server on
+    // port 38444 and an exact reviewed IPv4 (separate DB/service from the v2 server).
+    let identity_v3_local = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3-local");
+    let identity_v3_remote = env::var("PARANOID_MODE").as_deref() == Ok("identity-v3");
+    let identity_v3 = identity_v3_local || identity_v3_remote;
+    let self_service_local =
+        identity_v3_local || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2-local");
+    let self_service_public =
+        identity_v3_remote || env::var("PARANOID_MODE").as_deref() == Ok("self-service-v2");
     let self_service = self_service_local || self_service_public;
     let turn_secret = env::var_os("PARANOID_TURN_SECRET_FILE").map(std::path::PathBuf::from);
     let turn_relay = env::var_os("PARANOID_TURN_RELAY_IP");
@@ -197,7 +218,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let address: SocketAddr = env::var("PARANOID_BIND")
         .unwrap_or_else(|_| "127.0.0.1:38300".into())
         .parse()?;
-    let allowed = if self_service_public {
+    let allowed = if identity_v3_remote {
+        identity_v3_bind_allowed(
+            address,
+            env::var("PARANOID_REVIEWED_IDENTITY_V3_IP").ok().as_deref(),
+        )
+    } else if self_service_public {
         self_service_bind_allowed(
             address,
             env::var("PARANOID_REVIEWED_SELF_SERVICE_IP")
@@ -258,7 +284,41 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         None
     };
-    let app = if self_service {
+    let app = if identity_v3 {
+        let fixture = env::var_os("PARANOID_REGISTRY_FIXTURE");
+        let registry: std::sync::Arc<dyn paranoid_server::identity_v3::RegistryVerifier> =
+            match fixture {
+                // Loopback test profile only; never the phone-facing mode.
+                Some(path) if identity_v3_local => {
+                    std::sync::Arc::new(paranoid_server::identity_v3::FixtureRegistry::from_json(
+                        &std::fs::read_to_string(path)?,
+                    )?)
+                }
+                Some(_) => return Err("registry fixture is local-only".into()),
+                None => {
+                    let rpc = env::var("PARANOID_REGISTRY_RPC")
+                        .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
+                    std::sync::Arc::new(paranoid_server::identity_v3::DevnetRegistry::new(&rpc)?)
+                }
+            };
+        let app = paranoid_server::identity_v3::app(pool, turn, push, registry).await?;
+        // RFC-0026 rev. 2026-09-30: optional Devnet nickname sponsor (server pays rent+fee).
+        match env::var_os("PARANOID_SPONSOR_KEYPAIR_FILE") {
+            Some(path) => {
+                let rpc = env::var("PARANOID_REGISTRY_RPC")
+                    .unwrap_or_else(|_| paranoid_server::identity_v3::DEVNET_RPC.into());
+                let sponsor = paranoid_server::sponsor::Sponsor::from_keypair_json(
+                    &std::fs::read_to_string(path)?,
+                    &rpc,
+                )?;
+                println!("Devnet sponsor enabled: {}", sponsor.payer());
+                app.merge(paranoid_server::sponsor::router(std::sync::Arc::new(
+                    sponsor,
+                )))
+            }
+            None => app,
+        }
+    } else if self_service {
         paranoid_server::self_service::app_with_services(pool, turn, push).await?
     } else if key_mode {
         paranoid_server::registration::key_app(pool, tokens, quota).await?
@@ -346,6 +406,35 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod deployment_tests {
+    #[test]
+    fn identity_v3_bind_is_exact_reviewed_ipv4_on_its_own_port() {
+        use super::identity_v3_bind_allowed as allowed;
+        assert!(allowed(
+            "127.0.0.1:38444".parse().unwrap(),
+            Some("127.0.0.1")
+        ));
+        assert!(allowed(
+            "157.180.49.125:38444".parse().unwrap(),
+            Some("157.180.49.125")
+        ));
+        assert!(allowed(
+            "192.0.2.10:38444".parse().unwrap(),
+            Some("192.0.2.10")
+        ));
+        for (address, reviewed) in [
+            ("157.180.49.125:38444", None),
+            ("157.180.49.125:38444", Some("157.180.49.126")),
+            // Never the port of the existing v2 service.
+            ("157.180.49.125:38443", Some("157.180.49.125")),
+            ("0.0.0.0:38444", Some("0.0.0.0")),
+            ("224.0.0.1:38444", Some("224.0.0.1")),
+            ("[::]:38444", Some("::")),
+            ("[::1]:38444", Some("::1")),
+        ] {
+            assert!(!allowed(address.parse().unwrap(), reviewed), "{address}");
+        }
+    }
+
     #[test]
     fn self_service_public_bind_is_exact_and_separate_from_legacy_opt_in() {
         use super::self_service_bind_allowed as allowed;

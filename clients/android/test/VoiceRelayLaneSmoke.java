@@ -116,7 +116,7 @@ public final class VoiceRelayLaneSmoke {
             public void authorizationLost(){own();authority.incrementAndGet();}
         });
         Class<?> type=Class.forName("org.paranoid.text.RealtimeLoop$Session");Constructor<?> ctor=type.getDeclaredConstructor(JSONObject.class);ctor.setAccessible(true);
-        field(loop,"session",ctor.newInstance(session));field(loop,"realtime",true);field(loop,"discoveryNeeded",false);field(loop,"discoveryAt",System.nanoTime());
+        field(loop,"session",ctor.newInstance(session));field(loop,"realtime",true);field(loop,"discoveryNeeded",false);field(loop,"identityServer",false);field(loop,"discoveryAt",System.nanoTime());
         loop.start();owner.submit(()->null).get(3,TimeUnit.SECONDS);
     }
     static CompletableFuture<String> request(){
