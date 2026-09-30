@@ -1,11 +1,27 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-22
+last_reviewed: 2026-09-28
 last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
 ---
 
 # Current project state
+
+## iOS call screen after the call — 2026-09-28
+
+The iOS call screen closes itself after the call (two seconds to read an
+outcome, five when it names a problem), offers «Перезвонить» for an own call
+that never connected — through the same confirmation as «Позвонить» — and a
+call put away with «К переписке» stands on a line over every screen with the
+way back. A call that already had audio and lost it to the system is named for
+it («Звонок прерван: система забрала звук») instead of «Не удалось установить
+связь». Controller, protocol, peer and server are
+unchanged; the captions are proposed and await the owner, and Android should
+receive the same request. Evidence is contributor Mac execution on a
+simulator, recorded in the
+[receipt](evidence/ios-client-20260928/call-screen-mac.md); a physical phone
+and a real audio interruption are not run.
+[Rule](../clients/ios/voice-calls.md#the-screen-after-the-call-and-the-call-behind-the-screens).
 
 ## PR54 closure preparation — 2026-09-22
 

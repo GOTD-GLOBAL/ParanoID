@@ -159,6 +159,10 @@ MainActivity.java "Сменить камеру"
 # (MainActivity.java:478). iOS has no such flag, so this client covers the
 # video stage while the screen is recorded or mirrored, and says why.
 ios "Видео скрыто: идёт запись или трансляция экрана."
+ios "Звонок прерван: система забрала звук"
+ios "Звонок · "
+ios "Вернуться"
+ios "Вернуться к звонку"
 MainActivity.java "До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием."
 MainActivity.java "Восстанавливаем соединение…"
 MainActivity.java "Проверяем доступность…"
