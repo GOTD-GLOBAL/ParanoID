@@ -422,6 +422,78 @@ class UiContract(unittest.TestCase):
         for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus'):
             self.absent(forbidden, rename, 'AppModel.rename(account:to:)')
 
+    def test_new_message_marks_stay_in_memory_and_off_the_wire(self):
+        # «Новые сообщения» (`SeenMarks`): which messages this run has not shown.
+        # The owner has not approved storing a per-conversation mark, so it may
+        # live in memory only, and nothing about reading may reach the core, the
+        # network or the peer (REQ-MSG-003).
+        marks_path = 'ParanoidKit/Sources/ParanoidKit/Presentation/SeenMarks.swift'
+        self.assertTrue(marks_path in self.sources, 'SeenMarks.swift is missing')
+        marks = self.sources[marks_path]
+        for token in ('UserDefaults', 'FileManager', 'Keychain', 'LocalMetadataStore',
+                      'SnapshotStore', 'SelfServiceClient', 'StateOwner', 'URLSession',
+                      'write(to', '@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore',
+                      'Codable', 'Encodable', 'Decodable', 'NSCoding'):
+            self.absent(token, marks, marks_path)
+        # Nothing elsewhere can make it storable or stand in for it.
+        for name, text in self.sources.items():
+            for token in ('@AppStorage', '@SceneStorage', 'NSUbiquitousKeyValueStore',
+                          'extension SeenMarks'):
+                self.absent(token, text, name)
+        # Only the model holds or builds the marks; every screen asks it.
+        uses = re.compile(r'seenMarks|SeenMarks\(|:\s*SeenMarks\b')
+        users = sorted(name for name, text in self.sources.items()
+                       if name != marks_path and uses.search(text))
+        self.assertEqual(users, [MODEL], 'the marks are held outside the model')
+
+        model = self.sources[MODEL]
+        # Every use of the marks in the model, pinned: the declaration, the
+        # divider, the baseline and the four uses in the section below.
+        self.assertEqual(model.count('seenMarks'), 7, 'a new use of the marks in AppModel')
+        self.present('private(set) var seenMarks = SeenMarks()', model, MODEL)
+        self.present('seenMarks = built.seenBaseline', model, MODEL)
+        section = model[model.index('    // MARK: - new messages'):
+                        model.index('    /// When the last message of a conversation happened')]
+        for forbidden in ('owner.perform', 'loop.wake', 'runtime', 'lastStatus',
+                          'UserDefaults', 'FileManager', 'callLog.record', 'contactNames.rename'):
+            self.absent(forbidden, section, 'AppModel, new messages')
+        self.present('seenMarks.markSeen(chat)', section, 'AppModel.markChatSeen()')
+        # The baseline is one read before a lane or a lifecycle notification
+        # exists, and keeps counts rather than messages.
+        self.before('seenBaseline = (try? client.publicDialogs())',
+                    'let owner = StateOwner(client: client', model, MODEL)
+        self.present('let seenBaseline: SeenMarks', model, MODEL)
+        self.absent('seenBaseline = (try? ClientView.read(client))', model, MODEL)
+
+        # Seen means the bottom was on the screen — asked of the scroll view's
+        # own visible rectangle, since a lazy stack keeps rows it built after
+        # they scroll away — positioned, active and uncovered, asked again on
+        # every change.
+        chat = self.sources[CHAT]
+        for pinned in ('var isSeen: Bool { atBottom && positioned && active && !covered }',
+                       'active: scenePhase == .active,',
+                       'covered: model.showsCall || model.sheet != nil)',
+                       '.onScrollGeometryChange(for: Edge.self) { geometry in',
+                       'return Edge(distance: (furthest - geometry.contentOffset.y).rounded(),',
+                       'let grewUnderReader = new.height > old.height && old.distance <= Self.endSlack',
+                       'let atBottom = grewUnderReader || new.distance <= Self.endSlack',
+                       'static let endSlack: CGFloat = 16',
+                       '.modifier(HistoryScrolling(isAtBottom: $isAtBottom))',
+                       '.onChange(of: seenCondition, initial: true)',
+                       'if condition.isSeen {\n                    model.markChatSeen()',
+                       'guard own || isAtBottom else { return }'):
+            self.present(pinned, chat, CHAT)
+        # The history no longer drags a reader who scrolled up to the bottom.
+        self.absent('withAnimation { scroll.scrollTo(last, anchor: .bottom) }', chat, CHAT)
+
+        # The divider's caption is a literal of its own, not a fragment of the
+        # blocked-contact sentence that also begins «Новые сообщения».
+        self.assertTrue('Новые сообщения' in self.literals,
+                        'the divider caption is not its own literal')
+        unread = self.sources['App/ParanoID/Strings.swift']
+        unread = unread[unread.index('    enum Unread {'):unread.index('    // MARK: - connection')]
+        self.absent('рочит', unread, 'Strings.Unread')
+
     # ------------------------------------------------------------------
     # The call (`MainActivity.java:361-441,443-545`, `docs/protocol/call-v2.md`)
 
@@ -838,6 +910,175 @@ class UiContract(unittest.TestCase):
         self.present('.fullScreenCover(isPresented: $model.showsCall)', app, ENTRY)
         self.assertEqual(app.count('.fullScreenCover('), 1,
                          f'{ENTRY}: a second full-screen cover')
+
+    def test_the_composer_sends_the_trimmed_text_and_the_bubble_hugs_it(self):
+        model = self.sources[MODEL]
+        chat = self.sources[CHAT]
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/MessagePresentation.swift']
+        # What is sent is the draft trimmed at its ends; what comes back after
+        # a failure is the draft as typed.
+        self.present('self.text = MessagePresentation.trimmed(draft)', kit, 'MessagePresentation.swift')
+        self.present('texts[ticket.account] = ticket.draft', kit, 'MessagePresentation.swift')
+        self.present('!isBlank(text) && bytesToSend(text) <= byteLimit', kit, 'MessagePresentation.swift')
+        # The composer measures what would be sent, everywhere it measures.
+        self.present('let bytes = MessagePresentation.bytesToSend(draft)', model, MODEL)
+        self.present('MessagePresentation.bytesToSend(draft) > MessagePresentation.byteLimit', model, MODEL)
+        self.present('Strings.Chat.counter(bytes: MessagePresentation.bytesToSend(model.draft))', chat, CHAT)
+        self.absent('MessagePresentation.byteCount(model.draft)', chat, CHAT)
+        # The counter stands only near the limit.
+        self.present('if MessagePresentation.showsCounter(model.draft) {', chat, CHAT)
+        self.present('bytesToSend(text) >= byteWarning', kit, 'MessagePresentation.swift')
+        # The bubble hugs its text: nothing inside it asks for the row's width,
+        # the cap is Android's, and the bubble is the accessibility element.
+        bubble = chat[chat.index('struct MessageBubble: View {'):]
+        self.absent('.frame(maxWidth: .infinity', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('static let maxWidth: CGFloat = 440', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('.frame(maxWidth: Self.maxWidth, alignment: isOwn ? .trailing : .leading)',
+                     bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('.accessibilityElement(children: .combine)', bubble, 'Screens/Chat.swift: MessageBubble')
+        # Inside the bubble the text stands at the leading edge and the footer
+        # at the trailing edge, without a spacer, which would take the row.
+        self.present('BubbleLayout {', bubble, 'Screens/Chat.swift: MessageBubble')
+        self.present('subviews[0].place(at: bounds.origin', bubble, 'Screens/Chat.swift: BubbleLayout')
+        self.present('x: bounds.maxX - footer.width', bubble, 'Screens/Chat.swift: BubbleLayout')
+        self.absent('Spacer(', bubble[bubble.index('private var bubble'):], 'Screens/Chat.swift: bubble')
+        # The keyboard follows the finger down the history.
+        self.present('.scrollDismissesKeyboard(.interactively)', chat, CHAT)
+
+    def test_the_chat_list_is_ordered_by_recency_and_its_rows_are_buttons(self):
+        model = self.sources[MODEL]
+        dialogs = self.sources['App/ParanoID/Screens/Dialogs.swift']
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        button = self.sources['App/ParanoID/Screens/RowButton.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogOrder.swift']
+        # Both lists are sorted by the model: «Чаты» by recency, «Контакты» by name.
+        self.present('ForEach(model.orderedDialogs)', dialogs, 'Screens/Dialogs.swift')
+        self.present('ForEach(model.orderedContacts)', contacts, 'Screens/Contacts.swift')
+        self.present('DialogOrder.byRecency(view.dialogs)', model, MODEL)
+        # The key is the last message's own time and nothing invented: an
+        # untimed last message sorts with the empty conversations.
+        self.present('dialog.last?.localMilliseconds ?? 0', kit, 'DialogOrder.swift')
+        self.present('.filter { key($0.element) == 0 }', kit, 'DialogOrder.swift')
+        for forbidden in ('Date()', 'CallLog', 'callLog'):
+            self.absent(forbidden, kit, 'DialogOrder.swift')
+        # A missed call in the preview is red; the preview rule itself is
+        # unchanged and still what the row's time is decided from.
+        self.present('isAlert: model.isMissedCallPreview(for: dialog)', dialogs, 'Screens/Dialogs.swift')
+        self.present('.foregroundStyle(isAlert ? Color.red : Color.secondary)', dialogs,
+                     'Screens/Dialogs.swift')
+        self.present('previewedCall(for: dialog)?.kind.isMissed == true', model, MODEL)
+        self.present('isCallPreview: preview(for: dialog) != nil', model, MODEL)
+        # Both lists are buttons with a pressed state, each row one element
+        # under its identifier.
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.present('.rowButton("dialog-\\(dialog.account)") { model.openChat(dialog.account) }',
+                         text, name)
+            self.absent('.onTapGesture', text, name)
+        self.present('Button(action: action) { content }', button, 'Screens/RowButton.swift')
+        self.present('configuration.isPressed ? Color(.systemGray5) : Color.clear', button,
+                     'Screens/RowButton.swift')
+        self.present('.accessibilityIdentifier(identifier)', button, 'Screens/RowButton.swift')
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.assertEqual(text.count('.accessibilityIdentifier("dialog-'), 0,
+                             f'{name}: a second element under dialog-<account>')
+
+    def test_contacts_are_alphabetical_the_blocked_have_a_section_and_the_fingerprint_is_grouped(self):
+        model = self.sources[MODEL]
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/ContactOrder.swift']
+        # «Контакты» by this phone's names, the named first, the blocked apart;
+        # both lists through one row builder, so the name has one site here.
+        self.present('ContactOrder.alphabetical(view.dialogs.filter { !$0.isBlocked }, name: name(for:))',
+                     model, MODEL)
+        self.present('ContactOrder.alphabetical(view.dialogs.filter(\\.isBlocked), name: name(for:))',
+                     model, MODEL)
+        self.present('Locale(identifier: "ru_RU")', kit, 'ContactOrder.swift')
+        self.present('[.caseInsensitive, .diacriticInsensitive, .numeric]', kit, 'ContactOrder.swift')
+        self.present('ForEach(model.blockedContacts)', contacts, 'Screens/Contacts.swift')
+        self.present('model.block(account: dialog.account, blocked: false)', contacts, 'Screens/Contacts.swift')
+        self.present('Text(Strings.Details.unblock)', contacts, 'Screens/Contacts.swift')
+        self.present('.accessibilityIdentifier("blocked-section")', contacts, 'Screens/Contacts.swift')
+        self.assertEqual(contacts.count('ConversationRow('), 1, 'Screens/Contacts.swift: two row sites')
+        # The fingerprint is grouped for the eye and whole for the label,
+        # wherever it is shown, and the details sheet shows it.
+        for name in ('App/ParanoID/Screens/Identity.swift', 'App/ParanoID/Screens/About.swift',
+                     'App/ParanoID/Screens/ConfirmContact.swift', 'App/ParanoID/Screens/ContactDetails.swift'):
+            self.present('MessagePresentation.groupedFingerprint(', self.sources[name], name)
+        self.present('.accessibilityLabel(fingerprint)', self.sources['App/ParanoID/Screens/ConfirmContact.swift'],
+                     'Screens/ConfirmContact.swift')
+        self.present('.accessibilityIdentifier("details-fingerprint")', self.sources[DETAILS], DETAILS)
+        self.present('fingerprint: raw["fingerprint"] as? String ?? ""',
+                     self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogPolicy.swift'],
+                     'DialogPolicy.swift')
+        # «Вы: 7c85ae» over the QR, the same six characters and case a peer sees.
+        identity = self.sources['App/ParanoID/Screens/Identity.swift']
+        self.present('Strings.Identity.short + model.view.account.prefix(6)', identity,
+                     'Screens/Identity.swift')
+        self.present('.accessibilityElement(children: .contain)', contacts, 'Screens/Contacts.swift')
+        self.absent('.uppercased()', identity, 'Screens/Identity.swift')
+        # The shared contact text is the core's, byte for byte: no line is put
+        # in front of it.
+        self.absent('ParanoID ·', self.sources['App/ParanoID/Qr/ContactQrView.swift'], 'Qr/ContactQrView.swift')
+        # The system's paste control reads the pasteboard only on the tap and
+        # goes the way «Продолжить» goes.
+        sheet = self.sources['App/ParanoID/Qr/PasteContactSheet.swift']
+        self.present('PasteButton(payloadType: String.self)', sheet, 'Qr/PasteContactSheet.swift')
+        self.present('.accessibilityIdentifier("paste-clipboard")', sheet, 'Qr/PasteContactSheet.swift')
+        self.absent('UIPasteboard', sheet, 'Qr/PasteContactSheet.swift')
+
+    def test_the_call_screen_closes_itself_and_the_call_stays_reachable(self):
+        model = self.sources[MODEL]
+        screen = self.sources[CALL]
+        app = self.sources[ENTRY]
+        # One ended call, one countdown, and a live call cancels it.
+        changed = model[model.index('    func callChanged(_ presentation: CallPresentation) {'):
+                        model.index('    /// Closes the screen of an ended call by itself')]
+        self.present('presentation.callId != closingCall', changed, 'AppModel.callChanged')
+        self.present('scheduleCallClose(reason: presentation.reason)', changed, 'AppModel.callChanged')
+        # The countdown waits for the microphone alert and never closes a live call.
+        close = model[model.index('    private func scheduleCallClose('):
+                      model.index('    private func cancelCallClose() {')]
+        self.present('self.microphoneRefused', close, 'AppModel.scheduleCallClose')
+        self.present('!self.isCallActive else { return }', close, 'AppModel.scheduleCallClose')
+        # «Закрыть», «К переписке» and «Перезвонить» all stop it.
+        for name, end in (('    func endCall() {', '    /// «К переписке»'),
+                          ('    func closeCallScreen() {', '    /// The audio of the call was taken away'),
+                          ('    func callBack() {', '    /// The trust line of the call screen')):
+            self.present('cancelCallClose()', model[model.index(name):model.index(end)], name.strip())
+        # «Перезвонить» is on the screen only when there is something to call
+        # back, above the red button, and opens the one confirmation.
+        self.present('if model.callBackOffer != nil { callBack }\n                terminal\n', screen, CALL)
+        self.present('.accessibilityIdentifier("call-back-again")', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: true))', screen, CALL)
+        self.present('.modifier(CallConfirmation(model: model, overCall: false))', app, ENTRY)
+        self.present('get: { model.showsCall == overCall ? model.callPrompt : nil }', app, ENTRY)
+        self.assertEqual(app.count('.modifier(CallConfirmation(') + screen.count('.modifier(CallConfirmation('),
+                         2, 'the confirmation is attached somewhere else')
+        # The offer is for this device's own call that never connected, to a
+        # peer a call may be placed to now.
+        self.present('last.callId == call.callId, last.outgoing, !last.connected,', model, MODEL)
+        self.present('[.timeout, .busy, .failed, .unavailable].contains(last.reason)', model, MODEL)
+        offer = model[model.index('    var callBackOffer: CallPrompt? {'):
+                      model.index('    /// «Перезвонить»: the confirmation')]
+        self.present('DialogPolicy.canReply(view.dialog(last.account)', offer, 'AppModel.callBackOffer')
+        # A refused start publishes an ended view with an empty identifier;
+        # neither sentinel may be the empty string, or it would match it.
+        self.present('private var closingCall: String?\n', model, MODEL)
+        self.present('private var interruptedCall: String?\n', model, MODEL)
+        self.present('guard !callId.isEmpty else { return }', model, MODEL)
+        self.present('if !answer { placedCallVideo = video }', model, MODEL)
+        # The line over the screens shows the same name and status the screen
+        # does, and only while the screen is away.
+        self.present('guard isCallActive, !showsCall, let call else { return nil }', model, MODEL)
+        self.present('status: callLabel)', model, MODEL)
+        self.present('CallReturnBar(line: line, onReturn: model.returnToCall)', app, ENTRY)
+        self.present('.accessibilityIdentifier("call-return-bar")', app, ENTRY)
+        # An interrupted call is named for it, before the controller ends it.
+        coordinator = self.sources[COORDINATOR]
+        self.before('model?.callInterrupted(callId)', 'controller.mediaState(generation, .failed)',
+                    coordinator, COORDINATOR)
+        self.present('call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed',
+                     model, MODEL)
 
     def test_info_plist_declares_camera_and_microphone_and_no_delivery_path(self):
         raw = (APP / 'Info.plist').read_text()

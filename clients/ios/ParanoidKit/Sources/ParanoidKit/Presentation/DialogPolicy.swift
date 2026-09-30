@@ -76,13 +76,20 @@ public struct Dialog: Identifiable, Equatable, Sendable {
     public let isBlocked: Bool
     /// The history, oldest first.
     public let messages: [Message]
+    /// The fingerprint of the contact as the core computed it
+    /// (`ContactV2::fingerprint`, `clean_service.rs:324`): the 64 hexadecimal
+    /// digits the two people compared, or were asked to. Empty for a view
+    /// that carried none.
+    public let fingerprint: String
 
-    public init(account: String, own: String, trust: String, isBlocked: Bool, messages: [Message]) {
+    public init(account: String, own: String, trust: String, isBlocked: Bool, messages: [Message],
+                fingerprint: String = "") {
         self.account = account
         self.own = own
         self.trust = trust
         self.isBlocked = isBlocked
         self.messages = messages
+        self.fingerprint = fingerprint
     }
 
     /// Whether the fingerprint was compared out of band.
@@ -102,7 +109,8 @@ public struct Dialog: Identifiable, Equatable, Sendable {
                       own: raw["own"] as? String ?? "",
                       trust: raw["trust"] as? String ?? "",
                       isBlocked: raw["blocked"] as? Bool ?? false,
-                      messages: messages)
+                      messages: messages,
+                      fingerprint: raw["fingerprint"] as? String ?? "")
     }
 }
 

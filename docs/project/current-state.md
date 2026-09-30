@@ -1,11 +1,26 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-22
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-09-30
+last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
 ---
 
 # Current project state
+
+## Solana ID login and sponsored nicknames on the test VPS — 2026-09-30
+
+PR60 merges the identity-v3 login candidate into `main`. On the private Devnet test
+VPS `138.16.180.53:38444` (installed by `deploy/one-touch/install.sh`) the server
+runs identity-v3 with server-sponsored Devnet nickname registration
+([RFC-0026 revision 2026-09-30](../rfcs/0026-solana-devnet-registration.md)).
+Android v35 opens a one-step-per-screen onboarding (create/restore nick with 12
+words, sponsored registration, server choice, login) and tolerates ±300 s phone
+clock skew on login challenges. Owner phone test 2026-09-30: phone 1 registered
+`first` and logged in; phone 2 registered a nick and first failed login with
+`challenge_mismatch` (fixed in v35, not yet re-run on the phone). Two-phone
+messaging and calls through this server are NOT yet confirmed. ADR-0016 stays
+`proposed`; the original v2 production service is unchanged. Invite and own-server
+options are shown in the app as upcoming, not implemented.
 
 ## Solana login server candidate — 2026-09-24
 
@@ -42,6 +57,93 @@ The draft proposes stable membership with a fresh transport account on device
 replacement, preserving immutable peer pins. New contact exchange after recovery
 is a disclosed proposal requiring owner disposition, not seamless chat recovery.
 Protocol review, ADR disposition, implementation/tests and deployment are pending.
+
+## iOS staged integration candidate — 2026-09-29
+
+The PR63 → PR64 → PR66 → PR65 → PR59 chain is reconciled locally with normal
+merge commits, preserving all feature and test additions. The
+[stack integration evidence](evidence/ios-client-20260929/stack-integration.md)
+records the frozen code checkpoints, conflict dispositions and passing Linux
+source gates. Exact-head combined Mac acceptance remains NOT RUN; the original
+per-feature receipts do not cover the newly combined source. PR58 stays a
+separate draft proposal and PR62 is excluded. Product wording and behavior
+choices remain for the owner; no RFC/ADR disposition changes.
+
+PR60 was still open/draft, not merged into `origin/main`, when checked. A pinned
+external health check observed its v3 protocol on a separate test VPS and the
+existing v2 protocol on the original endpoint; the installed SHA was not exposed.
+The iOS stack does not add Solana login or change either service. Neither a main
+merge nor any deployment is performed by this integration candidate.
+
+## iOS new-message marks, in memory only — 2026-09-26
+
+At Yaroslav's request the iOS client counts new messages: a row of «Чаты»
+shows how many messages of the peer this run has not shown, the chat opens at
+a «Новые сообщения» divider, a «↓» button leads down to them, and a reader
+scrolled up is not dragged down. The marks live in memory for the current run
+and reach no file, no defaults, no snapshot, no server and no peer;
+REQ-MSG-003 is unchanged — two marks mean delivered, never read. The feature
+and its words are proposed and await the owner; persisting the mark across
+launches is new stored metadata and needs a new RFC unless the owner widens
+RFC-0024. Android has no such markers yet. Evidence is contributor Mac
+execution on a simulator and a local stand, recorded in the
+[receipt](evidence/ios-client-20260926/unread-markers-mac.md); iOS 17, a
+physical phone and spoken VoiceOver are not run.
+[Rule and limits](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS chat composer and bubbles — 2026-09-29
+
+On iOS a bubble is as wide as its text (Android's margin, a 440-point cap on
+the bubble where Android caps the text), the byte
+counter stands only from 1800 bytes and turns red over 2048, dragging the
+history down dismisses the keyboard, and the text is sent trimmed at its ends
+with the draft put back as typed after a failed send. Core, protocol and the
+2048-byte wire limit are unchanged; Android sends the text as typed and should
+receive the same request. Evidence is contributor Mac execution, recorded in
+the [receipt](evidence/ios-client-20260929/chat-composer-mac.md); a physical
+phone is not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS contacts — 2026-09-29
+
+On iOS «Контакты» is in Russian alphabetical order of the local names with the
+blocked contacts in a folded section (they stay in «Чаты»), the fingerprint is
+shown in groups of eight everywhere and in the contact's own sheet, «Мой ID»
+names the owner's six characters, and the paste sheet has the system's paste
+control. Core, protocol and the shared contact text are unchanged; Android
+keeps the core's order and should receive the same request. Evidence is
+contributor Mac execution, recorded in the
+[receipt](evidence/ios-client-20260929/contacts-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#contacts-and-qr).
+
+## iOS chat list by recency — 2026-09-29
+
+«Чаты» on iOS is ordered by the time stamped on each conversation's last
+message, newest first, using the local time the core already stores for each
+message (RFC-0023, a fourth client-only reading the RFC did not list);
+conversations without a timed message follow in the core's order, and a call
+moves no chat because the call log keeps no time (RFC-0023 «Privacy»). A
+missed call in a row's preview is red, and the rows of both lists are buttons
+that show a grey fill while pressed. Core, protocol and server are unchanged; Android keeps the core's
+order and should receive the same request. Evidence is contributor Mac
+execution, recorded in the
+[receipt](evidence/ios-client-20260929/chat-list-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS call screen after the call — 2026-09-28
+
+The iOS call screen closes itself after the call (two seconds to read an
+outcome, five when it names a problem), offers «Перезвонить» for an own call
+that never connected — through the same confirmation as «Позвонить» — and a
+call put away with «К переписке» stands on a line over every screen with the
+way back. A call that already had audio and lost it to the system is named for
+it («Звонок прерван: система забрала звук») instead of «Не удалось установить
+связь». Controller, protocol, peer and server are
+unchanged; the captions are proposed and await the owner, and Android should
+receive the same request. Evidence is contributor Mac execution on a
+simulator, recorded in the
+[receipt](evidence/ios-client-20260928/call-screen-mac.md); a physical phone
+and a real audio interruption are not run.
+[Rule](../clients/ios/voice-calls.md#the-screen-after-the-call-and-the-call-behind-the-screens).
 
 ## PR54 closure preparation — 2026-09-22
 
