@@ -21,7 +21,9 @@ final class DevnetWork {
             if(failure instanceof org.paranoid.text.SyncCycle.Rejected){org.paranoid.text.SyncCycle.Rejected x=(org.paranoid.text.SyncCycle.Rejected)failure;return "Сервер отказал во входе: "+x.status+" "+x.code+". Ключи сохранены.";}
             if("different_name_pending".equals(code))return "Предыдущая регистрация ещё может подтвердиться. Пока нельзя выбрать другой ник — проверьте результат позже.";
             if("name_conflict_or_partial_record".equals(code))return "Ник занят либо записи не совпадают. Новый ник можно выбрать только после завершения или истечения предыдущей попытки. Сохранённый ключ не меняем.";
-            return "Операция Devnet не завершена. Если транзакция уже отправлена, нажмите проверку ника. ("+failure.getClass().getSimpleName()+")";
+            if("local state unavailable".equals(code))return "Не открываются данные мессенджера на этом телефоне (ID сохранён в старом формате или повреждён). Ник в Solana при этом записан. Сообщите об ошибке; не удаляйте приложение.";
+            String detail=code==null||code.isEmpty()?"":": "+(code.length()>80?code.substring(0,80):code);
+            return "Операция не завершена. Если транзакция уже отправлена, нажмите «Повторить». ("+failure.getClass().getSimpleName()+detail+")";
         }
     }
 }

@@ -219,6 +219,9 @@ public final class OnboardingActivity extends Activity {
                         .setPositiveButton("Перенести",(d,x)->join(n,true)).setNegativeButton("Отмена",(d,x)->server(n)).setCancelable(false).show();return;}
                 failure(IdentityLogin.REVOKED.equals(mode)?"Этот телефон был отключён от ника. Нужна новая установка приложения.":"Сервер запретил вход для этого ника.",()->server(n));
             });return null;
+        },(t,code)->{
+            String m=DevnetWork.run(()->{throw new IOException(code);});
+            failure("Ник @"+n+" записан, но вход на сервер не выполнен.\n\n"+m,()->join(n,replace));
         });
     }
 
@@ -253,7 +256,11 @@ public final class OnboardingActivity extends Activity {
             try{if(store==null)store=new DevnetStore(getApplicationContext());step.run(store,ticket);}
             catch(Throwable e){
                 String code=e.getMessage()==null?"":e.getMessage();
-                if(fail!=null&&e instanceof Exception){post(ticket,()->fail.on(ticket,code));return;}
+                // Keep exact codes for plain IOExceptions (handlers compare them); name everything else.
+                if(e instanceof org.paranoid.text.SyncCycle.Rejected){org.paranoid.text.SyncCycle.Rejected x=(org.paranoid.text.SyncCycle.Rejected)e;code="http_"+x.status+(x.code.isEmpty()?"":"_"+x.code);}
+                else if(e.getClass()!=IOException.class)code=e.getClass().getSimpleName()+(code.isEmpty()?"":" "+code);
+                final String shown=code;
+                if(fail!=null&&e instanceof Exception){post(ticket,()->fail.on(ticket,shown));return;}
                 String msg=e instanceof LinkageError?"Раздел Solana недоступен в этой сборке.":DevnetWork.run(()->{throw e instanceof Exception?(Exception)e:new IOException(e);});
                 post(ticket,()->failure(msg,this::resume));
             }
