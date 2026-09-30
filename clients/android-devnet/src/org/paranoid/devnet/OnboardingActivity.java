@@ -100,11 +100,11 @@ public final class OnboardingActivity extends Activity {
         gap(20);
         EditText in=new EditText(this);in.setHint("например, sergey");in.setSingleLine(true);in.setTextSize(20);
         in.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS|InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
-        in.setFilters(new InputFilter[]{new InputFilter.LengthFilter(24),(src,a,z,d,x,y)->src.subSequence(a,z).toString().toLowerCase(Locale.ROOT)});
+        in.setFilters(new InputFilter[]{new InputFilter.LengthFilter(32)});
         page.addView(in,full());
         if(error!=null){gap(8);page.addView(label(error,14,0xffdc2626,false));}
         gap(24);
-        primary("Занять ник",()->{String n=in.getText().toString();
+        primary("Занять ник",()->{String n=in.getText().toString().trim().toLowerCase(Locale.ROOT).replaceAll("[\\s\\u00a0\\u200b-\\u200d\\ufeff]","");
             if(!n.matches("[a-z][a-z0-9_]{2,23}")){nick("Такой ник не подходит: только a-z, 0-9 и _, от 3 до 24 символов, первая — буква.");return;}
             registering(n);});
     }
@@ -129,7 +129,9 @@ public final class OnboardingActivity extends Activity {
                     if(st.optBoolean("faucet_attempted"))throw new IOException("insufficient_devnet_sol");
                     say(t,progress,"Получаем бесплатные тестовые SOL…");
                     st.put("faucet_attempted",true);s.save(st);
-                    rpc.call("requestAirdrop",new JSONArray().put(owner).put(100_000_000L));
+                    // The public Devnet faucet is often rate-limited or down (returns "Internal error").
+                    try{rpc.call("requestAirdrop",new JSONArray().put(owner).put(100_000_000L));}
+                    catch(IOException faucet){throw new IOException("insufficient_devnet_sol");}
                     for(int i=0;i<30&&bal<5_000_000L;i++){Thread.sleep(3000);bal=balance(rpc,owner);}
                     if(bal<5_000_000L)throw new IOException("insufficient_devnet_sol");
                 }
@@ -144,17 +146,30 @@ public final class OnboardingActivity extends Activity {
         },(t,code)->{
             if("name_conflict_or_partial_record".equals(code)||"identity_already_registered".equals(code)){nick("Ник @"+n+" уже занят. Выберите другой.");return;}
             if("insufficient_devnet_sol".equals(code)){noFunds(n);return;}
-            failure(DevnetWork.run(()->{throw new IOException(code);}),()->registering(n));
+            String m=DevnetWork.run(()->{throw new IOException(code);});
+            failure(m.contains("(IOException)")?"Регистрация не завершена ("+code+"). Нажмите «Повторить»: уже отправленная транзакция не дублируется.":m,()->registering(n));
         });
     }
 
     private void noFunds(String n){
+        busy("Проверяем баланс…");
+        run((s,t)->{
+            String a=SolanaBridge.run(new JSONObject().put("op","identity").put("entropy",RegistrationFlow.required(s).getString("entropy"))).getString("owner");
+            String bal;try{bal=java.math.BigDecimal.valueOf(balance(new DevnetRpc(),a),9).stripTrailingZeros().toPlainString();}catch(Exception e){bal="неизвестен";}
+            String shown=bal;post(t,()->noFundsScreen(n,a,shown));return null;
+        });
+    }
+    private void noFundsScreen(String n,String address,String bal){
         clear();secure(false);
         title("Нужны тестовые SOL");
-        body("Кран Solana Devnet сейчас не выдал монеты. Скопируйте адрес, пополните его на faucet.solana.com (бесплатно, тестовые деньги) и нажмите «Продолжить».");
-        gap(24);
-        secondary("Скопировать адрес",()->run((s,t)->{String a=SolanaBridge.run(new JSONObject().put("op","identity").put("entropy",RegistrationFlow.required(s).getString("entropy"))).getString("owner");
-            post(t,()->{((ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Devnet address",a));Toast.makeText(this,"Адрес скопирован",Toast.LENGTH_SHORT).show();noFunds(n);});return null;}));
+        body("Для записи ника нужно ~0,005 тестовых SOL (это не настоящие деньги). Автоматический кран Solana Devnet сейчас не выдаёт монеты.\n\n1. Нажмите «Скопировать адрес».\n2. Нажмите «Открыть кран», вставьте адрес, выберите 0.5 SOL.\n3. Вернитесь и нажмите «Продолжить».");
+        gap(16);
+        TextView addr=label(address,15,text,false);addr.setTypeface(Typeface.MONOSPACE);addr.setTextIsSelectable(true);addr.setPadding(dp(14),dp(12),dp(14),dp(12));addr.setBackground(round(surface,12));page.addView(addr,full());
+        gap(6);page.addView(label("Баланс: "+bal+" SOL",14,muted,false));
+        gap(20);
+        secondary("Скопировать адрес",()->{((ClipboardManager)getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(ClipData.newPlainText("Devnet address",address));Toast.makeText(this,"Адрес скопирован",Toast.LENGTH_SHORT).show();});
+        gap(12);
+        secondary("Открыть кран",()->{try{startActivity(new Intent(Intent.ACTION_VIEW,android.net.Uri.parse("https://faucet.solana.com/")));}catch(RuntimeException none){Toast.makeText(this,"Откройте faucet.solana.com в браузере",Toast.LENGTH_LONG).show();}});
         gap(12);
         primary("Продолжить",()->registering(n));
     }
