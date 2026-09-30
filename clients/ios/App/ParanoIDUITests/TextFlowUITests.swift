@@ -161,6 +161,13 @@ final class TextFlowUITests: XCTestCase {
         // accessibility tree, which is what a screen reader gets.
         XCTAssertNotNil(sent.label.range(of: "[0-9]{2}:[0-9]{2}", options: .regularExpression),
                         "the first message carries no time: «\(sent.label)»")
+        // The bubble is as wide as its text: a short message is not a
+        // full-width plate. The row leaves the bubble the screen minus its
+        // margins (92 pt); the element measured here is the bubble itself.
+        let room = app.frame.width - 92
+        XCTAssertLessThan(sent.frame.width, room - 40,
+                          "the bubble stretches to the row: \(sent.frame.width) of \(room)")
+        XCTAssertGreaterThan(sent.frame.width, 60, "the bubble has no width to speak of")
         let today = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label == %@", "Сегодня")).firstMatch
         XCTAssertTrue(today.waitForExistence(timeout: Timeout.screen),

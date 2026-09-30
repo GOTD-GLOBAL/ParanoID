@@ -8,6 +8,20 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS chat composer and bubbles, proposed — 2026-09-29
+
+- A bubble is as wide as its text, up to the row's room and a 440-point cap,
+  with the text at the leading edge and the time and mark at the trailing
+  edge as in Android's column; «ок» is no longer a full-width plate.
+- The byte counter stands only from 1800 bytes, in a warning colour, and red
+  over 2048; a short message is not told how short it is.
+- Dragging the history down takes the keyboard with it.
+- The text is sent trimmed at its ends (a trailing return or a leading space
+  no longer counts against the limit or stands as an empty line in the
+  peer's bubble); a failed send puts the draft back as typed. Android sends
+  the text as typed; the same request stands for it. Core, protocol and the
+  2048-byte wire limit are unchanged.
+
 ### iOS contacts, proposed — 2026-09-29
 
 - «Контакты» stands in Russian alphabetical order of the names this phone

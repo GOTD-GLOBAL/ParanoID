@@ -309,6 +309,22 @@ task and hands the finished answer back through `perform`.
   row (the time today, «Вчера», then `12.09`). The core stores it and never
   sends it; an entry written before this build has none and is shown without one
   ([RFC-0023](../../rfcs/0023-message-time.md), proposed).
+- **The composer.** What is sent is the draft trimmed at its ends — Java's
+  `trim()`, every character at or below U+0020 — with everything inside it,
+  line breaks included, as typed (`MessagePresentation.trimmed`); a failed
+  send puts the draft back as it was typed, not the trimmed text. The limit
+  of 2048 bytes ([first-contact v1](../../protocol/first-contact-v1.md)) is
+  measured on what is sent. The byte counter «N из 2048 байт» stands only
+  from 1800 bytes, in a warning colour, and red over the limit together with
+  the «Сообщение слишком длинное» hint; a short message is not told how short
+  it is. A bubble is as wide as its text, up to the row's room (a 40-point
+  margin on the far side, as Android) and a 440-point cap on the bubble
+  (Android caps the text at 440 dp, which the row's room reaches first on a
+  phone; its 160 dp floor is not reproduced), with the text at the leading
+  edge and the time and mark at the trailing edge, as in Android's column;
+  dragging the history down takes the keyboard with it.
+  Android sends the text as typed and shows a hint only over the limit; the
+  same request stands for it for the trimming and the counter.
 - **The list.** «Чаты» is ordered by the time stamped on each conversation's
   last message, newest first — the same local instant the bubble shows, and a
   fourth client-only reading of it (RFC-0023 lists the bubble, the day pill

@@ -243,7 +243,7 @@ enum Strings {
         static let receiptHint = "Две отметки — сообщение доставлено на телефон собеседника. Прочитал ли он его, ParanoID не показывает."
         static let receiptHintAction = "Понятно"
 
-        /// `MainActivity.java:350`.
+        /// `MainActivity.java:382`.
         static func tooLong(bytes: Int) -> String {
             "Сообщение слишком длинное: \(bytes) из 2048 байт."
         }
