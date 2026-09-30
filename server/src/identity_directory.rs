@@ -85,16 +85,17 @@ fn check_card(card: &Card, active: &Credential, realm: &str) -> Result<(), Failu
     Ok(())
 }
 
-/// Consume one request from both fixed windows, or refuse without consuming.
-async fn take_budget(conn: &mut PgConnection, membership: &str) -> Result<(), Failure> {
+/// Consume one request from the member window and, for searches, the server window;
+/// refuse without consuming. Visibility and card publication never touch the server
+/// window, so other members cannot stop anyone from hiding or being listed (review P2-1).
+async fn take_budget(
+    conn: &mut PgConnection,
+    membership: &str,
+    search: bool,
+) -> Result<(), Failure> {
     let busy = || Failure(StatusCode::TOO_MANY_REQUESTS, "directory_rate");
-    let server: Option<i64> = sqlx::query_scalar("UPDATE id_meta SET directory_count=CASE WHEN t.n-directory_window>=$1 THEN 1 ELSE directory_count+1 END, directory_window=CASE WHEN t.n-directory_window>=$1 THEN t.n ELSE directory_window END FROM (SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS n) t WHERE id=1 AND t.n>=directory_window AND (directory_count<$2 OR t.n-directory_window>=$1) RETURNING directory_count")
-        .bind(WINDOW)
-        .bind(SERVER_BUDGET)
-        .fetch_optional(&mut *conn)
-        .await?;
-    if server.is_none() {
-        return Err(busy());
+    if search {
+        take_server_budget(conn).await?;
     }
     let member: Option<i64> = sqlx::query_scalar("UPDATE id_memberships SET directory_count=CASE WHEN t.n-directory_window>=$2 THEN 1 ELSE directory_count+1 END, directory_window=CASE WHEN t.n-directory_window>=$2 THEN t.n ELSE directory_window END FROM (SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS n) t WHERE membership=$1 AND t.n>=directory_window AND (directory_count<$3 OR t.n-directory_window>=$2) RETURNING directory_count")
         .bind(membership)
@@ -103,6 +104,19 @@ async fn take_budget(conn: &mut PgConnection, membership: &str) -> Result<(), Fa
         .fetch_optional(&mut *conn)
         .await?;
     if member.is_none() {
+        return Err(busy());
+    }
+    Ok(())
+}
+
+async fn take_server_budget(conn: &mut PgConnection) -> Result<(), Failure> {
+    let busy = || Failure(StatusCode::TOO_MANY_REQUESTS, "directory_rate");
+    let server: Option<i64> = sqlx::query_scalar("UPDATE id_meta SET directory_count=CASE WHEN t.n-directory_window>=$1 THEN 1 ELSE directory_count+1 END, directory_window=CASE WHEN t.n-directory_window>=$1 THEN t.n ELSE directory_window END FROM (SELECT floor(extract(epoch FROM clock_timestamp()))::bigint AS n) t WHERE id=1 AND t.n>=directory_window AND (directory_count<$2 OR t.n-directory_window>=$1) RETURNING directory_count")
+        .bind(WINDOW)
+        .bind(SERVER_BUDGET)
+        .fetch_optional(&mut *conn)
+        .await?;
+    if server.is_none() {
         return Err(busy());
     }
     Ok(())
@@ -173,7 +187,7 @@ pub(crate) async fn handle(
         }
         _ => return Err(denied()),
     };
-    take_budget(conn, &membership).await?;
+    take_budget(conn, &membership, matches!(request, Request::Search(_))).await?;
     let result = match request {
         Request::Search(s) => {
             let rows: Vec<Entry> = sqlx::query_as("SELECT m.name,m.owner,m.identity,m.card,m.proof FROM id_memberships m JOIN ss_accounts a ON a.account=m.account JOIN id_bindings b ON b.account=m.account AND b.membership=m.membership WHERE m.state='active' AND a.mode='active' AND NOT b.retired AND m.visible AND m.card IS NOT NULL AND m.membership<>$1 AND starts_with(m.name,$2) AND ($3::text IS NULL OR m.name COLLATE \"C\" > $3::text COLLATE \"C\") ORDER BY m.name COLLATE \"C\" LIMIT $4")

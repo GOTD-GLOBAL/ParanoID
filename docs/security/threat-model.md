@@ -21,7 +21,10 @@ contact; share links carry server id + nickname.
   A link reveals server id (first 16 hex of the pinned SPKI hash) and nickname to its
   recipients, to any web server/CDN log for `paranoid.global` when opened without the
   app, and to whatever channel carries it. Nicknames and owner keys were already public
-  on Solana; server membership was not.
+  on Solana; server membership was not. Each entry also returns the stored login
+  challenge, which reveals roughly when the member last enrolled or replaced a phone
+  (`expires`), how many replacements happened (`expected_generation`), the device UUID,
+  the operation UUID and the server `epoch` (review P2-3, accepted as disclosed).
 - **Key substitution defense (owner proof).** The server returns, per entry, the exact
   enroll/replace challenge it verified at login plus the owner's Ed25519 signature. The
   phone (Rust core `verify_directory_entry_v1`) requires: this phone's realm and pin,
@@ -36,13 +39,19 @@ contact; share links carry server id + nickname.
   check rejects it).
 - **Residuals.** Challenge expiry is not checked (historical proof): an old, never
   retired proof stays valid until the owner replaces the phone, which retires the old
-  credential and clears its card. A server can omit, hide or delay members, show a stale
-  pre-replacement entry to a phone whose Solana view is consistent with it (the old
-  credential is then retired server-side and cannot receive), or refuse to list anyone.
+  credential and clears its card. An honest server then stops delivering to the old
+  credential. A **compromised** server can keep serving a retired generation's
+  still-valid proof and card and route new first messages to it; the proof carries no
+  "current generation" the phone could check. If the old phone was stolen (the usual
+  reason to replace it) an attacker holding it could read those first messages. After a
+  contact replaces their phone, compare fingerprints in person (review P2-2). A server
+  can also omit, hide or delay members, or refuse to list anyone.
   RPC answers are trusted as in RFC-0026 (finalized commitment, pinned genesis/program).
   The added contact is `network_unverified`; in-person fingerprint comparison remains
   the only identity verification.
-- **Abuse limits.** 60 directory requests per member and 600 per server per fixed hour,
+- **Abuse limits.** 60 directory requests per member per fixed hour; searches also count
+  against 600 per server per hour. Hiding and card publication use only the member window,
+  so other members cannot block anyone from hiding or being listed (review P2-1). Limits are
   persisted under the `ss_meta` lock; directory paths are excluded from the 8/s login
   ingress bucket so enumeration cannot starve login, and remain in the 20/s total.
 - **Links.** Opening a link never joins a server; an unknown server id shows «Этот

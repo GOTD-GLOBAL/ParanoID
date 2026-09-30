@@ -704,6 +704,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         if(!hasIdentity||!active){if(latest.has("active")){pendingLink=null;Toast.makeText(this,"Сначала войдите через ник Solana, затем откройте ссылку снова.",Toast.LENGTH_LONG).show();}return;}
         if(!latest.has("server_id")&&!latest.optBoolean("connected"))return; // wait for server discovery
         String server=pendingLink.substring(0,16),nick=pendingLink.substring(17);pendingLink=null;
+        if(!latest.has("server_id")){
+            new AlertDialog.Builder(this).setTitle("Поиск недоступен").setMessage("Этот сервер не поддерживает поиск участников, поэтому ссылку на @"+nick+" открыть нельзя. Добавьте контакт через QR.").setPositiveButton("Закрыть",null).show();return;
+        }
         if(!server.equals(latest.optString("server_id"))){
             new AlertDialog.Builder(this).setTitle("Этот сервер не подключён").setMessage("Ссылка на @"+nick+" ведёт на сервер "+server+", к которому этот телефон не подключён. ParanoID не подключается к серверам по ссылкам.").setPositiveButton("Закрыть",null).show();return;
         }

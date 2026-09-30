@@ -171,8 +171,13 @@ enum Operation {
     VerifyDirectoryEntryV1 {
         entry: Box<DirectoryEntry>,
     },
-    /// RFC-0028: add a verified directory entry as a `network_unverified` contact. The
-    /// caller must have separately checked the finalized Solana registry for name->owner.
+    /// RFC-0028: add a verified directory entry as a `network_unverified` contact.
+    ///
+    /// SECURITY CONTRACT (review P2-4): this op re-verifies the owner proof but CANNOT see
+    /// the Solana registry. Every caller (Android today, iOS/desktop later) MUST first
+    /// confirm on the finalized registry that `entry.name` belongs to `entry.owner` and
+    /// `entry.identity` is its PDA. Without that step a server that registered its own
+    /// owner key could impersonate the nickname. Android: `RegistrationFlow.verifyMember`.
     PairDirectoryEntryV1 {
         entry: Box<DirectoryEntry>,
     },

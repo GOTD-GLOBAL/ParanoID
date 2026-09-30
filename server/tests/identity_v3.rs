@@ -1504,6 +1504,28 @@ async fn directory_rate_limits_member_and_server_windows() {
             .await
             .unwrap();
     assert_eq!(before, after, "refused request consumes nothing");
+    // Review P2-1: an exhausted server window never blocks hiding or re-publishing a card.
+    let (status, v) = session_json(
+        &s,
+        &bob.device,
+        &bob.session,
+        "/v3/directory/visibility",
+        &json!({"visible": false}),
+    )
+    .await;
+    assert_eq!(
+        status, 200,
+        "hiding must not depend on the server window: {v}"
+    );
+    let (status, v) = session_json(
+        &s,
+        &bob.device,
+        &bob.session,
+        "/v3/directory/visibility",
+        &json!({"visible": true}),
+    )
+    .await;
+    assert_eq!(status, 200, "{v}");
     // Directory requests never use the tight login ingress bucket (8/s): a concurrent burst
     // of 12 signed searches within one second all succeed (global budget is 20/s).
     sqlx::query("UPDATE id_meta SET directory_count=0")
