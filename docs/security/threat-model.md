@@ -7,6 +7,48 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Threat model
 
+## Server member directory and contact links (RFC-0028) — 2026-09-30
+
+Candidate on branch `feat/server-directory-links`, not deployed.
+[RFC-0028](../rfcs/0028-server-directory-and-links.md) lets authenticated active members
+of one identity-v3 server list/search that server's visible members and add one as a
+contact; share links carry server id + nickname.
+
+- **Metadata exposed.** Every active member learns the nickname, Solana owner key,
+  identity PDA, current transport credential and contact card of every visible member of
+  the same server (default visible; opt-out in settings). The server learns who searched
+  for what, when and how often. A hidden member is still reachable by QR/contact exchange.
+  A link reveals server id (first 16 hex of the pinned SPKI hash) and nickname to its
+  recipients, to any web server/CDN log for `paranoid.global` when opened without the
+  app, and to whatever channel carries it. Nicknames and owner keys were already public
+  on Solana; server membership was not.
+- **Key substitution defense (owner proof).** The server returns, per entry, the exact
+  enroll/replace challenge it verified at login plus the owner's Ed25519 signature. The
+  phone (Rust core `verify_directory_entry_v1`) requires: this phone's realm and pin,
+  purpose enroll|replace, RFC-0026 genesis/program, owner/name/identity equal to the
+  entry, identity = PDA(owner), credential fingerprint/account/device equal to the
+  returned card's credential (which commits to the Olm identity and one-time key via
+  `olm_digest`), a valid owner signature, then the ordinary contact-card checks. The
+  Android flow then requires the finalized Solana registry to bind name -> owner. A
+  server therefore cannot substitute keys without the nickname owner's 12 words; a
+  server that registers its OWN owner key for a name is stopped only by the Solana
+  check (tested: the core accepts a self-consistent proof by another owner; the registry
+  check rejects it).
+- **Residuals.** Challenge expiry is not checked (historical proof): an old, never
+  retired proof stays valid until the owner replaces the phone, which retires the old
+  credential and clears its card. A server can omit, hide or delay members, show a stale
+  pre-replacement entry to a phone whose Solana view is consistent with it (the old
+  credential is then retired server-side and cannot receive), or refuse to list anyone.
+  RPC answers are trusted as in RFC-0026 (finalized commitment, pinned genesis/program).
+  The added contact is `network_unverified`; in-person fingerprint comparison remains
+  the only identity verification.
+- **Abuse limits.** 60 directory requests per member and 600 per server per fixed hour,
+  persisted under the `ss_meta` lock; directory paths are excluded from the 8/s login
+  ingress bucket so enumeration cannot starve login, and remain in the 20/s total.
+- **Links.** Opening a link never joins a server; an unknown server id shows «Этот
+  сервер не подключён». `assetlinks.json` binds `paranoid.global` to package
+  `global.paranoid.messenger` and the closed-alpha disposable test signing certificate.
+
 ## Proposed Solana server login boundary — 2026-09-24
 
 [RFC-0027](../rfcs/0027-solana-server-authentication.md) and its

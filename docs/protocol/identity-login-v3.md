@@ -314,7 +314,33 @@ router; do not expose legacy routers and hope handler checks are sufficient.
 | v2 voice TURN endpoint | Existing auth plus locked active generation at issuance |
 | Android update metadata/APK | Existing pinned update contract; no account privileges |
 | health/readiness | Generic health only, no identities or membership |
-| admin/lookup/invite/federation | No new public routes; 404 |
+| v3 directory search/visibility/card (RFC-0028) | Signed v2 session only; locked current account of an ACTIVE membership with a non-retired binding; 60/member/h and 600/server/h |
+| admin/identity lookup/invite/federation | No new public routes; 404 (`/v3/identity/lookup` stays 404) |
+
+### RFC-0028 member directory routes (2026-09-30)
+
+All three are `POST` with a JSON body, authorized ONLY by `ParanoidSessionV2` of the
+caller's current transport credential (same signed-session allowlist, `ss_meta FOR
+UPDATE` and exact binding check as `/v2/messages`), plus a locked check that the
+account is the current account of an `active` membership whose binding is not
+retired. No query string. Unauthenticated, forged, retired or banned callers get 401.
+The v2 (self-service) runtime does not mount them (404).
+
+| Route | Body | Result |
+| --- | --- | --- |
+| `/v3/directory/search` | `{"query":"<'' or prefix of [a-z][a-z0-9_]{0,23}>","after":"<canonical name>"\|null}` | `{"members":[{name,owner,identity,contact,proof}],"next":name\|null,"me":{name,visible,card}}`; ≤50 per page ordered by name (bytewise); only active, visible members with a published card, excluding the caller |
+| `/v3/directory/visibility` | `{"visible":true\|false}` | `{"name","visible"}` |
+| `/v3/directory/card` | the caller's own `paranoid-contact-v2` object | `{"published":true,"name","card":<sha256 hex of the stored JSON>}`; 409 `card_mismatch` unless `credential` equals the caller's active credential exactly and `credential.olm = olm_digest(curve, one_time_key)`; 400 on a bad signature |
+
+`proof` is `{"challenge": <the IdentityChallengeV3 verified at enroll/replace>,
+"owner_signature": "<base64 no pad>"}`, stored in `id_memberships.proof` in the same
+transaction that activates that generation. A replacement overwrites `proof` and
+clears `card`. Phones verify every entry before use (RFC-0028 "Phone verification");
+the server's answer alone is never trusted. Budgets are fixed 3600 s windows in
+`id_memberships.directory_*` and `id_meta.directory_*` under the `ss_meta` lock; a
+refused request charges nothing, an accepted but rejected one (for example a
+mismatched card) still counts. Directory paths are excluded from the 8/s auth
+ingress bucket so directory use cannot starve login; they remain in the 20/s total.
 
 Before implementing, enumerate the actual route strings from the router and test
 this allowlist against it. TURN endpoint name comes from the existing voice contract,
@@ -338,7 +364,10 @@ missing/banned recipients yield existing generic recipient error. This intention
 reveals retirement to authenticated senders who know an opaque account ID.
 Existing v2 challenge/401 behavior can additionally reveal active/retired status
 to anyone holding the public contact credential; this is a disclosed residual, not a
-public name directory. No name->account directory or automatic contact replacement.
+public name directory. There is no PUBLIC name->account directory and no automatic
+contact replacement. RFC-0028 (2026-09-30, owner decision) adds a directory visible
+ONLY to authenticated active members of the same server, with owner-signed proofs the
+phone verifies; see "RFC-0028 member directory routes" above.
 
 Push deletion stops new lookups; an FCM request already dispatched before revocation
 may still arrive. A queued wake must revalidate recipient binding immediately before

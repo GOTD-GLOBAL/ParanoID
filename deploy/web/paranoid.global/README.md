@@ -3,10 +3,10 @@
 Templates for the contact-link domain. Nothing here is served yet; publishing requires
 an explicit, separately authorized deployment.
 
-| Path | Purpose |
-|------|---------|
-| `.well-known/assetlinks.json` | Android App Links verification for `https://paranoid.global/c/...` |
-| `c/index.html` | Landing page shown when the app is not installed; serve it for every `/c/*` path |
+- `.well-known/assetlinks.json`: Android App Links verification for
+  `https://paranoid.global/c/...`.
+- `c/index.html`: landing page shown when the app is not installed; serve it for every
+  `/c/*` path.
 
 ## Signing certificate fingerprint
 
@@ -15,7 +15,7 @@ an explicit, separately authorized deployment.
 `apksigner verify --print-certs` from the published v35 APK
 (`paranoid-0.0.35-solana-id-arm64-a81c7d30ec05.apk`):
 
-```
+```text
 Signer #1 certificate DN: CN=ParanoID Text Disposable Test
 Signer #1 certificate SHA-256 digest: 82b29cc029b186cb7ac404a02408d0c99e214ab18062200d1f27365ee89c5926
 ```

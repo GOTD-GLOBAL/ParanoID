@@ -106,6 +106,43 @@ package and signing key; without the app the page offers the APK download.
 v2 servers and older apps are unaffected (new routes return 404 on them). Rollback:
 redeploy the previous binary; the extra columns are ignored.
 
+## Implementation notes (2026-09-30, branch `feat/server-directory-links`)
+
+Status stays `draft`: implemented as a local candidate, not reviewed, merged or deployed.
+
+- **Routes.** Also `POST /v3/directory/card`: after login the phone publishes its own
+  `paranoid-contact-v2` object (credential + Olm curve/one-time key + fallback key,
+  signed by the credential auth key). The server stores it only if `credential` equals
+  the caller's active credential and `olm = olm_digest(curve, one_time_key)`. A contact
+  needs this bundle, not only the credential. Entries therefore return
+  `{name, owner, identity, contact, proof}`; only members that published a card are
+  listed, and the caller is not listed. Replacement clears the card; the new phone
+  republishes. Wire details: [identity-login-v3](../protocol/identity-login-v3.md#rfc-0028-member-directory-routes-2026-09-30).
+- **Proof.** `id_memberships.proof` is `NOT NULL` canonical JSON
+  `{"challenge": IdentityChallengeV3, "owner_signature"}` written in the commit
+  transaction for enroll and replace (`key-protocol` `DirectoryProof::verify`).
+- **Rate limits.** Persisted fixed windows (`id_memberships.directory_*`,
+  `id_meta.directory_*`) updated under the `ss_meta` lock, not in memory, so they
+  survive restarts. Directory paths are excluded from the 8/s auth ingress bucket.
+- **Phone.** Core ops `verify_directory_entry_v1` (read-only) and
+  `pair_directory_entry_v1` (re-verifies, pins as `network_unverified`); session
+  selectors `directory_search`, `directory_visibility`, `directory_card`. Android runs
+  the registry check with `RegistrationFlow.verifyMember` (same finalized
+  `getMultipleAccounts` + byte-exact `verify` as own-name readback, and requires the
+  returned identity PDA to equal the derived one). Directory UI appears only when the
+  server's health reports `paranoid-identity-v3`.
+- **Links.** `server-id` = first 16 lowercase hex characters of the server's pinned
+  TLS SPKI SHA-256 (`KeyClient` pin). The app compares it with its own server's pin
+  only; it keeps no list of other servers, so any other id shows «Этот сервер не
+  подключён». `assetlinks.json` uses the closed-alpha disposable test signing
+  certificate fingerprint; see `deploy/web/paranoid.global/README.md`.
+- **Tests run.** Server (real PostgreSQL): 5 directory tests. Core: 5 directory tests,
+  plus a `DirectoryProof` test in `key-protocol`. JVM/JNI end-to-end
+  (`clients/android/test_identity_login.py`): two phones publish cards, phone one lists
+  and finds `bob`, rejects a substituted one-time key and a wrong registry binding, adds,
+  sends; phone two receives. Registry in that test is the server's fixture file, not
+  live Devnet.
+
 ## Tests required before phone release
 
 Server: unauthenticated/retired/banned callers refused; hidden members absent;
