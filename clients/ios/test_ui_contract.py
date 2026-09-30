@@ -839,6 +839,43 @@ class UiContract(unittest.TestCase):
         self.assertEqual(app.count('.fullScreenCover('), 1,
                          f'{ENTRY}: a second full-screen cover')
 
+    def test_the_chat_list_is_ordered_by_recency_and_its_rows_are_buttons(self):
+        model = self.sources[MODEL]
+        dialogs = self.sources['App/ParanoID/Screens/Dialogs.swift']
+        contacts = self.sources['App/ParanoID/Screens/Contacts.swift']
+        button = self.sources['App/ParanoID/Screens/RowButton.swift']
+        kit = self.sources['ParanoidKit/Sources/ParanoidKit/Presentation/DialogOrder.swift']
+        # «Чаты» is sorted by the model, «Контакты» keeps the core's order.
+        self.present('ForEach(model.orderedDialogs)', dialogs, 'Screens/Dialogs.swift')
+        self.present('ForEach(model.view.dialogs)', contacts, 'Screens/Contacts.swift')
+        self.present('DialogOrder.byRecency(view.dialogs)', model, MODEL)
+        # The key is the last message's own time and nothing invented: an
+        # untimed last message sorts with the empty conversations.
+        self.present('dialog.last?.localMilliseconds ?? 0', kit, 'DialogOrder.swift')
+        self.present('.filter { key($0.element) == 0 }', kit, 'DialogOrder.swift')
+        for forbidden in ('Date()', 'CallLog', 'callLog'):
+            self.absent(forbidden, kit, 'DialogOrder.swift')
+        # A missed call in the preview is red; the preview rule itself is
+        # unchanged and still what the row's time is decided from.
+        self.present('isAlert: model.isMissedCallPreview(for: dialog)', dialogs, 'Screens/Dialogs.swift')
+        self.present('.foregroundStyle(isAlert ? Color.red : Color.secondary)', dialogs,
+                     'Screens/Dialogs.swift')
+        self.present('previewedCall(for: dialog)?.kind.isMissed == true', model, MODEL)
+        self.present('isCallPreview: preview(for: dialog) != nil', model, MODEL)
+        # Both lists are buttons with a pressed state, each row one element
+        # under its identifier.
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.present('.rowButton("dialog-\\(dialog.account)") { model.openChat(dialog.account) }',
+                         text, name)
+            self.absent('.onTapGesture', text, name)
+        self.present('Button(action: action) { content }', button, 'Screens/RowButton.swift')
+        self.present('configuration.isPressed ? Color(.systemGray5) : Color.clear', button,
+                     'Screens/RowButton.swift')
+        self.present('.accessibilityIdentifier(identifier)', button, 'Screens/RowButton.swift')
+        for name, text in (('Screens/Dialogs.swift', dialogs), ('Screens/Contacts.swift', contacts)):
+            self.assertEqual(text.count('.accessibilityIdentifier("dialog-'), 0,
+                             f'{name}: a second element under dialog-<account>')
+
     def test_the_call_screen_closes_itself_and_the_call_stays_reachable(self):
         model = self.sources[MODEL]
         screen = self.sources[CALL]

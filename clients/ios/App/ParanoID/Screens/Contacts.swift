@@ -46,7 +46,7 @@ struct ContactsScreen: View {
                                         subtitle: DialogPolicy.trustLabel(dialog),
                                         trailing: DialogsScreen.trailing(dialog))
                         .contentShape(Rectangle())
-                        .onTapGesture { model.openChat(dialog.account) }
+                        .rowButton("dialog-\(dialog.account)") { model.openChat(dialog.account) }
                     }
                 }
             }

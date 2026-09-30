@@ -1,11 +1,25 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-28
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-09-29
+last_reviewed_scope: iOS chat list and call-screen candidates; older dated records retained
 ---
 
 # Current project state
+
+## iOS chat list by recency — 2026-09-29
+
+«Чаты» on iOS is ordered by the time stamped on each conversation's last
+message, newest first, using the local time the core already stores for each
+message (RFC-0023, a fourth client-only reading the RFC did not list);
+conversations without a timed message follow in the core's order, and a call
+moves no chat because the call log keeps no time (RFC-0023 «Privacy»). A
+missed call in a row's preview is red, and the rows of both lists are buttons
+that show a grey fill while pressed. Core, protocol and server are unchanged; Android keeps the core's
+order and should receive the same request. Evidence is contributor Mac
+execution, recorded in the
+[receipt](evidence/ios-client-20260929/chat-list-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
 
 ## iOS call screen after the call — 2026-09-28
 

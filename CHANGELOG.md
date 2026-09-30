@@ -8,6 +8,18 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS chat list by recency, proposed — 2026-09-29
+
+- «Чаты» is ordered by the time stamped on each conversation's last message,
+  newest first — the local time the core already stores for each message
+  (RFC-0023); conversations without a timed message follow in the core's
+  order, and nothing invents a time. A call moves no chat, because the call
+  log keeps no time.
+- A missed call in a row's preview is drawn in red.
+- Rows of «Чаты» and «Контакты» are buttons that show a grey fill while
+  pressed, as Android's rows ripple. Android keeps the core's order and a muted line;
+  the same request stands for it. Core, protocol and server are unchanged.
+
 ### iOS call screen after the call, proposed — 2026-09-28
 
 - The screen of an ended call closes itself: two seconds for an outcome that
