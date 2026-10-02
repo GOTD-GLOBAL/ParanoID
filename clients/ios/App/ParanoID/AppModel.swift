@@ -32,7 +32,8 @@ import WebRTC
 ///   send in flight before it awaits anything
 ///   (`MessagePresentation.Drafts.begin`), so a second tap in the same run
 ///   loop turn finds the composer empty and the guard closed. One tap, one
-///   envelope. A failed send puts the text back.
+///   envelope. A failed send puts the text back and names the refusal above
+///   the composer (`SendRefusal`).
 /// - **«Создать ID».** `isCreating` is set on the tap and cleared only when
 ///   the owner has answered, so the button is disabled for the whole of
 ///   `create_identity` → `upgrade_v2` — two durable commits — and a second tap
@@ -191,6 +192,20 @@ final class AppModel {
     var contactAlert: ContactFlowError?
     /// The composer's text. `Drafts` keeps one of these per conversation.
     var draft = ""
+    /// The sends the core refused, one per conversation, each named above
+    /// the composer of its conversation for as long as it is true: an edit of
+    /// the text it belongs to, a new send, or a re-read that finds the reason
+    /// gone (``staleRefusal(_:pending:active:blocked:)``) forgets it. Leaving
+    /// the chat does not, so a send that came back after the user had left
+    /// is still explained when they return. Memory only: no file, no
+    /// defaults, no snapshot.
+    private var refusals: [String: RefusalNote] = [:]
+
+    /// One refused send: why, and the composer text it belongs to.
+    private struct RefusalNote: Equatable {
+        let draft: String
+        let reason: SendRefusal
+    }
 
     // MARK: - what it owns
 
@@ -535,20 +550,64 @@ final class AppModel {
                               sending: drafts.isSending) && MessagePresentation.canSend(draft)
     }
 
-    /// The line above the composer (`MainActivity.java:382`). The bytes are
-    /// those of what would be sent — the draft trimmed at its ends.
-    var composerHint: String {
+    /// The line above the composer (`MainActivity.java:350`), and last of all
+    /// the refusal of the send before, which only this client names there.
+    var composerHint: String { composerLine.text }
+
+    /// The hint and whether it is the refusal, from one chain of branches, so
+    /// that ``isRefusalShown`` is true exactly when the words are the
+    /// refusal's.
+    private var composerLine: (text: String, refused: Bool) {
+        // Measure the trimmed send, not the raw draft restored after refusal.
         let bytes = MessagePresentation.bytesToSend(draft)
-        if chat?.isBlocked == true { return Strings.Chat.blockedHint }
-        if isBroken { return Strings.Chat.brokenHint }
-        if bytes > MessagePresentation.byteLimit { return Strings.Chat.tooLong(bytes: bytes) }
-        return drafts.isSending ? Strings.Chat.savingHint : ""
+        if chat?.isBlocked == true { return (Strings.Chat.blockedHint, false) }
+        if isBroken { return (Strings.Chat.brokenHint, false) }
+        if bytes > MessagePresentation.byteLimit { return (Strings.Chat.tooLong(bytes: bytes), false) }
+        if drafts.isSending { return (Strings.Chat.savingHint, false) }
+        if let chatAccount, let note = refusals[chatAccount] {
+            return (Strings.Chat.refusal(note.reason), true)
+        }
+        return ("", false)
     }
 
-    /// Whether the composer's hint is the over-limit one, which is the only
-    /// one drawn in the danger colour (`MainActivity.java:383`).
+    /// Whether the composer's hint is the over-limit one
+    /// (`MainActivity.java:351`).
     var isOverLimit: Bool {
         MessagePresentation.bytesToSend(draft) > MessagePresentation.byteLimit
+    }
+
+    /// Whether the composer's hint is a refused send. It is drawn in the
+    /// danger colour, like the over-limit one.
+    var isRefusalShown: Bool { composerLine.refused }
+
+    /// Whether a refusal has stopped being true, from what a re-read of the
+    /// state can see.
+    ///
+    /// A full outbox drains as the server accepts envelopes (`accepted_v2`,
+    /// `clean_service.rs:907-913`), an ID becomes active when its
+    /// registration finishes, and a contact is unblocked; a note that named
+    /// one of those would otherwise stand over the composer after the words
+    /// had stopped holding. The others are not re-read: a full history is
+    /// permanent (`clean_service.rs:410-411`), and the state bound, the empty
+    /// or oversized text and the generic sentence belong to the text they
+    /// refused, which an edit forgets.
+    nonisolated static func staleRefusal(_ reason: SendRefusal, pending: Int, active: Bool,
+                                         blocked: Bool) -> Bool {
+        switch reason {
+        case .outboxFull: return pending < SendRefusal.outboxBound
+        case .notRegistered: return active
+        case .blocked: return !blocked
+        case .historyFull, .stateFull, .invalidText, .tooLarge, .unfinished: return false
+        }
+    }
+
+    /// Drops every note whose reason the state just read no longer supports.
+    private func forgetStaleRefusals(pendingTo: [String: Int]) {
+        for (account, note) in refusals where AppModel.staleRefusal(
+            note.reason, pending: pendingTo[account, default: 0], active: view.isActive,
+            blocked: view.dialog(account)?.isBlocked == true) {
+            refusals[account] = nil
+        }
     }
 
     // MARK: - actions
@@ -580,9 +639,14 @@ final class AppModel {
     /// The composer changed. Android does the same on every keystroke
     /// (`MainActivity.java:235`), which is what keeps a draft per conversation
     /// and what moves the revision a failed send is compared against.
+    ///
+    /// A refusal is forgotten only when the text really changed. The field
+    /// reports the text a failed send put back as a change too, and that
+    /// report must not erase the sentence that explains why it came back.
     func draftChanged() {
         guard let chatAccount else { return }
         drafts.update(account: chatAccount, text: draft)
+        if let note = refusals[chatAccount], note.draft != draft { refusals[chatAccount] = nil }
     }
 
     /// Opens a conversation and restores its draft
@@ -610,6 +674,7 @@ final class AppModel {
         // Synchronously, before the first `await`: the composer is empty and
         // the button is disabled from this instant.
         draft = ""
+        refusals[account] = nil
         Task {
             do {
                 try await runtime.owner.perform { try $0.send(account: ticket.account,
@@ -619,12 +684,39 @@ final class AppModel {
                 runtime.loop.wake()
             } catch {
                 drafts.finished(ticket, committed: false)
+                // The sheet keeps Android's sentence (`TextEngine.java:292`);
+                // the chat names the reason where the user is looking.
                 lastStatus = Strings.Status.sendUnfinished
                 if chatAccount == ticket.account { draft = drafts.text(for: ticket.account) }
+                refuse(ticket.account, error)
                 await noteFreeze()
             }
             await reloadNow()
         }
+    }
+
+    /// Notes a refused send against its conversation and, when the composer
+    /// is showing it, reads it to VoiceOver, which would otherwise hear only
+    /// the text come back into the field.
+    ///
+    /// The note belongs to whatever that conversation's composer holds now:
+    /// the refused text, put back by `Drafts.finished`, or the text typed
+    /// while the send was in flight, which `Drafts` keeps instead
+    /// (`MessagePresentation.swift`). A frozen client gets no note at all.
+    private func refuse(_ account: String, _ error: any Error) {
+        guard let reason = SendRefusal.classify(error) else { return }
+        refusals[account] = RefusalNote(draft: drafts.text(for: account), reason: reason)
+        if Self.shouldAnnounceRefusal(currentAccount: chatAccount, refusedAccount: account,
+                                     isShown: isRefusalShown) {
+            UIAccessibility.post(notification: .announcement,
+                                 argument: Strings.Chat.refusal(reason))
+        }
+    }
+
+    /// Visibility belongs to the selected chat, not necessarily the completed send.
+    nonisolated static func shouldAnnounceRefusal(currentAccount: String?, refusedAccount: String,
+                                                   isShown: Bool) -> Bool {
+        currentAccount == refusedAccount && isShown
     }
 
     /// A contact arrived from the scanner or the paste sheet.
@@ -1462,10 +1554,17 @@ final class AppModel {
         guard let runtime else { return }
         do {
             let state = try await runtime.owner.perform { client -> ClientState in
-                ClientState(view: try ClientView.read(client), outbox: try client.pending().count)
+                let pending = try client.pending()
+                var pendingTo: [String: Int] = [:]
+                for envelope in pending {
+                    pendingTo[envelope["recipient"] as? String ?? "", default: 0] += 1
+                }
+                return ClientState(view: try ClientView.read(client), outbox: pending.count,
+                                   pendingTo: pendingTo)
             }
             view = state.view
             outboxCount = state.outbox
+            forgetStaleRefusals(pendingTo: state.pendingTo)
             if let chatAccount, view.dialog(chatAccount) == nil, !view.dialogs.isEmpty {
                 // The conversation disappeared from under the chat screen.
                 // Nothing in this client removes one, so this is only ever the
@@ -1567,6 +1666,8 @@ final class AppModel {
 private struct ClientState: Sendable {
     let view: ClientView
     let outbox: Int
+    /// How many of those envelopes wait for each recipient.
+    let pendingTo: [String: Int]
 }
 
 /// The lanes, with the one thing they cannot say about themselves said for

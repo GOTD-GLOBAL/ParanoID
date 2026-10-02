@@ -1,11 +1,44 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-30
-last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
+last_reviewed: 2026-10-02
+last_reviewed_scope: PR62 integration with main438c79e and iOS regression checks; older dated records retained
 ---
 
 # Current project state
+
+## PR62 local integration with frozen main — 2026-10-02
+
+PR62 is reconciled locally with `438c79e`, including the merged iOS stack and
+Solana PR60. Refusal notes keep the raw restored draft while composer limits
+measure the trimmed send. Linux source gates pass, including a new regression
+that failed with raw byte counting. A padded-draft app regression is added but
+native Swift, simulator and physical-phone execution on this combined tree are
+NOT RUN. Earlier Mac receipts below cover their named revisions only.
+The [remaining-iOS handoff](../clients/ios/refusals-integration-handoff.md)
+adds a shared seen-condition value factory and native count-only invalidation
+regression, close/reopen divider checks and independent UI down-button/one-bubble
+assertions. The original surviving mutation is not reclassified as killed on
+Mac: only the new Python guard has been exercised here. No main-branch merge,
+release, deployment or decision acceptance follows from this candidate.
+
+## iOS refusals named where they happen — 2026-09-28
+
+The iOS client names a refused send above the composer and a refused contact
+inside its alert, with the reason the core gave, instead of returning the text
+silently and publishing one sentence to a sheet the chat cannot open. The
+untrue «Контакт уже добавлен.» for `peer_already_pinned` is replaced by a
+statement that the account is already saved with other keys and that the saved
+contact is unchanged. Nothing is persisted: a note lives in memory for one
+conversation until the text is edited, a new send starts or a re-read finds the
+reason gone. Core, server and protocol are unchanged. The wording is proposed,
+awaits the owner and carries the `ios` caption origin until Android names the
+same refusals. Evidence is contributor
+Mac execution on the host and a simulator, recorded in the
+[receipt](evidence/ios-client-20260928/honest-refusals-mac.md); a physical phone
+is not run. Refused incoming events, the status line and 507/409 wording are the
+next part and are not in this change.
+[Rule and limits](../clients/ios/self-service.md#contacts-and-qr).
 
 ## Solana ID login and sponsored nicknames on the test VPS — 2026-09-30
 

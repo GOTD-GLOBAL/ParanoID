@@ -109,7 +109,9 @@ struct ChatScreen: View {
     /// Everything «seen» depends on, compared as one value so that a change in
     /// any of them — a new message, a scroll, the scene, a call or a sheet over
     /// the chat — asks the question again.
-    private struct SeenCondition: Equatable {
+    // Internal so the stable-visibility/count-only case can exercise the
+    // production value factory without installing SwiftUI environment/state.
+    struct SeenCondition: Equatable {
         let messages: Int
         let atBottom: Bool
         let positioned: Bool
@@ -119,12 +121,23 @@ struct ChatScreen: View {
         var isSeen: Bool { atBottom && positioned && active && !covered }
     }
 
-    private var seenCondition: SeenCondition {
+    /// The screen and regression tests share the actual message-count input.
+    /// Visibility inputs are explicit; the production property below supplies
+    /// the same state/environment values as before this extraction.
+    func makeSeenCondition(atBottom: Bool, positioned: Bool,
+                           active: Bool, covered: Bool) -> SeenCondition {
         SeenCondition(messages: dialog?.messages.count ?? 0,
-                      atBottom: isAtBottom,
+                      atBottom: atBottom,
                       positioned: positioned,
-                      active: scenePhase == .active,
-                      covered: model.showsCall || model.sheet != nil)
+                      active: active,
+                      covered: covered)
+    }
+
+    private var seenCondition: SeenCondition {
+        makeSeenCondition(atBottom: isAtBottom,
+                          positioned: positioned,
+                          active: scenePhase == .active,
+                          covered: model.showsCall || model.sheet != nil)
     }
 
     var body: some View {
@@ -329,7 +342,8 @@ struct ChatScreen: View {
             if !model.composerHint.isEmpty {
                 Text(model.composerHint)
                     .font(.system(size: 12))
-                    .foregroundStyle(model.isOverLimit ? Color.red : Color.secondary)
+                    .foregroundStyle(model.isOverLimit || model.isRefusalShown
+                                     ? Color.red : Color.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 8)
                     .padding(.bottom, 4)

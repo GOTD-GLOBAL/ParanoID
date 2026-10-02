@@ -89,6 +89,11 @@ the shared [core contract](../core/self-service.md) and
   answer that permits the pre-disclosed direct-ICE mode (RFC-0021 question 5,
   answered by the owner's agents in
   [issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)).
+- Refusals are named where they happen. A text the core refuses is named above
+  the composer, and a refused contact inside its alert, with the reason the
+  core gave ([self-service.md](self-service.md)). Android publishes one sentence
+  for all of them to a status line the chat does not show. These captions have
+  the `ios` origin until Android names the same refusals.
 - The text is sent trimmed at its ends and the byte counter stands only near
   the limit ([self-service.md](self-service.md#text-receipts-and-the-lanes));
   Android sends the text as typed and shows a hint only over the limit. The

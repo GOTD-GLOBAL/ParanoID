@@ -281,6 +281,19 @@ signature; a contact with the same account or the same curve key as self is
 refused. Block is orthogonal to trust: pins and history are preserved and the
 same channel resumes on unblock.
 
+A refused contact is named inside the sheet it happened in
+(`ContactFlowError`), never as a bare code when the reason is known. The same
+QR scanned again is not a refusal: it only raises the trust of the saved
+contact. `peer_already_pinned` is a **different** contact of an account that
+is already in the list — the same identity with other keys — and the alert
+says so: «Этот аккаунт уже есть в контактах с другими ключами. Сохранённый
+контакт не изменён: сообщения по-прежнему шифруются для прежних ключей.» The
+core refuses it before anything changes, so the saved contact, its channel and
+its history stay as they were. The contact-limit, state-size,
+unfinished-registration, other-server and native-failure refusals have
+sentences of their own; any other core code keeps «Не удалось добавить контакт
+(код).» Android shows one generic status line for all of them.
+
 ## Text, receipts and the lanes
 
 `StateOwner` is an actor on one serial queue holding the client, every bridge
@@ -305,6 +318,33 @@ task and hands the finished answer back through `perform`.
   before the delivery mark it produces is published. A 409 or a 507 defers that
   envelope and lets the rest of the batch go out; any other status ends the
   pass at once. An idle lane waits on a wake signal instead of polling.
+- **Refused text.** `send_v2` refuses before it commits anything, so a
+  refused text is never in the conversation or the outbox. The text goes back
+  into the field (unless something else was typed there meanwhile) and the
+  line above the composer names the reason, in red, and VoiceOver reads it:
+  the 400-envelope outbox to this contact is full, the conversation reached its
+  1000 sent texts (the receipt commitment of each is never removed, not even
+  when the server accepts the envelope), the local state would pass its 8 MiB
+  bound, the text is empty or over 2048 bytes, the text does not fit one
+  envelope after encryption, or the ID is not registered yet (`SendRefusal`).
+  A blocked contact keeps the composer's existing blocked hint. Any other code
+  keeps Android's «Отправка не завершена; сохранённая очередь не удалена.»,
+  which the connection sheet also shows. The outbox sentence states the rule —
+  space frees only when the server accepts — and promises nothing: an account
+  over its lifetime quota (507) or a recipient the server no longer serves
+  (400) keeps that envelope for good. The refusal lives in memory only, one per
+  conversation, and is forgotten on a real edit of the text it belongs to, on
+  a new send, or when a re-read of the state finds its reason gone — the outbox
+  below 400, the ID active, the contact unblocked; a full history is permanent
+  and the text-bound refusals are not re-read. Leaving the chat keeps it, so a
+  send that came back after the user had left is explained when they return;
+  the field's echo of the text put back is not an edit. A failed commit shows
+  no refusal: the frozen screen replaces the chat. With trimmed sends, the
+  note belongs to the raw draft restored by `Drafts.finished` (or the newer
+  draft retained there), never `Ticket.text`. A restoration echo is not an
+  edit, including leading/trailing whitespace. Composer limits and the
+  1800-byte warning measure the trimmed text; `staleRefusal` rechecks only
+  outbox, registration and block state, never a raw-draft byte count.
 - **Time.** Under every bubble stands the instant this phone wrote or received
   the message, in its own time zone (`14:32`), with a pill where the day turns
   («Сегодня», «Вчера», «12 сентября») and the same instant on the conversation

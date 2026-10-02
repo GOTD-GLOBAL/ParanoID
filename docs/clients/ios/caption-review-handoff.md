@@ -33,14 +33,16 @@ matching documentation; ADR-0003 does not waive owner acceptance or native gates
   and a retained readiness slot admitting fresh queued offer/end on resume.
 - Keep the Russian plural correction and update rendered-caption assertions.
 
-## Error presentation, unchanged
+## Error presentation, unchanged by this handoff
 
-`AppModel.send()` restores the draft and shows `Strings.Status.sendUnfinished`
-when sending throws. That is a generic error, not a specific capacity diagnosis.
-Incoming rejections are a different path; this caption-only change does not add
-new error mapping, retry, archival or recovery behavior. Do not claim those UX
-improvements as implemented. Expansion of limits and detailed capacity UX remain
-follow-up work, not a reason to advertise a fictitious total count here.
+At the time of this handoff `AppModel.send()` restored the draft and showed
+`Strings.Status.sendUnfinished` when sending threw: a generic error, not a
+specific capacity diagnosis. Since 2026-09-28 the chat names the core's reason
+above the composer ([self-service.md](self-service.md#text-receipts-and-the-lanes),
+`SendRefusal`); incoming rejections are still a different path, and retry,
+archival and recovery behaviour are still not implemented. Expansion of limits
+and detailed capacity UX remain follow-up work, not a reason to advertise a
+fictitious total count here.
 
 ## Local evidence and remaining gates
 

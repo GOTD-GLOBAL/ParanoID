@@ -8,6 +8,41 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS remaining-work integration candidate — 2026-10-02
+
+- Reconcile named send/contact refusals with the mainline composer and unread
+  stack after PR60. Refusal notes retain the raw restored draft; byte hints
+  measure trimmed wire text instead of counting unsent padding. Bind refusal
+  announcements to the selected conversation, so a completed off-screen send
+  cannot speak over another conversation's different retained refusal.
+- Add a stable-visibility seen-condition regression through the production value
+  factory, reopen checks for own-message dividers, an independent down-button
+  seen check, and exact-one-bubble verification for the trimmed reply. Native
+  execution of the new tests is pending; the old survivor is not relabeled RED.
+- Preserve core/server/Android/Solana behavior and existing limits. See the
+  [exact-head Mac handoff](docs/clients/ios/refusals-integration-handoff.md).
+
+### iOS refusals named where they happen, proposed — 2026-09-28
+
+- A text the core refuses is named above the composer, in red and read by
+  VoiceOver: a full outbox to the contact, the 1000 sent texts of a
+  conversation, the local state size bound, an empty or over-2048-byte text, a
+  text that does not fit one envelope after encryption, or an ID not yet
+  registered. Before, the text came back into the field without a word and the
+  only sentence went to the «Подключение» sheet, which the chat cannot open. A
+  blocked contact keeps its existing hint; other codes keep Android's
+  «Отправка не завершена; сохранённая очередь не удалена.» The refusal is kept
+  in memory only, one per conversation, until the text is edited, a new send
+  starts or a re-read finds the reason gone.
+- «Контакт уже добавлен.» is retired: the same QR again is accepted, and
+  `peer_already_pinned` is the same account with other keys, now said as such
+  with the note that the saved contact is unchanged. The contact-limit,
+  state-size, unfinished-registration and other-server refusals get sentences
+  of their own instead of a bare code.
+- The wording is a proposal for the owner and carries the `ios` origin, a
+  fourth kind of exception to "Android word for word", until Android names the
+  same refusals. Core, server and protocol are unchanged.
+
 ### Android v35: login works with a phone clock off by seconds — 2026-09-30
 
 - Phones checked a login challenge's expiry against their own clock with no tolerance,
