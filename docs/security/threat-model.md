@@ -7,6 +7,15 @@ last_reviewed_scope: integrated Devnet registration and merge closure; older dat
 
 # Threat model
 
+## Proposed Solana server login boundary — 2026-09-24
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) and its
+[threat delta](identity-login-v3-threats.md) add a draft analysis of
+public-identity correlation, trusted RPC, dual proof, membership generations,
+atomic revocation and immutable E2EE contact pins. Its AUTH-01 through AUTH-08
+gates are NOT RUN. Server revocation cannot erase downloaded data or necessarily
+stop existing direct media. No implementation or protection is claimed here.
+
 ## Integrated Android Devnet candidate (2026-09-22)
 
 The registration activity is private inside the existing messenger package.
@@ -37,7 +46,16 @@ upgrade authority, allocation size and SBF SHA256 before signing. Negative host
 fixtures reject substitutions and corrupted code. This is detection against the
 configured trusted RPC, not cryptographic chain verification: dishonest RPC and
 upgrade-after-check races remain residual risks. No secrets cross this pin API;
-mnemonic export uses a separate explicit UI-only operation. Phone persistence and
+mnemonic export uses a separate explicit UI-only operation. Since 2026-09-29 new
+Devnet identities use 12 BIP39 words (128-bit entropy, matching the Ed25519
+security level); 24-word identities remain recoverable. Guessing a 12-word phrase
+is not a practical attack; phrase disclosure (screen, photo, clipboard) remains
+the relevant risk and is mitigated only by FLAG_SECURE on the words screens.
+Since 2026-09-30 the identity-v3 test server can sponsor Devnet registrations with
+a server-held Devnet key. It co-signs only the rebuilt fixed RegisterV1 message after
+verifying the owner signature, so it cannot register names for itself or others;
+residual risk is test-SOL drain up to the per-process caps (20/h, 60/day, reserve
+0.02 SOL), which reset on restart. Not a Mainnet design. Phone persistence and
 lifecycle are not proved by the host/JNI tests.
 
 The candidate [full voice VM rehearsal boundary](voice-turn-threats.md#candidate-full-vm-profile-and-evidence-integrity--2026-09-10)

@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 use solana_address::Address;
 use std::str::FromStr;
 use zeroize::Zeroizing;
+mod identity_v3;
 
 pub const PROGRAM: &str = "C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas";
 pub const GENESIS: &str = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
@@ -50,21 +51,49 @@ enum Command {
         blockhash: String,
         genesis: String,
     },
+    /// Sponsored registration, step 1: the owner signs the fixed registration message
+    /// whose fee payer is the server's sponsor. Returns the message and the owner
+    /// signature only; the owner key never leaves this library.
+    SponsoredSign {
+        entropy: String,
+        name: String,
+        blockhash: String,
+        genesis: String,
+        payer: String,
+    },
+    /// Step 2: assemble the transaction from the SAME message, the owner signature and
+    /// the sponsor signature, and verify both signatures before anything is broadcast.
+    SponsoredAssemble {
+        entropy: String,
+        name: String,
+        blockhash: String,
+        genesis: String,
+        payer: String,
+        payer_signature: String,
+    },
+    IdentityOwnerProofV3 {
+        entropy: String,
+        intent: Box<paranoid_key_protocol::identity_v3::ChallengeRequestV3>,
+        challenge: Box<paranoid_key_protocol::identity_v3::IdentityChallengeV3>,
+        realm: String,
+        pin: String,
+        now: i64,
+    },
 }
 
-fn entropy(encoded: &str) -> Result<Zeroizing<[u8; 32]>, &'static str> {
+/// BIP39 entropy: 16 bytes (12 words, default for new identities since RFC-0026
+/// revision 2026-09-29) or 32 bytes (24 words, identities created earlier).
+fn entropy(encoded: &str) -> Result<Zeroizing<Vec<u8>>, &'static str> {
     let bytes = Zeroizing::new(STANDARD.decode(encoded).map_err(|_| "invalid_entropy")?);
-    if bytes.len() != 32 || STANDARD.encode(bytes.as_slice()) != encoded {
+    if !(bytes.len() == 16 || bytes.len() == 32) || STANDARD.encode(bytes.as_slice()) != encoded {
         return Err("invalid_entropy");
     }
-    let mut result = Zeroizing::new([0u8; 32]);
-    result.copy_from_slice(&bytes);
-    Ok(result)
+    Ok(bytes)
 }
-fn mnemonic(bytes: &[u8; 32]) -> Result<Mnemonic, &'static str> {
+fn mnemonic(bytes: &[u8]) -> Result<Mnemonic, &'static str> {
     Mnemonic::from_entropy_in(Language::English, bytes).map_err(|_| "invalid_entropy")
 }
-fn secret(bytes: &[u8; 32]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
+fn secret(bytes: &[u8]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
     let phrase = mnemonic(bytes)?;
     let seed = Zeroizing::new(phrase.to_seed_normalized(""));
     let path = DerivationPath::from_str("m/44'/501'/0'/0'").map_err(|_| "derivation")?;
@@ -73,11 +102,35 @@ fn secret(bytes: &[u8; 32]) -> Result<Zeroizing<[u8; 32]>, &'static str> {
         .map_err(|_| "derivation")?;
     Ok(Zeroizing::new(child.signing_key.to_bytes()))
 }
-fn public(bytes: &[u8; 32]) -> Result<Address, &'static str> {
+fn public(bytes: &[u8]) -> Result<Address, &'static str> {
     let seed = secret(bytes)?;
     let key = solana_keypair::Keypair::new_from_array(*seed);
     use solana_signer::Signer;
     Ok(key.pubkey())
+}
+fn sponsored(
+    e: String,
+    name: &str,
+    blockhash: &str,
+    genesis: &str,
+    payer: &str,
+) -> Result<(solana_keypair::Keypair, solana_message::Message, String), &'static str> {
+    if genesis != GENESIS {
+        return Err("wrong_cluster");
+    }
+    let name = canonical_name(name)?;
+    let payer = Address::from_str(payer).map_err(|_| "invalid_payer")?;
+    let encoded = Zeroizing::new(e);
+    let bytes = entropy(&encoded)?;
+    let seed = secret(&bytes)?;
+    let key = solana_keypair::Keypair::new_from_array(*seed);
+    use solana_signer::Signer;
+    if payer == key.pubkey() {
+        return Err("invalid_payer");
+    }
+    let hash = solana_hash::Hash::from_str(blockhash).map_err(|_| "invalid_blockhash")?;
+    let message = registration_message_paid(payer, key.pubkey(), &name, &hash);
+    Ok((key, message, name))
 }
 fn canonical_name(input: &str) -> Result<String, &'static str> {
     let n = input.to_ascii_lowercase();
@@ -105,6 +158,16 @@ fn registration_message(
     name: &str,
     hash: &solana_hash::Hash,
 ) -> solana_message::Message {
+    registration_message_paid(owner, owner, name, hash)
+}
+/// Same fixed RegisterV1 instruction; `payer` (account 0, fee payer, rent source) may be a
+/// sponsor. The owner still signs, so a sponsor cannot register a name for itself.
+fn registration_message_paid(
+    payer: Address,
+    owner: Address,
+    name: &str,
+    hash: &solana_hash::Hash,
+) -> solana_message::Message {
     use solana_instruction::{AccountMeta, Instruction};
     let (id, _, nick, _) = addresses(&owner, name);
     let mut data = vec![1, name.len() as u8];
@@ -112,7 +175,7 @@ fn registration_message(
     let ix = Instruction {
         program_id: Address::from_str(PROGRAM).expect("compiled program"),
         accounts: vec![
-            AccountMeta::new(owner, true),
+            AccountMeta::new(payer, true),
             AccountMeta::new_readonly(owner, true),
             AccountMeta::new(id, false),
             AccountMeta::new(nick, false),
@@ -120,7 +183,7 @@ fn registration_message(
         ],
         data,
     };
-    solana_message::Message::new_with_blockhash(&[ix], Some(&owner), hash)
+    solana_message::Message::new_with_blockhash(&[ix], Some(&payer), hash)
 }
 fn run(input: Command) -> Result<Value, &'static str> {
     match input {
@@ -226,6 +289,51 @@ fn run(input: Command) -> Result<Value, &'static str> {
                 json!({"transaction":STANDARD.encode(&wire),"message":STANDARD.encode(tx.message_data()),"signature":tx.signatures[0].to_string(),"owner":owner.to_string(),"identity":id.to_string(),"nickname":nick.to_string(),"name":name}),
             )
         }
+        Command::SponsoredSign {
+            entropy: e,
+            name,
+            blockhash,
+            genesis,
+            payer,
+        } => {
+            let (key, message, name) = sponsored(e, &name, &blockhash, &genesis, &payer)?;
+            use solana_signer::Signer;
+            let signature = key.sign_message(&message.serialize());
+            Ok(
+                json!({"message":STANDARD.encode(message.serialize()),"owner":key.pubkey().to_string(),
+                "owner_signature":signature.to_string(),"name":name}),
+            )
+        }
+        Command::SponsoredAssemble {
+            entropy: e,
+            name,
+            blockhash,
+            genesis,
+            payer,
+            payer_signature,
+        } => {
+            let (key, message, name) = sponsored(e, &name, &blockhash, &genesis, &payer)?;
+            use solana_signer::Signer;
+            let owner_signature = key.sign_message(&message.serialize());
+            let payer_signature = solana_signature::Signature::from_str(&payer_signature)
+                .map_err(|_| "invalid_sponsor_signature")?;
+            let tx = solana_transaction::Transaction {
+                signatures: vec![payer_signature, owner_signature],
+                message,
+            };
+            // Both signatures must verify over exactly the message this library built.
+            tx.verify().map_err(|_| "invalid_sponsor_signature")?;
+            let (id, _, nick, _) = addresses(&key.pubkey(), &name);
+            let wire = bincode::serialize(&tx).map_err(|_| "transaction")?;
+            if wire.len() > 1232 {
+                return Err("transaction_limit");
+            }
+            Ok(
+                json!({"transaction":STANDARD.encode(&wire),"message":STANDARD.encode(tx.message_data()),
+                "signature":tx.signatures[0].to_string(),"owner":key.pubkey().to_string(),
+                "identity":id.to_string(),"nickname":nick.to_string(),"name":name}),
+            )
+        }
         Command::ExportMnemonic { entropy: e } => {
             let encoded = Zeroizing::new(e);
             let bytes = entropy(&encoded)?;
@@ -238,11 +346,25 @@ fn run(input: Command) -> Result<Value, &'static str> {
                 json!({"owner":public(&bytes)?.to_string(),"identity":addresses(&public(&bytes)?,"aaa").0.to_string(),"program":PROGRAM,"genesis":GENESIS,"rpc":RPC}),
             )
         }
+        Command::IdentityOwnerProofV3 {
+            entropy: e,
+            intent,
+            challenge,
+            realm,
+            pin,
+            now,
+        } => {
+            let encoded = Zeroizing::new(e);
+            let bytes = entropy(&encoded)?;
+            let seed = secret(&bytes)?;
+            let signature = identity_v3::sign_owner(&seed, &intent, &challenge, &realm, &pin, now)?;
+            Ok(json!({"owner_signature": signature}))
+        }
         Command::Recover { mnemonic: m } => {
             let text = Zeroizing::new(m);
             let phrase = Mnemonic::parse_in_normalized(Language::English, &text)
                 .map_err(|_| "invalid_mnemonic")?;
-            if phrase.word_count() != 24 {
+            if phrase.word_count() != 12 && phrase.word_count() != 24 {
                 return Err("invalid_mnemonic");
             }
             let bytes = Zeroizing::new(phrase.to_entropy());
@@ -251,7 +373,7 @@ fn run(input: Command) -> Result<Value, &'static str> {
     }
 }
 pub fn command(input: &str) -> String {
-    if input.len() > 8192 {
+    if input.len() > 16384 {
         return json!({"error":"input_limit"}).to_string();
     }
     let result = serde_json::from_str(input)
@@ -365,6 +487,10 @@ mod tests {
             ("name", "1abc"),
             ("blockhash", "invalid"),
             ("entropy", "AAAA"),
+            (
+                "entropy",
+                "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+            ),
             ("program", "11111111111111111111111111111111"),
             ("transaction", "arbitrary"),
         ] {
@@ -374,8 +500,10 @@ mod tests {
             assert!(out.get("error").is_some(), "{field}");
             assert!(out.get("transaction").is_none());
         }
-        for m in ["abandon abandon", "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"] {let out:Value=serde_json::from_str(&command(&json!({"op":"recover","mnemonic":m}).to_string())).unwrap();assert_eq!(out["error"],"invalid_mnemonic");}
-        assert!(command(&"x".repeat(8193)).contains("input_limit"));
+        // 15/18/21 words, wrong checksum and fragments stay rejected; 12 and 24 are accepted.
+        for m in ["abandon abandon", "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon",
+                  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon address"] {let out:Value=serde_json::from_str(&command(&json!({"op":"recover","mnemonic":m}).to_string())).unwrap();assert_eq!(out["error"],"invalid_mnemonic");}
+        assert!(command(&"x".repeat(16385)).contains("input_limit"));
         assert!(
             command(r#"{"op":"identity","op":"recover","entropy":"AAAA"}"#)
                 .contains("invalid_request")
@@ -418,6 +546,104 @@ mod tests {
         assert!(out.get("mnemonic").is_none());
         assert!(out.get("entropy").is_none());
     }
+    /// BIP39 public vector "abandon x11 about" (entropy 0x00 x16) at m/44'/501'/0'/0'.
+    /// The owner address is reproduced independently (hashlib PBKDF2 + HMAC SLIP-0010 +
+    /// cryptography Ed25519) in the PR evidence, not only by this crate.
+    /// Sponsored flow: the sponsor pays (account 0, fee payer) but the owner must sign;
+    /// assemble rejects a wrong or missing sponsor signature, and the message is the
+    /// same RegisterV1 instruction with only the payer changed.
+    #[test]
+    fn sponsored_registration_needs_both_signatures() {
+        let e16 = "AAAAAAAAAAAAAAAAAAAAAA==";
+        let sponsor = solana_keypair::Keypair::new_from_array([7u8; 32]);
+        use solana_signer::Signer;
+        let payer = sponsor.pubkey().to_string();
+        let base = json!({"entropy":e16,"name":"abc","blockhash":"11111111111111111111111111111111","genesis":GENESIS,"payer":payer});
+        let mut sign = base.clone();
+        sign["op"] = json!("sponsored_sign");
+        let signed: Value = serde_json::from_str(&command(&sign.to_string())).unwrap();
+        let message = STANDARD
+            .decode(signed["message"].as_str().unwrap())
+            .unwrap();
+        let parsed: solana_message::Message = bincode::deserialize(&message).unwrap();
+        assert_eq!(parsed.header.num_required_signatures, 2);
+        assert_eq!(parsed.account_keys[0], sponsor.pubkey());
+        assert_eq!(parsed.account_keys[1].to_string(), TWELVE_WORD_VECTOR_OWNER);
+        let ix = &parsed.instructions[0];
+        assert_eq!(
+            parsed.account_keys[ix.program_id_index as usize].to_string(),
+            PROGRAM
+        );
+        assert_eq!(ix.data, [vec![1, 3], b"abc".to_vec()].concat());
+        assert_eq!(ix.accounts[0], 0);
+        assert_eq!(ix.accounts[1], 1);
+        let good = sponsor.sign_message(&message).to_string();
+        let mut asm = base.clone();
+        asm["op"] = json!("sponsored_assemble");
+        asm["payer_signature"] = json!(good);
+        let out: Value = serde_json::from_str(&command(&asm.to_string())).unwrap();
+        let tx: solana_transaction::Transaction = bincode::deserialize(
+            &STANDARD
+                .decode(out["transaction"].as_str().unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+        tx.verify().unwrap();
+        assert_eq!(out["owner"], TWELVE_WORD_VECTOR_OWNER);
+        // Wrong signer or a signature over a different name is refused.
+        for bad in [
+            solana_keypair::Keypair::new_from_array([8u8; 32])
+                .sign_message(&message)
+                .to_string(),
+            "1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+        ] {
+            let mut a = asm.clone();
+            a["payer_signature"] = json!(bad);
+            let out: Value = serde_json::from_str(&command(&a.to_string())).unwrap();
+            assert_eq!(out["error"], "invalid_sponsor_signature");
+        }
+        let mut other = asm.clone();
+        other["name"] = json!("abd");
+        let out: Value = serde_json::from_str(&command(&other.to_string())).unwrap();
+        assert_eq!(out["error"], "invalid_sponsor_signature");
+        // The owner cannot be named as its own "sponsor".
+        let mut own = sign.clone();
+        own["payer"] = json!(TWELVE_WORD_VECTOR_OWNER);
+        let out: Value = serde_json::from_str(&command(&own.to_string())).unwrap();
+        assert_eq!(out["error"], "invalid_payer");
+        // Fixed cross-crate vector: the server rebuilds exactly these message bytes.
+        assert_eq!(
+            signed["message"], SPONSORED_MESSAGE_VECTOR,
+            "update server/src/sponsor.rs vector together with this one"
+        );
+    }
+    const SPONSORED_MESSAGE_VECTOR: &str = "AgECBupKbGPinFIKvvVQexMuxfmVR3auvr57kkIe6mkURtIs8DYnYkanW53jNJ7UKxXiMvZRj8IPX81PHWToH5vSWPcO93rqgqtxhFFmoWYwjBXLqReo50h00vW2Rj3XgwpRlYpRgLUg35rnbZT0Csoce6Ta0qFNsNl9fU7PGJp//ak9AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAClZY1j/0JtcUim1GEeVLhD+t1QPMbPnn5EjhP1o2VvaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQUFAAECAwQFAQNhYmM=";
+    #[test]
+    fn twelve_word_public_recovery_vector() {
+        let e16 = "AAAAAAAAAAAAAAAAAAAAAA==";
+        let backup: Value = serde_json::from_str(&command(
+            &json!({"op":"export_mnemonic","entropy":e16}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(
+            backup["mnemonic"],
+            format!("{} about", ["abandon"; 11].join(" "))
+        );
+        let restored: Value = serde_json::from_str(&command(
+            &json!({"op":"recover","mnemonic":backup["mnemonic"]}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(restored["entropy"], e16);
+        let id: Value = serde_json::from_str(&command(
+            &json!({"op":"identity","entropy":e16}).to_string(),
+        ))
+        .unwrap();
+        assert_eq!(id["owner"], TWELVE_WORD_VECTOR_OWNER);
+        // A 12-word identity signs registration the same way as a 24-word one.
+        let tx: Value = serde_json::from_str(&command(&json!({"op":"register","entropy":e16,"name":"abc","blockhash":"11111111111111111111111111111111","genesis":GENESIS}).to_string())).unwrap();
+        assert_eq!(tx["owner"], TWELVE_WORD_VECTOR_OWNER);
+    }
+    const TWELVE_WORD_VECTOR_OWNER: &str = "HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk";
     #[test]
     fn standard_public_recovery_vector() {
         let value: Value = serde_json::from_str(&command(

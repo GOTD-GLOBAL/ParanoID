@@ -355,6 +355,13 @@ final class CallCoordinator: CallController.SendPort, CallController.MediaPort,
         // made of is gone — so both end it the same way. A ringing call that
         // has no media yet ends on its own forty-five-second deadline.
         guard controller.isActive, let generation = engineGeneration else { return }
+        // The screens are told which call this was, published ahead of its
+        // end; the two hops are not ordered, and the label re-reads the fact
+        // whichever arrives first, so the outcome is named for what it was
+        // and not as a failure to connect.
+        let callId = controller.presentation.callId
+        let model = self.model
+        Task { @MainActor in model?.callInterrupted(callId) }
         controller.mediaState(generation, .failed)
     }
 

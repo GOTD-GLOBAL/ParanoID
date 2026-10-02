@@ -1,0 +1,90 @@
+---
+status: proposed
+owner: identity
+decision_owner: martadvix-web
+review_mode: closed-alpha-ai
+required_reviewers: []
+last_reviewed: 2026-09-28
+---
+
+# ADR-0016: Proposed Devnet server identity authentication
+
+## Context and proposed choice
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) records exact local
+private synthetic-data scope, human risk owner, Telegram provenance and requirement
+conflict. [The v3 contract](../protocol/identity-login-v3.md) proposes separate
+Devnet realm/database, dual owner/device proof for enrollment/replacement,
+device-only status, stable membership and immutable transport generations.
+No on-chain login transaction or automatic contact-key substitution.
+
+Alternatives: retain disconnected nickname (does not deliver login); reuse owner
+as messaging root/Olm key (breaks separation); silently rekey immutable contacts
+(breaks peer verification); implement contact rotation now (separate larger scope).
+
+## Consequences and retained risks
+
+Fresh contact exchange after replacement; no history restoration from seed.
+Existing wrapped owner key stays on phone: a compromised owner device can compete
+for takeover. One successful replacement/day and eight lifetime generations are
+explicit private-alpha limits, not secure recovery after seed theft or unlimited
+production recovery. Current-generation traffic/status survives generation cap.
+Existing peer capacity can be exhausted by repeated contact replacement. RPC is
+trusted; public blockchain identity allows inter-server correlation. Existing
+media and in-flight content-free push cannot be recalled. These need human risk
+acceptance, not a fabricated AI/human approval.
+
+## Disposition gates
+
+The local self-admission profile is vulnerable to cheap Sybil exhaustion: free
+Devnet identities can consume all 128 memberships permanently. Global mutation/RPC
+start quotas and the separate 64-entry v3 challenge pool can be monopolized by
+self-signed requests indefinitely, denying legitimate login/status/replacement.
+Post-proof is not post-admission. Caps bound resource cost, not fair availability.
+V2 traffic uses separate challenge/session pools but still shares total ingress;
+no availability guarantee under attack. Non-local self-admission policy and these
+risks require explicit owner disposition; no public rollout follows local tests.
+Banned memberships retain reserved slots. Ban lifecycle is fixture-only here.
+
+## Owner disposition record (2026-09-28)
+
+Decision owner `martadvix-web` approved on GitHub, PR #60:
+<https://github.com/GOTD-GLOBAL/ParanoID/pull/60#issuecomment-5874285958>
+(2026-09-28T16:32:02Z). Exact text:
+
+> Как decision owner принимаю ADR-0016 для закрытой альфы на Devnet в локальном
+> режиме, только с тестовыми данными: вход на сервер тем же Solana ID; при
+> восстановлении на новом телефоне старый отключается; история и контакты при
+> этом не переносятся. Ограничения: 128 участников, до 8 смен телефона на
+> человека, не чаще одной смены в сутки. Публичный режим, Mainnet и
+> развёртывание этим решением не разрешаются.
+
+Second approval, same PR:
+<https://github.com/GOTD-GLOBAL/ParanoID/pull/60#issuecomment-5874338268>
+(2026-09-28T16:35:22Z). Exact text:
+
+> Дополнительно принимаю для той же локальной закрытой альфы на Devnet с тестовыми
+> данными: вход открыт любому владельцу ника, зарегистрированного в Devnet, без
+> приглашения — это осознанное отступление от REQ-ID-006 только для локального
+> режима; риски: чужие бесплатные ники могут занять все 128 мест и блокировать
+> вход другим; сервер доверяет Solana RPC; один и тот же ID виден на разных
+> серверах; старый телефон с сохранённой фразой может снова перехватить вход. Для
+> публичного режима нужна отдельная политика допуска.
+
+Together these cover the decision, limits, the scoped REQ-ID-006 exception and the
+named residual risks for the local private Devnet test scope only. Status stays
+`proposed` until AUTH-06/07 (two-phone E2EE messaging/calls through Android login)
+pass; delivered-behavior acceptance criteria cannot be approved in advance.
+Public mode, Mainnet and any deployment remain unauthorized by these approvals. REQ-ID-006 scoped reconciliation
+and all limits above must be included in that disposition. Fresh independent
+Opus5.5 technical review must close blockers; AUTH-01..08 and code/artifact review
+must precede relevant delivery claims. Policy ADR0003 is not application approval.
+Local implementation preparation is authorized in the current Telegram task;
+merge, migration, phone release and deployment remain separately gated.
+
+## Migration and rollback
+
+No current DB/phone migration or deletion. New mode refuses legacy/populated DB.
+Rollback never restores lower membership generations or re-enables retired keys.
+Do not route new-cohort clients to the old v2 service. Any operational cutover
+requires exact source/artifact review, rollback design and explicit authorization.

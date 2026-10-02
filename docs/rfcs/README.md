@@ -52,6 +52,12 @@ Follow the human authority and acceptance-evidence rules in the
   [threat delta](../security/ios-push-threats.md). Owner decisions, RFC-0020
   disposition and Apple team custody are open; nothing is implemented.
 
+- [RFC-0027: Solana server authentication](0027-solana-server-authentication.md)
+  (draft): identity membership, dual proof, single-device replacement and
+  explicit fresh-contact recovery limits. PR60's implementation and private
+  Devnet test-VPS deployment are recorded in [current state](../project/current-state.md);
+  proposal/ADR status and permanent architecture acceptance remain separate.
+
 - [RFC-0026: Fresh Solana Devnet nickname registration](0026-solana-devnet-registration.md)
   (draft): owner-requested fresh test identities, minimal registry, Android
   registration and actual chain-state verification; no legacy migration gate.

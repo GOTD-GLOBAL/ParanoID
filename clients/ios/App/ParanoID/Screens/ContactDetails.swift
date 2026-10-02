@@ -5,7 +5,7 @@ import SwiftUI
 /// that can be done about it (`MainActivity.contactDetails()`,
 /// `MainActivity.java:563-575`).
 ///
-/// The four rows are Android's four paragraphs, in the mock-up's layout: the
+/// Four rows are Android's four paragraphs, in the mock-up's layout: the
 /// trust label, the full account — the whole 64 characters, because this is
 /// the one place it is read out loud — what end-to-end encryption does and
 /// does not prove **and where the contact's name is kept**, and what the two
@@ -122,6 +122,15 @@ struct ContactDetailsSheet: View {
             row(Strings.Details.trust, DialogPolicy.trustLabel(dialog))
             Divider()
             row(Strings.Details.account, account, monospaced: true)
+            if let fingerprint = dialog?.fingerprint, !fingerprint.isEmpty {
+                Divider()
+                // The digits «Проверить QR» asks to compare, in the sheet that
+                // offers it, grouped as on «Мой ID» (`Dialog.fingerprint`).
+                row(Strings.Identity.fingerprint,
+                    MessagePresentation.groupedFingerprint(fingerprint), monospaced: true)
+                    .accessibilityLabel(Strings.Identity.fingerprint + " " + fingerprint)
+                    .accessibilityIdentifier("details-fingerprint")
+            }
             Divider()
             row(Strings.Details.encryption, Strings.Details.encryptionBody)
             Divider()

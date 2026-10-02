@@ -38,7 +38,7 @@ def run(server_binary, evidence_dir, jni_library_dir=None):
     subprocess.run(['python3',str(ANDROID/'dependencies.py')],check=True)
     host=ANDROID/'out/host';host.mkdir(parents=True,exist_ok=True)
     cp=':'.join(str(p) for p in [host,ANDROID/'out/deps/json-20240303.jar',ANDROID/'out/deps/zxing-core-3.5.3.jar'])
-    names=['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','QrCodec']
+    names=['CoreBridge','PinnedTls','SnapshotCodec','StorageGuard','SyncCycle','KeyClient','KeyTransport','SelfServiceClient','IdentityPorts','QrCodec']
     subprocess.run(['javac','--release','8','-Xlint:-options','-cp',cp,'-d',str(host)]+[str(ANDROID/f'src/org/paranoid/text/{n}.java') for n in names]+[str(ANDROID/'test/CleanSelfServiceBridge.java')],check=True)
     env={k:v for k,v in os.environ.items() if not k.startswith(('PG','PARANOID_'))}
     with tempfile.TemporaryDirectory(prefix='paranoid-client-v2-') as tmp:

@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-09-29
 ---
 
 # iOS client: storage, registration, contacts and text
@@ -257,6 +257,23 @@ session keeps scanning; cancelling touches neither the identity nor the
 snapshot nor the network. A denied or restricted camera offers the paste field
 and the Settings link instead, and leaves the identity untouched.
 
+The paste sheet also carries the system's own paste control, which reads the
+pasteboard only when tapped, as a paste the user made rather than a
+programmatic read — so without the system's notice — and hands what it read
+the way «Продолжить» does: checked, then to the fingerprint. Its label is the
+system's, in the system's language.
+
+The fingerprint is shown in eight groups of eight digits, four to a line, on
+«Мой ID», in the confirmation, in «О приложении» and — new — in the contact's
+own sheet (`Dialog.fingerprint`, the value the core publishes per
+conversation), so that two people compare group by group; every digit is
+there and in order, a screen reader gets them unbroken, and the rule is
+unchanged: the full fingerprint is compared. «Мой ID» also names the six
+characters a peer with no name for this phone sees it under («Вы: 7c85ae»,
+`MessagePresentation.title`'s own rule), so the owner knows what to say. The
+shared and copied contact text stays the core's, byte for byte: a line in
+front of it would fail the strict parser on both clients.
+
 Pairing requires the user's explicit `Отпечаток совпадает` confirmation
 (REQ-ID-007). The core verifies the root credential, the account derivation,
 the Olm binding, the realm and pin, the canonical encodings and the device
@@ -267,8 +284,10 @@ same channel resumes on unblock.
 ## Text, receipts and the lanes
 
 `StateOwner` is an actor on one serial queue holding the client, every bridge
-call, every commit, the realtime session and the discovered capability — the
-port of Android's single-threaded `TextEngine.worker`. No member of it is
+call after launch, every commit, the realtime session and the discovered
+capability — the port of Android's single-threaded `TextEngine.worker`. Before
+it exists, opening the client validates the saved state and the runtime reads
+the new-message baseline once; nothing else reaches the core outside it. No member of it is
 `async`, so it cannot wait on a socket; a lane awaits the network in its own
 task and hands the finished answer back through `perform`.
 
@@ -292,6 +311,44 @@ task and hands the finished answer back through `perform`.
   row (the time today, «Вчера», then `12.09`). The core stores it and never
   sends it; an entry written before this build has none and is shown without one
   ([RFC-0023](../../rfcs/0023-message-time.md), proposed).
+- **The composer.** What is sent is the draft trimmed at its ends — Java's
+  `trim()`, every character at or below U+0020 — with everything inside it,
+  line breaks included, as typed (`MessagePresentation.trimmed`); a failed
+  send puts the draft back as it was typed, not the trimmed text. The limit
+  of 2048 bytes ([first-contact v1](../../protocol/first-contact-v1.md)) is
+  measured on what is sent. The byte counter «N из 2048 байт» stands only
+  from 1800 bytes, in a warning colour, and red over the limit together with
+  the «Сообщение слишком длинное» hint; a short message is not told how short
+  it is. A bubble is as wide as its text, up to the row's room (a 40-point
+  margin on the far side, as Android) and a 440-point cap on the bubble
+  (Android caps the text at 440 dp, which the row's room reaches first on a
+  phone; its 160 dp floor is not reproduced), with the text at the leading
+  edge and the time and mark at the trailing edge, as in Android's column;
+  dragging the history down takes the keyboard with it.
+  Android sends the text as typed and shows a hint only over the limit; the
+  same request stands for it for the trimming and the counter.
+- **The list.** «Чаты» is ordered by the time stamped on each conversation's
+  last message, newest first — the same local instant the bubble shows, and a
+  fourth client-only reading of it (RFC-0023 lists the bubble, the day pill
+  and the row date). That is the conversation with the newest message
+  whenever this phone's clock ran forward between messages; a clock set back
+  leaves the later message with the smaller stamp, and the list follows the
+  stamp, as the bubble does. Conversations with no messages, or whose last
+  entry was written by a build that kept no time, follow in the core's order;
+  nothing invents a time for them. A call moves no conversation: the call log
+  keeps no wall-clock time (`CallRecord`, RFC-0023 «Privacy»), so a chat whose
+  last event is a call stands where its last message puts it. When the row's
+  preview is a missed call it is drawn in red (`DialogOrder`,
+  `AppModel.isMissedCallPreview`). «Контакты» stands in the order of the
+  names this phone gave the contacts — Russian alphabetical, case and
+  diacritics aside, numbers by value, the named first and the unnamed after
+  them by account
+  (`ContactOrder.alphabetical`) — with the blocked contacts in their own
+  folded section at the bottom, each with «Разблокировать контакт» at hand;
+  they stay in «Чаты» with their «Блок» badge, because a block keeps the
+  history and the pins. Both lists' rows are buttons that show a grey fill
+  while pressed. Android keeps the core's order in both lists and draws the
+  missed line muted; the same request stands for it.
 - **Receipts.** One mark appears only after durable server acceptance, two
   only after the peer's authenticated receipt. There are no read receipts
   anywhere in this client (REQ-MSG-003). The three states are drawn
@@ -302,6 +359,39 @@ task and hands the finished answer back through `perform`.
   retires that sentence for good (`ReceiptHint`, a flag in this application's
   own defaults). The [Android presentation candidate](../android/receipt-presentation.md)
   uses the same drawn-state and one-time-hint semantics; wording stays identical.
+- **New messages.** A row of «Чаты» counts the peer's messages this run of the
+  application has not shown yet, the open chat draws «Новые сообщения» over
+  the first of them and opens there, and a «↓» button with the count leads
+  down while unseen messages are below (`SeenMarks`). The baseline is one read
+  of the conversations when the runtime is built, before a lane or a lifecycle
+  notification can exist; only the counts are kept. What arrives after it
+  counts, and a conversation that appears later counts from its first message;
+  if that read fails, nothing is counted for the run. Own messages and call
+  rows never count. A chat is seen when its bottom is on the screen, the
+  application is active and no call screen or sheet covers it; with a divider,
+  only after the opening scroll has landed (about 300 ms). On iOS 18 and later
+  "the bottom is on the screen" is asked of the scroll view itself — its
+  offset is within the history's 12-point bottom padding of as far as it can
+  go — because a lazy stack keeps rows it built after they scroll away and
+  does not re-measure them, so neither a row appearing nor its measured frame
+  says what is visible (both were tried on the simulator and both were wrong).
+  Content that grows under a reader who was at the end, a new message, keeps
+  the reader at the end; only the reader scrolls the reader away. iOS 17 has no
+  scroll geometry: there a marker's appearance after the last row stands in
+  for it, an approximation that has not been run. One handler asks again on
+  every change, including a message arriving while the chat is open. A reader who
+  scrolled up is not dragged down by a new message. The divider stays where
+  the chat was opened until the chat is closed; returning to the application
+  without the bottom on the screen adds one over what arrived meanwhile. The
+  mark is a position in the history, never a message identifier, which the
+  sender chooses. **It lives in memory only**: nothing is written to a file,
+  to defaults or to the snapshot, and nothing reaches the core's commit path,
+  the server or the peer — reading is never reported (REQ-MSG-003). What a
+  relaunch loses is exactly that: a message received in an earlier run and
+  never opened is not counted in the next one. Persisting the mark across
+  launches is new stored metadata: it needs a new RFC, unless the owner
+  explicitly widens [RFC-0024](../../rfcs/0024-local-metadata-at-rest.md). The
+  feature and its words are proposed and await the owner.
 - **Session.** Purpose `session`, `POST /v2/session`, strict `SessionV2`
   response, renewed at about 240 s of monotonic age. A first 401 on a signed
   request is retried once with a fresh nonce; a second 401, a 404 or

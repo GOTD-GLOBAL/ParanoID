@@ -4,6 +4,7 @@ mod proof;
 pub use proof::Challenge;
 mod proof_v2;
 pub use proof_v2::ChallengeV2;
+pub mod identity_v3;
 mod session_v2;
 pub use session_v2::{session_nonce_valid, SessionV2};
 use sha2::{Digest, Sha256};

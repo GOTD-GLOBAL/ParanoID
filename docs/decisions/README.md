@@ -27,6 +27,10 @@ with the video-call work.
 
 ## Draft implementation records
 
+- [ADR-0016](0016-solana-server-authentication.md): proposed Solana server login;
+  owner approved scope, limits, local REQ-ID-006 exception and residual risks on
+  PR #60; acceptance waits for two-phone AUTH-06/07 evidence.
+
 - [ADR-0011](0011-voice-calls.md): proposed retained-channel WebRTC voice;
   local implementation task authorized, independent design/final reviews required.
 

@@ -20,6 +20,8 @@ tests = ['BridgeSmoke', 'RegistrationFlowTest', 'UiGenerationTest', 'DevnetWorkT
 subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-cp', str(jar), '-d', str(classes),
                 *[str(src / (name + '.java')) for name in
                   ['SolanaBridge', 'ProgramPin', 'DevnetRpc', 'RegistrationFlow', 'UiGeneration', 'DevnetWork']],
+                # DevnetWork names server refusals (SyncCycle.Rejected) from the text client.
+                str(ROOT / 'clients/android/src/org/paranoid/text/SyncCycle.java'),
                 *[str(CLIENT / 'test' / (name + '.java')) for name in tests]], check=True, cwd=ROOT)
 for name in tests:
     subprocess.run(['java', '-Djava.library.path=' + str(ROOT / 'blockchain/solana/client/target/debug'),
