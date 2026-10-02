@@ -150,6 +150,31 @@ def parse_captions(text):
 
 
 class UiContract(unittest.TestCase):
+    def test_refusal_announcement_is_bound_to_the_visible_account(self):
+        model = self.sources[MODEL]
+        refuse = model.split('private func refuse(', 1)[1].split('\n    }', 1)[0]
+        gate = ('if Self.shouldAnnounceRefusal(currentAccount: chatAccount, '
+                'refusedAccount: account, isShown: isRefusalShown) {')
+        compact = ' '.join(refuse.split())
+        self.assertIn(gate, compact,
+                      'a visible refusal for B must not announce an off-screen refusal for A')
+        self.assertLess(compact.index('refusals[account] = RefusalNote('), compact.index(gate),
+                        'keep the off-screen note before gating only its announcement')
+        self.assertIn('UIAccessibility.post(notification: .announcement,', compact.split(gate, 1)[1])
+        predicate = model.split('nonisolated static func shouldAnnounceRefusal(', 1)[1]
+        predicate = predicate.split('\n    }', 1)[0].split('-> Bool {', 1)[1]
+        self.assertEqual(' '.join(predicate.split()),
+                         'currentAccount == refusedAccount && isShown')
+
+    def test_seen_condition_factory_keeps_message_count_as_invalidation_input(self):
+        screen = self.sources['App/ParanoID/Screens/Chat.swift']
+        self.present('func makeSeenCondition(', screen, 'seen-condition factory')
+        self.present('makeSeenCondition(atBottom: isAtBottom', screen, 'production seen condition')
+        factory = screen.split('func makeSeenCondition(', 1)[1].split('private var seenCondition:', 1)[0]
+        self.present('SeenCondition(messages: dialog?.messages.count ?? 0,', factory,
+                     'message count must invalidate even with stable visibility')
+        self.absent('SeenCondition(messages: 0,', screen, 'count-removal regression')
+
     def test_metadata_migration_waits_for_successful_bootstrap(self):
         model = (HERE / MODEL).read_text()
         self.assertIn('var contactNames = ContactNames(store: nil)', model)

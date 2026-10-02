@@ -706,10 +706,17 @@ final class AppModel {
     private func refuse(_ account: String, _ error: any Error) {
         guard let reason = SendRefusal.classify(error) else { return }
         refusals[account] = RefusalNote(draft: drafts.text(for: account), reason: reason)
-        if isRefusalShown {
+        if Self.shouldAnnounceRefusal(currentAccount: chatAccount, refusedAccount: account,
+                                     isShown: isRefusalShown) {
             UIAccessibility.post(notification: .announcement,
                                  argument: Strings.Chat.refusal(reason))
         }
+    }
+
+    /// Visibility belongs to the selected chat, not necessarily the completed send.
+    nonisolated static func shouldAnnounceRefusal(currentAccount: String?, refusedAccount: String,
+                                                   isShown: Bool) -> Bool {
+        currentAccount == refusedAccount && isShown
     }
 
     /// A contact arrived from the scanner or the paste sheet.

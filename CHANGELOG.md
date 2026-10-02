@@ -8,6 +8,20 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS remaining-work integration candidate — 2026-10-02
+
+- Reconcile named send/contact refusals with the mainline composer and unread
+  stack after PR60. Refusal notes retain the raw restored draft; byte hints
+  measure trimmed wire text instead of counting unsent padding. Bind refusal
+  announcements to the selected conversation, so a completed off-screen send
+  cannot speak over another conversation's different retained refusal.
+- Add a stable-visibility seen-condition regression through the production value
+  factory, reopen checks for own-message dividers, an independent down-button
+  seen check, and exact-one-bubble verification for the trimmed reply. Native
+  execution of the new tests is pending; the old survivor is not relabeled RED.
+- Preserve core/server/Android/Solana behavior and existing limits. See the
+  [exact-head Mac handoff](docs/clients/ios/refusals-integration-handoff.md).
+
 ### iOS refusals named where they happen, proposed — 2026-09-28
 
 - A text the core refuses is named above the composer, in red and read by

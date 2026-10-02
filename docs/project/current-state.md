@@ -1,8 +1,8 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-30
-last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
+last_reviewed: 2026-10-02
+last_reviewed_scope: PR62 integration with main438c79e and iOS regression checks; older dated records retained
 ---
 
 # Current project state
@@ -14,8 +14,13 @@ Solana PR60. Refusal notes keep the raw restored draft while composer limits
 measure the trimmed send. Linux source gates pass, including a new regression
 that failed with raw byte counting. A padded-draft app regression is added but
 native Swift, simulator and physical-phone execution on this combined tree are
-NOT RUN. Earlier Mac receipts below cover their named revisions only. No push,
-main-branch merge, deployment or decision acceptance follows from this work.
+NOT RUN. Earlier Mac receipts below cover their named revisions only.
+The [remaining-iOS handoff](../clients/ios/refusals-integration-handoff.md)
+adds a shared seen-condition value factory and native count-only invalidation
+regression, close/reopen divider checks and independent UI down-button/one-bubble
+assertions. The original surviving mutation is not reclassified as killed on
+Mac: only the new Python guard has been exercised here. No main-branch merge,
+release, deployment or decision acceptance follows from this candidate.
 
 ## iOS refusals named where they happen — 2026-09-28
 

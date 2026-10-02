@@ -57,6 +57,10 @@ final class ComposerSendTests: XCTestCase {
         XCTAssertEqual(model.chatUnseenCount, 0, "the reader's own message counted as new")
         XCTAssertEqual(model.unseenCount(for: try XCTUnwrap(model.view.dialog(peer))), 0)
         XCTAssertNil(model.unreadDivider, "the reader's own message drew «Новые сообщения»")
+        model.closeChat()
+        model.openChat(peer)
+        XCTAssertNil(model.unreadDivider, "reopening must not build a divider for an own message")
+        XCTAssertEqual(model.chatUnseenCount, 0)
 
         // Refused: the snapshot cannot be written, so nothing is committed,
         // and what comes back into the composer is what was typed — blanks
@@ -73,6 +77,34 @@ final class ComposerSendTests: XCTestCase {
                        "a message the core never committed is shown")
         XCTAssertEqual(model.chatUnseenCount, 0)
         XCTAssertNil(model.unreadDivider)
+    }
+
+    @MainActor
+    func testSeenConditionChangesWhenOnlyTheMessageCountChanges() async throws {
+        let (model, peer) = try await Self.modelWithOneContact(store: Store())
+        model.openChat(peer)
+        let screen = ChatScreen(model: model)
+        let before = screen.makeSeenCondition(atBottom: true, positioned: true,
+                                              active: true, covered: false)
+        XCTAssertEqual(before.messages, 0)
+        XCTAssertTrue(before.isSeen)
+
+        model.draft = "короткое"
+        model.draftChanged()
+        model.send()
+        try await Self.wait { model.view.dialog(peer)?.messages.count == 1 }
+        let after = screen.makeSeenCondition(atBottom: true, positioned: true,
+                                             active: true, covered: false)
+        XCTAssertEqual(after.messages, 1, "the production factory must not pin the count to zero")
+        XCTAssertTrue(after.isSeen)
+        XCTAssertEqual(before.atBottom, after.atBottom)
+        XCTAssertEqual(before.positioned, after.positioned)
+        XCTAssertEqual(before.active, after.active)
+        XCTAssertEqual(before.covered, after.covered)
+        XCTAssertNotEqual(before, after,
+                          "new messages must invalidate onChange even with stable visibility")
+        // This proves the production count input and Equatable trigger, not
+        // actual SwiftUI callback scheduling or the iOS17 geometry fallback.
     }
 
     // MARK: - fixture

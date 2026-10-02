@@ -108,6 +108,24 @@ final class RefusalPresentationTests: XCTestCase {
         XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
     }
 
+    /// A's completion must stay silent while B's retained refusal is visible.
+    /// Pure announcement policy: no second full-outbox fixture or UI hook.
+    func testRefusalAnnouncementRequiresItsOwnVisibleConversation() {
+        let cases: [(current: String?, shown: Bool, expected: Bool)] = [
+            ("A", true, true),
+            ("A", false, false),
+            ("B", true, false),
+            ("B", false, false),
+            (nil, true, false),
+            (nil, false, false),
+        ]
+        for test in cases {
+            XCTAssertEqual(AppModel.shouldAnnounceRefusal(currentAccount: test.current,
+                                                          refusedAccount: "A", isShown: test.shown),
+                           test.expected, "current=\(String(describing: test.current)), shown=\(test.shown)")
+        }
+    }
+
     /// Which notes a re-read of the state may retire, and which it never
     /// touches (`AppModel.staleRefusal`).
     func testARefusalIsForgottenExactlyWhenItsReasonIsGone() {

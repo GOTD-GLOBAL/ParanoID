@@ -340,6 +340,14 @@ final class TextFlowUITests: XCTestCase {
         try fixture.shot("19a-not-dragged")
         down.tap()
         XCTAssertTrue(fixture.becomesVisible(dragged), "«↓» did not lead to the new message")
+        // Check this navigation independently, before an own reply could
+        // trigger another scroll/seen update and mask a broken down action.
+        XCTAssertTrue(fixture.goes(down), "«↓» did not clear after reaching the bottom")
+        fixture.back(app)
+        XCTAssertTrue(fixture.wait(conversation, timeout: Timeout.screen) { !counted($0) },
+                      "down-button navigation alone left an unread count: \(conversation.label)")
+        conversation.tap()
+        XCTAssertTrue(fixture.becomesVisible(dragged), "reopening did not return to the read bottom")
 
         // The new-message markers and the composer together: the reader
         // scrolls up again, the peer writes, and with «↓» still on the screen
@@ -359,6 +367,7 @@ final class TextFlowUITests: XCTestCase {
                                         "the reply written while scrolled up")
         XCTAssertTrue(fixture.becomesVisible(answer),
                       "the reader's own reply did not take the history down to it")
+        try fixture.exactlyOne(app, fixture.trimmedText, "after the reply while scrolled up")
         XCTAssertTrue(fixture.goes(down), "«↓» outlived a reply that took the reader to the bottom")
         XCTAssertEqual(try fixture.ask("peer-expect", fixture.trimmedText), "1",
                        "the peer did not receive the reply once, trimmed at its ends")
