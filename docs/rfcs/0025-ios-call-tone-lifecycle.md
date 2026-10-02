@@ -83,7 +83,7 @@ explicit call or foreground recovery can retry a missed interruption-end;
 capture stays disabled until an authorized connected event. Old busy/ring
 callbacks cannot release a replacement generation.
 
-The pinned [RTCAudioSession implementation](https://github.com/webrtc-sdk/webrtc/blob/73cb8180f7258ee292878d6edd05177f41883962/sdk/objc/components/audio/RTCAudioSession.mm)
+The pinned [RTCAudioSession implementation](https://raw.githubusercontent.com/webrtc-sdk/webrtc/73cb8180f7258ee292878d6edd05177f41883962/sdk/objc/components/audio/RTCAudioSession.mm)
 was inspected: setActive(false) decrements activationCount even when the native
 operation fails, and media-services reset does not clear that count. The adapter
 and policy retire the logical lease on every attempted balanced deactivation,

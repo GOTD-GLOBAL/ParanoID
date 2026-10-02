@@ -61,6 +61,12 @@ The APNs sender is a second provider of the existing
 
 ## Integration checkpoint after PR60 (2026-10-02)
 
+Pinned source links use GitHub's raw host after repeated HTTP 503 responses from
+its HTML blob pages on 2026-10-02. The same commit and file paths returned real
+source content with HTTP 200; no check was excluded and no revision was changed.
+`L` labels/fragments retain cited line numbers; raw viewers may not jump to them.
+This availability check is not a new review of platform behavior.
+
 This draft's source citations and Apple/Signal research describe the 2026-09-26
 baseline unless a later note says otherwise. Numeric line references are
 historical locators, not proof of current source locations. External platform
@@ -389,11 +395,11 @@ Why each element is there:
   body information" (modifying-content page, above), and this payload carries
   only a localized body key. Signal's production payload has the same shape,
   `setMutableContent(true)` plus `setLocalizedAlertMessage("APN_Message")`
-  ([Signal-Server APNSender.java L42-L45](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L42-L45)),
+  ([Signal-Server APNSender.java L42-L45](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L42-L45)),
   which is practical evidence that a `loc-key` body qualifies. A device test
   confirms it for this app. The string means "You may have new messages", as
   Signal's `APN_Message` does
-  ([Signal-iOS Localizable.strings L215](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/translations/en.lproj/Localizable.strings#L215)).
+  ([Signal-iOS Localizable.strings L215](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/translations/en.lproj/Localizable.strings#L215)).
   The iOS client ships in Russian and has no localization table
   (`clients/ios/App/ParanoID/Strings.swift:28-30`), so `PARANOID_WAKE` becomes
   the bundle's one localized-string entry. It holds a Russian caption that the
@@ -425,7 +431,7 @@ Why each element is there:
   A longer TTL adds no content; it lengthens how long Apple stores one
   constant push.
   FCM uses 60 s (`server/src/push_fcm.rs:198-199`) and Signal 30 days
-  ([APNSender.java L52-L54](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L52-L54)).
+  ([APNSender.java L52-L54](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L52-L54)).
 
 The server never sends `voip` or `background` pushes and never uses the `.voip`
 topic. A test asserts that no other push type or topic can be built.
@@ -450,7 +456,7 @@ topic. A test asserts that no other push type or topic can be built.
 - TLS uses the existing webpki roots. APNs moved to the USERTrust RSA root in
   2025 ([Apple news](https://developer.apple.com/news/?id=09za8wzy)). Pinning
   Apple's CA, as Signal does
-  ([APNSender.java L66-L71](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L66-L71)),
+  ([APNSender.java L66-L71](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L66-L71)),
   is optional hardening (open item).
 - The endpoint override for tests (loopback `h2c` only) is refused in public
   mode, exactly like the FCM override (`server/src/main.rs:141-155`).
@@ -746,10 +752,10 @@ The extension always silences the push itself and shows at most one local
 notification, with the fixed identifier `paranoid.new-message`, so a later
 notification replaces an earlier one instead of stacking. Signal's extension
 likewise never shows the push itself: it returns empty or badge-only content
-([NotificationService.swift L182-L193](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L182-L193),
-[L208-L272](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L208-L272))
+([NotificationService.swift L182-L193](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L182-L193),
+[L208-L272](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L208-L272))
 and posts its own notices with fixed identifiers
-([L296-L314](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L296-L314)).
+([L296-L314](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L296-L314)).
 
 For each push:
 
@@ -758,7 +764,7 @@ For each push:
    notification with the stage 1 text once, and silence the push. Signal does
    the same: it returns empty content and posts a one-time "phone locked"
    notice
-   ([NotificationService.swift L121-L136](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L121-L136)).
+   ([NotificationService.swift L121-L136](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NotificationService.swift#L121-L136)).
 2. If the mirror is missing or over the memory gate: the stage 1 text, and
    silence.
 3. If a fetch started less than 5 s ago (proposed), according to
@@ -817,10 +823,10 @@ data (sending end-to-end encrypted VoIP calls, above):
 1. The extension recognises a fresh knock and calls
    `reportNewIncomingVoIPPushPayload` with only a random UUID. No call metadata
    passes through system daemons. Signal likewise passes only a UUID
-   ([NSECallMessageHandler.swift L169-L205](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L169-L205)),
+   ([NSECallMessageHandler.swift L169-L205](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L169-L205)),
    but Signal's extension first writes the decrypted call message into the
    shared database for the app
-   ([CallMessageRelay.swift L81-L99](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/CallMessageRelay.swift#L81-L99)).
+   ([CallMessageRelay.swift L81-L99](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/CallMessageRelay.swift#L81-L99)).
    This extension writes nothing, so the app must fetch and decrypt the knock
    again.
 2. iOS launches the app into
@@ -835,7 +841,7 @@ data (sending end-to-end encrypted VoIP calls, above):
    runs from a view `.task` (`clients/ios/App/ParanoID/ParanoIDApp.swift:61-63`),
    and whether the scene connects on a background launch is UNVERIFIED. The
    PushKit token is never sent anywhere. Signal ignores it the same way
-   ([PushRegistrationManager.swift L175-L177](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Notifications/PushRegistrationManager.swift#L175-L177)).
+   ([PushRegistrationManager.swift L175-L177](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Notifications/PushRegistrationManager.swift#L175-L177)).
    iOS 26.4 adds a `mustReport` flag
    ([Apple](https://developer.apple.com/documentation/pushkit/pkvoippushmetadata/mustreport)),
    but the deployment target is 17.0
@@ -874,8 +880,8 @@ data (sending end-to-end encrypted VoIP calls, above):
    Signal hands off on the offer itself, with no knock and `ready` round trip:
    its extension validates an offer and relays it, and drops answer, ICE,
    hangup and busy messages
-   ([NSECallMessageHandler.swift L51-L96](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L51-L96),
-   [L154-L166](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L154-L166)).
+   ([NSECallMessageHandler.swift L51-L96](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L51-L96),
+   [L154-L166](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/NSECallMessageHandler.swift#L154-L166)).
    This chain is therefore at least one network round trip longer than
    Signal's.
 6. Answer maps to the existing explicit Answer path; End or Decline maps to
@@ -891,7 +897,7 @@ full-screen-intent notification
 - `includesCallsInRecents = false`. Apple's default is `true`
   ([Apple](https://developer.apple.com/documentation/callkit/cxproviderconfiguration/includescallsinrecents)),
   and Signal's user setting also defaults to on
-  ([Preferences.swift L180-L190](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/Preferences.swift#L180-L190)).
+  ([Preferences.swift L180-L190](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/Preferences.swift#L180-L190)).
   Whether third-party CallKit entries in Recents sync to iCloud is not
   documented by Apple (UNVERIFIED); off by default removes the question.
 - Incoming caller name: the constant "ParanoID". The handle is
@@ -996,10 +1002,10 @@ An account cannot move between platforms: v2 has one immutable device per
 account (`docs/protocol/self-service-v2.md:23`). Proactive rotation of
 long-silent tokens is deferred. Signal, behind a remote flag, rotates a token
 whose last received push is more than 60 days old
-([APNSRotationStore.swift L6-L8](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L6-L8),
-[L139-L141](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L139-L141),
-[L165-L173](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L165-L173),
-[L259](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L259)).
+([APNSRotationStore.swift L6-L8](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L6-L8),
+[L139-L141](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L139-L141),
+[L165-L173](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L165-L173),
+[L259](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Util/APNSRotationStore.swift#L259)).
 
 ### Failure modes
 
@@ -1127,14 +1133,14 @@ commit times can be matched against Apple's per-token records (P11).
 
 | | Signal (Signal-Server at `bdf3e1a`, Signal-iOS at `06fb42b`) | This proposal |
 | --- | --- | --- |
-| Push class | `alert` with `mutable-content` only for a message the sender marks `urgent`; a `content-available` background push otherwise ([APNSender.java L84-L132](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L84-L132); [IncomingMessageList.java L44-L48](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/entities/IncomingMessageList.java#L44-L48)) | one `alert` for every envelope; the server learns no urgency bit |
-| Server VoIP pushes | none at the pinned head: `APNSender.java` builds only alert and background pushes ([L116-L120](https://github.com/signalapp/Signal-Server/blob/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L116-L120)). The iOS client stopped registering VoIP tokens when using the notification service extension on 2021-06-02 ([5227fd6](https://github.com/signalapp/Signal-iOS/commit/5227fd64dcc46dab1197a98679a69fdb47dfa57c)), and the leftover token code was removed on 2024-08-29 ([929d9ee](https://github.com/signalapp/Signal-iOS/commit/929d9eeaefa82e921b6fab4601c9f454fe00b597)). | none |
+| Push class | `alert` with `mutable-content` only for a message the sender marks `urgent`; a `content-available` background push otherwise ([APNSender.java L84-L132](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L84-L132); [IncomingMessageList.java L44-L48](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/entities/IncomingMessageList.java#L44-L48)) | one `alert` for every envelope; the server learns no urgency bit |
+| Server VoIP pushes | none at the pinned head: `APNSender.java` builds only alert and background pushes ([L116-L120](https://raw.githubusercontent.com/signalapp/Signal-Server/bdf3e1aea1b83e6ce14530ba515501c15bade3ad/service/src/main/java/org/whispersystems/textsecuregcm/push/APNSender.java#L116-L120)). The iOS client stopped registering VoIP tokens when using the notification service extension on 2021-06-02 ([5227fd6](https://github.com/signalapp/Signal-iOS/commit/5227fd64dcc46dab1197a98679a69fdb47dfa57c)), and the leftover token code was removed on 2024-08-29 ([929d9ee](https://github.com/signalapp/Signal-iOS/commit/929d9eeaefa82e921b6fab4601c9f454fe00b597)). | none |
 | Extension role | a writer: fetches, decrypts, stores, posts local notifications, stores decrypted call messages for the app | read-only: fetches, classifies, posts one constant notification, writes only its cursor |
-| Background receipts | the extension waits for pending receipt sends ([BackgroundMessageFetcher.swift L118-L134](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Messages/BackgroundMessageFetcher.swift#L118-L134)) | the extension sends nothing; a PushKit launch of the app does (decision 14) |
+| Background receipts | the extension waits for pending receipt sends ([BackgroundMessageFetcher.swift L118-L134](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Messages/BackgroundMessageFetcher.swift#L118-L134)) | the extension sends nothing; a PushKit launch of the app does (decision 14) |
 | Before the first unlock | empty content plus a one-time local notice | the same pattern |
 | Extension timeout | completes silently | fails visible with the stage 1 text |
 | Call hand-off | on the offer, with the decrypted message stored for the app | on the knock; the app re-fetches and sends `ready`, one extra round trip |
-| Notification content default | "Name, Content, and Actions" ([NotificationPreferencesManager.swift L44-L46](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Notifications/NotificationPreferencesManager.swift#L44-L46), [L13-L14](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Notifications/NotificationPreferencesManager.swift#L13-L14); [Localizable.strings L6458](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/translations/en.lproj/Localizable.strings#L6458)) | constant text only |
+| Notification content default | "Name, Content, and Actions" ([NotificationPreferencesManager.swift L44-L46](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Notifications/NotificationPreferencesManager.swift#L44-L46), [L13-L14](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalServiceKit/Notifications/NotificationPreferencesManager.swift#L13-L14); [Localizable.strings L6458](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/translations/en.lproj/Localizable.strings#L6458)) | constant text only |
 | Calls in Recents | on by default | off |
 
 "Stage 2" therefore means comparable delivery and ringing for the user with
@@ -1570,7 +1576,7 @@ These are carried as assumptions until measured or sourced:
 - Whether `voip` in `UIBackgroundModes` is required for the
   `reportNewIncomingVoIPPushPayload` path. Apple's end-to-end-encrypted call
   article does not mention it; Signal declares it
-  ([Signal-Info.plist L129-L136](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Signal-Info.plist#L129-L136)).
+  ([Signal-Info.plist L129-L136](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Signal-Info.plist#L129-L136)).
 - The extension memory limit (about 24 MB, developer reports only).
 - Whether the extension runs after a force-quit (stated by Apple staff on the
   forums, not in reference documentation).
@@ -1586,8 +1592,8 @@ These are carried as assumptions until measured or sourced:
 - The filtering entitlement's criteria and turnaround.
 - The meaning of `com.apple.developer.pushkit.unrestricted-voip`, which Signal
   holds for both its app and its notification service extension
-  ([Signal-AppStore.entitlements L31-L32](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Signal-AppStore.entitlements#L31-L32);
-  [SignalNSE-AppStore.entitlements L13-L14](https://github.com/signalapp/Signal-iOS/blob/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/SignalNSE-AppStore.entitlements#L13-L14));
+  ([Signal-AppStore.entitlements L31-L32](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/Signal/Signal-AppStore.entitlements#L31-L32);
+  [SignalNSE-AppStore.entitlements L13-L14](https://raw.githubusercontent.com/signalapp/Signal-iOS/06fb42bbf4402c738fc6d37dcb2828ba6ec0ce9f/SignalNSE/SignalNSE-AppStore.entitlements#L13-L14));
   it is not used here.
 - Whether `ring` parses Apple's `.p8`.
 - Whether hyper releases `WaitGuard` on client disconnect, as
