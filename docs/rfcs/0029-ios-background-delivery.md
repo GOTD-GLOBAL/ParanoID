@@ -5,19 +5,22 @@ decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 decision_deadline: 2026-10-15
 required_reviewers: []
-last_reviewed: 2026-09-26
+last_reviewed: 2026-10-02
+last_reviewed_scope: integration after PR60 and numbering; external platform research remains dated 2026-09-26
 ---
 
-# RFC-0028: Content-free iOS background delivery through APNs
+# RFC-0029: Content-free iOS background delivery through APNs
 
 This is a draft. Nothing in it is accepted, implemented, deployed or measured.
 It proposes a decision that only a future ADR could record, and only with
 the human decision owner's exact approval. The author is the contributor
 `Cooldom66671`. This draft was opened as RFC-0027 on 2026-09-26; then the
 Solana server-authentication pull request (#60) took RFC-0027 and ADR-0016, so
-it is renumbered RFC-0028 on 2026-09-28 and names no ADR number: the push ADR
-gets the next free number when it is drafted. Numbers are re-checked before
-`proposed` with the procedure in [the RFC index](README.md#naming).
+it was renumbered RFC-0028 on 2026-09-28. On 2026-10-02 it is renumbered
+RFC-0029 to avoid the published PR67 server-directory/links proposal's RFC-0028.
+The published branch inventory was checked before choosing 0029. No ADR number
+is reserved here: the push ADR gets the next free number when drafted. Numbers
+are re-checked before `proposed` using [the RFC index](README.md#naming).
 
 ## Summary
 
@@ -55,6 +58,42 @@ of these is a numbered [owner decision](#owner-decisions).
 
 The APNs sender is a second provider of the existing
 [RFC-0020](0020-push-wake.md) gateway, not a new service.
+
+## Integration checkpoint after PR60 (2026-10-02)
+
+This draft's source citations and Apple/Signal research describe the 2026-09-26
+baseline unless a later note says otherwise. Numeric line references are
+historical locators, not proof of current source locations. External platform
+research has not been re-executed during this repository-integration pass.
+
+PR60 is now merged; the [current state](../project/current-state.md) records a
+separate private Devnet identity-v3 server and Android login. iOS still implements
+v2 registration and foreground delivery. Its UI-stack merge does not add v3 login,
+APNs registration or CallKit. This RFC must not silently switch the saved realm,
+credential, transport account or peer pins in order to make a push path work.
+
+Before implementation against a v3 deployment, review this proposal against
+[identity-login-v3](../protocol/identity-login-v3.md), particularly AUTH-06/07:
+
+- APNs registration, extension reads and queued wake dispatch must respect the
+  current authorized transport binding and fail closed for a retired device;
+  possession of a formerly valid token or signing key cannot restore admission.
+- On a locally observed reset or authenticated retirement, stale mirrors/cursors
+  must not serve as authority for a new identity. An offline old phone cannot be
+  remotely wiped by this protocol; retaining/deleting existing ciphertext remains
+  a separately reviewed storage policy. Queued server work needs a retirement/race
+  test; generation binding and cleanup belong to the reviewed implementation,
+  not an assumption that existing FCM behavior automatically covers APNs.
+- A wake already accepted by Apple cannot be claimed retractable. Residual stale
+  generic notifications must remain distinct from permission to fetch or decrypt
+  new envelopes, and from a promise of no post-retirement timing disclosure.
+- Test both v2 and v3 modes, existing opt-out, replacement during queued dispatch,
+  lost/retried registration and old-device extension reads. These are additional
+  compatibility gates, all **NOT RUN**, not a new accepted identity policy.
+
+The existing 21 owner decisions remain open. In particular, merging this draft as
+documentation would neither accept those choices nor authorize deployment,
+Apple-key creation/upload, entitlement changes or storage migration.
 
 ## Preconditions
 
@@ -1349,7 +1388,7 @@ Scope proposed for the owner's approval:
    `classify_v2` and `sign_read_v2` (their own pull request), the mirror, the
    extension, PushKit, CallKit, the audio branch and the protected-data guard.
 8. **Phase 5, closure.** Evidence gathered; the push ADR `accepted` with the
-   owner's exact approval, RFC-0028 `completed`, and the decision-log entry,
+   owner's exact approval, RFC-0029 `completed`, and the decision-log entry,
    in one pull request.
 
 **Rollback.** The server flip back to FCM-only restores today's behaviour; the
@@ -1565,19 +1604,13 @@ These are carried as assumptions until measured or sourced:
   holds it.
 - Time-sensitive notifications and Focus behaviour beyond Do Not Disturb were
   not researched.
-- **Documentation discrepancy, reported and not resolved here.**
-  `docs/project/current-state.md:784-785` says "Until the gateway is deployed
-  with the Firebase credential no wake is sent", while the 2026-09-13 rollout
-  record says "Push and voice configuration remain enabled" and counted 5
-  push-token rows (`docs/operations/apk-cap-rollout-2026-09-13.md:57`,
-  `:61-62`). Whether the hosted alpha sends FCM wakes today is therefore not
-  established by the documents. This RFC does not depend on it. The
-  documentation policy treats such a contradiction as a defect to resolve in
-  the same change (`docs/governance/documentation-policy.md:48-49`), but this
-  branch changes only the RFC, the threat delta and the index. The pull
-  request that carries this draft lists it as an explicit item for the owner,
-  and a separate small documentation change reconciles
-  `docs/project/current-state.md` with the 2026-09-13 rollout record.
+- **FCM deployment evidence reconciled (2026-10-02).** The old v20 preparation
+  paragraph in `current-state.md` is now explicitly historical and points to the
+  [2026-09-13 rollout receipt](../operations/apk-cap-rollout-2026-09-13.md#actual-preservation-and-verification):
+  push configuration enabled and five token rows in that dated snapshot. This
+  closes the misleading timeless deployment-pending wording, not a physical
+  wake test or a fresh assertion about today's service/token count. No production
+  inspection or change was performed for this documentation correction.
 
 ## Decision and follow-up
 

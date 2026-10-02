@@ -2,14 +2,15 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-09-26
+last_reviewed: 2026-10-02
+last_reviewed_scope: integration after PR60 and numbering; external platform research remains dated 2026-09-26
 ---
 
-# iOS push delivery threat delta (RFC-0028, draft)
+# iOS push delivery threat delta (RFC-0029, draft)
 
 Delta for threat-model boundary 8 (*mobile client to platform push
 notification services*) on the iOS client, proposed by
-[RFC-0028](../rfcs/0028-ios-background-delivery.md). It extends
+[RFC-0029](../rfcs/0029-ios-background-delivery.md). It extends
 [the threat model](threat-model.md), [the iOS client delta](ios-client-threats.md)
 and [the push wake delta](push-wake-threats.md); everything in those remains
 required.
@@ -38,6 +39,20 @@ Stage 2 only: notification service extension (second process, read-only) that fe
 Not used: server VoIP pushes, background (content-available) pushes, BGTaskScheduler,
   communication notifications, intent donation, CallKit Recents
 ```
+
+## Identity-v3 integration gate (after PR60)
+
+The [RFC integration checkpoint](../rfcs/0029-ios-background-delivery.md#integration-checkpoint-after-pr60-2026-10-02)
+requires explicit retirement/current-transport checks for registration, queued
+APNs work and extension fetches. Existing v2-route reuse does not waive v3
+admission. A retired token or old App Group mirror must not become authority for
+new membership. Generation binding, cleanup and reset behavior remain design and
+storage-review gates, not implemented behavior; an offline phone cannot be
+remotely wiped, and already accepted Apple notifications cannot be recalled.
+Retirement races and both-mode regression checks are **NOT RUN**. No identity,
+storage, entitlement, server or Apple-key change is authorized by merging this
+draft. Its 2026-09-26 external-platform research has not been rerun in this
+repository-integration review.
 
 ## Observers
 

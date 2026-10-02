@@ -919,8 +919,12 @@ result and installer visibility, v18 adds screen-on during video, local contact
 names, audible ring/ringback/busy and immediate reconnect on network change).
 Push wake (RFC-0020, proposed): the server gateway is in PR #28 and the
 client half ships in `0.0.20-push` (versionCode 20) — a content-free FCM wake
-only reconnects the E2EE channel. Until the gateway is deployed with the
-Firebase credential no wake is sent and behaviour equals v19. The OEM-killed
+only reconnects the E2EE channel. At this historical v20 preparation point,
+no wake was sent without the gateway's Firebase credential. The later
+[2026-09-13 rollout receipt](../operations/apk-cap-rollout-2026-09-13.md#actual-preservation-and-verification)
+records push configuration enabled and a dated snapshot of five token rows.
+That supersedes the deployment-pending description, not the separately unverified
+physical-phone wake behavior or today's live token count. The OEM-killed
 foreground connection remains the residual risk for devices without Google
 services. call-v2 rejects v1 bodies: both alpha phones must update; text is
 unaffected. v16 (`5041ca95…`) is published on `/v2/updates/android`
