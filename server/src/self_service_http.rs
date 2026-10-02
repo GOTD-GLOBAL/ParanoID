@@ -18,18 +18,32 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
-struct Service {
-    pool: PgPool,
-    realm: String,
-    pin: String,
-    epoch: String,
+pub(crate) struct Service {
+    pub(crate) pool: PgPool,
+    pub(crate) realm: String,
+    pub(crate) pin: String,
+    pub(crate) epoch: String,
     devices: Mutex<HashMap<String, (Instant, u8)>>,
     pending: Mutex<HashMap<String, (ChallengeV2, Credential, Instant)>>,
     sessions: Mutex<HashMap<String, Session>>,
     waiters: Mutex<HashSet<String>>,
-    changed: tokio::sync::Notify,
+    pub(crate) changed: tokio::sync::Notify,
     turn: Option<crate::voice_turn::Issuer>,
     push: Option<Arc<crate::push_fcm::Gateway>>,
+    /// Present only in the RFC-0027 identity-v3 mode.
+    pub(crate) v3: Option<crate::identity_v3::V3State>,
+}
+impl Service {
+    /// Drop every live session of a retired account. Its later operations already fail
+    /// the locked binding check; this only releases capacity and wakes its waiters.
+    pub(crate) fn retire_sessions(&self, account: &str) {
+        // Runs after a durable commit: never panic here, even on a poisoned lock.
+        self.sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retain(|_, session| session.context.account != account);
+        self.changed.notify_waiters();
+    }
 }
 struct Session {
     context: SessionV2,
@@ -88,6 +102,29 @@ pub async fn app_with_services(
     turn: Option<crate::voice_turn::TurnConfig>,
     push: Option<crate::push_fcm::PushConfig>,
 ) -> Result<Router, sqlx::Error> {
+    let identity_v3: bool = sqlx::query_scalar("SELECT to_regclass('public.id_meta') IS NOT NULL")
+        .fetch_one(&pool)
+        .await?;
+    if identity_v3 {
+        return Err(sqlx::Error::Configuration(
+            "identity-v3 database requires the identity-v3 runtime".into(),
+        ));
+    }
+    let s = service(pool, turn, push, None).await?;
+    Ok(routes(
+        s,
+        true,
+        serde_json::json!({"status":"ok","protocol":"paranoid-self-service-v2","realtime":"signed-long-poll-v1"}),
+        Router::new(),
+    ))
+}
+
+pub(crate) async fn service(
+    pool: PgPool,
+    turn: Option<crate::voice_turn::TurnConfig>,
+    push: Option<crate::push_fcm::PushConfig>,
+    v3: Option<crate::identity_v3::V3State>,
+) -> Result<Arc<Service>, sqlx::Error> {
     let push = push
         .map(|config| config.gateway().map(Arc::new))
         .transpose()
@@ -104,8 +141,7 @@ pub async fn app_with_services(
             .fetch_one(&pool)
             .await?;
     let turn = turn.map(|config| config.issuer(&realm)).transpose()?;
-    let budget = Arc::new(Mutex::new((Instant::now(), 0u32, 0u32)));
-    let s = Arc::new(Service {
+    Ok(Arc::new(Service {
         pool,
         realm,
         pin,
@@ -117,16 +153,34 @@ pub async fn app_with_services(
         changed: tokio::sync::Notify::new(),
         turn,
         push,
-    });
-    Ok(Router::new()
-        .route(
-            "/health",
-            axum::routing::get(|| async {
-                Json(serde_json::json!({"status":"ok","protocol":"paranoid-self-service-v2","realtime":"signed-long-poll-v1"}))
-            }),
-        )
-        .route("/v2/registration/challenge", post(challenge))
-        .route("/v2/registration/commit", post(operation))
+        v3,
+    }))
+}
+
+/// Shared v2 transport router. `registration` is false in identity-v3 mode, where
+/// accounts are created only by the dual-proof identity commit (RFC-0027).
+pub(crate) fn routes(
+    s: Arc<Service>,
+    registration: bool,
+    health: serde_json::Value,
+    extra: Router<Arc<Service>>,
+) -> Router {
+    let budget = Arc::new(Mutex::new((Instant::now(), 0u32, 0u32)));
+    let mut router = Router::new().route(
+        "/health",
+        axum::routing::get(move || {
+            let health = health.clone();
+            async move { Json(health) }
+        }),
+    );
+    if registration {
+        router = router
+            .route("/v2/registration/challenge", post(challenge))
+            .route("/v2/registration/commit", post(operation));
+    }
+    router
+        // RFC-0027 identity routes accept up to 16 KiB (challenge carries a credential).
+        .merge(extra.layer(DefaultBodyLimit::max(16384)))
         .route("/v2/auth/challenge", post(challenge))
         .route("/v2/auth/verify", post(operation))
         .route("/v2/session", post(operation))
@@ -169,6 +223,7 @@ pub async fn app_with_services(
                         w.1 = w.1.saturating_add(1);
                         if request.uri().path().starts_with("/v2/auth/")
                             || request.uri().path().starts_with("/v2/registration/")
+                            || request.uri().path().starts_with("/v3/")
                             || request.uri().path() == "/v2/session"
                         {
                             w.2 = w.2.saturating_add(1);
@@ -179,8 +234,16 @@ pub async fn app_with_services(
                         return Failure(StatusCode::TOO_MANY_REQUESTS, "ingress_limit")
                             .into_response();
                     }
-                    let seconds = if request.method() == Method::GET && request.uri().path() == "/v2/events" { 25 } else { 10 };
-                    match tokio::time::timeout(Duration::from_secs(seconds), next.run(request)).await {
+                    let seconds = if request.method() == Method::GET
+                        && request.uri().path() == "/v2/events"
+                    {
+                        25
+                    } else {
+                        10
+                    };
+                    match tokio::time::timeout(Duration::from_secs(seconds), next.run(request))
+                        .await
+                    {
                         Ok(r) => r,
                         Err(_) => {
                             Failure(StatusCode::REQUEST_TIMEOUT, "request_timeout").into_response()
@@ -188,7 +251,7 @@ pub async fn app_with_services(
                     }
                 }
             },
-        )))
+        ))
 }
 fn valid_intent(i: &Register) -> bool {
     if i.path.len() > 512 || !paranoid_key_protocol::hex32(&i.body) {
@@ -386,6 +449,7 @@ async fn operation(
             method.as_str(),
             &uri,
             &bytes,
+            s.v3.is_some(),
         )
         .await?;
         tx.commit().await?;
@@ -394,8 +458,10 @@ async fn operation(
         }
         return Ok(Json(result));
     }
-    tx.commit().await?;
-    if ch.purpose == "session" {
+    // A new session is published while this transaction still holds the ss_meta lock,
+    // so a concurrent identity-v3 replacement either precedes it (the binding check above
+    // fails) or follows it and then drops it with `retire_sessions` (RFC-0027 review).
+    let issued = if ch.purpose == "session" {
         let mut sessions = s.sessions.lock().unwrap();
         sessions.retain(|_, session| session.alive());
         if sessions.len() >= 64
@@ -421,11 +487,22 @@ async fn operation(
             context.id.clone(),
             Session {
                 context: context.clone(),
-                credential: c,
+                credential: c.clone(),
                 issued: Instant::now(),
                 nonces: HashSet::new(),
             },
         );
+        Some(context)
+    } else {
+        None
+    };
+    if let Err(error) = tx.commit().await {
+        if let Some(context) = &issued {
+            s.sessions.lock().unwrap().remove(&context.id);
+        }
+        return Err(error.into());
+    }
+    if let Some(context) = issued {
         return Ok(Json(serde_json::to_value(context).map_err(|_| denied())?));
     }
     Ok(Json(
@@ -603,6 +680,7 @@ async fn session_query(
         method.as_str(),
         uri,
         body,
+        s.v3.is_some(),
     )
     .await?;
     tx.commit().await?;

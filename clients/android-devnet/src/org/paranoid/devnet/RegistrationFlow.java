@@ -60,6 +60,36 @@ final class RegistrationFlow {
         long balance=integer(((JSONObject)rpc.call("getBalance",new JSONArray().put(p.getString("owner")).put(finalized()))).get("value"));
         return "Devnet · адрес: "+p.getString("owner")+"\nБаланс: "+java.math.BigDecimal.valueOf(balance,9).toPlainString()+" тестовых SOL.\n"+(ended?"Ник ещё не подтверждён. Можно повторить регистрацию.":"Транзакция ещё ожидается. Повтор регистрации отправит те же байты.");
     }
+    /** Sponsor boundary (RFC-0026 rev. 2026-09-30): the ParanoID server pays rent+fee.
+     * prepare() returns {payer, blockhash, last_valid_height}; cosign() returns the payer
+     * signature over the exact message this phone built and already signed as owner. */
+    interface Sponsor { JSONObject prepare()throws Exception; String cosign(String owner,String name,String blockhash,String ownerSignature)throws Exception; }
+    /** Sponsored registration. Same persistence/retry rules as register(): the fully signed
+     * transaction is saved before it is sent; an unexpired attempt is re-broadcast unchanged. */
+    static String registerSponsored(Store store,Chain rpc,Sponsor sponsor,String name)throws Exception {
+        JSONObject s=required(store);if(!s.optBoolean("backup"))throw new IOException("backup_confirmation_required");
+        String genesis=rpc.cluster();rpc.program();JSONObject p=identity(s);String owner=p.getString("owner");
+        if(!s.optString("name").isEmpty()&&!name.equals(s.getString("name"))){
+            if(!expired(rpc,s.getJSONArray("attempts")))throw new IOException("different_name_pending");
+            Object id=((JSONObject)rpc.call("getAccountInfo",new JSONArray().put(p.getString("identity")).put(finalized().put("encoding","base64")))).get("value");
+            if(id!=JSONObject.NULL)throw new IOException("identity_already_registered");
+            s.put("attempts",new JSONArray()).remove("name");s.put("verified",false);
+        }
+        if(readback(rpc,s,owner,name,genesis)){store.save(s);return "Ник @"+name+" подтверждён в Devnet.";}
+        JSONArray attempts=s.getJSONArray("attempts");
+        if(!expired(rpc,attempts))return broadcast(store,rpc,s,attempts.getJSONObject(attempts.length()-1));
+        if(readback(rpc,s,owner,name,genesis)){store.save(s);return "Ник @"+name+" подтверждён в Devnet.";}
+        JSONObject grant=sponsor.prepare();
+        String payer=grant.getString("payer"),blockhash=grant.getString("blockhash");
+        JSONObject base=new JSONObject().put("entropy",s.getString("entropy")).put("name",name).put("blockhash",blockhash).put("genesis",genesis).put("payer",payer);
+        JSONObject signed=SolanaBridge.run(new JSONObject(base.toString()).put("op","sponsored_sign"));
+        String payerSignature=sponsor.cosign(owner,signed.getString("name"),blockhash,signed.getString("owner_signature"));
+        // The library re-verifies BOTH signatures over the message it built before returning bytes.
+        JSONObject tx=SolanaBridge.run(new JSONObject(base.toString()).put("op","sponsored_assemble").put("payer_signature",payerSignature));
+        JSONObject attempt=new JSONObject().put("signature",tx.getString("signature")).put("transaction",tx.getString("transaction")).put("last_valid_height",integer(grant.get("last_valid_height"))).put("broadcasts",0).put("sponsored",true);
+        s.put("attempts",new JSONArray().put(attempt)).put("name",name);
+        return broadcast(store,rpc,s,attempt);
+    }
     static String register(Store store,Chain rpc,String name)throws Exception {
         JSONObject s=required(store);if(!s.optBoolean("backup"))throw new IOException("backup_confirmation_required");
         String genesis=rpc.cluster();rpc.program();JSONObject p=identity(s);String owner=p.getString("owner");

@@ -46,8 +46,8 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="28"',manifest)
-        self.assertIn('android:versionName="0.0.28-devnet"',manifest)
+        self.assertIn('android:versionCode="35"',manifest)
+        self.assertIn('android:versionName="0.0.35-solana-id"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -77,7 +77,7 @@ class OnboardingContract(unittest.TestCase):
     def test_self_service_ui_is_contacts_dialogs_and_chat_not_operator_json(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
-        for caption in ['Контакты','Чаты','Мой ID','Добавить контакт','Создать ID','Отправить']:
+        for caption in ['Контакты','Чаты','Мой ID','Добавить контакт','Начать','Отправить']:
             self.assertIn(caption,ui)
         for obsolete in ['Запросить доступ у оператора','одобрени','importGrant','peerCode','descriptor.toString()','alice','bob']:
             self.assertNotIn(obsolete,ui)
@@ -204,7 +204,14 @@ class OnboardingContract(unittest.TestCase):
     def test_phone_ui_uses_key_workflow_not_manual_bearer_roles(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
-        self.assertIn('engine.createIdentity()',ui,'Create ID must be the onboarding action')
+        # RFC-0027: the fresh-install action opens the nick onboarding (create/restore nick → server).
+        self.assertIn('create=action("Начать",this::openOnboarding)',ui,'Nick onboarding must be the first-run action')
+        onboarding=(ROOT.parent/'android-devnet/src/org/paranoid/devnet/OnboardingActivity.java').read_text()
+        for caption in ['Создать ник','У меня уже есть ник','Запишите 12 слов','Общий сервер ParanoID','Войти по приглашению','Создать свой сервер']:
+            self.assertIn(caption,onboarding)
+        # Screenshots allowed except while recovery words are shown or typed.
+        self.assertIn('new byte[16]',onboarding,'new identities use 12 words (RFC-0026 rev. 2026-09-29)');self.assertNotIn('new byte[32]',onboarding)
+        self.assertIn('secure(true)',onboarding);self.assertIn('clearFlags(WindowManager.LayoutParams.FLAG_SECURE)',onboarding)
         self.assertNotIn('Spinner',ui)
         self.assertNotIn('Личный токен',ui)
         self.assertIn('SelfServiceClient',engine)

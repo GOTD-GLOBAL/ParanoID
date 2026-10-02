@@ -6,6 +6,9 @@ last_reviewed: 2026-09-08
 
 # Protocol documentation
 
+[Identity-login v3](identity-login-v3.md) is the RFC0027 candidate for isolated
+Devnet login/replacement. It does not change deployed v2 authorization.
+
 The [voice-v1 proposal](voice-v1.md) defines the implemented retained-channel
 E2EE call controls and media fingerprint/ICE binding. Its independent design
 closure and native/JNI tests are recorded; actual media and final-source review

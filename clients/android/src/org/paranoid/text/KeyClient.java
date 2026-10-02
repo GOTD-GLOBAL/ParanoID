@@ -8,6 +8,10 @@ import java.net.URL;
 public final class KeyClient {
     public static final String DEFAULT_REALM="https://157.180.49.125:38443";
     public static final String DEFAULT_PIN="8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba";
+    /** RFC-0027 private Devnet phone-test server (one-touch installer on the owner's VPS). Chosen only
+     * explicitly on a fresh install; never replaces a saved realm. Pin = SHA256(SPKI) of its TLS key. */
+    public static final String IDENTITY_TEST_REALM="https://138.16.180.53:38444";
+    public static final String IDENTITY_TEST_PIN="427a7046408aa4001318b86dfee86682a4bc6aea47b27720e08876b33d2490e7";
     public interface Commit { void save(String snapshot) throws Exception; }
     private final Commit commit;
     private String state="", realm=DEFAULT_REALM, pin=DEFAULT_PIN, legacyToken="";

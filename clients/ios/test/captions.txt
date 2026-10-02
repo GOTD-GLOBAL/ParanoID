@@ -19,12 +19,16 @@
 #   ios
 #       a screen Android does not have (the frozen screen, the stand guard, the
 #       contact-flow alert) or the foreground rule of this client, whose wording
-#       is the approved mock-up's; or a refusal Android does not name — a
-#       refused text above the composer, a refused contact in its alert —
-#       where Android publishes one sentence for all of them
-#       (`TextEngine.java:285-309`). iOS has no background delivery and no in-app
-#       update check, so «Получать в фоне», «Проверить обновления» and
-#       «Доступна версия …» have no counterpart here and are absent by design.
+#       is the approved mock-up's; or an element this client adds to a screen
+#       Android has, whose words are proposed and await the owner, with the
+#       same request standing for Android. iOS has no background delivery and
+#       no in-app update check, so «Получать в фоне», «Проверить обновления»
+#       and «Доступна версия …» have no counterpart here and are absent by
+#       design.
+#       This includes «Новые сообщения», whose words are also proposed and
+#       await the owner; Android has no such element yet.
+#       Refused texts above the composer and refused contacts in their alert
+#       also use ios: Android names neither reason (TextEngine.java:285-309).
 
 # --- Strings.swift — every caption of the screens
 MainActivity.java "Чаты"
@@ -35,11 +39,14 @@ MainActivity.java "Добавить контакт"
 MainActivity.java "Сведения о контакте"
 MainActivity.java "Статус подключения. Подробнее"
 MainActivity.java "Ваш ID.\nВаши разговоры."
-MainActivity.java "Создайте ID на этом телефоне и начните переписку. Номер телефона, email и пароль не нужны."
-MainActivity.java "Создать ID"
-MainActivity.java "Создаём ID…"
-MainActivity.java "Ключи остаются на этом телефоне. Регистрация на общем сервере выполняется автоматически."
-MainActivity.java "Закрытая альфа · только тестовые сообщения. Восстановление ID пока недоступно: не удаляйте приложение с нужными данными."
+# Welcome of the v2 self-service server. Android v29+ replaced its welcome with the
+# Solana nick onboarding (RFC-0027, PR60); iOS keeps the v2 flow and these words, so
+# since 2026-09-30 they are this client's own. Wording unchanged.
+ios "Создайте ID на этом телефоне и начните переписку. Номер телефона, email и пароль не нужны."
+ios "Создать ID"
+ios "Создаём ID…"
+ios "Ключи остаются на этом телефоне. Регистрация на общем сервере выполняется автоматически."
+ios "Закрытая альфа · только тестовые сообщения. Восстановление ID пока недоступно: не удаляйте приложение с нужными данными."
 MainActivity.java "Открываем данные…"
 MainActivity.java "Открываем сохранённые данные…"
 MainActivity.java "Данные недоступны · подробнее"
@@ -102,10 +109,13 @@ ios "Сообщение не отправлено: после шифровани
 ios "Сообщение не отправлено: ID ещё не зарегистрирован на сервере."
 MainActivity.java "Сканировать QR"
 MainActivity.java "Вставить контакт"
+# VoiceOver's name for the system's paste control, which draws its own label.
+ios "Вставить из буфера"
 MainActivity.java "Отмена"
 MainActivity.java "Проверка контакта"
 MainActivity.java "Сравните полный отпечаток с экраном собеседника лично или по доверенному каналу. Один пересланный QR не доказывает личность."
 MainActivity.java "Отпечаток совпадает"
+ios "Заблокированные ("
 ios "Доверие"
 ios "Шифрование"
 MainActivity.java "Сообщения защищены сквозным шифрованием. Проверка ключей при доставке не подтверждает, кому они принадлежат. Имя контакта хранится только на этом телефоне."
@@ -168,6 +178,10 @@ MainActivity.java "Сменить камеру"
 # (MainActivity.java:478). iOS has no such flag, so this client covers the
 # video stage while the screen is recorded or mirrored, and says why.
 ios "Видео скрыто: идёт запись или трансляция экрана."
+ios "Звонок прерван: система забрала звук"
+ios "Звонок · "
+ios "Вернуться"
+ios "Вернуться к звонку"
 MainActivity.java "До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием."
 MainActivity.java "Восстанавливаем соединение…"
 MainActivity.java "Проверяем доступность…"
@@ -228,6 +242,14 @@ MessagePresentation.java "Перезвонить"
 
 # --- ContactFlowError.swift — the refusal shown inside the scanner or the paste sheet
 ios "Понятно"
+# «Новые сообщения» (SeenMarks): a screen element Android does not have yet;
+# the words are this client's own and the owner's to approve.
+ios "Новые сообщения"
+ios "К новым сообщениям"
+ios " новое сообщение"
+ios " новых сообщения"
+ios " новых сообщений"
+ios "99+"
 ios "Это не контакт ParanoID. Попросите собеседника показать QR из «Мой ID»."
 ios "Это ваш собственный контакт."
 ios "Этот аккаунт уже есть в контактах с другими ключами. Сохранённый контакт не изменён: сообщения по-прежнему шифруются для прежних ключей."

@@ -251,8 +251,10 @@ public final class SelfServiceClient {
     /// The core keeps no clock of its own: a message carries the time of the
     /// phone that wrote or received it, and that time arrives with the
     /// operation — the same trust model the call controls already use for
-    /// `sent_ms`. It is stored, never transmitted, and never used to order,
-    /// admit or refuse anything. A test supplies its own.
+    /// `sent_ms`. It is stored, never transmitted, and never used by the core
+    /// or by this client's state to order, admit or refuse anything; the one
+    /// thing that reads it for an order is the screen's list of «Чаты»
+    /// (`DialogOrder`), a presentation. A test supplies its own.
     public var wallMillis: () -> UInt64 = {
         UInt64(max(0, Date().timeIntervalSince1970 * 1000))
     }
@@ -373,6 +375,15 @@ public final class SelfServiceClient {
             throw SelfServiceError.malformedReply("contact")
         }
         return text
+    }
+
+    /// The conversations alone, in one read of the core — the new-message
+    /// baseline (`SeenMarks`). An empty state has none, and answers without a
+    /// core call.
+    public func publicDialogs() throws -> [[String: Any]] {
+        try healthy()
+        guard !state.isEmpty else { return [] }
+        return try view().object["dialogs"] as? [[String: Any]] ?? []
     }
 
     /// Everything a screen may see: no private key, no state text

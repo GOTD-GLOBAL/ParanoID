@@ -1,3 +1,4 @@
+import ParanoidKit
 import SwiftUI
 
 /// «О приложении» (`MainActivity.showAbout()`, `MainActivity.java:280-286`).
@@ -25,10 +26,12 @@ struct AboutSheet: View {
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .padding(.top, 16)
-                Text(fingerprint.isEmpty ? Strings.About.fingerprintPlaceholder : fingerprint)
+                Text(fingerprint.isEmpty ? Strings.About.fingerprintPlaceholder
+                     : MessagePresentation.groupedFingerprint(fingerprint))
                     .font(.system(size: 13, design: .monospaced))
                     .textSelection(.enabled)
                     .padding(.top, 4)
+                    .accessibilityLabel(fingerprint.isEmpty ? Strings.About.fingerprintPlaceholder : fingerprint)
                     .accessibilityIdentifier("about-fingerprint")
                 Text(Strings.About.alpha)
                     .font(.system(size: 13))

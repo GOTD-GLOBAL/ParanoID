@@ -65,7 +65,7 @@ LOG="$OUT/logs/java-deps.log"
 # The named list of Android facade classes compiled for the host JVM. Every
 # one of them is free of the Android framework and reaches the core through
 # CoreBridge's JNI entry point.
-FACADE=(CoreBridge SelfServiceClient SnapshotCodec KeyClient KeyTransport PinnedTls
+FACADE=(CoreBridge IdentityPorts SelfServiceClient SnapshotCodec KeyClient KeyTransport PinnedTls
         SyncCycle QrCodec StorageGuard DialogPolicy MessagePresentation RealtimeLoop
         RealtimeTransport VoiceRelayConfig VoiceRelayTransport CallController)
 # Android classes deliberately left out: each one imports the Android

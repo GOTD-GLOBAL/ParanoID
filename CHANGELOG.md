@@ -29,6 +29,117 @@ public contract is declared.
   fourth kind of exception to "Android word for word", until Android names the
   same refusals. Core, server and protocol are unchanged.
 
+### Android v35: login works with a phone clock off by seconds — 2026-09-30
+
+- Phones checked a login challenge's expiry against their own clock with no tolerance,
+  so a phone a few seconds behind the server could never log in (`challenge_mismatch`).
+  The phone now tolerates ±300 s clock difference; the server still enforces the
+  60 s lifetime on its own clock.
+
+### Server-sponsored Devnet nicknames — 2026-09-30
+
+- The identity-v3 server can pay for users' Devnet nickname registration
+  (`/v3/sponsor/prepare`, `/v3/sponsor/register`, enabled by
+  `PARANOID_SPONSOR_KEYPAIR_FILE`; `install.sh --sponsor-keypair`). The phone no longer
+  needs test SOL; own SOL is only a fallback when the sponsor refuses.
+- Android v33 uses the sponsor by default in the nick onboarding.
+
+### Android v31: nick onboarding and 12-word recovery phrase — 2026-09-29
+
+- Fresh install opens a one-step-per-screen flow: create or restore nick → recovery
+  words → nick → automatic Devnet funding/registration → server choice → login.
+  Invite and own-server options are shown as upcoming, not implemented.
+- New Devnet identities use 12 BIP39 words; recovery accepts 12 or 24 so identities
+  created earlier keep working (RFC-0026 revision 2026-09-29, owner-approved).
+- Screenshots are allowed except on the recovery-word display and entry screens.
+
+### Solana identity login — server candidate (RFC-0027, draft) — 2026-09-24
+
+- New local-only server mode `identity-v3-local` with offline `identity-v3-init` on an
+  EMPTY database. Legacy self-registration routes are absent (404); accounts are created
+  only by a dual owner/device proof over `/v3/identity/{challenge,inspect,status,commit}`.
+  The existing v2 transport (messages, sessions, events, push, TURN) is reused unchanged.
+- Replacement retires the old transport account, deletes its push token, drops its
+  sessions and rejects new messages to it with `recipient_retired`.
+- The live verifier reads the paired registry records from finalized Devnet first, then
+  genesis and the pinned program artifact; exact byte checks, fail closed.
+- v2 and v3 runtimes refuse each other's databases. No public mode, deployment,
+  Android login, or accepted ADR yet; existing hosted service unchanged.
+
+### iOS new-message marks, proposed — 2026-09-26
+
+- A row of «Чаты» counts the peer's messages this run has not shown yet and
+  sets the title in bold; the open chat draws «Новые сообщения» over the first
+  of them and opens there; a «↓» button with the count leads down while unseen
+  messages are below; a reader scrolled up is not dragged down by a new
+  message. All four were exercised on the simulator against a local stand.
+- The marks live in memory only for the current run: no file, no defaults, no
+  snapshot, and nothing about reading reaches the server or the peer
+  (REQ-MSG-003). A message received in an earlier run and never opened is not
+  counted after a relaunch; persisting the mark waits for an owner decision.
+- "At the bottom" is asked of the scroll view itself on iOS 18 and later; iOS
+  17 uses an approximation that has not been run. The feature and its words
+  are proposed and await the owner. Android is unchanged.
+
+### iOS chat composer and bubbles, proposed — 2026-09-29
+
+- A bubble is as wide as its text, up to the row's room and a 440-point cap,
+  with the text at the leading edge and the time and mark at the trailing
+  edge as in Android's column; «ок» is no longer a full-width plate.
+- The byte counter stands only from 1800 bytes, in a warning colour, and red
+  over 2048; a short message is not told how short it is.
+- Dragging the history down takes the keyboard with it.
+- The text is sent trimmed at its ends (a trailing return or a leading space
+  no longer counts against the limit or stands as an empty line in the
+  peer's bubble); a failed send puts the draft back as typed. Android sends
+  the text as typed; the same request stands for it. Core, protocol and the
+  2048-byte wire limit are unchanged.
+
+### iOS contacts, proposed — 2026-09-29
+
+- «Контакты» stands in Russian alphabetical order of the names this phone
+  gave the contacts, the named first; the blocked contacts stand in a folded
+  «Заблокированные (N)» section at the bottom with «Разблокировать контакт»
+  at hand, and stay in «Чаты» with their badge.
+- The fingerprint is shown in eight groups of eight digits — on «Мой ID», in
+  the confirmation, in «О приложении» and now in the contact's own sheet —
+  every digit there and in order, unbroken for a screen reader.
+- «Мой ID» names the six characters a peer sees this phone under («Вы: …»).
+- The paste sheet has the system's paste control: one tap reads the
+  pasteboard and goes to the fingerprint, without the system's notice.
+  Android keeps the core's order, one unbroken fingerprint and no clipboard
+  button; the same request stands for it. Core, protocol and the shared
+  contact text are unchanged.
+
+### iOS chat list by recency, proposed — 2026-09-29
+
+- «Чаты» is ordered by the time stamped on each conversation's last message,
+  newest first — the local time the core already stores for each message
+  (RFC-0023); conversations without a timed message follow in the core's
+  order, and nothing invents a time. A call moves no chat, because the call
+  log keeps no time.
+- A missed call in a row's preview is drawn in red.
+- Rows of «Чаты» and «Контакты» are buttons that show a grey fill while
+  pressed, as Android's rows ripple. Android keeps the core's order and a muted line;
+  the same request stands for it. Core, protocol and server are unchanged.
+
+### iOS call screen after the call, proposed — 2026-09-28
+
+- The screen of an ended call closes itself: two seconds for an outcome that
+  only needs to be read, five for one that names a problem; «Закрыть» works
+  the whole time, «К переписке» and «Перезвонить» cancel it, and a call that
+  starts meanwhile is never closed by it.
+- «Перезвонить» on the screen of an own call that never connected — no
+  answer, busy, no connection — through the same confirmation as «Позвонить»,
+  for the same peer and kind of call; a contact blocked since gets no button.
+- A call put away with «К переписке» stands on a line over every screen
+  («Звонок · имя · 02:31 · Соединение установлено», with «Вернуться»); one
+  tap brings the screen back.
+- A call that already had audio and lost it to the system says «Звонок
+  прерван: система забрала звук» instead of «Не удалось установить связь».
+  Controller, protocol, peer and server are unchanged; Android should receive
+  the same request. The wording is a proposal for the owner.
+
 ### Android alpha caption follow-up
 
 - Remove the stale «До 200 сообщений в диалоге.» sentence from «Мой ID» →

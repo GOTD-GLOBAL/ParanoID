@@ -119,9 +119,35 @@ final class PresentationTests: XCTestCase {
         XCTAssertEqual(MessagePresentation.byteCount(limit), 2048)
         XCTAssertTrue(MessagePresentation.canSend(limit))
         XCTAssertFalse(MessagePresentation.canSend(limit + "я"))
-        // The limit is measured on the text as typed, not on a trimmed copy:
-        // the untrimmed text is what the core is given.
-        XCTAssertFalse(MessagePresentation.canSend(limit + " "))
+        // The limit is measured on what is sent, which is the text trimmed
+        // at its ends: a trailing space does not push a message over it.
+        XCTAssertTrue(MessagePresentation.canSend(limit + " "))
+        XCTAssertTrue(MessagePresentation.canSend("\n " + limit + " \n"))
+        XCTAssertFalse(MessagePresentation.canSend(" " + limit + "я "))
+    }
+
+    /// What is sent is the draft without the whitespace at its ends — Java's
+    /// `trim()`, every scalar at or below U+0020 — with everything inside it
+    /// kept, line breaks included.
+    func testTheTextSentIsTheDraftTrimmedAtItsEnds() {
+        XCTAssertEqual(MessagePresentation.trimmed("  привет \n"), "привет")
+        XCTAssertEqual(MessagePresentation.trimmed("\n\nдве\n\nстроки\t"), "две\n\nстроки")
+        XCTAssertEqual(MessagePresentation.trimmed("привет"), "привет")
+        XCTAssertEqual(MessagePresentation.trimmed(" \n\t "), "")
+        // U+00A0 is not trimmed by Java, and not here.
+        XCTAssertEqual(MessagePresentation.trimmed("\u{00A0}a\u{00A0}"), "\u{00A0}a\u{00A0}")
+        XCTAssertEqual(MessagePresentation.bytesToSend("  привет  "), 12)
+    }
+
+    /// The counter stands only near the limit.
+    func testTheCounterShowsFrom1800Bytes() {
+        XCTAssertEqual(MessagePresentation.byteWarning, 1800)
+        XCTAssertFalse(MessagePresentation.showsCounter(""))
+        XCTAssertFalse(MessagePresentation.showsCounter(String(repeating: "я", count: 899)))
+        XCTAssertTrue(MessagePresentation.showsCounter(String(repeating: "я", count: 900)))
+        XCTAssertTrue(MessagePresentation.showsCounter(String(repeating: "я", count: 1025)))
+        // Measured on what is sent: trailing spaces do not bring the counter up.
+        XCTAssertFalse(MessagePresentation.showsCounter(String(repeating: "я", count: 899) + "     "))
     }
 
     func testDeliveryAndMarkSayTheSameThreeThings() {
@@ -200,6 +226,16 @@ final class PresentationTests: XCTestCase {
         drafts.update(account: dialog.account, text: "третье")
         drafts.finished(pending, committed: false)
         XCTAssertEqual(drafts.text(for: dialog.account), "третье")
+
+        // The ticket carries the trimmed text for the core and the draft as
+        // typed; a failure puts the draft back, not the trimmed text.
+        drafts.update(account: dialog.account, text: "  четвёртое \n")
+        let slip = try! XCTUnwrap(drafts.begin(account: dialog.account, text: "  четвёртое \n",
+                                               canReply: true))
+        XCTAssertEqual(slip.text, "четвёртое")
+        XCTAssertEqual(slip.draft, "  четвёртое \n")
+        drafts.finished(slip, committed: false)
+        XCTAssertEqual(drafts.text(for: dialog.account), "  четвёртое \n")
     }
 
     @MainActor

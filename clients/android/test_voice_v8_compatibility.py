@@ -15,7 +15,7 @@ RETAINED_SHA256 = 'e0b02ac5d90abebdec2d25fcc5d5067fe0dba0a9e313a8bddec354ccf1aeb
 JSON_SHA256 = '3cf6cd6892e32e2b4c1c39e0f52f5248a2f5b37646fdfbb79a66b46b618414ed'
 REALM = 'https://127.0.0.2:38443'
 PIN = 'a' * 64
-JAVA = ['CoreBridge', 'SelfServiceClient', 'SnapshotCodec', 'KeyClient', 'KeyTransport', 'PinnedTls', 'SyncCycle']
+JAVA = ['CoreBridge', 'SelfServiceClient','IdentityPorts', 'SnapshotCodec', 'KeyClient', 'KeyTransport', 'PinnedTls', 'SyncCycle']
 
 
 def require(condition, message):

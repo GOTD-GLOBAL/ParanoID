@@ -52,6 +52,33 @@ final class RefusalPresentationTests: XCTestCase {
         XCTAssertFalse(model.isRefusalShown)
     }
 
+    /// The wire text is short, but the restored draft crosses the raw byte
+    /// limit. Neither that padding nor the field's restoration echo hides or
+    /// clears the refusal; only a real edit does.
+    @MainActor
+    func testPaddedDraftKeepsItsRefusalAfterRestorationAndReopening() async throws {
+        let (model, peer) = try await Self.chatWithAFullOutbox()
+        let raw = String(repeating: " ", count: 2050) + "проверка\n"
+        model.draft = raw
+        model.draftChanged()
+        XCTAssertTrue(model.canSend)
+        XCTAssertFalse(model.isOverLimit)
+        XCTAssertEqual(model.composerHint, "")
+        model.send()
+        try await Self.wait { model.draft == raw && model.isRefusalShown }
+        XCTAssertEqual(model.composerHint, Strings.Chat.Refusal.outboxFull)
+        model.draftChanged()
+        XCTAssertTrue(model.isRefusalShown, "restoring raw draft is not an edit")
+        model.closeChat()
+        model.openChat(peer)
+        XCTAssertEqual(model.draft, raw)
+        model.draftChanged()
+        XCTAssertTrue(model.isRefusalShown)
+        model.draft = "проверка"
+        model.draftChanged()
+        XCTAssertFalse(model.isRefusalShown, "removing padding is a real edit")
+    }
+
     /// A send that comes back after the user has left the chat is explained
     /// when they return, with the text it refused: leaving keeps the note, and
     /// so does a re-read that finds the outbox still full.

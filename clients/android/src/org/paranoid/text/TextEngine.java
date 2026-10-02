@@ -276,6 +276,25 @@ public final class TextEngine {
         String[] result=trust;ui.post(()->callback.ready(result));
     });}
     public void createIdentity(){submit(()->client.createIdentity());}
+    /** RFC-0027: create the device ID bound to the built-in identity-v3 test server (fresh install only). */
+    public void createIdentityLoginId(){submit(()->client.createIdentity(KeyClient.IDENTITY_TEST_REALM,KeyClient.IDENTITY_TEST_PIN));}
+    /** Login step for identity-v3 run by the Devnet screen. Everything touching the snapshot runs on
+     * the single state owner; the Devnet owner key never leaves the Devnet library. Blocks the caller
+     * (the Devnet screen's own executor), never the UI thread. */
+    public interface IdentityLoginStep { String run(IdentityPorts.Device device,IdentityPorts.Http http)throws Exception; }
+    public String identityLogin(IdentityLoginStep step)throws Exception {
+        java.util.concurrent.Future<String> result=((java.util.concurrent.ExecutorService)worker).submit(()->{
+            if(broken||client==null)throw new IOException("local state unavailable");
+            // Fresh install: the device ID is created bound to the identity-v3 server right here.
+            if(!client.hasIdentity())client.createIdentity(KeyClient.IDENTITY_TEST_REALM,KeyClient.IDENTITY_TEST_PIN);
+            if(!client.realm().equals(KeyClient.IDENTITY_TEST_REALM))throw new IOException("not_identity_server");
+            String mode=step.run(client.identityDevice(),client.identityHttp());
+            publish(client.registered()?"Вход выполнен":"Вход не завершён");startConnection();
+            return mode;
+        });
+        try{return result.get(3,java.util.concurrent.TimeUnit.MINUTES);}
+        catch(java.util.concurrent.ExecutionException e){Throwable c=e.getCause();throw c instanceof Exception?(Exception)c:new IOException(c);}
+    }
     public void pair(String code){submit(()->client.pair(code,true));}
     public void block(String account,boolean blocked){if(blocked)calls.block(account);submit(()->client.block(account,blocked));}
     public interface Preview {void checked(JSONObject preview);}

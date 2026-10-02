@@ -19,8 +19,10 @@ import WebRTC
 /// One `Runtime`, built once at launch: the snapshot store over the Keychain
 /// key, the `SelfServiceClient`, the state owner, the pinned transport, the
 /// two realtime lanes and the lifecycle runner that starts and stops them.
-/// Nothing here opens a connection itself; nothing here touches the core
-/// except through `StateOwner.perform`.
+/// Nothing here opens a connection itself. Before the owner exists, opening
+/// the client validates the saved state and `Runtime` reads the new-message
+/// baseline once; after that nothing here touches the core except through
+/// `StateOwner.perform`.
 ///
 /// ## The two guards
 ///
@@ -142,6 +144,14 @@ final class AppModel {
     /// application's own defaults and reaches neither the snapshot nor the
     /// network.
     private(set) var receiptHint = ReceiptHint()
+    /// Which incoming messages this run has not shown yet (`SeenMarks`). It is
+    /// in memory only: no file, no defaults, no snapshot, no request, and the
+    /// peer is never told anything about reading (REQ-MSG-003).
+    private(set) var seenMarks = SeenMarks()
+    /// Where the open chat draws «Новые сообщения»: the position of its first
+    /// new message when it was opened, kept while it stays open so that the
+    /// line does not vanish the moment it is read.
+    private(set) var unreadDivider: Int?
     /// The calls this phone has had (`CallLog`). Like the names it lives in a
     /// backup-excluded file of the application's own: the core keeps no call
     /// history and the server is told nothing about an outcome.
@@ -154,8 +164,9 @@ final class AppModel {
     /// The selected tab.
     var tab: Tab = .dialogs
     /// Whether the call screen is on top of everything (Android's
-    /// `callDialog`, `MainActivity.java:443`). An ended call keeps it until
-    /// «Закрыть», so that the reason can be read.
+    /// `callDialog`, `MainActivity.java:455`). An ended call keeps it long
+    /// enough for the outcome to be read, then closes it itself
+    /// (``scheduleCallClose(reason:)``); «Закрыть» closes it at once.
     var showsCall = false
     /// The confirmation that carries the privacy sentence, or `nil`.
     var callPrompt: CallPrompt?
@@ -164,7 +175,17 @@ final class AppModel {
     /// (`MainActivity.java:534`).
     var microphoneRefused = false
     /// The open conversation, or `nil` for the tabs.
-    var chatAccount: String?
+    ///
+    /// Every way into a chat writes this — `openChat`, and the navigation
+    /// binding directly — so this is where the chat's «Новые сообщения»
+    /// divider is fixed: once, when the conversation changes, and not when
+    /// the screen reappears from under the call screen or a sheet.
+    var chatAccount: String? {
+        didSet {
+            guard chatAccount != oldValue else { return }
+            unreadDivider = chat.flatMap { seenMarks.firstUnseenIndex($0) }
+        }
+    }
     /// What is presented over the screens.
     var sheet: Sheet?
     /// The refusal shown inside the scanner or the paste sheet.
@@ -230,6 +251,27 @@ final class AppModel {
     /// The identifier the call screen was last raised for, so that one call
     /// raises it once (`MainActivity.displayedCall`).
     private var shownCall = ""
+    /// The identifier of the ended call the screen is closing itself for, so
+    /// that one ended call starts one countdown however many times its view
+    /// is republished. `nil` until the first, and never the empty string: a
+    /// refused start publishes an ended view with an empty identifier
+    /// (`CallController.start`, `lastCallId = ""`), and that one counts too.
+    private var closingCall: String?
+    /// The countdown itself (``scheduleCallClose()``).
+    private var callClose: Task<Void, Never>?
+    /// The terminal facts of the last call, for «Перезвонить»: which way it
+    /// was placed and with which peer.
+    private(set) var lastTermination: CallTermination?
+    /// Whether the last call this device placed was asked for as a video call.
+    /// The controller opens no camera before media, so a video call that was
+    /// never answered ends with both cameras off and its termination cannot
+    /// tell; the intent can.
+    private var placedCallVideo = false
+    /// The identifier of the call whose audio the system took away
+    /// (``callInterrupted(_:)``), so that its end is named for what it was.
+    /// `nil` rather than the empty string, for the same reason as
+    /// ``closingCall``: an ended view with an empty identifier must not match.
+    private var interruptedCall: String?
     /// How many times the scene has been reported as on the screen or off it.
     /// It only grows, and it is what lets the state owner apply those reports
     /// in the order they were taken (``setBackground(_:)``).
@@ -242,6 +284,11 @@ final class AppModel {
     static let callIntentWindow = Duration.seconds(10)
     /// How often that wait looks again (`MainActivity.java:417`).
     static let callIntentPoll = Duration.milliseconds(100)
+    /// How long the screen of an ended call stays before it closes itself:
+    /// two seconds for an outcome that only needs to be read, five for one
+    /// that offers something to do.
+    static let endedCallLinger = Duration.seconds(2)
+    static let endedCallLingerWithAction = Duration.seconds(5)
     /// How often the screens re-read the committed state when nothing is
     /// published: Android's `poll` runnable (`MainActivity.java:74`). Every
     /// message, receipt and delivery mark also arrives through the listener,
@@ -295,6 +342,7 @@ final class AppModel {
                 client = try SelfServiceClient(saved: saved, sink: store, fixture: fixture)
             }
             let built = try Runtime(client: client, model: self)
+            seenMarks = built.seenBaseline
             // No migration until stand, continuity and runtime construction succeeded.
             // Every noStand/frozen early exit leaves both stores in-memory only.
             loadLocalMetadataOnce()
@@ -510,7 +558,8 @@ final class AppModel {
     /// that ``isRefusalShown`` is true exactly when the words are the
     /// refusal's.
     private var composerLine: (text: String, refused: Bool) {
-        let bytes = MessagePresentation.byteCount(draft)
+        // Measure the trimmed send, not the raw draft restored after refusal.
+        let bytes = MessagePresentation.bytesToSend(draft)
         if chat?.isBlocked == true { return (Strings.Chat.blockedHint, false) }
         if isBroken { return (Strings.Chat.brokenHint, false) }
         if bytes > MessagePresentation.byteLimit { return (Strings.Chat.tooLong(bytes: bytes), false) }
@@ -524,7 +573,7 @@ final class AppModel {
     /// Whether the composer's hint is the over-limit one
     /// (`MainActivity.java:351`).
     var isOverLimit: Bool {
-        MessagePresentation.byteCount(draft) > MessagePresentation.byteLimit
+        MessagePresentation.bytesToSend(draft) > MessagePresentation.byteLimit
     }
 
     /// Whether the composer's hint is a refused send. It is drawn in the
@@ -759,6 +808,7 @@ final class AppModel {
     /// which preserves its position without inventing a call timestamp
     /// (`ChatRow.rows(messages:calls:)`).
     func callFinished(_ termination: CallTermination) {
+        lastTermination = termination
         let anchor = CallLog.anchor(messages: isBroken ? nil : view.dialog(termination.account)?.messages)
         callLog.record(termination.record(afterMessageId: anchor))
     }
@@ -778,20 +828,70 @@ final class AppModel {
     /// written by a build that kept no time opens nothing either — there is no
     /// day to name for it (`MessagePresentation.startsNewDay`).
     var chatTimeline: [TimelineRow] {
-        let now = UInt64(max(0, Date().timeIntervalSince1970 * 1000))
+        Self.timeline(chatRows, now: UInt64(max(0, Date().timeIntervalSince1970 * 1000)),
+                      dividerBefore: unreadDivider)
+    }
+
+    /// The rows of a conversation with its day pills and, when there is one,
+    /// the «Новые сообщения» divider.
+    ///
+    /// The divider stands immediately before the message at position
+    /// `dividerBefore` in the history — after the calls anchored to the message
+    /// before it, and after that message's day pill, so the pill still opens
+    /// the day and the line still points at the first new message. Its identity
+    /// is its position (`TimelineRow.unreadId`), never a message identifier,
+    /// which the sender chooses.
+    nonisolated static func timeline(_ rows: [ChatRow], now: UInt64,
+                                     dividerBefore: Int?) -> [TimelineRow] {
         var timeline: [TimelineRow] = []
         var previous: UInt64 = 0
-        for row in chatRows {
+        var position = 0
+        for row in rows {
             if case .message(let message) = row {
                 if MessagePresentation.startsNewDay(message.localMilliseconds, after: previous) {
                     let title = MessagePresentation.daySeparator(message.localMilliseconds, now: now)
                     if !title.isEmpty { timeline.append(TimelineRow(id: "d:" + message.id, kind: .day(title))) }
                 }
                 if message.localMilliseconds > 0 { previous = message.localMilliseconds }
+                if position == dividerBefore {
+                    timeline.append(TimelineRow(id: TimelineRow.unreadId(position), kind: .unread))
+                }
+                position += 1
             }
             timeline.append(TimelineRow(id: row.id, kind: row))
         }
         return timeline
+    }
+
+    // MARK: - new messages
+
+    /// How many messages of `dialog`'s peer this run has not shown yet — the
+    /// count on its row of «Чаты».
+    func unseenCount(for dialog: Dialog) -> Int {
+        seenMarks.unseenCount(dialog)
+    }
+
+    /// The same for the open chat, for its «↓» button.
+    var chatUnseenCount: Int {
+        chat.map { seenMarks.unseenCount($0) } ?? 0
+    }
+
+    /// The bottom of the open chat was on the screen, with the application
+    /// active and nothing over the chat: everything it holds has been seen.
+    ///
+    /// It is the one mutation of «Новые сообщения», and it reaches no core, no
+    /// snapshot, no connection and no peer — only this object's memory.
+    func markChatSeen() {
+        guard let chat else { return }
+        seenMarks.markSeen(chat)
+    }
+
+    /// The application came back while a chat was open. A chat that had no
+    /// divider gets one if something new arrived in the meantime; one that
+    /// had a divider keeps it where it was.
+    func chatResumed() {
+        guard unreadDivider == nil, let chat else { return }
+        unreadDivider = seenMarks.firstUnseenIndex(chat)
     }
 
     /// When the last message of a conversation happened, as its row says it:
@@ -807,12 +907,44 @@ final class AppModel {
     /// The preview of one conversation row: the last call when it is newer than
     /// the last message, and the last message otherwise.
     func preview(for dialog: Dialog) -> String? {
-        guard let call = callLog.records(for: dialog.account).last else { return nil }
-        // A call recorded after the newest message is what the row should say;
-        // an older one stays in the chat and out of the list.
-        guard call.afterMessageId == dialog.last?.id else { return nil }
+        guard let call = previewedCall(for: dialog) else { return nil }
         return Strings.CallRow.line(kind: call.kind, video: call.video,
                                     seconds: call.durationSeconds)
+    }
+
+    /// Whether the row's preview is a missed call, which the list draws in red.
+    func isMissedCallPreview(for dialog: Dialog) -> Bool {
+        previewedCall(for: dialog)?.kind.isMissed == true
+    }
+
+    /// The call the row shows instead of the last message, or `nil`: the last
+    /// call of the conversation, when it was recorded after the newest message
+    /// — an older one stays in the chat and out of the list.
+    private func previewedCall(for dialog: Dialog) -> CallRecord? {
+        guard let call = callLog.records(for: dialog.account).last,
+              call.afterMessageId == dialog.last?.id else { return nil }
+        return call
+    }
+
+    /// «Чаты» in the order a person reads them: the conversation with the
+    /// newest message first (`DialogOrder.byRecency`).
+    var orderedDialogs: [Dialog] {
+        DialogOrder.byRecency(view.dialogs)
+    }
+
+    /// «Контакты» in the order a phone book reads them: by the name this
+    /// phone gave each contact, the named ones first
+    /// (`ContactOrder.alphabetical`), without the blocked ones, which stand
+    /// in their own section (``blockedContacts``).
+    var orderedContacts: [Dialog] {
+        ContactOrder.alphabetical(view.dialogs.filter { !$0.isBlocked }, name: name(for:))
+    }
+
+    /// The blocked contacts, in the same order, for the section at the bottom
+    /// of «Контакты». They stay in «Чаты» with their «Блок» badge, as on
+    /// Android: a block keeps the history (`Strings.Details.blockBody`).
+    var blockedContacts: [Dialog] {
+        ContactOrder.alphabetical(view.dialogs.filter(\.isBlocked), name: name(for:))
     }
 
     /// Whether the open conversation shows the sentence about the second mark.
@@ -937,10 +1069,56 @@ final class AppModel {
         case .busy: return Strings.Call.busy
         case .reject: return Strings.Call.rejected
         case .timeout: return Strings.Call.timeout
-        case .failed, .unavailable: return Strings.Call.failed
+        case .failed, .unavailable:
+            // The one branch Android does not have: a call whose audio the
+            // system took away is named, not called a failure to connect
+            // (`CallCoordinator.interrupted`).
+            return call.callId == interruptedCall ? Strings.Call.interrupted : Strings.Call.failed
         case .cancel: return Strings.Call.cancelled
         default: return Strings.Call.ended
         }
+    }
+
+    /// The line over the screens while a call runs and its screen is put
+    /// away — «Звонок · Сергей · 02:31 · Соединение установлено», with
+    /// «Вернуться» beside it — or `nil`. It reads the same name and the same
+    /// status the call screen shows.
+    var callReturnBar: String? {
+        guard isCallActive, !showsCall, let call else { return nil }
+        return Strings.Call.returnBar(title: title(for: call.account), status: callLabel)
+    }
+
+    /// «Вернуться» on that line: the call screen again, for the call that is
+    /// still running.
+    func returnToCall() {
+        guard isCallActive else { return }
+        showsCall = true
+    }
+
+    /// «Перезвонить» on the screen of a call that did not go through, or
+    /// `nil` when there is nothing to call back: the call has to be the one
+    /// on the screen, placed by this device, never connected, and ended
+    /// without an answer, busy, or without a connection — and the peer has to
+    /// be one a call may be placed to now, by the rule «Позвонить» itself
+    /// follows (`DialogPolicy.canReply`), so the button is never there for a
+    /// contact blocked since. The offer is the same confirmation «Позвонить»
+    /// opens, for the same peer and the same kind of call.
+    var callBackOffer: CallPrompt? {
+        guard let call, call.state == .ended, let last = lastTermination,
+              last.callId == call.callId, last.outgoing, !last.connected,
+              [.timeout, .busy, .failed, .unavailable].contains(last.reason),
+              DialogPolicy.canReply(view.dialog(last.account), active: view.isActive,
+                                    broken: isBroken, sending: false)
+        else { return nil }
+        return CallPrompt(account: last.account, video: last.video || placedCallVideo)
+    }
+
+    /// «Перезвонить»: the confirmation, over the call screen. The screen
+    /// stops closing itself, because the user is doing something on it.
+    func callBack() {
+        guard let offer = callBackOffer, !isCallActive else { return }
+        cancelCallClose()
+        callPrompt = offer
     }
 
     /// The trust line of the call screen (`MainActivity.java:522`): the peer's
@@ -1001,15 +1179,27 @@ final class AppModel {
     func endCall() {
         cancelCallIntent()
         guard let call, isCallActive else {
+            cancelCallClose()
             showsCall = false
             return
         }
         Task { await calls?.end(callId: call.callId, generation: call.generation) }
     }
 
-    /// «К переписке»: the call keeps running behind the conversation.
+    /// «К переписке»: the call keeps running behind the conversation, and
+    /// ``callReturnBar`` says so over it.
     func closeCallScreen() {
+        cancelCallClose()
         showsCall = false
+    }
+
+    /// The audio of the call was taken away by the system — a cellular call,
+    /// Siri, an alarm, another application — and the call is ending for it
+    /// (`CallCoordinator.interrupted`). Only the caption changes: the peer is
+    /// told `failed`, as before.
+    func callInterrupted(_ callId: String) {
+        guard !callId.isEmpty else { return }
+        interruptedCall = callId
     }
 
     /// «Выключить микрофон» / «Включить микрофон» (`MainActivity.java:466`).
@@ -1156,6 +1346,7 @@ final class AppModel {
         // waits. The controller revalidates both values on its final owner hop.
         let answerGeneration = answer && call?.callId == callId ? call?.generation : nil
         guard !answer || answerGeneration != nil else { return }
+        if !answer { placedCallVideo = video }
         cancelCallIntent()
         let generation = callIntentGeneration
         callIntent = Task { [weak self] in
@@ -1270,6 +1461,42 @@ final class AppModel {
             showsCall = true
         }
         if presentation.state == .idle { showsCall = false }
+        // One ended call, one countdown: the view of an ended call is
+        // republished, and every republication would otherwise start over.
+        if presentation.state == .ended, presentation.callId != closingCall {
+            closingCall = presentation.callId
+            scheduleCallClose(reason: presentation.reason)
+        }
+    }
+
+    /// Closes the screen of an ended call by itself, after the outcome has
+    /// had its time on the screen: two seconds for one that is only read
+    /// («Звонок завершён», «Вызов отменён», «Звонок отклонён»), five for one
+    /// that names a problem and may offer «Перезвонить» (no answer, busy, no
+    /// connection). «Закрыть» works the whole time; «Перезвонить» and
+    /// «К переписке» cancel it; a call that starts meanwhile is never closed
+    /// by it, because it closes nothing while a call is live. The screen is
+    /// not taken away from under the microphone alert either.
+    private func scheduleCallClose(reason: CallBody.EndReason?) {
+        cancelCallClose()
+        let linger: Duration = switch reason {
+        case .timeout, .busy, .failed, .unavailable: AppModel.endedCallLingerWithAction
+        default: AppModel.endedCallLinger
+        }
+        callClose = Task { [weak self] in
+            try? await Task.sleep(for: linger)
+            while let self, !Task.isCancelled, self.microphoneRefused {
+                try? await Task.sleep(for: AppModel.callIntentPoll)
+            }
+            guard let self, !Task.isCancelled, !self.isCallActive else { return }
+            self.showsCall = false
+            self.callClose = nil
+        }
+    }
+
+    private func cancelCallClose() {
+        callClose?.cancel()
+        callClose = nil
     }
 
     /// The microphone, asked for exactly once per answer iOS keeps
@@ -1367,6 +1594,9 @@ final class AppModel {
         /// The call machinery: the controller, the TURN lane, the media engine
         /// and the audio session, all on the owner.
         let calls: CallCoordinator
+        /// How far each conversation went before anything started
+        /// (`SeenMarks`); inactive when the read failed.
+        let seenBaseline: SeenMarks
 
         /// - Parameters:
         ///   - client: the state adapter, handed over for good. It is
@@ -1377,6 +1607,18 @@ final class AppModel {
         ///   - model: where the lanes publish.
         init(client: sending SelfServiceClient, model: AppModel) throws {
             let trust = try client.updateTrust()
+            // What «Новые сообщения» counts from: every conversation as this
+            // run found it. It is read here, while the client still has one
+            // caller and before a lane or a lifecycle notification can exist,
+            // so nothing a lane fetches can slip into the baseline and be taken
+            // for seen — the one read of the core besides opening the client
+            // that happens before the owner does. It is one `view`, and on a
+            // fresh install with no state file it is no core call at all, so a
+            // new identity still counts what arrives after it registers. Only
+            // the counts are kept, not the messages. A failed read leaves no
+            // baseline, which counts nothing.
+            seenBaseline = (try? client.publicDialogs())
+                .map { SeenMarks(opening: $0.compactMap(Dialog.decode)) } ?? SeenMarks()
             let transport = try RealtimeTransport(realm: trust.realm, pin: trust.pin)
             let signal = WakeSignal()
             let owner = StateOwner(client: client, hook: signal)

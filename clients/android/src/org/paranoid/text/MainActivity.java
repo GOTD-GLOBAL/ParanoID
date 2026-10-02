@@ -65,7 +65,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private static final int MICROPHONE_PERMISSION=95,BLUETOOTH_PERMISSION=96;
     private final TextEngine.CallListener callListener=this::renderCall;
     private String page="dialogs",selectedAccount="",displayedQr="",lastStatus="Открываем сохранённые данные…",renderedHistory="",renderedDialogs="";
-    private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false;
+    private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false,identityLogin=false;
+    private TextView loginHint;private boolean onboardingOpened;
     private boolean backgroundPromptShowing;
     private TextView backgroundHint;
     private TextView updateHint,updateHeading;
@@ -157,10 +158,11 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         welcome=column();welcome.setPadding(dp(24),dp(20),dp(24),dp(24));addScrollablePage(welcome);
         ImageView mark=new ImageView(this);mark.setImageDrawable(new Symbol("identity",colors.action));mark.setPadding(dp(18),dp(18),dp(18),dp(18));mark.setBackground(shape(colors.actionSoft,28));mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);welcome.addView(mark,box(88,88));
         TextView title=text("Ваш ID.\nВаши разговоры.",32,colors.text,true);space(welcome,24);welcome.addView(title);
-        TextView body=text("Создайте ID на этом телефоне и начните переписку. Номер телефона, email и пароль не нужны.",16,colors.muted,false);space(welcome,16);welcome.addView(body);space(welcome,24);
-        create=action("Создать ID",()->{creating=true;buttons();engine.createIdentity();});welcome.addView(create,full());
-        space(welcome,20);welcome.addView(text("Ключи остаются на этом телефоне. Регистрация на общем сервере выполняется автоматически.",14,colors.muted,false));
-        space(welcome,20);welcome.addView(text("Закрытая альфа · только тестовые сообщения. Восстановление ID пока недоступно: не удаляйте приложение с нужными данными.",13,colors.muted,false));
+        TextView body=text("Ваш ник в Solana — ваш аккаунт. Номер телефона, email и пароль не нужны.",16,colors.muted,false);space(welcome,16);welcome.addView(body);space(welcome,24);
+        // RFC-0027: a fresh install starts with the nick onboarding (create/restore nick → server).
+        create=action("Начать",this::openOnboarding);welcome.addView(create,full());
+
+        space(welcome,20);welcome.addView(text("Закрытая альфа · тестовая сеть Solana Devnet.",13,colors.muted,false));
     }
 
     private void buildDialogs(){
@@ -169,6 +171,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateHint.setPadding(dp(12),dp(10),dp(12),dp(10));updateHint.setMinimumHeight(dp(40));updateHint.setBackground(ripple(colors.canvas,12));
         updateHint.setOnClickListener(v->openUpdates());updateHint.setFocusable(true);
         updateHint.setVisibility(View.GONE);dialogs.addView(updateHint,full());
+        loginHint=text("Войдите этим ID через ник Solana — открыть",13,colors.actionText,false);
+        loginHint.setPadding(dp(12),dp(10),dp(12),dp(10));loginHint.setMinimumHeight(dp(40));loginHint.setBackground(ripple(colors.canvas,12));
+        loginHint.setOnClickListener(v->openOnboarding());loginHint.setFocusable(true);loginHint.setVisibility(View.GONE);dialogs.addView(loginHint,full());
         backgroundHint=text("Входящие в фоне отключены — включить",13,colors.actionText,false);
         backgroundHint.setPadding(dp(12),dp(10),dp(12),dp(10));backgroundHint.setMinimumHeight(dp(40));backgroundHint.setBackground(ripple(colors.canvas,12));
         backgroundHint.setOnClickListener(v->enableBackground());backgroundHint.setFocusable(true);backgroundHint.setContentDescription("Входящие в фоне отключены. Включить фоновое подключение");
@@ -302,6 +307,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         });
         menu.show();
     }
+    private void openOnboarding(){onboardingOpened=true;startActivity(new Intent(this,org.paranoid.devnet.OnboardingActivity.class));}
     private void openDevnet(){
         if(engine.calls().active()){Toast.makeText(this,"Завершите звонок перед регистрацией ника",Toast.LENGTH_LONG).show();return;}
         startActivity(new Intent(this,org.paranoid.devnet.MainActivity.class));
@@ -371,7 +377,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
     private void buttons(){
         if(send==null)return;
-        create.setEnabled(!hasIdentity&&!broken&&!creating);create.setText(creating?"Создаём ID…":"Создать ID");create.setAlpha(create.isEnabled()?1f:.45f);
+        create.setEnabled(!hasIdentity&&!broken);create.setAlpha(create.isEnabled()?1f:.45f);
         share.setEnabled(active&&!displayedQr.isEmpty()&&!broken);copy.setEnabled(share.isEnabled());share.setAlpha(share.isEnabled()?1f:.45f);copy.setAlpha(copy.isEnabled()?1f:.45f);
         JSONObject dialog=selectedDialog();boolean allowed=DialogPolicy.canReply(dialog,active,broken,drafts.sending());
         callAction.setEnabled(allowed||engine.calls().active());callAction.setAlpha(callAction.isEnabled()?1f:.45f);
@@ -753,14 +759,17 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     @Override public void changed(JSONObject view,String message){
         if(isFinishing()||isDestroyed())return;
         try{
-            boolean hadIdentity=hasIdentity;latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;
+            boolean hadIdentity=hasIdentity;latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;identityLogin=view.optBoolean("identity_login");
+            loginHint.setVisibility(hasIdentity&&identityLogin&&!active&&!broken?View.VISIBLE:View.GONE);
+            // New install: go straight to the one-step-per-screen onboarding, once per process.
+            if(!hasIdentity&&!broken&&!view.optBoolean("unsupported_snapshot")&&resumed&&!onboardingOpened)openOnboarding();
             background.setText(view.optBoolean("background_enabled")?"Отключить фоновое подключение":"Включить фоновое подключение");background.setEnabled(hasIdentity&&!broken);
             boolean backgroundEnabled=view.optBoolean("background_enabled");
             boolean backgroundPrompted=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BACKGROUND_PROMPT_KEY,false);
             backgroundHint.setVisibility(hasIdentity&&!broken&&!backgroundEnabled&&backgroundPrompted?View.VISIBLE:View.GONE);
             if(hasIdentity&&!broken&&!backgroundEnabled&&!backgroundPrompted&&resumed)offerBackground();
             lastStatus=view.optBoolean("unsupported_snapshot")?"Сохранённые данные относятся к предыдущей тестовой версии. Эта сборка предназначена для новой установки. Данные не изменены.":broken?"Локальные данные недоступны. Ключи и история не сброшены. Не удаляйте приложение.":message;
-            String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?"Регистрируем ID · ключи сохранены":view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
+            String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?(identityLogin?"Нужен вход через ник Solana":"Регистрируем ID · ключи сохранены"):view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
             status.setText(connection);status.setTextColor(broken?colors.danger:colors.muted);
             myId.setText(view.optString("account","Создайте ID, чтобы начать"));

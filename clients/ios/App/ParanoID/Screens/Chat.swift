@@ -32,13 +32,108 @@ import SwiftUI
 /// before it is sent rather than after.
 struct ChatScreen: View {
     @Bindable var model: AppModel
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Whether the bottom of the history is on the screen. A chat opens at
+    /// its bottom unless it has a divider, and the scroll view reports only
+    /// changes, so this starts true and the divider scroll turns it false.
+    @State private var isAtBottom = true
+    /// Whether the first positioning — at the divider or at the bottom — is
+    /// over. Until it is, the bottom may flash by under `defaultScrollAnchor`
+    /// and must not count as seen.
+    @State private var positioned = false
+    /// The one-point view at the very end of the history, after the receipt
+    /// card: what «↓» and a new own message scroll to, so that a scroll to it
+    /// is a scroll to the end the scroll view itself measures.
+    private static let bottomId = "bottom"
+
+    /// Whether the bottom of the history is on the screen is asked of the
+    /// scroll view itself: its offset is as far as it can go. A lazy stack keeps rows it has built after they scroll away and
+    /// does not re-measure them, so neither a row appearing nor its measured
+    /// frame says what is visible (both were tried and both were wrong on the
+    /// simulator). iOS 17 has no scroll geometry; there the bottom marker's
+    /// appearance stands in for it, an approximation that has not been run.
+    private struct HistoryScrolling: ViewModifier {
+        @Binding var isAtBottom: Bool
+
+        /// How close to the end still is the end: the history's own bottom
+        /// padding (12 points, below the last row) plus the marker and
+        /// rounding. Inside it, nothing unread is out of sight.
+        static let endSlack: CGFloat = 16
+
+        /// How far the visible part is from the end, and how tall the content is.
+        struct Edge: Equatable {
+            let distance: CGFloat
+            let height: CGFloat
+        }
+
+        func body(content: Content) -> some View {
+            if #available(iOS 18.0, *) {
+                // The same anchor main has always had, for every role: the chat
+                // opens at its end and keeps its end in place when the keyboard
+                // or a new row changes a size.
+                content
+                    .defaultScrollAnchor(.bottom)
+                    // The distance to the end and the content height rather
+                    // than a yes/no, so that every re-measurement reports again,
+                    // and so that content growing under a reader who was at the
+                    // end — a new message — does not count as scrolling away:
+                    // only the reader moves the reader off the bottom.
+                    .onScrollGeometryChange(for: Edge.self) { geometry in
+                        // The furthest the scroll view can go, insets included; a
+                        // history shorter than the screen cannot scroll at all.
+                        let furthest = max(-geometry.contentInsets.top,
+                                           geometry.contentSize.height + geometry.contentInsets.bottom
+                                               - geometry.containerSize.height)
+                        return Edge(distance: (furthest - geometry.contentOffset.y).rounded(),
+                                    height: geometry.contentSize.height.rounded())
+                    } action: { old, new in
+                        let grewUnderReader = new.height > old.height && old.distance <= Self.endSlack
+                        let atBottom = grewUnderReader || new.distance <= Self.endSlack
+                        if isAtBottom != atBottom { isAtBottom = atBottom }
+                    }
+            } else {
+                content.defaultScrollAnchor(.bottom)
+            }
+        }
+
+        /// Whether the scroll view answers for itself.
+        static var measures: Bool {
+            if #available(iOS 18.0, *) { return true }
+            return false
+        }
+    }
 
     private var dialog: Dialog? { model.chat }
+
+    /// Everything «seen» depends on, compared as one value so that a change in
+    /// any of them — a new message, a scroll, the scene, a call or a sheet over
+    /// the chat — asks the question again.
+    private struct SeenCondition: Equatable {
+        let messages: Int
+        let atBottom: Bool
+        let positioned: Bool
+        let active: Bool
+        let covered: Bool
+
+        var isSeen: Bool { atBottom && positioned && active && !covered }
+    }
+
+    private var seenCondition: SeenCondition {
+        SeenCondition(messages: dialog?.messages.count ?? 0,
+                      atBottom: isAtBottom,
+                      positioned: positioned,
+                      active: scenePhase == .active,
+                      covered: model.showsCall || model.sheet != nil)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             trust
             history
+                // The keyboard follows the finger down the history, as it
+                // does in the system's own Messages.
+                .scrollDismissesKeyboard(.interactively)
             composer
         }
         // SwiftUI propagates an accessibility modifier to every element under
@@ -115,6 +210,9 @@ struct ChatScreen: View {
                         case .day(let title):
                             DaySeparator(title: title)
                                 .id(row.id)
+                        case .unread:
+                            UnreadDivider()
+                                .id(row.id)
                         case .message(let message):
                             MessageBubble(message: message, isOwn: dialog?.isOwn(message) == true)
                                 .id(message.id)
@@ -129,19 +227,103 @@ struct ChatScreen: View {
                         ReceiptHintCard { model.dismissReceiptHint() }
                             .padding(.top, 6)
                     }
+                    Color.clear
+                        .frame(height: 1)
+                        .id(Self.bottomId)
+                        .accessibilityHidden(true)
+                        .onAppear { if !HistoryScrolling.measures { isAtBottom = true } }
+                        .onDisappear { if !HistoryScrolling.measures { isAtBottom = false } }
                 }
                 .frame(maxWidth: .infinity, alignment: .bottom)
                 .padding(12)
             }
-            .defaultScrollAnchor(.bottom)
+            .modifier(HistoryScrolling(isAtBottom: $isAtBottom))
+            .overlay(alignment: .bottomTrailing) {
+                if !isAtBottom && model.chatUnseenCount > 0 {
+                    toNewButton(scroll)
+                }
+            }
+            .onAppear { position(scroll) }
+            // A new last message follows the reader down only when the reader
+            // is already at the bottom or wrote it: someone scrolled up to read
+            // is not pulled away, and the «↓» button says what came.
             .onChange(of: dialog?.messages.last?.id) { _, last in
-                guard let last else { return }
-                withAnimation { scroll.scrollTo(last, anchor: .bottom) }
+                guard last != nil, positioned else { return }
+                let own = dialog?.last.map { dialog?.isOwn($0) == true } ?? false
+                guard own || isAtBottom else { return }
+                withAnimation(reduceMotion ? nil : .default) {
+                    scroll.scrollTo(Self.bottomId, anchor: .bottom)
+                }
+            }
+            // One handler, so the order is fixed: a chat that is seen is marked
+            // seen; a chat the application comes back to without its bottom
+            // on the screen gains a divider over what arrived meanwhile.
+            .onChange(of: seenCondition, initial: true) { old, condition in
+                if condition.isSeen {
+                    model.markChatSeen()
+                } else if condition.active, !old.active {
+                    model.chatResumed()
+                }
             }
         }
     }
 
-    /// The composer (`MainActivity.java:227-235,341-352`).
+    /// Opens the chat at its «Новые сообщения» divider, or at the bottom when
+    /// there is none. With a divider the bottom counts as seen only after the
+    /// scroll has landed; without one the chat opens where it always did and
+    /// is positioned at once.
+    private func position(_ scroll: ScrollViewProxy) {
+        guard let divider = model.unreadDivider else {
+            positioned = true
+            return
+        }
+        positioned = false
+        if !HistoryScrolling.measures { isAtBottom = false }
+        scroll.scrollTo(TimelineRow.unreadId(divider), anchor: .top)
+        // One layout pass for the scroll to land and for the bottom marker to
+        // report where it ended up, before anything is taken as read.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            positioned = true
+        }
+    }
+
+    /// «↓»: back down to the newest message, with the number of new ones.
+    private func toNewButton(_ scroll: ScrollViewProxy) -> some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .default) {
+                scroll.scrollTo(Self.bottomId, anchor: .bottom)
+            }
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .background(Color(.secondarySystemBackground), in: Circle())
+                    .shadow(radius: 2)
+                Text(Strings.Unread.badge(model.chatUnseenCount))
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(Color.accentColor, in: Capsule())
+                    .offset(x: 4, y: -4)
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(12)
+        .accessibilityLabel(Strings.Unread.toNew)
+        .accessibilityValue(Strings.Unread.count(model.chatUnseenCount))
+        .accessibilityIdentifier("scroll-to-new")
+    }
+
+    /// The composer (`MainActivity.java:252-260,372-384`).
+    ///
+    /// What is sent is the draft trimmed at its ends
+    /// (`MessagePresentation.trimmed`), and the byte counter under the field
+    /// measures that; it stands from 1800 bytes, when the limit is close
+    /// enough to matter, and turns red over it. A short message is not told
+    /// how short it is. Dragging the history down takes the keyboard with it.
     private var composer: some View {
         VStack(spacing: 0) {
             if !model.composerHint.isEmpty {
@@ -176,12 +358,16 @@ struct ChatScreen: View {
                 .accessibilityLabel(Strings.Chat.sendAction)
                 .accessibilityIdentifier("send")
             }
-            Text(Strings.Chat.counter(bytes: MessagePresentation.byteCount(model.draft)))
-                .font(.system(size: 12))
-                .foregroundStyle(model.isOverLimit ? Color.red : Color.secondary)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.top, 4)
-                .accessibilityIdentifier("compose-counter")
+            // The counter stands only near the limit: from 1800 bytes in a
+            // warning colour, red over 2048 (`MessagePresentation.showsCounter`).
+            if MessagePresentation.showsCounter(model.draft) {
+                Text(Strings.Chat.counter(bytes: MessagePresentation.bytesToSend(model.draft)))
+                    .font(.system(size: 12))
+                    .foregroundStyle(model.isOverLimit ? Color.red : Color.orange)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.top, 4)
+                    .accessibilityIdentifier("compose-counter")
+            }
         }
         .padding(.horizontal, 12)
         .padding(.top, 8)
@@ -190,42 +376,107 @@ struct ChatScreen: View {
     }
 }
 
-/// One message (`MainActivity.java:588-592`).
+/// One message (`MainActivity.java:704-717`).
+///
+/// The bubble is as wide as its text and no wider, up to the room the row
+/// leaves it: Android wraps the bubble around its content with a 40 dp
+/// margin on the far side (`:707`), and this row is the same — the spacer is
+/// the margin, the outer frame is a cap, and the bubble inside it takes the
+/// width its text needs. A bubble that stretched to the row made «ок» a
+/// full-width plate. Inside, the text stands at the leading edge and the
+/// footer — the time, and the delivery mark of an own message — at the
+/// trailing edge, as in Android's column with its `END` footer row
+/// (`:706-716`); ``BubbleLayout`` does that without a spacer, which would
+/// take the row again.
 struct MessageBubble: View {
     let message: Message
     let isOwn: Bool
 
+    /// The cap on the bubble. Android caps the text at `dp(440)`
+    /// (`MainActivity.java:708`), which the row's room reaches first on any
+    /// phone; this cap is on the bubble with its padding, and the 160 dp
+    /// floor of that rule is not reproduced.
+    static let maxWidth: CGFloat = 440
+
     var body: some View {
         HStack {
             if isOwn { Spacer(minLength: 40) }
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(message.text)
-                    .font(.system(size: 16))
-                    .foregroundStyle(isOwn ? Color.white : Color.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                HStack(spacing: 5) {
-                    let time = MessagePresentation.time(message.localMilliseconds)
-                    if !time.isEmpty {
-                        Text(time)
-                            .font(.system(size: 11))
-                            .monospacedDigit()
-                            .foregroundStyle(isOwn ? Color.white.opacity(0.75) : Color.secondary)
-                    }
-                    if isOwn {
-                        ReceiptMark(mark: MessagePresentation.mark(message))
-                            .foregroundStyle(Color.white.opacity(0.85))
-                            .accessibilityLabel(MessagePresentation.delivery(message))
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
-            .background(isOwn ? Color.accentColor : Color(.secondarySystemBackground),
-                        in: RoundedRectangle(cornerRadius: 18))
+            bubble
+                .frame(maxWidth: Self.maxWidth, alignment: isOwn ? .trailing : .leading)
             if !isOwn { Spacer(minLength: 40) }
         }
+    }
+
+    /// The bubble itself, one accessibility element carrying the text, the
+    /// time and the delivery words, and the element whose frame is the
+    /// bubble's — which is what the simulator flow measures.
+    private var bubble: some View {
+        BubbleLayout {
+            Text(message.text)
+                .font(.system(size: 16))
+                .foregroundStyle(isOwn ? Color.white : Color.primary)
+                .textSelection(.enabled)
+            HStack(spacing: 5) {
+                let time = MessagePresentation.time(message.localMilliseconds)
+                if !time.isEmpty {
+                    Text(time)
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .foregroundStyle(isOwn ? Color.white.opacity(0.75) : Color.secondary)
+                }
+                if isOwn {
+                    ReceiptMark(mark: MessagePresentation.mark(message))
+                        .foregroundStyle(Color.white.opacity(0.85))
+                        .accessibilityLabel(MessagePresentation.delivery(message))
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
+        .background(isOwn ? Color.accentColor : Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 18))
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// The two rows of a bubble — the text and its footer — as wide as the wider
+/// of the two: the text at the leading edge, the footer at the trailing edge.
+///
+/// A stack cannot lay this out without a spacer, and a spacer takes all the
+/// width the row proposes, which is the plate this layout exists to remove.
+/// Here the text is measured at the proposed width, so a long one wraps
+/// there, and the footer at its own size; the bubble is the wider of the two
+/// and their heights, and nothing in it asks for more. Android's column does
+/// the same with a wrap-content body and a full-width `END` footer row
+/// (`MainActivity.java:706-716`).
+struct BubbleLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let (text, footer) = sizes(proposal.width, subviews)
+        let gap = footer.height > 0 ? spacing : 0
+        return CGSize(width: max(text.width, footer.width),
+                      height: text.height + gap + footer.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews,
+                       cache: inout ()) {
+        guard subviews.count == 2 else { return }
+        let (text, footer) = sizes(bounds.width, subviews)
+        subviews[0].place(at: bounds.origin, proposal: ProposedViewSize(text))
+        let gap = footer.height > 0 ? spacing : 0
+        subviews[1].place(at: CGPoint(x: bounds.maxX - footer.width,
+                                      y: bounds.minY + text.height + gap),
+                          proposal: ProposedViewSize(footer))
+    }
+
+    /// The text at the proposed width (it wraps there) and the footer at its
+    /// own size.
+    private func sizes(_ width: CGFloat?, _ subviews: Subviews) -> (CGSize, CGSize) {
+        guard subviews.count == 2 else { return (.zero, .zero) }
+        let text = subviews[0].sizeThatFits(ProposedViewSize(width: width, height: nil))
+        let footer = subviews[1].sizeThatFits(.unspecified)
+        return (text, footer)
     }
 }
