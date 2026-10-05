@@ -162,7 +162,14 @@ public final class OnboardingActivity extends Activity {
         }
         grid.setSaveEnabled(false);
         page.addView(grid, full());
-        gap(24);
+        gap(12);
+        // Copy button — owner decision 2026-10-05: allowed to copy (not storing crypto)
+        btnSecondary("Скопировать слова", () -> {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("paranoid-recovery", mnemonic));
+            android.widget.Toast.makeText(this, "Скопировано. Сохраните в надёжном месте.", android.widget.Toast.LENGTH_LONG).show();
+        });
+        gap(12);
         btnPrimary("Я записал слова", () ->
             new AlertDialog.Builder(this)
                 .setTitle("Точно записали?")

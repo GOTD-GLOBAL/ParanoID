@@ -80,7 +80,7 @@ class OnboardingContract(unittest.TestCase):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
         self.assertIn('android:versionCode="38"',manifest)
-        self.assertIn('android:versionName="0.0.38-solana-id"',manifest)
+        self.assertIn('android:versionName="0.0.39-solana-id"',manifest)
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
