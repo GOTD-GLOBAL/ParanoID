@@ -891,15 +891,12 @@ class UiContract(unittest.TestCase):
         # The video stage exists only while a camera is actually on.
         self.present('isLive && (call?.localVideo == true || call?.remoteVideo == true)',
                      screen, CALL)
-        # Android takes its call window out of screenshots, recordings and
-        # mirroring with `FLAG_SECURE`, and puts that flag on no other window
-        # (`MainActivity.java:478`). iOS has no such flag, so the stage covers
-        # itself while the screen is captured — the one part of it the platform
-        # allows. It covers rather than removes the surfaces, so a recording
-        # that starts and stops does not attach a second renderer to a track.
-        self.present('callDialog.getWindow().addFlags(android.view.WindowManager'
-                     '.LayoutParams.FLAG_SECURE);', self.java['MainActivity.java'],
-                     'MainActivity.java')
+        # FLAG_SECURE was removed from the call window by owner decision 2026-10-05
+        # (screenshots allowed in all modes). iOS still covers itself while captured
+        # via UIScreen.capturedDidChangeNotification — see checks below.
+        self.absent('callDialog.getWindow().addFlags(android.view.WindowManager'
+                    '.LayoutParams.FLAG_SECURE);', self.java['MainActivity.java'],
+                    'MainActivity.java: FLAG_SECURE must be absent (owner decision 2026-10-05)')
         self.present('.overlay { if captured { curtain } }', screen, CALL)
         self.present('UIScreen.capturedDidChangeNotification', screen, CALL)
         self.present('captured = CallScreen.isScreenCaptured', screen, CALL)
