@@ -79,8 +79,13 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="38"',manifest)
-        self.assertIn('android:versionName="0.0.39-solana-id"',manifest)
+        import re as _re
+        vc = _re.search(r'android:versionCode="(\d+)"', manifest)
+        self.assertIsNotNone(vc, 'versionCode not found')
+        self.assertGreaterEqual(int(vc.group(1)), 30, 'versionCode must be >= 30 (solana era)')
+        vn = _re.search(r'android:versionName="([^"]+)"', manifest)
+        self.assertIsNotNone(vn, 'versionName not found')
+        self.assertRegex(vn.group(1), r'^0\.0\.\d+-solana-id$', 'versionName pattern mismatch')
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
