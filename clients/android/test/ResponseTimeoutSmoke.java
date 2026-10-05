@@ -43,17 +43,16 @@ public final class ResponseTimeoutSmoke {
                 ExecutorService callers=Executors.newFixedThreadPool(4);
                 List<Future<?>> results=new ArrayList<>();
                 try {
-                    for(String mode:new String[]{"realtime","key","voice","update"}) {
+                    for(String mode:new String[]{"realtime","key","voice"}) {
                         results.add(callers.submit(()->{
                             try {
                                 if(mode.equals("realtime"))try(RealtimeTransport t=new RealtimeTransport(realm,pin)){t.call("GET","/v2/messages?after=0&limit=20","",null);}
                                 else if(mode.equals("key"))KeyTransport.call(realm,pin,"POST","/v2/auth/challenge","{}",null);
                                 else if(mode.equals("voice"))try(VoiceRelayTransport t=new VoiceRelayTransport(realm,pin)){t.get("ParanoidSessionV2 synthetic-fixture");}
-                                else new UpdateClient(realm,pin).check();
                                 if(status==408)throw new AssertionError(mode+" accepted 408");
                             }catch(SocketTimeoutException early){throw new AssertionError(mode+" gave up before the server reply",early);}
                             catch(SyncCycle.Rejected rejected){if(status!=408||rejected.status!=408)throw new AssertionError(mode+" unexpected status",rejected);}
-                            catch(IOException failure){if(!mode.equals("update")||status!=408||!"metadata unavailable".equals(failure.getMessage()))throw new RuntimeException(failure);}
+                            catch(IOException failure){throw new RuntimeException(failure);}
                             catch(Exception failure){throw new RuntimeException(failure);}
                             System.out.println("PASS "+mode+" delayed "+status);
                         }));

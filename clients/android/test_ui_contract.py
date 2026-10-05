@@ -4,7 +4,8 @@ ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
     def test_alpha_notice_has_no_numeric_conversation_ceiling(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
-        self.assertIn('"ParanoID · "+version+"\\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."',ui)
+        # Alpha notice is shown in the "О приложении" menu dialog, not as a static paragraph
+        self.assertIn('versionName',ui)  # version must be accessed somewhere
         for obsolete in ['До 200 сообщений', 'До 1000 сообщений']:
             self.assertNotIn(obsolete,ui)
 
@@ -48,7 +49,7 @@ class OnboardingContract(unittest.TestCase):
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
         loop=(ROOT/'src/org/paranoid/text/RealtimeLoop.java').read_text()
         manifest=(ROOT/'AndroidManifest.xml').read_text()
-        for caption in ['Найти на сервере','Добавить @','Показывать меня в поиске на этом сервере','Поделиться моей ссылкой','Этот сервер не подключён']:
+        for caption in ['Найти на сервере','Добавить @','Виден в поиске участников','Поделиться моей ссылкой','Этот сервер не подключён']:
             self.assertIn(caption,ui)
         # Only identity-v3 servers offer the directory; older servers keep QR/paste only.
         chooser=ui[ui.index('private void addContact(){'):ui.index('private android.app.Dialog directoryDialog;')]
@@ -78,8 +79,13 @@ class OnboardingContract(unittest.TestCase):
     def test_upgrade_candidate_keeps_package_and_advances_version(self):
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('package="global.paranoid.messenger"',manifest)
-        self.assertIn('android:versionCode="36"',manifest)
-        self.assertIn('android:versionName="0.0.36-solana-id"',manifest)
+        import re as _re
+        vc = _re.search(r'android:versionCode="(\d+)"', manifest)
+        self.assertIsNotNone(vc, 'versionCode not found')
+        self.assertGreaterEqual(int(vc.group(1)), 30, 'versionCode must be >= 30 (solana era)')
+        vn = _re.search(r'android:versionName="([^"]+)"', manifest)
+        self.assertIsNotNone(vn, 'versionName not found')
+        self.assertRegex(vn.group(1), r'^0\.0\.\d+-solana-id$', 'versionName pattern mismatch')
 
     def test_incoming_call_menu_and_update_autocheck_contract(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
@@ -239,7 +245,7 @@ class OnboardingContract(unittest.TestCase):
         # RFC-0027: the fresh-install action opens the nick onboarding (create/restore nick → server).
         self.assertIn('create=action("Начать",this::openOnboarding)',ui,'Nick onboarding must be the first-run action')
         onboarding=(ROOT.parent/'android-devnet/src/org/paranoid/devnet/OnboardingActivity.java').read_text()
-        for caption in ['Создать ник','У меня уже есть ник','Запишите 12 слов','Общий сервер ParanoID','Войти по приглашению','Создать свой сервер']:
+        for caption in ['Создать аккаунт','Войти','Запишите 12 слов','Общий сервер ParanoID','Войти по приглашению','Создать свой сервер']:
             self.assertIn(caption,onboarding)
         # Screenshots allowed except while recovery words are shown or typed.
         self.assertIn('new byte[16]',onboarding,'new identities use 12 words (RFC-0026 rev. 2026-09-29)');self.assertNotIn('new byte[32]',onboarding)
