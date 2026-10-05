@@ -162,11 +162,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         welcome=column();welcome.setPadding(dp(24),dp(20),dp(24),dp(24));addScrollablePage(welcome);
         ImageView mark=new ImageView(this);mark.setImageDrawable(new Symbol("identity",colors.action));mark.setPadding(dp(18),dp(18),dp(18),dp(18));mark.setBackground(shape(colors.actionSoft,28));mark.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);welcome.addView(mark,box(88,88));
         TextView title=text("Ваш ID.\nВаши разговоры.",32,colors.text,true);space(welcome,24);welcome.addView(title);
-        TextView body=text("Ваш ник в Solana — ваш аккаунт. Номер телефона, email и пароль не нужны.",16,colors.muted,false);space(welcome,16);welcome.addView(body);space(welcome,24);
-        // RFC-0027: a fresh install starts with the nick onboarding (create/restore nick → server).
+        TextView body=text("Создайте аккаунт без номера телефона и выберите сервер для переписки.",16,colors.muted,false);space(welcome,16);welcome.addView(body);space(welcome,24);
         create=action("Начать",this::openOnboarding);welcome.addView(create,full());
-
-        space(welcome,20);welcome.addView(text("Закрытая альфа · тестовая сеть Solana Devnet.",13,colors.muted,false));
     }
 
     private void buildDialogs(){
@@ -175,40 +172,39 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateHint.setPadding(dp(12),dp(10),dp(12),dp(10));updateHint.setMinimumHeight(dp(40));updateHint.setBackground(ripple(colors.canvas,12));
         updateHint.setOnClickListener(v->openUpdates());updateHint.setFocusable(true);
         updateHint.setVisibility(View.GONE);dialogs.addView(updateHint,full());
-        loginHint=text("Войдите этим ID через ник Solana — открыть",13,colors.actionText,false);
+        loginHint=text("Войдите, чтобы получать сообщения — открыть",13,colors.actionText,false);
         loginHint.setPadding(dp(12),dp(10),dp(12),dp(10));loginHint.setMinimumHeight(dp(40));loginHint.setBackground(ripple(colors.canvas,12));
         loginHint.setOnClickListener(v->openOnboarding());loginHint.setFocusable(true);loginHint.setVisibility(View.GONE);dialogs.addView(loginHint,full());
         backgroundHint=text("Входящие в фоне отключены — включить",13,colors.actionText,false);
         backgroundHint.setPadding(dp(12),dp(10),dp(12),dp(10));backgroundHint.setMinimumHeight(dp(40));backgroundHint.setBackground(ripple(colors.canvas,12));
         backgroundHint.setOnClickListener(v->enableBackground());backgroundHint.setFocusable(true);backgroundHint.setContentDescription("Входящие в фоне отключены. Включить фоновое подключение");
         backgroundHint.setVisibility(View.GONE);dialogs.addView(backgroundHint,full());
-        LinearLayout title=row();title.setGravity(Gravity.CENTER_VERTICAL);TextView label=text("Личные диалоги",13,colors.muted,true);label.setPadding(dp(12),0,0,dp(8));title.addView(label);dialogs.addView(title);
         dialogList=column();dialogs.addView(dialogList);
     }
 
     private void buildContacts(){
         contacts=column();contacts.setPadding(dp(16),dp(8),dp(16),dp(24));addScrollablePage(contacts);
         Button add=action("Добавить контакт",this::addContact);contacts.addView(add,full());space(contacts,12);
-        contacts.addView(text("Сканируйте QR собеседника или вставьте его контакт. Входящие сообщения появятся в чатах автоматически.",14,colors.muted,false));space(contacts,20);
+        contacts.addView(text("Сканируйте QR или найдите участника сервера по нику.",14,colors.muted,false));space(contacts,20);
         contactList=column();contacts.addView(contactList);
     }
 
     private void buildIdentity(){
         identity=column();identity.setPadding(dp(20),dp(8),dp(20),dp(24));addScrollablePage(identity);
-        identity.addView(text("Поделитесь контактом",24,colors.text,true));space(identity,8);
-        identity.addView(text("Собеседник сможет написать вам по этому QR. Для проверки личности сравните отпечатки отдельно.",14,colors.muted,false));space(identity,20);
+        identity.addView(text("Мой ID",24,colors.text,true));space(identity,8);
+        identity.addView(text("Покажите QR собеседнику или поделитесь ссылкой.",14,colors.muted,false));space(identity,20);
         LinearLayout card=column();card.setGravity(Gravity.CENTER_HORIZONTAL);card.setPadding(dp(20),dp(20),dp(20),dp(20));card.setBackground(shape(colors.surface,24));identity.addView(card,full());
         qr=new ImageView(this);qr.setAdjustViewBounds(true);qr.setBackgroundColor(0xffffffff);qr.setContentDescription("QR моего контакта");int side=Math.min(280,getResources().getDisplayMetrics().widthPixels/(int)Math.max(1,getResources().getDisplayMetrics().density)-80);card.addView(qr,box(Math.max(160,side),Math.max(160,side)));
         space(card,16);TextView caption=text("ВАШ ID",11,colors.muted,true);caption.setLetterSpacing(.08f);card.addView(caption);
         myId=text("Создайте ID, чтобы начать",14,colors.text,false);myId.setTypeface(Typeface.MONOSPACE);myId.setTextIsSelectable(true);myId.setGravity(Gravity.CENTER);space(card,8);card.addView(myId,full());space(identity,16);
-        share=action("Поделиться контактом",()->{
+        share=action("Поделиться",()->{
             if(displayedQr.isEmpty())return;
             Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,displayedQr);startActivity(Intent.createChooser(intent,"Поделиться контактом ParanoID"));
         });identity.addView(share,full());
-        copy=secondary("Копировать контакт",()->copyPublic(displayedQr,"Контакт скопирован. Сравните отпечаток отдельно."));space(identity,8);identity.addView(copy,full());
+        copy=secondary("Скопировать QR",()->copyPublic(displayedQr,"Скопировано. Сравните отпечаток при личной встрече."));space(identity,8);identity.addView(copy,full());
         directoryBlock=column();identity.addView(directoryBlock,full());directoryBlock.setVisibility(View.GONE);
         space(directoryBlock,8);shareLink=secondary("Поделиться моей ссылкой",this::shareLink);directoryBlock.addView(shareLink,full());
-        space(directoryBlock,16);visibleSwitch=new Switch(this);visibleSwitch.setText("Показывать меня в поиске на этом сервере");visibleSwitch.setTextColor(colors.text);visibleSwitch.setTextSize(15);visibleSwitch.setMinHeight(dp(48));
+        space(directoryBlock,16);visibleSwitch=new Switch(this);visibleSwitch.setText("Виден в поиске участников");visibleSwitch.setTextColor(colors.text);visibleSwitch.setTextSize(15);visibleSwitch.setMinHeight(dp(48));
         visibleSwitch.setChecked(getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(VISIBLE_KEY,true));
         visibleSwitch.setOnCheckedChangeListener((button,checked)->{
             if(restoringSwitch)return;visibleSwitch.setEnabled(false);
@@ -219,22 +215,17 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             });
         });
         directoryBlock.addView(visibleSwitch,full());
-        directoryBlock.addView(text("Участники этого сервера смогут найти вас по нику. Скрытый участник доступен только по QR или ссылке на контакт.",13,colors.muted,false));
-        space(identity,24);identity.addView(text("Отпечаток контакта",16,colors.text,true));space(identity,8);
-        fingerprint=text("Появится после регистрации",13,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
-        space(identity,24);identity.addView(text("Ник в Devnet",20,colors.text,true));space(identity,8);
-        identity.addView(text("Зарегистрируйте ник в тестовой сети Solana. Чаты и звонки продолжают использовать ваш текущий ID; Devnet-слова не восстанавливают переписку.",14,colors.muted,false));space(identity,12);
-        identity.addView(secondary("Ник в Devnet",this::openDevnet),full());
-        space(identity,24);updateHeading=text("Приложение",16,colors.text,true);identity.addView(updateHeading);space(identity,8);
-        updateController=new UpdateController(this,engine,identity);
-        space(identity,16);String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
-        identity.addView(text("ParanoID · "+version+"\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно.",12,colors.muted,false));
-        space(identity,20);identity.addView(text("Получать в фоне",16,colors.text,true));space(identity,8);
-        identity.addView(text("Поддерживает подключение с постоянным уведомлением и расходует заряд. Google не требуется. После принудительной остановки откройте приложение; доставка в режиме сна пока не проверена на телефонах.",13,colors.muted,false));space(identity,12);
-        background=secondary("Включить фоновое подключение",()->{
+        
+        space(identity,16);fingerprint=text("",12,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
+        // Background toggle — compact, no paragraph text
+        space(identity,24);
+        background=secondary("Фоновое подключение",()->{
             if(BackgroundConnectionService.running())BackgroundConnectionService.requestStop(this);
             else enableBackground();
         });identity.addView(background,full());
+        // Updates — only the controller, no heading paragraph
+        updateHeading=text("",0,colors.muted,false);updateHeading.setVisibility(android.view.View.GONE); // kept for UpdateController reference
+        updateController=new UpdateController(this,engine,identity);
     }
 
     /** Single opt-in path: user-visible foreground start plus the OPPO-critical battery exception. */

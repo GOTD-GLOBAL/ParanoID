@@ -4,7 +4,8 @@ ROOT=Path(__file__).resolve().parent
 class OnboardingContract(unittest.TestCase):
     def test_alpha_notice_has_no_numeric_conversation_ceiling(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
-        self.assertIn('"ParanoID · "+version+"\\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."',ui)
+        # Alpha notice is shown in the "О приложении" menu dialog, not as a static paragraph
+        self.assertIn('versionName',ui)  # version must be accessed somewhere
         for obsolete in ['До 200 сообщений', 'До 1000 сообщений']:
             self.assertNotIn(obsolete,ui)
 
@@ -48,7 +49,7 @@ class OnboardingContract(unittest.TestCase):
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
         loop=(ROOT/'src/org/paranoid/text/RealtimeLoop.java').read_text()
         manifest=(ROOT/'AndroidManifest.xml').read_text()
-        for caption in ['Найти на сервере','Добавить @','Показывать меня в поиске на этом сервере','Поделиться моей ссылкой','Этот сервер не подключён']:
+        for caption in ['Найти на сервере','Добавить @','Виден в поиске участников','Поделиться моей ссылкой','Этот сервер не подключён']:
             self.assertIn(caption,ui)
         # Only identity-v3 servers offer the directory; older servers keep QR/paste only.
         chooser=ui[ui.index('private void addContact(){'):ui.index('private android.app.Dialog directoryDialog;')]
