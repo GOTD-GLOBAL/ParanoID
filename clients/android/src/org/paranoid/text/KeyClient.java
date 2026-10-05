@@ -6,8 +6,12 @@ import java.net.URL;
 
 /** Single-owner phone workflow, shared by Android and real JVM/JNI fixtures. */
 public final class KeyClient {
-    public static final String DEFAULT_REALM="https://157.180.49.125:38443";
-    public static final String DEFAULT_PIN="8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba";
+    // Hetzner Production — identity-v3, deployed 2026-10-05
+    public static final String DEFAULT_REALM="https://157.180.49.125:38444";
+    public static final String DEFAULT_PIN="536c154440a3107e1fe63f967ed39389aa1a1f4f2b3407070066b76c3a78ae0f";
+    // Legacy v2 on :38443 — stopped 2026-10-05, kept for reference
+    public static final String LEGACY_V2_REALM="https://157.180.49.125:38443";
+    public static final String LEGACY_V2_PIN="8aa594a9148f610da9de671d7c7ae7c690e671e53eb0e8a3b931beeb888970ba";
     /** RFC-0027 private Devnet phone-test server (one-touch installer on the owner's VPS). Chosen only
      * explicitly on a fresh install; never replaces a saved realm. Pin = SHA256(SPKI) of its TLS key. */
     public static final String IDENTITY_TEST_REALM="https://138.16.180.53:38444";

@@ -511,8 +511,9 @@ public final class OnboardingActivity extends Activity {
 
     // ─── sponsor helper ───────────────────────────────────────────────────
     private static RegistrationFlow.Sponsor sponsor() {
-        String realm = org.paranoid.text.KeyClient.IDENTITY_TEST_REALM;
-        String pin   = org.paranoid.text.KeyClient.IDENTITY_TEST_PIN;
+        // Sponsor uses DEFAULT_REALM (Hetzner Production 157:38444)
+        String realm = org.paranoid.text.KeyClient.DEFAULT_REALM;
+        String pin   = org.paranoid.text.KeyClient.DEFAULT_PIN;
         return new RegistrationFlow.Sponsor() {
             public JSONObject prepare() throws Exception {
                 return org.paranoid.text.KeyTransport.call(realm, pin, "POST",
