@@ -516,6 +516,17 @@ impl IdentityChallengeV3 {
         ]))
     }
 
+    /// Owner signature (unpadded standard base64 Ed25519) over `transcript(Owner)`, checked
+    /// against the Base58 owner named IN the challenge. Syntax-only helper for
+    /// `DirectoryProof::verify`; does not check expiry, realm or membership.
+    fn verify_owner_signature(&self, owner_signature: &str) -> crate::Result<()> {
+        let owner = base58_decode32(&self.owner)?;
+        owner_key(&owner)?;
+        let key = base64::engine::general_purpose::STANDARD_NO_PAD.encode(owner);
+        crate::verify(&key, &self.transcript(ProofRole::Owner)?, owner_signature)
+            .map_err(|_| "invalid_owner_signature")
+    }
+
     /// Verify exactly the proofs required by the purpose over this stored challenge.
     /// Expiry, one-time consumption and membership are the caller's responsibility.
     pub fn verify_proofs(
@@ -543,5 +554,62 @@ impl IdentityChallengeV3 {
             device_signature,
         )
         .map_err(|_| "invalid_proof")
+    }
+}
+
+/// RFC-0028 owner proof of a directory entry: the exact enroll/replace challenge the server
+/// verified at login plus the owner's signature over it. Stored by the server and re-checked
+/// by every phone before a found member becomes a contact. Expiry is NOT checked: this is a
+/// historical proof that the nickname owner authorized this transport credential.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct DirectoryProof {
+    pub challenge: IdentityChallengeV3,
+    pub owner_signature: String,
+}
+
+impl DirectoryProof {
+    /// Accept only if the proof names this server (`realm`/`pin`), is an enroll or replace
+    /// commit for exactly `owner`/`name`/`identity`, pins the RFC-0026 registry, binds exactly
+    /// `credential` (fingerprint, account, device), and carries a valid owner signature.
+    /// Registry finality (name -> owner on chain) is the caller's separate obligation.
+    pub fn verify(
+        &self,
+        realm: &str,
+        pin: &str,
+        name: &str,
+        owner: &str,
+        identity: &str,
+        credential: &Credential,
+    ) -> crate::Result<()> {
+        let c = &self.challenge;
+        if c.realm != realm || c.pin != pin {
+            return Err("proof_wrong_server");
+        }
+        if !matches!(c.purpose, Purpose::Enroll | Purpose::Replace)
+            || c.genesis != GENESIS
+            || c.program != PROGRAM
+            || !uuid_v4(&c.operation)
+        {
+            return Err("proof_wrong_purpose");
+        }
+        if c.owner != owner || c.name != name || c.identity != identity {
+            return Err("proof_identity_mismatch");
+        }
+        let owner_bytes = base58_decode32(owner)?;
+        owner_key(&owner_bytes)?;
+        if base58_encode(&derive_registry(&owner_bytes, name)?.identity) != identity {
+            return Err("proof_identity_mismatch");
+        }
+        credential.verify()?;
+        if c.credential_fingerprint != credential.fingerprint()
+            || c.account != credential.account
+            || c.device != credential.device
+            || credential.realm != realm
+            || credential.pin != pin
+        {
+            return Err("proof_credential_mismatch");
+        }
+        c.verify_owner_signature(&self.owner_signature)
     }
 }

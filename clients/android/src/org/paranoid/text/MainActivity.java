@@ -42,7 +42,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private TextView screenTitle,status,chatTrust,myId,fingerprint,draftHint;
     private ImageView qr;
     private EditText draft;
-    private Button create,send,share,copy,navChats,navContacts,navIdentity,background;
+    private Button create,send,share,copy,navChats,navContacts,navIdentity,background,shareLink;
+    private LinearLayout directoryBlock;private Switch visibleSwitch;private boolean restoringSwitch;
+    private static final String VISIBLE_KEY="directory_visible_v1";
     private ImageButton leading,trailing;
     private ImageButton menuAction;
     private ImageButton callAction,videoAction;
@@ -109,6 +111,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateLockScreen(engine.calls().snapshot().optString("state"));
         String install=UpdateController.installStatus(this,getIntent());
         if(install!=null){updateController.showStatus(install);show("identity");}
+        if(saved==null)handleLink(getIntent());
         CrashLog.load(this,this::runOnUiThread,report->{
             if(report==null||isFinishing()||isDestroyed())return;
             String crash=report.text;
@@ -126,6 +129,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         setIntent(intent);
         String install=UpdateController.installStatus(this,intent);
         if(install!=null){if(updateController!=null)updateController.showStatus(install);show("identity");}
+        handleLink(intent);
     }
     /** Over-lock display only while an incoming call rings; never a permanent lock bypass. */
     private void updateLockScreen(String state){
@@ -202,6 +206,20 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,displayedQr);startActivity(Intent.createChooser(intent,"Поделиться контактом ParanoID"));
         });identity.addView(share,full());
         copy=secondary("Копировать контакт",()->copyPublic(displayedQr,"Контакт скопирован. Сравните отпечаток отдельно."));space(identity,8);identity.addView(copy,full());
+        directoryBlock=column();identity.addView(directoryBlock,full());directoryBlock.setVisibility(View.GONE);
+        space(directoryBlock,8);shareLink=secondary("Поделиться моей ссылкой",this::shareLink);directoryBlock.addView(shareLink,full());
+        space(directoryBlock,16);visibleSwitch=new Switch(this);visibleSwitch.setText("Показывать меня в поиске на этом сервере");visibleSwitch.setTextColor(colors.text);visibleSwitch.setTextSize(15);visibleSwitch.setMinHeight(dp(48));
+        visibleSwitch.setChecked(getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(VISIBLE_KEY,true));
+        visibleSwitch.setOnCheckedChangeListener((button,checked)->{
+            if(restoringSwitch)return;visibleSwitch.setEnabled(false);
+            engine.directoryVisibility(checked,(result,error)->{
+                visibleSwitch.setEnabled(true);
+                if(error!=null){restoringSwitch=true;visibleSwitch.setChecked(!checked);restoringSwitch=false;Toast.makeText(this,error,Toast.LENGTH_LONG).show();return;}
+                getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(VISIBLE_KEY,checked).apply();
+            });
+        });
+        directoryBlock.addView(visibleSwitch,full());
+        directoryBlock.addView(text("Участники этого сервера смогут найти вас по нику. Скрытый участник доступен только по QR или ссылке на контакт.",13,colors.muted,false));
         space(identity,24);identity.addView(text("Отпечаток контакта",16,colors.text,true));space(identity,8);
         fingerprint=text("Появится после регистрации",13,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
         space(identity,24);identity.addView(text("Ник в Devnet",20,colors.text,true));space(identity,8);
@@ -559,10 +577,154 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     private void addContact(){
         if(!hasIdentity||broken)return;
+        // RFC-0028: search exists only on an identity-v3 server; older servers keep QR/paste only.
+        boolean directory=latest.optBoolean("directory");
+        String[] items=directory?new String[]{"Найти на сервере","Сканировать QR","Вставить контакт"}:new String[]{"Сканировать QR","Вставить контакт"};
         new AlertDialog.Builder(this).setTitle("Добавить контакт")
-            .setItems(new String[]{"Сканировать QR","Вставить контакт"},(dialog,which)->{
-                if(which==0)startActivityForResult(new Intent(this,QrScanActivity.class),45);else pasteContact();
+            .setItems(items,(dialog,which)->{
+                int choice=directory?which:which+1;
+                if(choice==0)openDirectory("");
+                else if(choice==1)startActivityForResult(new Intent(this,QrScanActivity.class),45);else pasteContact();
             }).setNegativeButton("Отмена",null).show();
+    }
+
+    // RFC-0028 server member directory: one screen, a search field and the list. An empty query
+    // lists everyone visible. Tapping a member verifies it (core owner proof + Solana registry)
+    // before «Добавить @ник?». Each search spends one of 60 hourly requests, so it runs only on
+    // an explicit action, never on every keystroke.
+    private android.app.Dialog directoryDialog;
+    private LinearLayout directoryList;
+    private TextView directoryStatus;
+    private Button directoryMore;
+    private String directoryQuery="",directoryNext=null;
+    private void openDirectory(String initial){
+        if(!latest.optBoolean("directory")){Toast.makeText(this,"Этот сервер не поддерживает поиск участников.",Toast.LENGTH_LONG).show();return;}
+        if(directoryDialog!=null&&directoryDialog.isShowing())directoryDialog.dismiss();
+        directoryDialog=new android.app.Dialog(this,colors.dark?android.R.style.Theme_Material_NoActionBar:android.R.style.Theme_Material_Light_NoActionBar);
+        LinearLayout body=column();body.setBackgroundColor(colors.canvas);body.setPadding(dp(16),dp(16),dp(16),dp(8));
+        LinearLayout top=row();top.setGravity(Gravity.CENTER_VERTICAL);body.addView(top,full());
+        top.addView(iconButton("back","Назад",()->directoryDialog.dismiss()),box(48,48));
+        TextView title=text("Найти на сервере",22,colors.text,true);LinearLayout.LayoutParams tp=new LinearLayout.LayoutParams(0,-2,1);tp.leftMargin=dp(8);top.addView(title,tp);
+        space(body,12);
+        LinearLayout line=row();line.setGravity(Gravity.CENTER_VERTICAL);body.addView(line,full());
+        EditText field=new EditText(this);field.setSingleLine(true);field.setTextSize(16);field.setTextColor(colors.text);field.setHintTextColor(colors.muted);
+        field.setHint("Ник или его начало");field.setContentDescription("Ник или его начало");field.setText(initial);
+        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS|android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        field.setFilters(new InputFilter[]{new InputFilter.LengthFilter(24)});field.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+        field.setPadding(dp(16),dp(12),dp(16),dp(12));field.setBackground(shape(colors.raised,24));field.setMinimumHeight(dp(48));
+        LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,-2,1);fp.rightMargin=dp(8);line.addView(field,fp);
+        Runnable run=()->{String q=field.getText().toString().trim().toLowerCase(java.util.Locale.ROOT);
+            if(!q.matches("([a-z][a-z0-9_]{0,23})?")){directoryStatus.setText("Ник состоит из латинских букв, цифр и «_» и начинается с буквы.");return;}
+            hideKeyboard(field);searchDirectory(q,null);};
+        line.addView(action("Найти",run),new LinearLayout.LayoutParams(-2,-2));
+        field.setOnEditorActionListener((v,id,event)->{run.run();return true;});
+        space(body,8);
+        directoryStatus=text("",13,colors.muted,false);directoryStatus.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);body.addView(directoryStatus,full());
+        space(body,8);
+        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);body.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout content=column();scroll.addView(content,new ScrollView.LayoutParams(-1,-2));
+        directoryList=column();content.addView(directoryList,full());
+        directoryMore=secondary("Показать ещё",()->searchDirectory(directoryQuery,directoryNext));directoryMore.setVisibility(View.GONE);space(content,8);content.addView(directoryMore,full());
+        directoryDialog.setContentView(body);directoryDialog.setOnDismissListener(d->{directoryDialog=null;directoryList=null;});
+        directoryDialog.show();
+        if(Build.VERSION.SDK_INT>=30){
+            directoryDialog.getWindow().setDecorFitsSystemWindows(false);
+            body.setOnApplyWindowInsetsListener((v,insets)->{android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.ime());v.setPadding(dp(16)+bars.left,dp(16)+bars.top,dp(16)+bars.right,dp(8)+bars.bottom);return insets;});
+        }
+        searchDirectory(initial,null);
+    }
+    private void hideKeyboard(View view){((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(view.getWindowToken(),0);}
+    private void searchDirectory(String query,String after){
+        if(directoryList==null)return;
+        directoryQuery=query;directoryStatus.setText("Ищем…");directoryMore.setEnabled(false);
+        engine.directorySearch(query,after,(result,error)->{
+            if(directoryList==null||isFinishing()||isDestroyed())return;
+            directoryMore.setEnabled(true);
+            if(error!=null){directoryStatus.setText(error);return;}
+            if(after==null)directoryList.removeAllViews();
+            JSONArray members=result.optJSONArray("members");int shown=members==null?0:members.length();
+            for(int n=0;n<shown;n++){JSONObject m=members.optJSONObject(n);if(m!=null)directoryRow(m);}
+            directoryNext=result.isNull("next")?null:result.optString("next",null);
+            directoryMore.setVisibility(directoryNext==null?View.GONE:View.VISIBLE);
+            JSONObject me=result.optJSONObject("me");
+            if(me!=null&&visibleSwitch!=null&&visibleSwitch.isEnabled()&&visibleSwitch.isChecked()!=me.optBoolean("visible",true)){
+                // The server is the source of truth for visibility; keep the setting in step.
+                restoringSwitch=true;visibleSwitch.setChecked(me.optBoolean("visible",true));restoringSwitch=false;
+                getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putBoolean(VISIBLE_KEY,me.optBoolean("visible",true)).apply();
+            }
+            String hidden=me!=null&&!me.optBoolean("visible",true)?" Вы скрыты из поиска.":"";
+            if(directoryList.getChildCount()==0)directoryStatus.setText((query.isEmpty()?"На этом сервере пока никого не видно.":"Никого с ником на «"+query+"».")+hidden);
+            else directoryStatus.setText((query.isEmpty()?"Участники этого сервера":"Найдено по «"+query+"»")+". Нажмите, чтобы проверить и добавить."+hidden);
+        });
+    }
+    private void directoryRow(JSONObject member){
+        String name=member.optString("name");
+        LinearLayout row=row();row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(dp(12),dp(12),dp(12),dp(12));row.setMinimumHeight(dp(64));row.setBackground(ripple(colors.canvas,18));row.setFocusable(true);
+        TextView avatar=text(name.substring(0,Math.min(2,name.length())).toUpperCase(java.util.Locale.ROOT),16,colors.actionText,true);avatar.setGravity(Gravity.CENTER);avatar.setBackground(shape(colors.actionSoft,24));avatar.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);row.addView(avatar,box(44,44));
+        TextView label=text("@"+name,16,colors.text,true);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,-2,1);lp.leftMargin=dp(12);row.addView(label,lp);
+        row.setContentDescription("@"+name+". Проверить и добавить");
+        row.setOnClickListener(v->checkMember(member));
+        directoryList.addView(row,full());
+    }
+    /** Verify first (core owner proof + Solana registry), then ask, then pair unverified. */
+    private void checkMember(JSONObject member){
+        String name=member.optString("name");
+        if(directoryStatus!=null)directoryStatus.setText("Проверяем @"+name+" в Solana…");
+        engine.verifyFound(member,(verified,error)->{
+            if(isFinishing()||isDestroyed())return;
+            if(error!=null){if(directoryStatus!=null)directoryStatus.setText(error);else Toast.makeText(this,error,Toast.LENGTH_LONG).show();return;}
+            if(directoryStatus!=null)directoryStatus.setText("@"+name+" подтверждён.");
+            new AlertDialog.Builder(this).setTitle("Добавить @"+name+"?")
+                .setMessage("Ник @"+name+" подтверждён в Solana, и его владелец подписал эти ключи. Личность не проверена лично: при встрече сравните отпечаток.\n\n"+verified.optString("fingerprint"))
+                .setNegativeButton("Отмена",null).setPositiveButton("Добавить",(d,w)->engine.pairFound(member,(done,failure)->{
+                    if(isFinishing()||isDestroyed())return;
+                    if(failure!=null){Toast.makeText(this,failure,Toast.LENGTH_LONG).show();return;}
+                    String account=done.optString("account");
+                    if(ContactNames.get(this,account).isEmpty())ContactNames.set(this,account,"@"+name);
+                    renderedDialogs="";if(directoryDialog!=null)directoryDialog.dismiss();openChat(account);
+                })).show();
+        });
+    }
+    /** RFC-0028 link: https://paranoid.global/c/<server-id>/<nick> or paranoid://c/<server-id>/<nick>.
+     * server-id = first 16 hex characters of the server's pinned TLS SPKI SHA-256. Never joins a server. */
+    private String pendingLink;
+    private void handleLink(Intent intent){
+        if(intent==null||!Intent.ACTION_VIEW.equals(intent.getAction())||intent.getData()==null)return;
+        android.net.Uri uri=intent.getData();java.util.List<String> parts=uri.getPathSegments();
+        String server=null,nick=null;
+        if("https".equals(uri.getScheme())&&"paranoid.global".equals(uri.getHost())&&parts.size()==3&&"c".equals(parts.get(0))){server=parts.get(1);nick=parts.get(2);}
+        else if("paranoid".equals(uri.getScheme())&&"c".equals(uri.getHost())&&parts.size()==2){server=parts.get(0);nick=parts.get(1);}
+        intent.setData(null);
+        if(server==null||!server.matches("[0-9a-f]{16}")||nick==null||!nick.matches("[a-z][a-z0-9_]{2,23}")){Toast.makeText(this,"Ссылка ParanoID повреждена.",Toast.LENGTH_LONG).show();return;}
+        pendingLink=server+"/"+nick;openPendingLink();
+    }
+    private void openPendingLink(){
+        if(pendingLink==null||!resumed)return;
+        if(broken)return;
+        if(!hasIdentity||!active){if(latest.has("active")){pendingLink=null;Toast.makeText(this,"Сначала войдите через ник Solana, затем откройте ссылку снова.",Toast.LENGTH_LONG).show();}return;}
+        if(!latest.has("server_id")&&!latest.optBoolean("connected"))return; // wait for server discovery
+        String server=pendingLink.substring(0,16),nick=pendingLink.substring(17);pendingLink=null;
+        if(!latest.has("server_id")){
+            new AlertDialog.Builder(this).setTitle("Поиск недоступен").setMessage("Этот сервер не поддерживает поиск участников, поэтому ссылку на @"+nick+" открыть нельзя. Добавьте контакт через QR.").setPositiveButton("Закрыть",null).show();return;
+        }
+        if(!server.equals(latest.optString("server_id"))){
+            new AlertDialog.Builder(this).setTitle("Этот сервер не подключён").setMessage("Ссылка на @"+nick+" ведёт на сервер "+server+", к которому этот телефон не подключён. ParanoID не подключается к серверам по ссылкам.").setPositiveButton("Закрыть",null).show();return;
+        }
+        engine.directorySearch(nick,null,(result,error)->{
+            if(isFinishing()||isDestroyed())return;
+            if(error!=null){Toast.makeText(this,error,Toast.LENGTH_LONG).show();return;}
+            JSONArray members=result.optJSONArray("members");JSONObject exact=null;
+            for(int n=0;members!=null&&n<members.length();n++){JSONObject m=members.optJSONObject(n);if(m!=null&&nick.equals(m.optString("name")))exact=m;}
+            if(exact==null){Toast.makeText(this,"@"+nick+" не найден на этом сервере или скрыт из поиска.",Toast.LENGTH_LONG).show();return;}
+            checkMember(exact);
+        });
+    }
+    private void shareLink(){
+        String name=latest.optString("directory_name"),server=latest.optString("server_id");
+        if(name.isEmpty()||server.isEmpty()){Toast.makeText(this,"Ссылка появится после подключения к серверу.",Toast.LENGTH_LONG).show();return;}
+        String link="https://paranoid.global/c/"+server+"/"+name;
+        Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,"Напишите мне в ParanoID: "+link);
+        startActivity(Intent.createChooser(intent,"Поделиться моей ссылкой"));
     }
     private void pasteContact(){
         LinearLayout body=column();body.setPadding(dp(24),dp(8),dp(24),dp(4));
@@ -779,7 +941,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
                 qr.setImageBitmap(android.graphics.Bitmap.createBitmap(pixels,640,640,android.graphics.Bitmap.Config.ARGB_8888));displayedQr=raw;
             }fingerprint.setText(view.optString("contact_fingerprint"));}
             if(!draft.getText().toString().equals(drafts.text(selectedAccount)))restoreDraft();
+            directoryBlock.setVisibility(active&&view.optBoolean("directory")?View.VISIBLE:View.GONE);
             renderLists();renderHistory(false);
+            openPendingLink();
             if(!hadIdentity&&hasIdentity)show(page);else buttons();
             if(broken)show(page);
             autoCheckUpdates();

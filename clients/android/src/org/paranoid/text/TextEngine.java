@@ -316,6 +316,73 @@ public final class TextEngine {
         worker.execute(this::startConnection);
     }
 
+    // RFC-0028 server directory. Network and Solana waits run on their own thread, never on the
+    // state owner (RealtimeLoop.directory itself waits for the owner) and never on the UI thread.
+    private final ExecutorService directoryWorker=Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"paranoid-directory");t.setDaemon(true);return t;});
+    public interface Directory { void done(JSONObject result,String error); }
+    private interface OwnerTask<T> { T run()throws Exception; }
+    private <T> T onOwner(OwnerTask<T> task)throws Exception {
+        java.util.concurrent.Future<T> f=worker.submit(()->{if(broken||client==null)throw new IOException("local state unavailable");return task.run();});
+        try{return f.get(30,java.util.concurrent.TimeUnit.SECONDS);}
+        catch(java.util.concurrent.ExecutionException e){Throwable c=e.getCause();throw c instanceof Exception?(Exception)c:new IOException(c);}
+    }
+    private void directoryTask(Directory callback,OwnerTask<JSONObject> task){
+        directoryWorker.execute(()->{
+            try{JSONObject result=task.run();ui.post(()->callback.done(result,null));}
+            catch(Throwable error){String message=directoryError(error);ui.post(()->callback.done(null,message));}
+        });
+    }
+    /** Prefix search (empty lists the server); `after` is the previous page's `next` or null. */
+    public void directorySearch(String query,String after,Directory callback){
+        directoryTask(callback,()->{
+            RealtimeLoop loop=realtime;if(loop==null)throw new IOException("local state unavailable");
+            return loop.directory("directory_search",new JSONObject().put("query",query).put("after",after==null?JSONObject.NULL:after).toString());
+        });
+    }
+    public void directoryVisibility(boolean visible,Directory callback){
+        directoryTask(callback,()->{
+            RealtimeLoop loop=realtime;if(loop==null)throw new IOException("local state unavailable");
+            JSONObject result=loop.directory("directory_visibility",visible?"true":"false");publish(lastPublishedStatus);return result;
+        });
+    }
+    /** Owner proof + card in the core, then the finalized Solana registry (name -> owner). */
+    public void verifyFound(JSONObject entry,Directory callback){
+        directoryTask(callback,()->{
+            JSONObject verified=onOwner(()->client.verifyDirectoryEntry(entry));
+            org.paranoid.devnet.MainActivity.directoryRegistry().verify(entry.getString("owner"),entry.getString("name"),entry.getString("identity"));
+            return verified;
+        });
+    }
+    /** Adds an entry already checked by verifyFound; the core re-verifies before pinning it. */
+    public void pairFound(JSONObject entry,Directory callback){
+        directoryTask(callback,()->{
+            onOwner(()->{client.pairDirectoryEntry(entry);publish("Контакт добавлен");startConnection();return null;});
+            return new JSONObject().put("account",entry.getJSONObject("contact").getJSONObject("credential").getString("account"));
+        });
+    }
+    private static String directoryError(Throwable error){
+        if(error instanceof SyncCycle.Rejected){
+            SyncCycle.Rejected r=(SyncCycle.Rejected)error;
+            if(r.status==404)return "Этот сервер не поддерживает поиск участников.";
+            if(r.status==429&&"directory_rate".equals(r.code))return "Слишком много запросов поиска (не больше 60 в час). Повторите позже.";
+            if(r.status==429)return "Сервер занят. Повторите через несколько секунд.";
+            if(r.status==401)return "Сервер не подтвердил вход этого телефона. Откройте приложение заново; если не поможет — войдите через ник снова.";
+            return "Сервер отказал: "+r.status+(r.code.isEmpty()?"":" "+r.code)+".";
+        }
+        String m=error.getMessage()==null?"":error.getMessage();
+        if(m.contains("proof_credential_mismatch")||m.contains("contact_binding_mismatch")||m.contains("invalid_owner_signature")||m.contains("proof_identity_mismatch")||m.contains("proof_wrong_server")||m.contains("proof_wrong_purpose"))
+            return "Сервер вернул ключи, которые владелец ника не подписывал ("+m.replace("core rejected operation: ","")+"). Контакт не добавлен.";
+        if(m.equals("name_not_registered")||m.equals("identity_mismatch")||m.equals("name_conflict_or_partial_record")||m.equals("record_mismatch"))
+            return "Ник не подтверждён в реестре Solana для этого владельца ("+m+"). Контакт не добавлен.";
+        if(m.startsWith("rpc_")||m.equals("wrong_cluster")||m.startsWith("program_")||m.equals("unexpected_program"))
+            return "Не удалось проверить ник в Solana ("+m+"). Контакт не добавлен; повторите позже.";
+        if(m.equals("offline"))return "Нет подключения к серверу. Повторите, когда появится связь.";
+        if(m.equals("registration required"))return "Сначала войдите через ник Solana.";
+        if(m.contains("peer_already_pinned"))return "Этот контакт уже добавлен с другими ключами. Проверьте его по QR.";
+        if(m.contains("unverified_contact_limit"))return "Достигнут предел непроверенных контактов (16).";
+        return "Не удалось: "+(m.isEmpty()?error.getClass().getSimpleName():m.replace("core rejected operation: ",""))+".";
+    }
+
     private String userError(Throwable error) {
         if(error instanceof SyncCycle.Rejected) {
             int code=((SyncCycle.Rejected)error).status;
@@ -363,6 +430,10 @@ public final class TextEngine {
             if(client!=null && client.broken())broken=true;
             if(!broken && client!=null)display=client.publicView();
             display.put("broken",broken).put("unsupported_snapshot",unsupportedSnapshot).put("connected",connected&&!broken).put("background_enabled",backgroundEnabled);
+            // RFC-0028: the directory exists only on identity-v3 servers; server-id = first 16 hex of the pinned SPKI.
+            RealtimeLoop loop=realtime;
+            if(!broken&&client!=null&&loop!=null&&Boolean.TRUE.equals(loop.identityServer())&&display.optBoolean("active"))
+                display.put("directory",true).put("directory_name",loop.directoryName()).put("server_id",client.updateTrust()[1].substring(0,16));
         } catch(Throwable error){broken=true;try{display.put("broken",true);}catch(Exception ignored){}}
         JSONObject safeView=display;
         long incoming=0;

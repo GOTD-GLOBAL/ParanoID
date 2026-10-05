@@ -23,7 +23,7 @@ public final class RealtimeTransport implements AutoCloseable {
         factory=PinnedTls.factory(new URL(realm).getHost(),pin);
     }
     public JSONObject call(String method,String path,String body,String authorization)throws Exception {
-        if(!(path.equals("/health")||path.startsWith("/v2/")) || path.indexOf('#')>=0 || path.indexOf('\r')>=0 || path.indexOf('\n')>=0)
+        if(!(path.equals("/health")||path.startsWith("/v2/")||path.startsWith("/v3/directory/")) || path.indexOf('#')>=0 || path.indexOf('\r')>=0 || path.indexOf('\n')>=0)
             throw new IOException("invalid transport path");
         if(!method.equals("GET")&&!method.equals("POST"))throw new IOException("invalid transport method");
         if(method.equals("GET")&&!body.isEmpty())throw new IOException("GET body rejected");

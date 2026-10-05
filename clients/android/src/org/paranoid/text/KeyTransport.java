@@ -11,7 +11,7 @@ public final class KeyTransport {
     private KeyTransport(){}
     public static JSONObject call(String realm,String pin,String method,String path,String body,String authorization) throws Exception {
         KeyClient.checkedRealm(realm);
-        if(!(path.startsWith("/v1/") || path.startsWith("/v2/") || path.startsWith("/v3/identity/") || path.startsWith("/v3/sponsor/")) || path.indexOf('#')>=0 || path.indexOf('\r')>=0 || path.indexOf('\n')>=0)throw new IOException("invalid path");
+        if(!(path.startsWith("/v1/") || path.startsWith("/v2/") || path.startsWith("/v3/identity/") || path.startsWith("/v3/sponsor/") || path.startsWith("/v3/directory/")) || path.indexOf('#')>=0 || path.indexOf('\r')>=0 || path.indexOf('\n')>=0)throw new IOException("invalid path");
         HttpsURLConnection c=(HttpsURLConnection)new URL(realm+path).openConnection(java.net.Proxy.NO_PROXY);
         c.setSSLSocketFactory(PinnedTls.factory(new URL(realm).getHost(),pin));
         c.setInstanceFollowRedirects(false);c.setConnectTimeout(8000);c.setReadTimeout(path.startsWith("/v2/")?15000:8000);

@@ -25,6 +25,16 @@ final class RegistrationFlow {
         SolanaBridge.run(new JSONObject().put("op","verify").put("owner",owner).put("name",name).put("identity_data",data(id)).put("nickname_data",data(nick)).put("identity_program",id.getString("owner")).put("nickname_program",nick.getString("owner")).put("genesis",genesis));
         state.put("verified",true).put("name",name);return true;
     }
+    /** RFC-0028: finalized registry proof that a FOREIGN `owner` holds `name` and that the
+     * identity PDA the server returned is the derived one. Same pinned cluster/program checks and
+     * byte-exact record verification as this phone's own readback. Throws on any mismatch. */
+    static void verifyMember(Chain rpc,String owner,String name,String identity)throws Exception {
+        if(name==null||!name.matches("[a-z][a-z0-9_]{2,23}"))throw new IOException("invalid_name");
+        String genesis=rpc.cluster();rpc.program();
+        JSONObject lookup=SolanaBridge.run(new JSONObject().put("op","lookup").put("owner",owner).put("name",name));
+        if(!lookup.getString("identity").equals(identity))throw new IOException("identity_mismatch");
+        if(!readback(rpc,new JSONObject(),owner,name,genesis))throw new IOException("name_not_registered");
+    }
     private static boolean expired(Chain rpc,JSONArray attempts)throws Exception {
         if(attempts.length()==0)return true;
         JSONArray signatures=new JSONArray();long expiry=0;

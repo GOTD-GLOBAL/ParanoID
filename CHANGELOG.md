@@ -8,6 +8,23 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Server member directory and contact links (RFC-0028, candidate) — 2026-09-30
+
+- Identity-v3 servers: `POST /v3/directory/search`, `/v3/directory/visibility` and
+  `/v3/directory/card`, callable only with a signed session of an active member;
+  60 requests per member and 600 per server per hour. Each entry carries the owner
+  proof stored at enroll/replace. Schema adds `id_memberships.visible/proof/card` and
+  directory windows (empty-database initialization only).
+- Android v36 (`0.0.36-solana-id`): «Найти на сервере» in «Добавить контакт» on
+  identity-v3 servers; a found member is verified (owner proof in the core + Solana
+  registry) before «Добавить @ник?» and added as an unverified contact. Settings toggle
+  «Показывать меня в поиске на этом сервере» (default on). «Поделиться моей ссылкой»
+  shares `https://paranoid.global/c/<server-id>/<nick>`; the app opens such links and
+  `paranoid://c/...` without ever joining an unknown server. The phone publishes its own
+  contact card automatically after login and on key changes.
+- `deploy/web/paranoid.global/` holds `assetlinks.json` and a landing page template;
+  not deployed.
+
 ### Android v35: login works with a phone clock off by seconds — 2026-09-30
 
 - Phones checked a login challenge's expiry against their own clock with no tolerance,
