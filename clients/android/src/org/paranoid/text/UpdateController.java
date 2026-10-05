@@ -47,18 +47,16 @@ public final class UpdateController {
         if(!BUSY.compareAndSet(false,true)){status.setText("Другая проверка обновления ещё выполняется. Повторите чуть позже.");return;}
         button.setEnabled(false);
         if(stage==0){
-            status.setText("Проверяем обновление через сохранённое доверенное подключение…");
-            engine.updateTrust(trust->{
-                if(!alive()){finish();return;}
-                if(trust==null){reset("Сохранённое подключение недоступно. На новом телефоне сначала создайте ID. Не удаляйте данные существующего ID. Повторите проверку позже.");finish();return;}
-                background(()->{
+            // Update service is always the fixed production server, independent of which messenger
+            // server the app is connected to (owner decision 2026-10-05).
+            status.setText("Проверяем обновление…");
+            background(()->{
                     activity.revokeUriPermission(Uri.parse(UpdatePolicy.URI),Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                    client=new UpdateClient(trust[0],trust[1]);UpdateManifest found=client.check();
+                    client=new UpdateClient();UpdateManifest found=client.check();
                     boolean available=found!=null && UpdatePolicy.available(found,AndroidUpdateVerifier.version(AndroidUpdateVerifier.installed(activity)),Build.VERSION.SDK_INT,Build.SUPPORTED_ABIS);
                     return ()->{if(!available)reset("Обновлений пока нет. Установленная версия сохранена; можно проверить позже.");
                         else{manifest=found;stage=1;button.setText("Скачать обновление");status.setText("Доступна версия "+found.versionName+". Скачать APK ("+found.apkSize+" байт)? Установка — отдельным нажатием.");}};
                 });
-            });
         }else if(stage==1){
             status.setText("Скачиваем и проверяем размер, SHA-256, пакет, версию и подпись APK…");
             background(()->{

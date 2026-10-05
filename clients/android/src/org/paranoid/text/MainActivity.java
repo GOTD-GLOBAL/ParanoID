@@ -359,7 +359,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             if(trust==null||isFinishing()||isDestroyed())return;
             new Thread(()->{
                 try{
-                    UpdateManifest found=new UpdateClient(trust[0],trust[1]).check();
+                    UpdateManifest found=new UpdateClient().check();
                     boolean availableNow=found!=null&&UpdatePolicy.available(found,
                         AndroidUpdateVerifier.version(AndroidUpdateVerifier.installed(this)),Build.VERSION.SDK_INT,Build.SUPPORTED_ABIS);
                     getSharedPreferences(UI_PREFS,MODE_PRIVATE).edit().putLong(UPDATE_CHECK_AT_KEY,System.currentTimeMillis()).apply();
