@@ -231,7 +231,9 @@ class OnboardingContract(unittest.TestCase):
 
     def test_typed_scanner_and_display_are_wired_with_cancel_safe_lifecycle(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
-        self.assertIn('QrCodec.encode',ui,'public descriptors must be displayed as actual QR')
+        # QR display removed from My ID screen (owner decision 2026-10-05)
+        # Scan for incoming contacts still works via QrScanActivity
+        self.assertIn('QrScanActivity',ui,'QrScanActivity must be reachable from contacts screen')
         self.assertIn('QrScanActivity',ui)
         manifest=(ROOT/'AndroidManifest.xml').read_text()
         self.assertIn('android.permission.CAMERA',manifest)

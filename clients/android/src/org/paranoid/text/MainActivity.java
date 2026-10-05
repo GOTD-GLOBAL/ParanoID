@@ -43,6 +43,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private ImageView qr;
     private EditText draft;
     private Button create,send,share,copy,navChats,navContacts,navIdentity,background,shareLink;
+    private TextView nickView;
     private LinearLayout directoryBlock,identityStateBlock;private Switch visibleSwitch;private boolean restoringSwitch;
     private TextView identityStateTitle,identityStateBody;private Button identityStateAction;
     private static final String VISIBLE_KEY="directory_visible_v1";
@@ -199,18 +200,15 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         identityStateBody=text("",16,colors.muted,false);identityStateBody.setLineSpacing(0,1.4f);identityStateBlock.addView(identityStateBody);
         space(identityStateBlock,24);
         identityStateAction=action("",this::openOnboarding);identityStateBlock.addView(identityStateAction,full());
-        // QR block: shown only when active on an identity-v3 server
+        // My ID screen: nik + share link (QR, hash, fingerprint removed — owner decisions 2026-10-05)
         identity.addView(text("Мой ID",24,colors.text,true));space(identity,8);
-        identity.addView(text("Покажите QR собеседнику или поделитесь ссылкой.",14,colors.muted,false));space(identity,20);
-        LinearLayout card=column();card.setGravity(Gravity.CENTER_HORIZONTAL);card.setPadding(dp(20),dp(20),dp(20),dp(20));card.setBackground(shape(colors.surface,24));identity.addView(card,full());
-        qr=new ImageView(this);qr.setAdjustViewBounds(true);qr.setBackgroundColor(0xffffffff);qr.setContentDescription("QR моего контакта");int side=Math.min(280,getResources().getDisplayMetrics().widthPixels/(int)Math.max(1,getResources().getDisplayMetrics().density)-80);card.addView(qr,box(Math.max(160,side),Math.max(160,side)));
-        space(card,16);TextView caption=text("ВАШ ID",11,colors.muted,true);caption.setLetterSpacing(.08f);card.addView(caption);
-        myId=text("Создайте ID, чтобы начать",14,colors.text,false);myId.setTypeface(Typeface.MONOSPACE);myId.setTextIsSelectable(true);myId.setGravity(Gravity.CENTER);space(card,8);card.addView(myId,full());space(identity,16);
-        share=action("Поделиться",()->{
-            if(displayedQr.isEmpty())return;
-            Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,displayedQr);startActivity(Intent.createChooser(intent,"Поделиться контактом ParanoID"));
-        });identity.addView(share,full());
-        copy=secondary("Скопировать QR",()->copyPublic(displayedQr,"Скопировано. Сравните отпечаток при личной встрече."));space(identity,8);identity.addView(copy,full());
+        nickView=text("",28,colors.text,true);nickView.setGravity(android.view.Gravity.CENTER);identity.addView(nickView,full());
+        space(identity,8);
+        identity.addView(text("Поделитесь ссылкой, чтобы собеседник добавил вас.",14,colors.muted,false));space(identity,20);
+        qr=new ImageView(this);qr.setVisibility(android.view.View.GONE);
+        myId=text("",14,colors.text,false);myId.setVisibility(android.view.View.GONE);
+        share=action("",()->{});share.setVisibility(android.view.View.GONE);
+        copy=secondary("",()->{});copy.setVisibility(android.view.View.GONE);
         directoryBlock=column();identity.addView(directoryBlock,full());directoryBlock.setVisibility(View.GONE);
         space(directoryBlock,8);shareLink=secondary("Поделиться моей ссылкой",this::shareLink);directoryBlock.addView(shareLink,full());
         space(directoryBlock,16);visibleSwitch=new Switch(this);visibleSwitch.setText("Виден в поиске участников");visibleSwitch.setTextColor(colors.text);visibleSwitch.setTextSize(15);visibleSwitch.setMinHeight(dp(48));
@@ -225,7 +223,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         });
         directoryBlock.addView(visibleSwitch,full());
         
-        space(identity,16);fingerprint=text("",12,colors.muted,false);fingerprint.setTypeface(Typeface.MONOSPACE);fingerprint.setTextIsSelectable(true);identity.addView(fingerprint);
+        fingerprint=text("",12,colors.muted,false);fingerprint.setVisibility(android.view.View.GONE);identity.addView(fingerprint);
         // Background toggle — compact, no paragraph text
         space(identity,24);
         background=secondary("Фоновое подключение",()->{
@@ -959,12 +957,12 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
                 identityStateAction.setText("Войти");
                 identityStateAction.setOnClickListener(v->openOnboarding());
             }
-            myId.setText(view.optString("account",""));
+            String solNick=view.optString("solana_nick","");
+            nickView.setText(solNick.isEmpty()?"":("@"+solNick));
+            myId.setText("");
+            // QR removed from UI; keep displayedQr for share/copy logic that may still reference it
             JSONObject contact=view.optJSONObject("contact");
-            if(active&&contact!=null){String raw=contact.toString();if(!raw.equals(displayedQr)){
-                byte[] luma=QrCodec.encode(raw,640);int[] pixels=new int[luma.length];for(int n=0;n<pixels.length;n++)pixels[n]=(luma[n]&255)==0?0xff000000:0xffffffff;
-                qr.setImageBitmap(android.graphics.Bitmap.createBitmap(pixels,640,640,android.graphics.Bitmap.Config.ARGB_8888));displayedQr=raw;
-            }fingerprint.setText(view.optString("contact_fingerprint"));}
+            if(active&&contact!=null){String raw=contact.toString();displayedQr=raw;}fingerprint.setText("");
             if(!draft.getText().toString().equals(drafts.text(selectedAccount)))restoreDraft();
             directoryBlock.setVisibility(active&&view.optBoolean("directory")?View.VISIBLE:View.GONE);
             renderLists();renderHistory(false);
