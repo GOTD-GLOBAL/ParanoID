@@ -232,7 +232,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         });identity.addView(background,full());
         // Updates — only the controller, no heading paragraph
         updateHeading=text("",0,colors.muted,false);updateHeading.setVisibility(android.view.View.GONE); // kept for UpdateController reference
-        updateController=new UpdateController(this,engine,identity);
+        // Update controller — shown only via menu ⋮, not on My ID screen
+        LinearLayout updateHolder=column();updateHolder.setVisibility(android.view.View.GONE);
+        updateController=new UpdateController(this,engine,updateHolder);
     }
 
     /** Single opt-in path: user-visible foreground start plus the OPPO-critical battery exception. */
@@ -333,7 +335,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         String version="";try{version=getPackageManager().getPackageInfo(getPackageName(),0).versionName;}catch(Exception ignored){}
         String fp=latest.optString("contact_fingerprint","");if(fp.isEmpty())fp="появится после регистрации";
         new AlertDialog.Builder(this).setTitle("О приложении")
-            .setMessage("ParanoID · версия "+version+"\n\nОтпечаток идентичности:\n"+fp+"\n\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно.")
+            .setMessage("ParanoID · версия "+version+"\n\nЗакрытая альфа, только тестовые сообщения.")
             .setPositiveButton("Закрыть",null).show();
     }
     /** Opens the existing update block; downloading and verification stay in UpdateController. */
@@ -958,7 +960,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
                 identityStateAction.setOnClickListener(v->openOnboarding());
             }
             String solNick=view.optString("solana_nick","");
-            nickView.setText(solNick.isEmpty()?"":("@"+solNick));
+            if(solNick.isEmpty()&&active){
+                nickView.setText("Нет ника");
+                nickView.setTextColor(colors.muted);
+            } else {
+                nickView.setText(solNick.isEmpty()?"":("@"+solNick));
+                nickView.setTextColor(colors.text);
+            }
             myId.setText("");
             // QR removed from UI; keep displayedQr for share/copy logic that may still reference it
             JSONObject contact=view.optJSONObject("contact");
