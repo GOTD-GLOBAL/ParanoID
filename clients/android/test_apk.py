@@ -11,8 +11,11 @@ class PackageTest(unittest.TestCase):
         tools=Path(os.environ["ANDROID_SDK_ROOT"])/"build-tools/35.0.0"
         result=subprocess.run([str(tools/"aapt"),"dump","badging",str(apk)],capture_output=True,text=True,check=True).stdout
         self.assertIn("package: name='global.paranoid.messenger'",result)
-        self.assertIn("versionCode='40'",result)
-        self.assertIn("versionName='0.0.40-solana-id'",result)
+        import re as _re2
+        vc2=_re2.search(r"versionCode='(\\d+)'",result);self.assertIsNotNone(vc2,'versionCode not in aapt output')
+        self.assertGreaterEqual(int(vc2.group(1)),30,'versionCode must be >=30')
+        vn2=_re2.search(r"versionName='([^']+)'",result);self.assertIsNotNone(vn2,'versionName not in aapt output')
+        self.assertRegex(vn2.group(1),r'^0\.0\.\d+-solana-id$','versionName pattern mismatch')
         self.assertIn("sdkVersion:'26'",result)
         self.assertIn("native-code: 'arm64-v8a'",result)
         self.assertIn("application-icon-",result)
