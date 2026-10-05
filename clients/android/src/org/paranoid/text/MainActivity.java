@@ -43,7 +43,8 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private ImageView qr;
     private EditText draft;
     private Button create,send,share,copy,navChats,navContacts,navIdentity,background,shareLink;
-    private LinearLayout directoryBlock;private Switch visibleSwitch;private boolean restoringSwitch;
+    private LinearLayout directoryBlock,identityStateBlock;private Switch visibleSwitch;private boolean restoringSwitch;
+    private TextView identityStateTitle,identityStateBody;private Button identityStateAction;
     private static final String VISIBLE_KEY="directory_visible_v1";
     private ImageButton leading,trailing;
     private ImageButton menuAction;
@@ -191,6 +192,14 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     private void buildIdentity(){
         identity=column();identity.setPadding(dp(20),dp(8),dp(20),dp(24));addScrollablePage(identity);
+        // State block: shown when there is no active session (no nick or not logged in)
+        identityStateBlock=column();identityStateBlock.setPadding(dp(4),dp(16),dp(4),dp(8));identity.addView(identityStateBlock,full());
+        identityStateTitle=text("",24,colors.text,true);identityStateBlock.addView(identityStateTitle);
+        space(identityStateBlock,12);
+        identityStateBody=text("",16,colors.muted,false);identityStateBody.setLineSpacing(0,1.4f);identityStateBlock.addView(identityStateBody);
+        space(identityStateBlock,24);
+        identityStateAction=action("",this::openOnboarding);identityStateBlock.addView(identityStateAction,full());
+        // QR block: shown only when active on an identity-v3 server
         identity.addView(text("Мой ID",24,colors.text,true));space(identity,8);
         identity.addView(text("Покажите QR собеседнику или поделитесь ссылкой.",14,colors.muted,false));space(identity,20);
         LinearLayout card=column();card.setGravity(Gravity.CENTER_HORIZONTAL);card.setPadding(dp(20),dp(20),dp(20),dp(20));card.setBackground(shape(colors.surface,24));identity.addView(card,full());
@@ -926,7 +935,31 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?(identityLogin?"Нужен вход через ник Solana":"Регистрируем ID · ключи сохранены"):view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
             status.setText(connection);status.setTextColor(broken?colors.danger:colors.muted);
-            myId.setText(view.optString("account","Создайте ID, чтобы начать"));
+            // Drive identity screen states
+            boolean qrReady=hasIdentity&&active&&!broken;
+            boolean needsNick=!hasIdentity&&!broken;
+            boolean needsLogin=hasIdentity&&identityLogin&&!active&&!broken;
+            // State block: visible when no QR to show
+            identityStateBlock.setVisibility((!qrReady)?View.VISIBLE:View.GONE);
+            // QR sections: visible only when active
+            myId.setVisibility(qrReady?View.VISIBLE:View.GONE);
+            qr.setVisibility(qrReady?View.VISIBLE:View.GONE);
+            share.setVisibility(qrReady?View.VISIBLE:View.GONE);
+            copy.setVisibility(qrReady?View.VISIBLE:View.GONE);
+            fingerprint.setVisibility(qrReady?View.VISIBLE:View.GONE);
+            if(needsNick){
+                identityStateTitle.setText("Создайте ник");
+                identityStateBody.setText("Ник — ваш аккаунт. Один раз, на любом телефоне. Номер телефона не нужен.");
+                identityStateAction.setText("Создать ник");
+                identityStateAction.setOnClickListener(v->openOnboarding());
+            } else if(needsLogin){
+                String nick=view.optString("solana_nick","");
+                identityStateTitle.setText(nick.isEmpty()?"Войдите":"@"+nick);
+                identityStateBody.setText("Войдите через ваш ник, чтобы начать получать сообщения.");
+                identityStateAction.setText("Войти");
+                identityStateAction.setOnClickListener(v->openOnboarding());
+            }
+            myId.setText(view.optString("account",""));
             JSONObject contact=view.optJSONObject("contact");
             if(active&&contact!=null){String raw=contact.toString();if(!raw.equals(displayedQr)){
                 byte[] luma=QrCodec.encode(raw,640);int[] pixels=new int[luma.length];for(int n=0;n<pixels.length;n++)pixels[n]=(luma[n]&255)==0?0xff000000:0xffffffff;
