@@ -601,8 +601,8 @@ public final class OnboardingActivity extends Activity {
     }
 
     private void secure(boolean on) {
-        if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        else    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        // Owner decision 2026-10-05: screenshots allowed everywhere, FLAG_SECURE removed.
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
     }
     private void clear() { page.removeAllViews(); }
 

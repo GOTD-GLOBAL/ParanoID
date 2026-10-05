@@ -511,7 +511,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         body.addView(secondary("К переписке",()->callDialog.dismiss()),full());space(body,24);
         TextView note=text("До ответа микрофон входящего звонка выключен. Звук защищён сквозным шифрованием.",12,colors.muted,false);note.setGravity(Gravity.CENTER);body.addView(note,full());
         callDialog.setContentView(scroll);callDialog.setOnDismissListener(dialog->{releaseRenderers();callDialog=null;});
-        callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        // FLAG_SECURE removed from call dialog: owner allows screenshots in all modes (2026-10-05)
         callDialog.show();
         if(Build.VERSION.SDK_INT>=30){
             callDialog.getWindow().setDecorFitsSystemWindows(false);
