@@ -310,8 +310,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         PopupMenu menu=new PopupMenu(this,menuAction);
         menu.getMenu().add(0,1,0,"Проверить обновления");
         menu.getMenu().add(0,2,1,"О приложении");
+        if(hasIdentity)menu.getMenu().add(0,3,2,"Ник в Devnet");
         menu.setOnMenuItemClickListener(item->{
-            if(item.getItemId()==1)openUpdates();else showAbout();
+            if(item.getItemId()==1)openUpdates();else if(item.getItemId()==3)openDevnet();else showAbout();
             return true;
         });
         menu.show();
