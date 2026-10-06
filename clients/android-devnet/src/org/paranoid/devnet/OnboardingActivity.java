@@ -21,8 +21,7 @@ import java.util.concurrent.*;
  * User-visible strings never mention Solana, Devnet, keypair, blockchain, SOL or transactions.
  */
 public final class OnboardingActivity extends Activity {
-    private static final ExecutorService OWNER = Executors.newSingleThreadExecutor();
-    private static DevnetStore store;
+    private static final ExecutorService OWNER = MainActivity.OWNER;
     private final UiGeneration generation = new UiGeneration();
     private LinearLayout page;
     // Theme colours
@@ -449,6 +448,8 @@ public final class OnboardingActivity extends Activity {
         gap(10);
         serverCard("🚀", "Создать свой сервер",
             "Развернуть ParanoID на своём VPS.", false, null);
+        gap(16);
+        btnSecondary("Позже", this::finish);
     }
 
     // ─── screen: join (login) ─────────────────────────────────────────────
@@ -547,8 +548,7 @@ public final class OnboardingActivity extends Activity {
         final long ticket = generation.next();
         OWNER.execute(() -> {
             try {
-                if (store == null) store = new DevnetStore(getApplicationContext());
-                step.run(store, ticket);
+                step.run(MainActivity.identityStore(getApplicationContext()), ticket);
             } catch (Throwable e) {
                 String code = e.getMessage() == null ? "" : e.getMessage();
                 if (e instanceof org.paranoid.text.SyncCycle.Rejected) {

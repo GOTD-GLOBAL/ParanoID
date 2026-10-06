@@ -69,7 +69,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private static final int MICROPHONE_PERMISSION=95,BLUETOOTH_PERMISSION=96;
     private final TextEngine.CallListener callListener=this::renderCall;
     private String page="dialogs",selectedAccount="",displayedQr="",lastStatus="Открываем сохранённые данные…",renderedHistory="",renderedDialogs="";
-    private boolean active=false,hasIdentity=false,broken=false,restoringDraft=false,creating=false,identityLogin=false;
+    private boolean active=false,hasIdentity=false,hasBlockchainNick=false,nicknameReadFailed=false,broken=false,restoringDraft=false,creating=false,identityLogin=false;
     private TextView loginHint;private boolean onboardingOpened;
     private boolean backgroundPromptShowing;
     private TextView backgroundHint;
@@ -194,7 +194,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private void buildIdentity(){
         identity=column();identity.setPadding(dp(20),dp(8),dp(20),dp(24));addScrollablePage(identity);
         // State block: shown when there is no active session (no nick or not logged in)
-        identityStateBlock=column();identityStateBlock.setPadding(dp(4),dp(16),dp(4),dp(8));identity.addView(identityStateBlock,full());
+        identityStateBlock=column();identityStateBlock.setPadding(dp(4),dp(16),dp(4),dp(8));
         identityStateTitle=text("",24,colors.text,true);identityStateBlock.addView(identityStateTitle);
         space(identityStateBlock,12);
         identityStateBody=text("",16,colors.muted,false);identityStateBody.setLineSpacing(0,1.4f);identityStateBlock.addView(identityStateBody);
@@ -203,13 +203,15 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         // My ID screen: nik + share link (QR, hash, fingerprint removed — owner decisions 2026-10-05)
         identity.addView(text("Мой ID",24,colors.text,true));space(identity,8);
         nickView=text("",28,colors.text,true);nickView.setGravity(android.view.Gravity.CENTER);identity.addView(nickView,full());
+        identity.addView(identityStateBlock,full());
         space(identity,8);
-        identity.addView(text("Поделитесь ссылкой, чтобы собеседник добавил вас.",14,colors.muted,false));space(identity,20);
+
         qr=new ImageView(this);qr.setVisibility(android.view.View.GONE);
         myId=text("",14,colors.text,false);myId.setVisibility(android.view.View.GONE);
         share=action("",()->{});share.setVisibility(android.view.View.GONE);
         copy=secondary("",()->{});copy.setVisibility(android.view.View.GONE);
         directoryBlock=column();identity.addView(directoryBlock,full());directoryBlock.setVisibility(View.GONE);
+        directoryBlock.addView(text("Поделитесь ссылкой, чтобы собеседник добавил вас.",14,colors.muted,false));
         space(directoryBlock,8);shareLink=secondary("Поделиться моей ссылкой",this::shareLink);directoryBlock.addView(shareLink,full());
         space(directoryBlock,16);visibleSwitch=new Switch(this);visibleSwitch.setText("Виден в поиске участников");visibleSwitch.setTextColor(colors.text);visibleSwitch.setTextSize(15);visibleSwitch.setMinHeight(dp(48));
         visibleSwitch.setChecked(getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(VISIBLE_KEY,true));
@@ -297,16 +299,17 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         page=next;
         View[] content={welcome,dialogs,contacts,identity};
         String[] names={"welcome","dialogs","contacts","identity"};
-        for(int i=0;i<content.length;i++)((View)content[i].getParent()).setVisibility((!hasIdentity&&i==0)||(hasIdentity&&next.equals(names[i]))?View.VISIBLE:View.GONE);
+        boolean profileAvailable=hasIdentity||hasBlockchainNick||nicknameReadFailed;
+        for(int i=0;i<content.length;i++)((View)content[i].getParent()).setVisibility((!profileAvailable&&i==0)||(profileAvailable&&next.equals(names[i]))?View.VISIBLE:View.GONE);
         chat.setVisibility(hasIdentity&&next.equals("chat")?View.VISIBLE:View.GONE);
-        nav.setVisibility(hasIdentity&&!next.equals("chat")?View.VISIBLE:View.GONE);
+        nav.setVisibility(profileAvailable&&!next.equals("chat")?View.VISIBLE:View.GONE);
         boolean inChat=hasIdentity&&next.equals("chat");
         callAction.setVisibility(inChat?View.VISIBLE:View.GONE);videoAction.setVisibility(inChat?View.VISIBLE:View.GONE);
-        menuAction.setVisibility(hasIdentity&&!inChat?View.VISIBLE:View.GONE);
-        screenTitle.setText(!hasIdentity?"ParanoID":inChat?ContactNames.title(this,selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
+        menuAction.setVisibility(!inChat?View.VISIBLE:View.GONE);
+        screenTitle.setText(!profileAvailable?"ParanoID":inChat?ContactNames.title(this,selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
         leading.setImageDrawable(new Symbol(inChat?"back":"identity",colors.action));leading.setContentDescription(inChat?"Назад в чаты":"Мой ID");
-        leading.setVisibility(hasIdentity?View.VISIBLE:View.GONE);
+        leading.setVisibility(profileAvailable?View.VISIBLE:View.GONE);
         trailing.setVisibility(hasIdentity?View.VISIBLE:View.GONE);trailing.setImageDrawable(new Symbol(inChat?"more":"compose",colors.action));trailing.setContentDescription(inChat?"Сведения о контакте":"Добавить контакт");
         selectNavigation(navChats,next.equals("dialogs"));selectNavigation(navContacts,next.equals("contacts"));selectNavigation(navIdentity,next.equals("identity"));
         buttons();
@@ -326,7 +329,11 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         });
         menu.show();
     }
-    private void openOnboarding(){onboardingOpened=true;startActivity(new Intent(this,org.paranoid.devnet.OnboardingActivity.class));}
+    private void openOnboarding(){
+        String nicknameState=latest.optString("nickname_state","loading");
+        if(!hasIdentity&&("loading".equals(nicknameState)||"unavailable".equals(nicknameState)))return;
+        onboardingOpened=true;startActivity(new Intent(this,org.paranoid.devnet.OnboardingActivity.class));
+    }
     private void openDevnet(){
         if(engine.calls().active()){Toast.makeText(this,"Завершите звонок перед регистрацией ника",Toast.LENGTH_LONG).show();return;}
         startActivity(new Intent(this,org.paranoid.devnet.MainActivity.class));
@@ -396,7 +403,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     }
     private void buttons(){
         if(send==null)return;
-        create.setEnabled(!hasIdentity&&!broken);create.setAlpha(create.isEnabled()?1f:.45f);
+        String nicknameState=latest.optString("nickname_state","loading");
+        create.setEnabled(!hasIdentity&&!broken&&("none".equals(nicknameState)||"pending".equals(nicknameState)||"unregistered".equals(nicknameState)));create.setAlpha(create.isEnabled()?1f:.45f);
+        create.setText("loading".equals(nicknameState)?"Проверяем сохранённый ник…":"Начать");
         share.setEnabled(active&&!displayedQr.isEmpty()&&!broken);copy.setEnabled(share.isEnabled());share.setAlpha(share.isEnabled()?1f:.45f);copy.setAlpha(copy.isEnabled()?1f:.45f);
         JSONObject dialog=selectedDialog();boolean allowed=DialogPolicy.canReply(dialog,active,broken,drafts.sending());
         callAction.setEnabled(allowed||engine.calls().active());callAction.setAlpha(callAction.isEnabled()?1f:.45f);
@@ -922,10 +931,17 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     @Override public void changed(JSONObject view,String message){
         if(isFinishing()||isDestroyed())return;
         try{
-            boolean hadIdentity=hasIdentity;latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;identityLogin=view.optBoolean("identity_login");
+            boolean hadProfile=hasIdentity||hasBlockchainNick||nicknameReadFailed;
+            latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;identityLogin=view.optBoolean("identity_login");
+            String solNick=view.optString("solana_nick","");
+            hasBlockchainNick="verified".equals(view.optString("nickname_state"))&&!solNick.isEmpty();
+            String nicknameState=view.optString("nickname_state","loading");
+            nicknameReadFailed="unavailable".equals(nicknameState);
+            boolean profileKnown=!"loading".equals(nicknameState)&&!nicknameReadFailed;
             loginHint.setVisibility(hasIdentity&&identityLogin&&!active&&!broken?View.VISIBLE:View.GONE);
             // New install: go straight to the one-step-per-screen onboarding, once per process.
-            if(!hasIdentity&&!broken&&!view.optBoolean("unsupported_snapshot")&&resumed&&!onboardingOpened)openOnboarding();
+            if(!hasIdentity&&!hasBlockchainNick&&profileKnown&&!broken&&!view.optBoolean("unsupported_snapshot")&&resumed&&!onboardingOpened)openOnboarding();
+            if(!hasIdentity&&(hasBlockchainNick||nicknameReadFailed))page="identity";
             background.setText(view.optBoolean("background_enabled")?"Отключить фоновое подключение":"Включить фоновое подключение");background.setEnabled(hasIdentity&&!broken);
             boolean backgroundEnabled=view.optBoolean("background_enabled");
             boolean backgroundPrompted=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BACKGROUND_PROMPT_KEY,false);
@@ -935,38 +951,41 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?(identityLogin?"Нужен вход через ник Solana":"Регистрируем ID · ключи сохранены"):view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
             status.setText(connection);status.setTextColor(broken?colors.danger:colors.muted);
-            // Drive identity screen states
-            boolean qrReady=hasIdentity&&active&&!broken;
-            boolean needsNick=!hasIdentity&&!broken;
-            boolean needsLogin=hasIdentity&&identityLogin&&!active&&!broken;
-            // State block: visible when no QR to show
-            identityStateBlock.setVisibility((!qrReady)?View.VISIBLE:View.GONE);
-            // QR sections: visible only when active
-            myId.setVisibility(qrReady?View.VISIBLE:View.GONE);
-            qr.setVisibility(qrReady?View.VISIBLE:View.GONE);
-            share.setVisibility(qrReady?View.VISIBLE:View.GONE);
-            copy.setVisibility(qrReady?View.VISIBLE:View.GONE);
-            fingerprint.setVisibility(qrReady?View.VISIBLE:View.GONE);
-            if(needsNick){
-                identityStateTitle.setText("Создайте ник");
-                identityStateBody.setText("Ник — ваш аккаунт. Один раз, на любом телефоне. Номер телефона не нужен.");
-                identityStateAction.setText("Создать ник");
-                identityStateAction.setOnClickListener(v->openOnboarding());
-            } else if(needsLogin){
-                String nick=view.optString("solana_nick","");
-                identityStateTitle.setText(nick.isEmpty()?"Войдите":"@"+nick);
-                identityStateBody.setText("Войдите через ваш ник, чтобы начать получать сообщения.");
-                identityStateAction.setText("Войти");
-                identityStateAction.setOnClickListener(v->openOnboarding());
+            // Nickname and server membership are independent. Loading/failure is not absence.
+            nickView.setText(hasBlockchainNick?"@"+solNick:"");
+            nickView.setVisibility(hasBlockchainNick?View.VISIBLE:View.GONE);
+            identityStateBlock.setVisibility(hasBlockchainNick&&active&&!broken?View.GONE:View.VISIBLE);
+            identityStateAction.setVisibility(View.VISIBLE);
+            identityStateAction.setEnabled(true);
+            identityStateAction.setOnClickListener(v->openOnboarding());
+            if(hasBlockchainNick){
+                identityStateTitle.setText("Сервер не подключён");
+                identityStateBody.setText("Ник сохранён. Подключите сервер, чтобы переписываться.");
+                identityStateAction.setText("Подключить сервер");
+                if(broken){
+                    identityStateBody.setText("Ник сохранён. Данные переписки недоступны; они не удалены. Не переустанавливайте приложение.");
+                    identityStateAction.setVisibility(View.GONE);
+                }
+            }else if("loading".equals(nicknameState)){
+                identityStateTitle.setText("Проверяем сохранённый ник…");
+                identityStateBody.setText("");identityStateAction.setVisibility(View.GONE);
+            }else if("unavailable".equals(nicknameState)){
+                identityStateTitle.setText("Ник пока недоступен");
+                identityStateBody.setText("Не удалось прочитать сохранённую учётную запись. Данные не удалены. Не переустанавливайте приложение.");
+                identityStateAction.setText("Повторить");
+                identityStateAction.setOnClickListener(v->engine.refreshNicknameProfile());
+            }else if("pending".equals(nicknameState)){
+                identityStateTitle.setText("Регистрация ещё не подтверждена");
+                identityStateBody.setText("Проверьте результат регистрации. Повторно создавать аккаунт не нужно.");
+                identityStateAction.setText("Проверить ник");
+            }else{
+                identityStateTitle.setText("Создайте или восстановите ник");
+                identityStateBody.setText("Ник — ваш аккаунт. Он не зависит от подключения к серверу.");
+                identityStateAction.setText("Продолжить");
             }
-            String solNick=view.optString("solana_nick","");
-            if(solNick.isEmpty()&&active){
-                nickView.setText("Нет ника");
-                nickView.setTextColor(colors.muted);
-            } else {
-                nickView.setText(solNick.isEmpty()?"":("@"+solNick));
-                nickView.setTextColor(colors.text);
-            }
+            // Technical key/QR remnants stay hidden; no contact authority changes here.
+            myId.setVisibility(View.GONE);qr.setVisibility(View.GONE);
+            share.setVisibility(View.GONE);copy.setVisibility(View.GONE);fingerprint.setVisibility(View.GONE);
             myId.setText("");
             // QR removed from UI; keep displayedQr for share/copy logic that may still reference it
             JSONObject contact=view.optJSONObject("contact");
@@ -975,7 +994,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             directoryBlock.setVisibility(active&&view.optBoolean("directory")?View.VISIBLE:View.GONE);
             renderLists();renderHistory(false);
             openPendingLink();
-            if(!hadIdentity&&hasIdentity)show(page);else buttons();
+            if(hadProfile!=(hasIdentity||hasBlockchainNick||nicknameReadFailed)||(!hasIdentity&&(hasBlockchainNick||nicknameReadFailed)))show(page);else buttons();
             if(broken)show(page);
             autoCheckUpdates();
         }catch(Exception ignored){lastStatus="Не удалось обновить экран. Данные сохранены.";status.setText("Ошибка отображения · подробнее");}

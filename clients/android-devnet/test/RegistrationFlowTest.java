@@ -42,7 +42,41 @@ public final class RegistrationFlowTest {
         catch(java.io.IOException expected){if(code!=null&&!code.equals(expected.getMessage()))throw expected;return;}
         throw new AssertionError("unproven member accepted: "+name);
     }
+    static void profileWithoutServer()throws Exception {
+        final java.lang.reflect.Method projection;
+        try { projection=RegistrationFlow.class.getDeclaredMethod("publicProfile",RegistrationFlow.Store.class); }
+        catch(NoSuchMethodException missing){throw new AssertionError("Confirmed local nickname has no server-independent public profile",missing);}
+        projection.setAccessible(true);
+        JSONObject saved=state().put("genesis",DevnetRpc.GENESIS).put("program",DevnetRpc.PROGRAM)
+            .put("name","oppo_flat").put("verified",true);
+        Store store=new Store(saved);String before=store.value.toString();
+        JSONObject profile=(JSONObject)projection.invoke(null,store);
+        if(!"oppo_flat".equals(profile.optString("solana_nick"))||!"verified".equals(profile.optString("nickname_state")))
+            throw new AssertionError("Nickname missing before any messenger identity, server login or network");
+        if(profile.length()!=2||profile.has("entropy")||profile.has("attempts")||profile.has("owner"))
+            throw new AssertionError("Private state escaped the display projection");
+        if(store.saves!=0||!before.equals(store.value.toString()))throw new AssertionError("Profile changed retained state");
+        Store reopened=new Store(new JSONObject(before));
+        if(!profile.toString().equals(((JSONObject)projection.invoke(null,reopened)).toString()))
+            throw new AssertionError("Nickname lost after process restart / update");
+        Store pending=new Store(new JSONObject(before).put("verified",false));
+        JSONObject waiting=(JSONObject)projection.invoke(null,pending);
+        if(!waiting.optString("solana_nick").isEmpty()||!"pending".equals(waiting.optString("nickname_state")))
+            throw new AssertionError("Submitted nickname treated as finalized");
+        RegistrationFlow.Store empty=new RegistrationFlow.Store(){
+            public JSONObject load(){return null;}public void save(JSONObject v){throw new AssertionError("Unexpected write");}};
+        if(!"none".equals(((JSONObject)projection.invoke(null,empty)).getString("nickname_state")))throw new AssertionError("Fresh state");
+        for(JSONObject bad:new JSONObject[]{new JSONObject(before).put("name","@forged"),new JSONObject(before).put("genesis","wrong"),new JSONObject(before).put("verified","true")}){
+            try{projection.invoke(null,new Store(bad));throw new AssertionError("Malformed profile accepted");}
+            catch(java.lang.reflect.InvocationTargetException expected){if(!(expected.getCause() instanceof java.io.IOException))throw expected;}
+        }
+        RegistrationFlow.Store broken=new RegistrationFlow.Store(){public JSONObject load()throws Exception{throw new java.io.IOException("storage_frozen");}public void save(JSONObject s){throw new AssertionError("Unexpected reset");}};
+        try{projection.invoke(null,broken);throw new AssertionError("Corruption treated as no nickname");}
+        catch(java.lang.reflect.InvocationTargetException expected){if(!(expected.getCause() instanceof java.io.IOException))throw expected;}
+        System.out.println("PROFILE PASS: confirmed/pending/empty/corrupt, no server, no writes/secrets, reopen retained state");
+    }
     public static void main(String[] args)throws Exception {
+        profileWithoutServer();
         JSONObject a=attempt();Store s=new Store(state().put("name","test_alice").put("attempts",new JSONArray().put(a)));Chain rpc=new Chain(s);
         RegistrationFlow.register(s,rpc,"test_alice");
         if(rpc.sends!=1||rpc.builds!=0||!a.getString("transaction").equals(rpc.wire))throw new AssertionError("pending retry must rebroadcast same bytes, not rebuild");

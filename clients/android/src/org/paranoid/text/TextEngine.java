@@ -47,6 +47,11 @@ public final class TextEngine {
     private String lastCallState="idle";
     /** Worker-owned status retained across local call-log-only repaints. */
     private String lastPublishedStatus="Открываем сохранённые данные…";
+    // Display-only registration profile. Never used as server admission or contact trust.
+    private String profileNick="",profileState="loading";
+    private long profileReadGeneration;
+    // Main-thread subscription/refresh epoch; visible to the state worker and queued UI delivery.
+    private volatile long profileRequestGeneration;
     private final CallTones tones;
     private SelfServiceClient client;
     private RealtimeLoop realtime;
@@ -240,8 +245,31 @@ public final class TextEngine {
     }
     private static final long WAKE_WINDOW_MS=25_000;
     private volatile long wakeUntil;
-    public void listen(Listener next) {listener=next;worker.execute(()->{publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();});}
-    public void unlisten(Listener current) {if(listener==current){listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
+    /** Subscription and refresh requests belong to the main thread, like Activity lifecycle. */
+    public void listen(Listener next) {
+        final long ticket=++profileRequestGeneration;listener=next;
+        worker.execute(()->{
+            refreshProfile(ticket);
+            publish(broken?"Локальные данные недоступны; сброс не выполнен":"Подключаемся…");startConnection();
+        });
+    }
+    public void refreshNicknameProfile(){
+        final long ticket=++profileRequestGeneration;
+        worker.execute(()->refreshProfile(ticket));
+    }
+    private void refreshProfile(long ticket){
+        if(ticket!=profileRequestGeneration)return;
+        // Only this worker read may label snapshots with the new request epoch.
+        // Earlier queued repaints still carry the old epoch, even after listen().
+        profileNick="";profileState="loading";profileReadGeneration=ticket;
+        publish(lastPublishedStatus);
+        org.paranoid.devnet.MainActivity.readPublicProfile(context,(nick,state)->worker.execute(()->{
+            if(ticket!=profileRequestGeneration)return;
+            profileNick=nick;profileState=state;
+            publish(lastPublishedStatus);
+        }));
+    }
+    public void unlisten(Listener current) {if(listener==current){++profileRequestGeneration;listener=null;worker.execute(()->{if(!backgroundEnabled&&!callActive&&!callDraining&&realtime!=null){stopConnection();}});}}
     private void stopConnection(){if(realtime!=null)realtime.stop();connected=false;ui.post(()->calls.connection(false));}
     private void startConnection(){if(!broken&&realtime!=null&&(listener!=null||backgroundEnabled||callActive||callDraining||android.os.SystemClock.elapsedRealtime()<wakeUntil)){realtime.start();realtime.kick();}}
     /** Owner report 2026-09-12 (slow/absent notifications): a network switch used to leave the long-poll
@@ -342,7 +370,7 @@ public final class TextEngine {
     public void directoryVisibility(boolean visible,Directory callback){
         directoryTask(callback,()->{
             RealtimeLoop loop=realtime;if(loop==null)throw new IOException("local state unavailable");
-            JSONObject result=loop.directory("directory_visibility",visible?"true":"false");publish(lastPublishedStatus);return result;
+            JSONObject result=loop.directory("directory_visibility",visible?"true":"false");worker.execute(()->publish(lastPublishedStatus));return result;
         });
     }
     /** Owner proof + card in the core, then the finalized Solana registry (name -> owner). */
@@ -424,12 +452,16 @@ public final class TextEngine {
     }
 
     private void publish(String status) {
+        // Bind both the observer and the profile read that produced this snapshot.
+        final Listener target=listener;
+        final long ticket=profileReadGeneration;
         lastPublishedStatus=status;
         JSONObject display=new JSONObject();
         try {
             if(client!=null && client.broken())broken=true;
             if(!broken && client!=null)display=client.publicView();
             display.put("broken",broken).put("unsupported_snapshot",unsupportedSnapshot).put("connected",connected&&!broken).put("background_enabled",backgroundEnabled);
+            display.put("solana_nick",profileNick).put("nickname_state",profileState);
             // RFC-0028: the directory exists only on identity-v3 servers; server-id = first 16 hex of the pinned SPKI.
             RealtimeLoop loop=realtime;
             if(!broken&&client!=null&&loop!=null&&Boolean.TRUE.equals(loop.identityServer())&&display.optBoolean("active"))
@@ -447,6 +479,6 @@ public final class TextEngine {
         lastIncoming=incoming;
         long rejected=display.optLong("rejected_count",0);
         String visibleStatus=status+(rejected>0?" ⚠ Не принято событий: "+rejected+". История на сервере не удалена; доставка этих событий не подтверждена.":"");
-        ui.post(()->{Listener target=listener;if(target!=null)target.changed(safeView,visibleStatus);});
+        ui.post(()->{if(target!=null&&target==listener&&ticket==profileRequestGeneration)target.changed(safeView,visibleStatus);});
     }
 }

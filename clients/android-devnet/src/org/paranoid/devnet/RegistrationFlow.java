@@ -8,6 +8,26 @@ final class RegistrationFlow {
     interface Store { JSONObject load()throws Exception; void save(JSONObject state)throws Exception; }
     interface Chain { Object call(String method,JSONArray params)throws Exception; String cluster()throws Exception; void program()throws Exception; }
     static JSONObject required(Store store)throws Exception {JSONObject s=store.load();if(s==null)throw new IOException("identity_required");return s;}
+    /** Read-only display projection of the existing encrypted registration snapshot.
+     * A previously finalized nickname is NOT messenger admission or a fresh RPC assertion.
+     * Never return entropy, pending transactions, owner keys or the raw snapshot to the UI. */
+    static JSONObject publicProfile(Store store)throws Exception {
+        JSONObject s=store.load();
+        JSONObject result=new JSONObject().put("solana_nick","").put("nickname_state","none");
+        if(s==null)return result;
+        if(!DevnetRpc.GENESIS.equals(s.opt("genesis"))||!DevnetRpc.PROGRAM.equals(s.opt("program")))
+            throw new IOException("state_domain");
+        Object verified=s.opt("verified");
+        if(verified!=null&&!(verified instanceof Boolean))throw new IOException("invalid_profile");
+        Object name=s.opt("name");
+        if(name!=null&&(!(name instanceof String)||!((String)name).matches("[a-z][a-z0-9_]{2,23}")))
+            throw new IOException("invalid_profile");
+        if(Boolean.TRUE.equals(verified)) {
+            if(name==null)throw new IOException("invalid_profile");
+            return result.put("solana_nick",name).put("nickname_state","verified");
+        }
+        return result.put("nickname_state",name==null?"unregistered":"pending");
+    }
     static JSONObject identity(JSONObject s)throws Exception {return SolanaBridge.run(new JSONObject().put("op","identity").put("entropy",s.getString("entropy")));}
     static JSONObject finalized()throws Exception {return new JSONObject().put("commitment","finalized");}
     static long integer(Object value)throws IOException {if(!(value instanceof Long)&&!(value instanceof Integer))throw new IOException("rpc_integer");long n=((Number)value).longValue();if(n<0)throw new IOException("rpc_integer");return n;}

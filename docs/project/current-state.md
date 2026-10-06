@@ -1,11 +1,36 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-30
-last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
+last_reviewed: 2026-10-05
+last_reviewed_scope: Android retained nickname profile correction only; older dated records retained
 ---
 
 # Current project state
+
+## Android nickname profile correction — 2026-10-05
+
+Candidate branch `fix/nickname-profile-independent`, based on `2470dca`.
+Merge, publication and physical-phone acceptance are separate gates recorded in
+the feature PR. REQ-ID-003 display bug: the messenger profile read
+`solana_nick`, but nothing supplied it. RegistrationFlow already persisted `name`
+and `verified` in encrypted DevnetStore, before any messenger server admission.
+The candidate adds a read-only projection and reachable profile without transport
+membership. The saved realm/pin, server data and E2EE state are not changed.
+
+Host regression demonstrates confirmed/pending/empty/corrupt snapshots, restart
+and no projection writes/secrets; Android SDK compilation and UI wiring checks
+pass. A deterministic JVM lifecycle regression also covers cached absence on
+Activity recreation, loading/creation gating and stale callbacks using production
+refresh/routing code with host adapters. Independent worker/UI queues execute the
+full production publisher: queued snapshots and pre-refresh worker repaints are
+fenced across replacement or same-Activity reattachment and explicit refresh. Device screenshot/installation acceptance
+remains NOT RUN. Six iOS caption origin checks already fail on the base revision
+and still fail unchanged; no test
+is suppressed. Other historical dated checkpoints below retain their own scope.
+
+Previous chat claims that v44-v48 completed server switching/multi-server operation
+or that blank nickname meant VDSina/Hetzner login failure were not established by
+source or phone evidence. They are not relied on for this correction.
 
 ## Server member directory and contact links candidate (RFC-0028) — 2026-09-30
 

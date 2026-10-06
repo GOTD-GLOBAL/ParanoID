@@ -1,11 +1,32 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-09-22
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-10-05
+last_reviewed_scope: read-only cached nickname display; other dated boundaries unchanged
 ---
 
 # Threat model
+
+## Retained nickname display — 2026-10-05
+
+The Android profile correction in [RFC-0026](../rfcs/0026-solana-devnet-registration.md#android-local-profile-correction--2026-10-05)
+reads the existing authenticated encrypted registration snapshot on its serialized
+owner, exposing only the canonical confirmed nickname and a display-state enum.
+It exports no entropy, words, signatures, pending transaction bytes or owner key.
+The messenger never writes this projection back or uses it for authorization.
+No new storage file/schema/SharedPreferences copy is introduced. Storage failures
+clear the display result to unavailable, not an absent or verified identity.
+
+This is a cached, previously finalized observation; Devnet resets, program changes,
+compromised local code/Keystore or a dishonest previously trusted RPC remain risks.
+An offline name is not fresh chain attestation. Name display does not establish
+server membership, prove a human's identity or validate a peer's encryption keys.
+The current server session, saved realm/pin, contacts and message history do not
+change. Shared owner serialization prevents profile reads interleaving with
+onboarding/internal registration writes. UI-thread attach/detach/refresh requests
+invalidate older reads immediately. Snapshots carry their worker read generation
+and captured observer, so old UI deliveries and pre-refresh worker repaints cannot
+turn cached absence into a creation action under a new subscription.
 
 ## Server member directory and contact links (RFC-0028) — 2026-09-30
 

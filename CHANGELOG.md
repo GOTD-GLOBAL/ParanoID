@@ -8,6 +8,22 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v49: retained nickname independent of server login — 2026-10-05
+
+- My ID reads the already verified nickname from encrypted registration storage,
+  including existing installs. It no longer looks for an unpopulated transport field.
+- The nickname is visible without server membership and offline. A server can be
+  connected later; onboarding now has a Later action after nickname confirmation.
+- Loading, pending registration, no identity and unreadable identity are different
+  display states. No seed re-entry, reinstall, server switch or data reset is needed.
+- Reopening the app waits for the current nickname read instead of auto-opening
+  onboarding from cached absence. Queued UI snapshots and worker repaints from an
+  older subscription/read are discarded, including same-Activity reattachment.
+  Creation is disabled while that read is pending or unavailable with no transport
+  account.
+- Keeps the earlier removal of technical hashes and QR from the profile. Contact
+  proof checks and messaging/call authentication are unchanged.
+
 ### Server member directory and contact links (RFC-0028, candidate) — 2026-09-30
 
 - Identity-v3 servers: `POST /v3/directory/search`, `/v3/directory/visibility` and

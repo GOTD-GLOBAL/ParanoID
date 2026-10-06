@@ -47,6 +47,7 @@ java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDiverseSmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDenseSmoke
 javac --release 8 -Xlint:-options -cp out/host:out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host test/PublicQr.java
 python3 test_ui_contract.py
+python3 test_nickname_profile_lifecycle.py
 python3 test_message_presentation.py
 python3 test_receipt_presentation.py
 python3 test_message_time.py
