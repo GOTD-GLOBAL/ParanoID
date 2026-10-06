@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v50: explicit current-server contact link
+
+- Separate connection status from the cached directory-name field. Sharing a link
+  asks the current authenticated server for the own contact-card result instead
+  of treating a missing background cache value as a disconnected server.
+- Keep card requests off the UI/state owner, reject changed account/trust context
+  and stale Activity callbacks, and surface real request/format errors. This is
+  not an invite, unknown-server auto-join or cross-server search capability.
+
 ### Android v49: retained nickname independent of server login — 2026-10-05
 
 - My ID reads the already verified nickname from encrypted registration storage,

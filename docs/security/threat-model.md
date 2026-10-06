@@ -1,8 +1,8 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-10-05
-last_reviewed_scope: read-only cached nickname display; other dated boundaries unchanged
+last_reviewed: 2026-10-06
+last_reviewed_scope: explicit own-card contact-link retrieval; other dated boundaries unchanged
 ---
 
 # Threat model
@@ -27,6 +27,20 @@ onboarding/internal registration writes. UI-thread attach/detach/refresh request
 invalidate older reads immediately. Snapshots carry their worker read generation
 and captured observer, so old UI deliveries and pre-refresh worker repaints cannot
 turn cached absence into a creation action under a new subscription.
+
+## Own-link UI consistency correction — 2026-10-06
+
+The v49 own-link action confused unavailable directory-name cache with absence of
+a server connection. The follow-up obtains an acknowledged own-card result over
+the current pinned, authenticated session at user request. The canonical server
+name and locally trusted pin determine the URL; local global-profile text cannot
+prove server membership. Account/card/trust changes and late Activity callbacks
+must invalidate the result. Network waits remain off the state/UI owner.
+
+This reuses RFC-0028 admission, route and publication behavior, without enabling
+visibility, leaking recovery material, granting contact trust or auto-joining an
+unknown server. Synthetic owner/UI tests and isolated server tests do not establish
+physical-phone acceptance or production security.
 
 ## Server member directory and contact links (RFC-0028) — 2026-09-30
 

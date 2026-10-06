@@ -729,12 +729,34 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             checkMember(exact);
         });
     }
+    private boolean sharingLink;
+    private long shareLinkGeneration;
+    private String pendingShareContext="";
+    private static String shareContext(JSONObject view){
+        return view.optString("account")+"\n"+view.optString("contact_fingerprint")+"\n"+view.optString("server_id")
+            +"\n"+view.optBoolean("active")+"/"+view.optBoolean("directory")+"/"+view.optBoolean("broken");
+    }
+    private void clearShareLink(){
+        ++shareLinkGeneration;sharingLink=false;pendingShareContext="";
+        if(shareLink!=null){shareLink.setEnabled(true);shareLink.setText("Поделиться моей ссылкой");}
+    }
     private void shareLink(){
-        String name=latest.optString("directory_name"),server=latest.optString("server_id");
-        if(name.isEmpty()||server.isEmpty()){Toast.makeText(this,"Ссылка появится после подключения к серверу.",Toast.LENGTH_LONG).show();return;}
-        String link="https://paranoid.global/c/"+server+"/"+name;
-        Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,"Напишите мне в ParanoID: "+link);
-        startActivity(Intent.createChooser(intent,"Поделиться моей ссылкой"));
+        if(sharingLink||!resumed||isFinishing()||isDestroyed())return;
+        final String context=shareContext(latest);
+        final long ticket=++shareLinkGeneration;
+        sharingLink=true;pendingShareContext=context;
+        shareLink.setEnabled(false);shareLink.setText("Готовим ссылку…");
+        engine.directoryShareLink(latest.optString("account"),latest.optString("contact_fingerprint"),latest.optString("server_id"),(result,error)->{
+            if(ticket!=shareLinkGeneration)return;
+            clearShareLink();
+            if(!resumed||isFinishing()||isDestroyed()||!context.equals(shareContext(latest)))return;
+            if(error!=null){Toast.makeText(this,error,Toast.LENGTH_LONG).show();return;}
+            if(result==null)return; // Owner context changed while this Activity's snapshot was still queued.
+            String name=result.optString("name"),server=result.optString("server_id");
+            String link="https://paranoid.global/c/"+server+"/"+name;
+            Intent intent=new Intent(Intent.ACTION_SEND);intent.setType("text/plain");intent.putExtra(Intent.EXTRA_TEXT,"Напишите мне в ParanoID: "+link);
+            startActivity(Intent.createChooser(intent,"Поделиться моей ссылкой"));
+        });
     }
     private void pasteContact(){
         LinearLayout body=column();body.setPadding(dp(24),dp(8),dp(24),dp(4));
@@ -931,6 +953,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     @Override public void changed(JSONObject view,String message){
         if(isFinishing()||isDestroyed())return;
         try{
+            if(sharingLink&&!pendingShareContext.equals(shareContext(view)))clearShareLink();
             boolean hadProfile=hasIdentity||hasBlockchainNick||nicknameReadFailed;
             latest=view;broken=view.optBoolean("broken");hasIdentity=view.optBoolean("identity");active=view.optBoolean("active");creating=false;identityLogin=view.optBoolean("identity_login");
             String solNick=view.optString("solana_nick","");
@@ -1002,11 +1025,11 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
 
     @Override public void onResume(){super.onResume();resumed=true;engine.listen(this);engine.listenCalls(callListener);handler.removeCallbacks(poll);handler.post(poll);if(pendingCallIntent)handler.post(this::completeCallIntent);
         if(videoPausedByBackground){videoPausedByBackground=false;if(engine.calls().active()&&checkSelfPermission(android.Manifest.permission.CAMERA)==android.content.pm.PackageManager.PERMISSION_GRANTED)engine.calls().video(true);}}
-    @Override public void onPause(){resumed=false;if(!waitingForMicrophone)cancelCallIntent();handler.removeCallbacks(poll);
+    @Override public void onPause(){resumed=false;clearShareLink();if(!waitingForMicrophone)cancelCallIntent();handler.removeCallbacks(poll);
         // Camera never runs while the app is not visible; audio continues. Permission dialogs keep the camera.
         if(!waitingForCamera&&engine.calls().active()&&engine.calls().snapshot().optBoolean("local_video")){videoPausedByBackground=true;engine.calls().video(false);}
         engine.unlisten(this);engine.unlistenCalls(callListener);super.onPause();}
-    @Override public void onDestroy(){if(callDialog!=null){callDialog.dismiss();callDialog=null;}super.onDestroy();}
+    @Override public void onDestroy(){clearShareLink();if(callDialog!=null){callDialog.dismiss();callDialog=null;}super.onDestroy();}
     private void attachRenderers(){
         WebRtcAudioEngine media=engine.media();if(media==null||renderersInitialized)return;
         org.webrtc.EglBase.Context egl=media.eglContext();if(egl==null)return;

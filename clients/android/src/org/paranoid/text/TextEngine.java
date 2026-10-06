@@ -354,6 +354,55 @@ public final class TextEngine {
         try{return f.get(30,java.util.concurrent.TimeUnit.SECONDS);}
         catch(java.util.concurrent.ExecutionException e){Throwable c=e.getCause();throw c instanceof Exception?(Exception)c:new IOException(c);}
     }
+    /** Own link uses a fresh signed card response, never the best-effort directory name cache.
+     * All account/card/trust reads and both context checks belong to the state owner. */
+    private static final class ShareContext {
+        final SelfServiceClient client;final RealtimeLoop loop;
+        final String account,card,realm,pin;
+        ShareContext(SelfServiceClient client,RealtimeLoop loop,String account,String card,String[] trust){
+            this.client=client;this.loop=loop;this.account=account;this.card=card;realm=trust[0];pin=trust[1];
+        }
+    }
+    private ShareContext shareContext()throws Exception {
+        JSONObject view=client.publicView();
+        if(!view.optBoolean("active"))throw new IOException("registration required");
+        if(!connected||realtime==null)throw new IOException("offline");
+        if(!Boolean.TRUE.equals(realtime.identityServer()))throw new SyncCycle.Rejected(404,"directory_unavailable");
+        String[] trust=client.updateTrust();
+        if(trust==null||trust.length!=2||trust[0]==null||trust[0].isEmpty()||trust[1]==null||!trust[1].matches("[0-9a-f]{64}"))
+            throw new IOException("share_server_invalid");
+        String account=view.optString("account"),card=client.cardFingerprint();
+        if(account.isEmpty()||card.isEmpty())throw new IOException("share_card_unavailable");
+        return new ShareContext(client,realtime,account,card,trust);
+    }
+    public void directoryShareLink(String account,String card,String server,Directory callback){
+        directoryTask(callback,()->{
+            ShareContext before=onOwner(()->{
+                ShareContext current=shareContext();
+                if(server==null||!server.matches("[0-9a-f]{16}")||!server.equals(current.pin.substring(0,16)))
+                    throw new IOException("share_server_invalid");
+                if(!current.account.equals(account)||!current.card.equals(card))return null;
+                return current;
+            });
+            if(before==null)return null; // Stale UI request: clear pending without sharing or showing an old error.
+            JSONObject result=null;Exception failure=null;
+            try{result=before.loop.directory("directory_card",null);}catch(Exception error){failure=error;}
+            // Recheck after failed requests too; their errors belong to the old account as well.
+            boolean current=onOwner(()->{
+                if(before.client!=client||before.loop!=realtime)return false;
+                JSONObject view=client.publicView();
+                return view.optBoolean("active")&&before.account.equals(view.optString("account"))
+                    &&before.card.equals(client.cardFingerprint())&&Arrays.equals(new String[]{before.realm,before.pin},client.updateTrust());
+            });
+            if(!current)return null;
+            if(failure!=null)throw failure;
+            if(result==null||!Boolean.TRUE.equals(result.opt("published"))||!(result.opt("name") instanceof String)
+                ||!result.getString("name").matches("[a-z][a-z0-9_]{2,23}")
+                ||!(result.opt("card") instanceof String)||!result.getString("card").matches("[0-9a-f]{64}"))
+                throw new IOException("share_card_invalid");
+            return new JSONObject().put("name",result.getString("name")).put("server_id",before.pin.substring(0,16));
+        });
+    }
     private void directoryTask(Directory callback,OwnerTask<JSONObject> task){
         directoryWorker.execute(()->{
             try{JSONObject result=task.run();ui.post(()->callback.done(result,null));}
@@ -404,6 +453,9 @@ public final class TextEngine {
             return "Ник не подтверждён в реестре Solana для этого владельца ("+m+"). Контакт не добавлен.";
         if(m.startsWith("rpc_")||m.equals("wrong_cluster")||m.startsWith("program_")||m.equals("unexpected_program"))
             return "Не удалось проверить ник в Solana ("+m+"). Контакт не добавлен; повторите позже.";
+        if(m.equals("share_card_unavailable"))return "Карточка контакта пока недоступна. Повторите позже; подключение к серверу не сброшено.";
+        if(m.equals("share_card_invalid"))return "Сервер вернул некорректные данные карточки или ника. Ссылка не создана.";
+        if(m.equals("share_server_invalid"))return "Не удалось подтвердить текущий сервер по сохранённому ключу. Ссылка не создана.";
         if(m.equals("offline"))return "Нет подключения к серверу. Повторите, когда появится связь.";
         if(m.equals("registration required"))return "Сначала войдите через ник Solana.";
         if(m.contains("peer_already_pinned"))return "Этот контакт уже добавлен с другими ключами. Проверьте его по QR.";

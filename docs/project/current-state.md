@@ -1,11 +1,26 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-05
-last_reviewed_scope: Android retained nickname profile correction only; older dated records retained
+last_reviewed: 2026-10-06
+last_reviewed_scope: Android explicit current-server contact link; older dated records retained
 ---
 
 # Current project state
+
+## Android contact-link correction — 2026-10-06
+
+Owner phone screenshot shows `@advix` and «Сервер подключён», but tapping the own
+contact link reports that it will appear after connecting. This confirms the
+nickname label on that phone, not offline/zero-membership acceptance. Source v49
+maps an empty `directory_name` OR missing `server_id` to that generic message;
+the nickname cache is filled by a separate best-effort directory-card operation.
+The exact phone-side reason for the empty cache is not established by a screenshot.
+
+The bounded follow-up in PR #70 asks the existing signed current-server card route
+on the share action and uses its confirmed name with the already trusted server
+pin. It does not replace the server name with the global cached nickname, reset
+keys/sessions/history, enable visibility or join unknown servers. Pending final
+verification, review and a retained-signer APK; no new server deployment authority.
 
 ## Android nickname profile correction — 2026-10-05
 

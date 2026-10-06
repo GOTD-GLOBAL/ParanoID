@@ -120,6 +120,7 @@ jobs:
           python3 clients/android/test_message_time.py
           python3 clients/android/test_ui_contract.py
           python3 clients/android/test_nickname_profile_lifecycle.py
+          python3 clients/android/test_share_link.py
           python3 clients/android/test_crash_exit.py
           python3 clients/android/test_voice_relay.py
           javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,IdentityPorts,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java

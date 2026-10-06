@@ -36,6 +36,22 @@ public final class IdentityRealtimeSmoke {
         mode[0]=one.on(()->IdentityLogin.run(one.client.identityDevice(),one.client.identityHttp(),a[2],a[3],false));
         mode[1]=two.on(()->IdentityLogin.run(two.client.identityDevice(),two.client.identityHttp(),a[4],a[5],false));
         if(!mode[0].equals("active")||!mode[1].equals("active"))throw new AssertionError(Arrays.toString(mode));
+        // Explicit sharing uses the existing signed card route, independently of
+        // any UI/background nickname cache. Network calls must not run on owner.
+        for(int n=0;n<2;n++) {
+            Phone p=n==0?one:two;String expected=n==0?a[3]:a[5];
+            JSONObject before=p.on(()->p.client.publicView());
+            String fingerprint=before.getString("contact_fingerprint");
+            JSONObject shared=p.loop.directory("directory_card",null);
+            if(!Boolean.TRUE.equals(shared.opt("published"))||!expected.equals(shared.optString("name"))
+                ||!shared.optString("card").matches("[0-9a-f]{64}"))
+                throw new AssertionError("own card acknowledgement/name missing on active server");
+            JSONObject after=p.on(()->p.client.publicView());
+            if(!before.getString("account").equals(after.getString("account"))
+                ||!fingerprint.equals(after.getString("contact_fingerprint")))
+                throw new AssertionError("sharing must preserve transport identity/card");
+        }
+        System.out.println("PASS explicit own-card link lookup: signed current-server response, canonical nick, retained account/card");
         JSONObject c1=one.on(()->one.client.publicView()),c2=two.on(()->two.client.publicView());
         one.on(()->{one.client.pair(c2.getJSONObject("contact").toString(),true);return null;});
         two.on(()->{two.client.pair(c1.getJSONObject("contact").toString(),true);return null;});
