@@ -45,6 +45,21 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0030: The iOS client on identity v3](0030-ios-identity-v3.md)
+  (draft): fresh iOS installs recover or create a Solana Devnet nickname, log
+  in to an identity-v3 server and find contacts through the directory, using
+  the same Rust crates as Android; a saved v2 realm is never switched
+  silently. Nothing is implemented, and the owner's scope approval is pending.
+
+- [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
+  (draft, written in Russian, decision deadline 2026-10-14): a single-use
+  invitation that lets a server sponsor one nickname registration.
+
+- [RFC-0028: Server member directory and contact links](0028-server-directory-and-links.md)
+  (draft, decision deadline 2026-10-07): member-only nickname search,
+  owner-proof contact cards and `paranoid.global/c/` links on identity-v3
+  servers; the implementation was merged with PR #67.
+
 - [RFC-0027: Solana server authentication](0027-solana-server-authentication.md)
   (draft): identity membership, dual proof, single-device replacement and
   explicit fresh-contact recovery limits; no implementation or deployment.

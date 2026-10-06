@@ -1,15 +1,43 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-30
-last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
+last_reviewed: 2026-10-06
+last_reviewed_scope: RFC-0030 proposal and the state of the servers seen on 2026-10-05; older dated records retained
 ---
 
 # Current project state
 
-## Server member directory and contact links candidate (RFC-0028) — 2026-09-30
+## iOS on identity v3 proposal (RFC-0030) — 2026-10-06
 
-Branch `feat/server-directory-links` (draft PR #67), not merged or deployed.
+`main` carries Android v48 at `2470dca`. Commits pushed to `main` on the
+evening of 2026-10-05, without pull requests, point Android's default realm
+and its sponsor at the identity-v3 endpoint on the production host
+(`157.180.49.125:38444`), while its login still creates the messenger
+identity on the test VPS `138.16.180.53:38444`
+(`clients/android/src/org/paranoid/text/TextEngine.java:289-290`), and mark
+the v2 service on `:38443` "stopped 2026-10-05" in a source comment
+(`clients/android/src/org/paranoid/text/KeyClient.java:9-14`). No document or
+owner permalink records that change. A read-only pinned health check from the
+build Mac at 2026-10-05T22:00:46Z found no answer on `:38443`, and
+`paranoid-identity-v3` on `:38444` and on the test VPS `138.16.180.53:38444`.
+
+The iOS client knows only the v2 service, so it has no reachable server.
+Since Android v30 a fresh install creates its identity through the Solana
+nickname onboarding, and contacts are bound to their server's realm and pin.
+[RFC-0030](../rfcs/0030-ios-identity-v3.md) (draft) proposes that fresh iOS
+installs adopt identity v3, including the nickname directory, through the
+same Rust crates as Android. A feasibility check on the build Mac compiled the
+Devnet crate for iOS, linked it with the core into an iOS executable that was
+not run, and reproduced the public recovery vector on the simulator in a
+separate Rust binary; the C ABI from Swift is NOT RUN
+([evidence](evidence/ios-identity-v3-20261006/feasibility-mac.md)). Nothing is
+implemented and no phone step was taken for this proposal; the owner's scope
+decision is pending. The iOS client still does not add Solana login.
+
+## Server member directory and contact links (RFC-0028) — 2026-09-30
+
+Merged into `main` as `082f826` (PR #67) on 2026-10-05; its deployment is
+described only in the pull request.
 Implements [RFC-0028](../rfcs/0028-server-directory-and-links.md): member-only directory
 routes on identity-v3 servers with stored owner proofs and contact cards, rate limits,
 core verification of entries (`verify_directory_entry_v1`/`pair_directory_entry_v1`),
