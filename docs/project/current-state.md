@@ -2,10 +2,31 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-06
-last_reviewed_scope: Android explicit current-server contact link; older dated records retained
+last_reviewed_scope: visible Android update page; older dated records retained
 ---
 
 # Current project state
+
+## Android update-page correction — 2026-10-06
+
+Owner screenshot identifies installed version `0.0.49-solana-id`. A fresh public
+feed read still returned 49; private v50 was not published without SSH scope.
+Separately, source v48–v50 constructed UpdateController in an unattached `GONE`
+container, while the menu only scrolled a hidden My ID heading. Check results and
+check/download/install buttons therefore had no visible presentation.
+
+The bounded follow-up restores an attached page in the same Activity, preserving
+installer window-focus checks. It does not alter updater transport, verifier,
+provider, permissions, automatic-check cadence, phone identity/history or server
+configuration. Physical acceptance, final review, APK and publication are separate
+gates recorded in PR #70; no new SSH/publication authority follows from this fix.
+
+Transport-test caveat observed on the unchanged base: `test_updates.py` exits zero
+but its early malformed-origin probes hit an uninitialized fixture `server.mode`.
+Those negative probes are not accepted as reliable validation evidence. The old
+RFC's per-server transport and no-fixed-ceiling description also differs from the
+pre-existing fixed-service UpdateClient implementation. These are disclosed
+baseline transport/contract debts, not silently changed or approved by UI work.
 
 ## Android contact-link correction — 2026-10-06
 

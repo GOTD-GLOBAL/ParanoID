@@ -2,10 +2,25 @@
 status: draft
 owner: security
 last_reviewed: 2026-10-06
-last_reviewed_scope: explicit own-card contact-link retrieval; other dated boundaries unchanged
+last_reviewed_scope: updater UI reachability only; transport/installer code unchanged
 ---
 
 # Threat model
+
+## Update-page reachability — 2026-10-06
+
+The UI correction moves the existing updater's controls/status from an unattached
+hidden container to a page in the same Activity. It neither changes UpdateClient,
+verifier/provider/installer behavior nor grants installer authority to messenger
+identity state. Manual check remains usable without messenger registration because
+the existing controller already uses a fixed public feed. Actual APK identity and
+integrity checks and Android install consent remain downstream requirements.
+
+Opening/reopening must not download/install automatically. In particular, use of
+an extra dialog window must not circumvent or permanently fail Activity focus
+checks. Installation-result display must not trigger another check. Profile refresh
+cannot hide the page or send its user into onboarding. Phone acceptance and known
+baseline transport/test-contract discrepancies remain separate from this UI proof.
 
 ## Retained nickname display — 2026-10-05
 

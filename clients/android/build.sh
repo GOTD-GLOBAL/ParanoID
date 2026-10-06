@@ -56,6 +56,7 @@ python3 test_contact_names.py
 python3 test_background_contract.py
 python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
 python3 test_update_wiring.py
+python3 test_update_page.py
 python3 test_update_session_worker.py
 python3 test_update_artifact_regression.py
 cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml

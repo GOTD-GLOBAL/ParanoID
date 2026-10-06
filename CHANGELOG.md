@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Android v51: visible in-app update page
+
+- Restore a dedicated, attached update page opened by the menu/banner. Removing
+  the update block from My ID had left the controller in an invisible container.
+- Keep the existing check/download/install controller and its integrity/consent
+  gates, but make its status/actions reachable independently of messenger login.
+  Navigating back/reopening does not itself download or install an APK.
+
 ### Android v50: explicit current-server contact link
 
 - Separate connection status from the cached directory-name field. Sharing a link

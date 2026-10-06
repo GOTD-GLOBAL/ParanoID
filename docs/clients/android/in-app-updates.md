@@ -1,10 +1,34 @@
 ---
 status: draft
 owner: android-client
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-06
+last_reviewed_scope: updater UI reachability; historical distribution text retained
 ---
 
 # User-triggered Android update candidate (RFC-0013)
+
+## Visible update-page correction — 2026-10-06
+
+The v51 UI candidate restores the controller to an attached scrollable page,
+opened through the menu or update banner, not an invisible My ID child. The page
+uses the Activity window (not an extra dialog that would defeat installer focus
+checks). Existing check, download and install stages remain explicit and visible;
+back/reopen retains the controller within that Activity. Opening at a later stage
+never advances download/install. Installation callback text is shown on this page
+without another metadata check. Ordinary profile refresh must not redirect it.
+
+Manual access does not require a messenger identity or healthy messaging snapshot:
+the actual retained controller uses the separate fixed public update service, not
+messenger state. This is presentation/routing only: UpdateClient, package/signer/
+size/hash policy, provider, installer and silent auto-check cadence are unchanged.
+The earlier sections below describe their dated historical candidate, not proof
+that the current distribution trust contract has been fully reconciled. Existing
+transport-contract discrepancies are tracked separately; no new TLS policy is
+adopted here. UI adapters/SDK checks are not physical installer acceptance.
+
+On a phone with the broken page, the first fixed APK needs manual in-place
+installation. Do not uninstall or clear data. A same-version feed correctly
+shows no newer release; repairing the page does not itself publish a new APK.
 
 Current candidate: versionCode 15 / `0.0.15-voice`, package
 `global.paranoid.messenger`, ARM64,

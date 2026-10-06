@@ -36,7 +36,7 @@ import org.json.JSONObject;
 /** Native Private Orbit messenger. Only committed publicView data becomes a message. */
 public final class MainActivity extends Activity implements TextEngine.Listener {
     private TextEngine engine;
-    private LinearLayout root,header,nav,welcome,contacts,dialogs,identity,chat,contactList,dialogList,history;
+    private LinearLayout root,header,nav,welcome,contacts,dialogs,identity,updates,chat,contactList,dialogList,history;
     private ScrollView messageScroll;
     private FrameLayout pages;
     private TextView screenTitle,status,chatTrust,myId,fingerprint,draftHint;
@@ -73,8 +73,9 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private TextView loginHint;private boolean onboardingOpened;
     private boolean backgroundPromptShowing;
     private TextView backgroundHint;
-    private TextView updateHint,updateHeading;
+    private TextView updateHint;
     private UpdateController updateController;
+    private String updatesReturnPage="dialogs";
     private static boolean updateAutoChecked;
     private static final String UI_PREFS="paranoid-ui",BACKGROUND_PROMPT_KEY="background_prompt_v1",
         UPDATE_CHECK_AT_KEY="update_autocheck_at_v1",BLUETOOTH_PROMPT_KEY="bluetooth_prompt_v1";
@@ -108,11 +109,11 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         }
         buildHeader();
         pages=new FrameLayout(this);root.addView(pages,new LinearLayout.LayoutParams(-1,0,1));
-        buildWelcome();buildDialogs();buildContacts();buildIdentity();buildChat();restoreDraft();buildNavigation();
+        buildWelcome();buildDialogs();buildContacts();buildIdentity();buildUpdates();buildChat();restoreDraft();buildNavigation();
         show(page);
         updateLockScreen(engine.calls().snapshot().optString("state"));
         String install=UpdateController.installStatus(this,getIntent());
-        if(install!=null){updateController.showStatus(install);show("identity");}
+        if(install!=null){showUpdates();updateController.showStatus(install);}
         if(saved==null)handleLink(getIntent());
         CrashLog.load(this,this::runOnUiThread,report->{
             if(report==null||isFinishing()||isDestroyed())return;
@@ -130,7 +131,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         updateLockScreen(engine.calls().snapshot().optString("state"));
         setIntent(intent);
         String install=UpdateController.installStatus(this,intent);
-        if(install!=null){if(updateController!=null)updateController.showStatus(install);show("identity");}
+        if(install!=null){showUpdates();if(updateController!=null)updateController.showStatus(install);}
         handleLink(intent);
     }
     /** Over-lock display only while an incoming call rings; never a permanent lock bypass. */
@@ -144,7 +145,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
     private void buildHeader(){
         header=column();header.setPadding(dp(12),dp(8),dp(12),dp(8));root.addView(header);
         LinearLayout row=row();row.setGravity(Gravity.CENTER_VERTICAL);header.addView(row);
-        leading=iconButton("identity","Мой ID",()->{if(page.equals("chat"))show("dialogs");else show("identity");});
+        leading=iconButton("identity","Мой ID",()->{if(page.equals("updates"))closeUpdates();else if(page.equals("chat"))show("dialogs");else show("identity");});
         row.addView(leading,box(48,48));
         screenTitle=text("Чаты",28,colors.text,true);screenTitle.setMaxLines(1);screenTitle.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(0,-2,1);titleParams.setMargins(dp(8),0,dp(8),0);row.addView(screenTitle,titleParams);
@@ -232,11 +233,12 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             if(BackgroundConnectionService.running())BackgroundConnectionService.requestStop(this);
             else enableBackground();
         });identity.addView(background,full());
-        // Updates — only the controller, no heading paragraph
-        updateHeading=text("",0,colors.muted,false);updateHeading.setVisibility(android.view.View.GONE); // kept for UpdateController reference
-        // Update controller — shown only via menu ⋮, not on My ID screen
-        LinearLayout updateHolder=column();updateHolder.setVisibility(android.view.View.GONE);
-        updateController=new UpdateController(this,engine,updateHolder);
+    }
+
+    private void buildUpdates(){
+        updates=column();updates.setPadding(dp(20),dp(8),dp(20),dp(24));addScrollablePage(updates);
+        // One controller per Activity: navigation must not discard download/install stage.
+        updateController=new UpdateController(this,engine,updates);
     }
 
     /** Single opt-in path: user-visible foreground start plus the OPPO-critical battery exception. */
@@ -300,17 +302,19 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         View[] content={welcome,dialogs,contacts,identity};
         String[] names={"welcome","dialogs","contacts","identity"};
         boolean profileAvailable=hasIdentity||hasBlockchainNick||nicknameReadFailed;
-        for(int i=0;i<content.length;i++)((View)content[i].getParent()).setVisibility((!profileAvailable&&i==0)||(profileAvailable&&next.equals(names[i]))?View.VISIBLE:View.GONE);
+        boolean inUpdates=next.equals("updates");
+        for(int i=0;i<content.length;i++)((View)content[i].getParent()).setVisibility(!inUpdates&&((!profileAvailable&&i==0)||(profileAvailable&&next.equals(names[i])))?View.VISIBLE:View.GONE);
+        ((View)updates.getParent()).setVisibility(inUpdates?View.VISIBLE:View.GONE);
         chat.setVisibility(hasIdentity&&next.equals("chat")?View.VISIBLE:View.GONE);
-        nav.setVisibility(profileAvailable&&!next.equals("chat")?View.VISIBLE:View.GONE);
+        nav.setVisibility(profileAvailable&&!next.equals("chat")&&!inUpdates?View.VISIBLE:View.GONE);
         boolean inChat=hasIdentity&&next.equals("chat");
         callAction.setVisibility(inChat?View.VISIBLE:View.GONE);videoAction.setVisibility(inChat?View.VISIBLE:View.GONE);
         menuAction.setVisibility(!inChat?View.VISIBLE:View.GONE);
-        screenTitle.setText(!profileAvailable?"ParanoID":inChat?ContactNames.title(this,selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
+        screenTitle.setText(inUpdates?"Обновления":!profileAvailable?"ParanoID":inChat?ContactNames.title(this,selectedAccount):next.equals("contacts")?"Контакты":next.equals("identity")?"Мой ID":"Чаты");
         screenTitle.setTextSize(inChat?19:28);
-        leading.setImageDrawable(new Symbol(inChat?"back":"identity",colors.action));leading.setContentDescription(inChat?"Назад в чаты":"Мой ID");
-        leading.setVisibility(profileAvailable?View.VISIBLE:View.GONE);
-        trailing.setVisibility(hasIdentity?View.VISIBLE:View.GONE);trailing.setImageDrawable(new Symbol(inChat?"more":"compose",colors.action));trailing.setContentDescription(inChat?"Сведения о контакте":"Добавить контакт");
+        leading.setImageDrawable(new Symbol(inChat||inUpdates?"back":"identity",colors.action));leading.setContentDescription(inUpdates?"Назад":inChat?"Назад в чаты":"Мой ID");
+        leading.setVisibility(profileAvailable||inUpdates?View.VISIBLE:View.GONE);
+        trailing.setVisibility(hasIdentity&&!inUpdates?View.VISIBLE:View.GONE);trailing.setImageDrawable(new Symbol(inChat?"more":"compose",colors.action));trailing.setContentDescription(inChat?"Сведения о контакте":"Добавить контакт");
         selectNavigation(navChats,next.equals("dialogs"));selectNavigation(navContacts,next.equals("contacts"));selectNavigation(navIdentity,next.equals("identity"));
         buttons();
     }
@@ -345,17 +349,19 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             .setMessage("ParanoID · версия "+version+"\n\nЗакрытая альфа, только тестовые сообщения.")
             .setPositiveButton("Закрыть",null).show();
     }
-    /** Opens the existing update block; downloading and verification stay in UpdateController. */
+    /** Opens the update page; downloading and verification stay in UpdateController. */
     private void openUpdates(){
-        if(!hasIdentity||broken)return;
-        if(updateHint!=null)updateHint.setVisibility(View.GONE);
-        show("identity");
-        if(updateHeading!=null&&identity.getParent() instanceof ScrollView){
-            ScrollView scroll=(ScrollView)identity.getParent();
-            scroll.post(()->scroll.smoothScrollTo(0,updateHeading.getTop()));
-        }
+        // The public update feed is independent of messenger login/storage state.
+        showUpdates();
         if(updateController!=null)updateController.trigger();
     }
+    /** Display only: installer callbacks must not start another check or install. */
+    private void showUpdates(){
+        if(!page.equals("updates"))updatesReturnPage=page;
+        if(updateHint!=null)updateHint.setVisibility(View.GONE);
+        show("updates");
+    }
+    private void closeUpdates(){show(updatesReturnPage);}
     /** Silent startup check: once per process, at most every six hours, only after registration. */
     private void autoCheckUpdates(){
         if(updateAutoChecked||broken||!hasIdentity||!active)return;
@@ -963,13 +969,13 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
             boolean profileKnown=!"loading".equals(nicknameState)&&!nicknameReadFailed;
             loginHint.setVisibility(hasIdentity&&identityLogin&&!active&&!broken?View.VISIBLE:View.GONE);
             // New install: go straight to the one-step-per-screen onboarding, once per process.
-            if(!hasIdentity&&!hasBlockchainNick&&profileKnown&&!broken&&!view.optBoolean("unsupported_snapshot")&&resumed&&!onboardingOpened)openOnboarding();
-            if(!hasIdentity&&(hasBlockchainNick||nicknameReadFailed))page="identity";
+            if(!page.equals("updates")&&!hasIdentity&&!hasBlockchainNick&&profileKnown&&!broken&&!view.optBoolean("unsupported_snapshot")&&resumed&&!onboardingOpened)openOnboarding();
+            if(!page.equals("updates")&&!hasIdentity&&(hasBlockchainNick||nicknameReadFailed))page="identity";
             background.setText(view.optBoolean("background_enabled")?"Отключить фоновое подключение":"Включить фоновое подключение");background.setEnabled(hasIdentity&&!broken);
             boolean backgroundEnabled=view.optBoolean("background_enabled");
             boolean backgroundPrompted=getSharedPreferences(UI_PREFS,MODE_PRIVATE).getBoolean(BACKGROUND_PROMPT_KEY,false);
             backgroundHint.setVisibility(hasIdentity&&!broken&&!backgroundEnabled&&backgroundPrompted?View.VISIBLE:View.GONE);
-            if(hasIdentity&&!broken&&!backgroundEnabled&&!backgroundPrompted&&resumed)offerBackground();
+            if(!page.equals("updates")&&hasIdentity&&!broken&&!backgroundEnabled&&!backgroundPrompted&&resumed)offerBackground();
             lastStatus=view.optBoolean("unsupported_snapshot")?"Сохранённые данные относятся к предыдущей тестовой версии. Эта сборка предназначена для новой установки. Данные не изменены.":broken?"Локальные данные недоступны. Ключи и история не сброшены. Не удаляйте приложение.":message;
             String connection=broken?"Данные недоступны · подробнее":!hasIdentity?"Закрытая альфа · тестовые сообщения":!active?(identityLogin?"Нужен вход через ник Solana":"Регистрируем ID · ключи сохранены"):view.optBoolean("connected")?"Сервер подключён":message.startsWith("Синхронизация завершена")?"Сообщения обновлены":message.startsWith("Сообщение сохранено")?"Сообщение в очереди":message.equals("Готово")||message.startsWith("Готово.")?"Подключаемся к серверу…":"Подключение · подробнее";
             if(view.optLong("rejected_count")>0)connection="Есть непринятые сообщения · подробнее";
@@ -1045,7 +1051,7 @@ public final class MainActivity extends Activity implements TextEngine.Listener 
         try{remoteRenderer.release();}catch(RuntimeException ignored){}
         try{localRenderer.release();}catch(RuntimeException ignored){}
     }
-    @Override public void onBackPressed(){if(page.equals("chat")){show("dialogs");}else if(!page.equals("dialogs")){show("dialogs");}else super.onBackPressed();}
+    @Override public void onBackPressed(){if(page.equals("updates")){closeUpdates();}else if(page.equals("chat")){show("dialogs");}else if(!page.equals("dialogs")){show("dialogs");}else super.onBackPressed();}
     @Override public Object onRetainNonConfigurationInstance(){return new Retained(drafts,page,selectedAccount);}
     private static final class Retained{final MessagePresentation.Drafts drafts;final String page,account;Retained(MessagePresentation.Drafts d,String p,String a){drafts=d;page=p;account=a;}}
     private void hideKeyboard(){if(draft!=null)((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(draft.getWindowToken(),0);}

@@ -2,7 +2,8 @@
 status: draft
 owner: architecture
 decision_owner: martadvix-web
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-06
+last_reviewed_scope: updater UI reachability; distribution reconciliation remains separate
 ---
 
 # RFC-0013: User-triggered signed Android updates
@@ -136,6 +137,22 @@ failures; compromised server can withhold updates or replay an older still-highe
 signed version. No TUF/transparency, staged rollout or signer rotation is claimed.
 Review must independently examine the new permissions/provider and distribution
 routes, source-to-APK provenance, published artifact, and preserved phone state.
+
+## UI reachability correction (2026-10-06)
+
+The update controls must be in a visible, attached page reached from the menu or
+available-update banner, separate from My ID. A missing/older/same-version feed
+must display its result, not leave the user with an invisible action. Use the
+Activity's existing window so installer focus checks remain meaningful. Reopening
+the page must not advance download/install automatically; native consent remains
+mandatory. Installation-result routing shows the controller message without
+starting another check. Existing phone keys and data are untouched.
+
+This is a bounded presentation correction under REQ-CLIENT-003, not a new TLS or
+publication decision. The implementation already uses a fixed public update
+service, unlike the original per-server draft above; this correction retains that
+code verbatim and does not claim those older distribution paragraphs have become
+accepted architecture. Its reconciliation remains separate from UI reachability.
 
 ## Verification / delivery
 
