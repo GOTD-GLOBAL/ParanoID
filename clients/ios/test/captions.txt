@@ -72,20 +72,26 @@ MainActivity.java "Пока нет контактов"
 MainActivity.java "Контакт можно добавить по QR или вставить из сообщения собеседника."
 MainActivity.java "Мой ID"
 # Android-only (removed in v38 UX): "Собеседник сможет написать вам по этому QR. Для проверки личности сравните отпечатки отдельно."
-MainActivity.java "ВАШ ID"
-MainActivity.java "Создайте ID, чтобы начать"
+# Android v47 (b422310, 2026-10-05) removed these words and its own QR from «Мой ID»;
+# iOS still shows them, so since then they are this client's own. Wording unchanged.
+ios "ВАШ ID"
+ios "Создайте ID, чтобы начать"
 # Android button renamed to "Поделиться" in v38 UX cleanup
 # Android-only button (removed from shared captions): "Скопировать QR"
 # Android string removed in v38 UX: "Отпечаток контакта"
 # Android string removed in v38 UX: "Появится после регистрации"
 # Android section header removed in v38 UX: "Приложение"
 MainActivity.java "О приложении"
-MainActivity.java "\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+# Android v48 (2470dca, 2026-10-05) removed this sentence from «О приложении»; iOS still
+# shows it, so since then it is this client's own. Wording unchanged.
+ios "\nЗакрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
 ios "Сборки пока устанавливаются вручную — проверки обновлений в приложении нет. Фонового подключения нет: см. «Входящие приходят, пока приложение открыто»."
 MainActivity.java "Закрыть"
-MainActivity.java "Отпечаток идентичности"
+# Android v48 (2470dca) removed the identity fingerprint from «О приложении»; iOS keeps it.
+ios "Отпечаток идентичности"
 MainActivity.java "появится после регистрации"
-MainActivity.java "Закрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
+# Android v48 (2470dca) removed this sentence too; iOS still shows it. Wording unchanged.
+ios "Закрытая альфа, только тестовые сообщения. Восстановление ID пока недоступно."
 MainActivity.java " · версия "
 MainActivity.java "Сообщение"
 MainActivity.java "Отправить"
@@ -248,7 +254,9 @@ ios "Контакт уже добавлен."
 ios "Не удалось добавить контакт ("
 
 # --- Qr/ContactQrView.swift — the code, the share and the clipboard
-MainActivity.java "QR моего контакта"
+# Android v47 (b422310) no longer draws its contact QR; iOS keeps it, so this label is
+# its own since then. Wording unchanged.
+ios "QR моего контакта"
 
 # --- Qr/QrScannerView.swift — the scanner
 QrScanActivity.java "Наведите камеру на публичный QR ParanoID. Снимки не сохраняются."
