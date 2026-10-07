@@ -34,9 +34,10 @@ with the video-call work.
 - [ADR-0011](0011-voice-calls.md): proposed retained-channel WebRTC voice;
   local implementation task authorized, independent design/final reviews required.
 
-- [ADR-0008](0008-user-triggered-android-updates.md): user-triggered pinned HTTPS
-  Android APK updates with signer continuity and native installer confirmation;
-  RFC-0013 implementation/review pending, not accepted distribution architecture.
+- [ADR-0008](0008-user-triggered-android-updates.md): user-triggered Android updates,
+  installed-signer continuity and native consent. The dated RFC-0013 amendment
+  describes the retained fixed-service/system-CA candidate; the older pinned-origin
+  proposal is historical. Draft, not accepted distribution architecture.
 
 - [ADR-0007](0007-self-service-messenger.md): self-service v2 registration and
   general direct messaging; local server tested, decision/owner disposition and

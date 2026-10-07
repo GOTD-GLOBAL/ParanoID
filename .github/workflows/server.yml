@@ -127,6 +127,14 @@ jobs:
           javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,IdentityPorts,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
           python3 clients/android/test_voice_relay_lane.py --jni-library-dir clients/core/target/debug --evidence-dir "$RUNNER_TEMP/paranoid-voice-lane"
+      - name: Android update transport and installer worker host gates
+        # Synthetic bytes, local TLS only: no signing key, APK build or device claim.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-cryptography
+          python3 clients/android/test_updates.py --synthetic
+          python3 clients/android/test_update_wiring.py
+          python3 clients/android/test_update_session_worker.py
   devnet-client:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

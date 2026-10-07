@@ -2,10 +2,39 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-06
-last_reviewed_scope: visible Android update page; older dated records retained
+last_reviewed_scope: PR70 merge-gate repairs; dated historical records retained
 ---
 
 # Current project state
+
+## PR70 merge-gate repair candidate — 2026-10-06
+
+The owner requested necessary verification and merge after receiving the earlier
+preflight stop. This is source-work/merge authority only, not publication, SSH,
+server/DB changes or ADR acceptance. The feature branch retains v49 nickname,
+v50 own-link and v51 update-page fixes with their earlier scoped review/artifact
+receipts. New updater repairs are **not** in the already delivered v51 APK.
+
+The six iOS caption assertions were reproduced identically on base `2470dca` and
+head `2945526`. The exact caption-only correction from contributor commit
+`6aa73880e4924b9182a7a1977ac9d3161c7f2555` in PR #71 is incorporated: iOS retains
+those words as its own v2 UI, while Android removed them. All 29 iOS UI tests and
+15 Android UI tests pass; no Swift runtime or test algorithm is changed. PR #71's
+RFC and other changes remain separate. The iOS workflow now also triggers for
+Android/registrar changes; its new regression was observed RED, then GREEN.
+
+The updater repair restores REQ-CLIENT-003's no-fixed-ceiling/resource boundaries
+and rejects bogus negative-test successes. RFC-0013, draft ADR-0008 and Android
+reference now distinguish the existing fixed public service/platform CA transport
+from the historical per-messenger SPKI proposal; messenger TLS is unchanged.
+This is candidate reconciliation, not retroactive human architecture approval.
+Independent review and complete current-head CI remain required before merge;
+final receipts are recorded in PR #70. Historical legacy failures remain visible.
+
+The old SharedPreferences nickname-copy attempt in the main worktree is preserved
+but excluded: the reviewed implementation uses the existing encrypted identity
+store and introduces no new nickname persistence. Build-cache symlinks are not
+source commits. No worktree reset, stash/drop or other contributor edits are needed.
 
 ## Android update-page correction — 2026-10-06
 

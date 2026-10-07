@@ -8,6 +8,19 @@ public contract is declared.
 
 ## [Unreleased]
 
+### PR70 verification and updater regression repairs
+
+- Reconcile the Android fixed-service update contract without changing production
+  TLS selection, messenger state, installer consent or draft ADR status.
+- Restore actual free-space/declared-byte checks instead of fixed APK ceilings;
+  bound metadata and file writes before consuming excess bytes. Negative fixture
+  crashes are failures, not successful rejection evidence.
+- Incorporate the six-caption provenance correction from PR #71 commit `6aa7388`;
+  iOS still shows its retained v2 labels. No Swift behavior or caption test is
+  disabled. Run iOS gates when Android/registrar source dependencies change.
+- These source repairs follow the delivered v51 artifact; no replacement APK or
+  live publication is implied by source merge.
+
 ### Android v51: visible in-app update page
 
 - Restore a dedicated, attached update page opened by the menu/banner. Removing

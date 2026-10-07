@@ -2,10 +2,40 @@
 status: draft
 owner: security
 last_reviewed: 2026-10-06
-last_reviewed_scope: updater UI reachability only; transport/installer code unchanged
+last_reviewed_scope: update resource/test regression repair; retained fixed-service trust explicit
 ---
 
 # Threat model
+
+## Update distribution reconciliation — 2026-10-06
+
+The current candidate uses a hardcoded `https://paranoid.global/updates` origin,
+platform CA validation and normal hostname/certificate checks (introduced by
+`0f48d57`). It does not inherit the messenger's saved SPKI. That old pinned
+transport remains only in the local compatibility fixture constructor. This dated
+scope replaces older generic claims of SPKI-only APK distribution in this document,
+not the messenger TLS policy. RFC-0013 and draft ADR-0008 describe both scopes.
+
+A compromised CA, DNS/CDN/feed path or distributor may censor/replay metadata or
+consume available cache disk; it cannot by itself satisfy the unchanged installed
+APK signer/package/version gate. A hash is content-integrity evidence, not publisher
+identity when an attacker controls both bytes and metadata. Signing-key or app-UID
+compromise remains trusted failure. No production security or new human acceptance
+claim follows from retaining the existing implementation.
+
+The repair removes accidental product-size ceilings, replacing them with advisory
+actual usable-space checks, and bounds metadata/body bytes before buffering or
+writing. Chunked/missing-length responses have the same limits; declared size,
+SHA-256, private no-follow temp files and cleanup remain mandatory. Disk preflight
+is not a reservation; deadlines/resource failures may reject a large transfer.
+Metadata and signed-long representation bounds remain, even though APK size has no
+arbitrary fixed cap. Phone keys/history and installer permissions are untouched.
+
+Negative fixtures must assert a specific rejection and no HTTP request for invalid
+origins. A handler crash or unexpected Java error is a failed test, never security
+evidence. Local pinned-TLS tests and default-route host adapters are separate from
+public-CA/OEM installer acceptance. Independent review is mandatory before merge;
+physical-phone installation and publication remain separately authorized gates.
 
 ## Update-page reachability — 2026-10-06
 
