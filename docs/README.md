@@ -39,7 +39,8 @@ This is the entry point and navigation contract for ParanoID documentation.
 - [RFC process](rfcs/README.md): proposals under discussion.
 - [User-triggered Android updates](rfcs/0013-user-triggered-android-updates.md) and
   [draft ADR-0008](decisions/0008-user-triggered-android-updates.md): Update button
-  with pinned distribution/signer checks and native installation consent; in progress.
+  with fixed-service HTTPS, installed-signer checks and native consent in the current
+  candidate; the older per-server pin proposal is historical, architecture draft.
 
 ## Contracts and operations
 

@@ -47,6 +47,8 @@ java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDiverseSmoke
 java -cp out/host:out/deps/zxing-core-3.5.3.jar QrDenseSmoke
 javac --release 8 -Xlint:-options -cp out/host:out/deps/json-20240303.jar:out/deps/zxing-core-3.5.3.jar -d out/host test/PublicQr.java
 python3 test_ui_contract.py
+python3 test_nickname_profile_lifecycle.py
+python3 test_share_link.py
 python3 test_message_presentation.py
 python3 test_receipt_presentation.py
 python3 test_message_time.py
@@ -54,6 +56,7 @@ python3 test_contact_names.py
 python3 test_background_contract.py
 python3 test_realtime_transport.py --evidence-dir out/checks/realtime-transport
 python3 test_update_wiring.py
+python3 test_update_page.py
 python3 test_update_session_worker.py
 python3 test_update_artifact_regression.py
 cargo build --offline --locked --release --target aarch64-linux-android --manifest-path ../core/Cargo.toml

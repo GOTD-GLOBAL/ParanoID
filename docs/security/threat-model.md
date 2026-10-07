@@ -1,11 +1,91 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-09-22
-last_reviewed_scope: integrated Devnet registration and merge closure; older dated records retained
+last_reviewed: 2026-10-06
+last_reviewed_scope: update resource/test regression repair; retained fixed-service trust explicit
 ---
 
 # Threat model
+
+## Update distribution reconciliation — 2026-10-06
+
+The current candidate uses a hardcoded `https://paranoid.global/updates` origin,
+platform CA validation and normal hostname/certificate checks (introduced by
+`0f48d57`). It does not inherit the messenger's saved SPKI. That old pinned
+transport remains only in the local compatibility fixture constructor. This dated
+scope replaces older generic claims of SPKI-only APK distribution in this document,
+not the messenger TLS policy. RFC-0013 and draft ADR-0008 describe both scopes.
+
+A compromised CA, DNS/CDN/feed path or distributor may censor/replay metadata or
+consume available cache disk; it cannot by itself satisfy the unchanged installed
+APK signer/package/version gate. A hash is content-integrity evidence, not publisher
+identity when an attacker controls both bytes and metadata. Signing-key or app-UID
+compromise remains trusted failure. No production security or new human acceptance
+claim follows from retaining the existing implementation.
+
+The repair removes accidental product-size ceilings, replacing them with advisory
+actual usable-space checks, and bounds metadata/body bytes before buffering or
+writing. Chunked/missing-length responses have the same limits; declared size,
+SHA-256, private no-follow temp files and cleanup remain mandatory. Disk preflight
+is not a reservation; deadlines/resource failures may reject a large transfer.
+Metadata and signed-long representation bounds remain, even though APK size has no
+arbitrary fixed cap. Phone keys/history and installer permissions are untouched.
+
+Negative fixtures must assert a specific rejection and no HTTP request for invalid
+origins. A handler crash or unexpected Java error is a failed test, never security
+evidence. Local pinned-TLS tests and default-route host adapters are separate from
+public-CA/OEM installer acceptance. Independent review is mandatory before merge;
+physical-phone installation and publication remain separately authorized gates.
+
+## Update-page reachability — 2026-10-06
+
+The UI correction moves the existing updater's controls/status from an unattached
+hidden container to a page in the same Activity. It neither changes UpdateClient,
+verifier/provider/installer behavior nor grants installer authority to messenger
+identity state. Manual check remains usable without messenger registration because
+the existing controller already uses a fixed public feed. Actual APK identity and
+integrity checks and Android install consent remain downstream requirements.
+
+Opening/reopening must not download/install automatically. In particular, use of
+an extra dialog window must not circumvent or permanently fail Activity focus
+checks. Installation-result display must not trigger another check. Profile refresh
+cannot hide the page or send its user into onboarding. Phone acceptance and known
+baseline transport/test-contract discrepancies remain separate from this UI proof.
+
+## Retained nickname display — 2026-10-05
+
+The Android profile correction in [RFC-0026](../rfcs/0026-solana-devnet-registration.md#android-local-profile-correction--2026-10-05)
+reads the existing authenticated encrypted registration snapshot on its serialized
+owner, exposing only the canonical confirmed nickname and a display-state enum.
+It exports no entropy, words, signatures, pending transaction bytes or owner key.
+The messenger never writes this projection back or uses it for authorization.
+No new storage file/schema/SharedPreferences copy is introduced. Storage failures
+clear the display result to unavailable, not an absent or verified identity.
+
+This is a cached, previously finalized observation; Devnet resets, program changes,
+compromised local code/Keystore or a dishonest previously trusted RPC remain risks.
+An offline name is not fresh chain attestation. Name display does not establish
+server membership, prove a human's identity or validate a peer's encryption keys.
+The current server session, saved realm/pin, contacts and message history do not
+change. Shared owner serialization prevents profile reads interleaving with
+onboarding/internal registration writes. UI-thread attach/detach/refresh requests
+invalidate older reads immediately. Snapshots carry their worker read generation
+and captured observer, so old UI deliveries and pre-refresh worker repaints cannot
+turn cached absence into a creation action under a new subscription.
+
+## Own-link UI consistency correction — 2026-10-06
+
+The v49 own-link action confused unavailable directory-name cache with absence of
+a server connection. The follow-up obtains an acknowledged own-card result over
+the current pinned, authenticated session at user request. The canonical server
+name and locally trusted pin determine the URL; local global-profile text cannot
+prove server membership. Account/card/trust changes and late Activity callbacks
+must invalidate the result. Network waits remain off the state/UI owner.
+
+This reuses RFC-0028 admission, route and publication behavior, without enabling
+visibility, leaking recovery material, granting contact trust or auto-joining an
+unknown server. Synthetic owner/UI tests and isolated server tests do not establish
+physical-phone acceptance or production security.
 
 ## Server member directory and contact links (RFC-0028) — 2026-09-30
 

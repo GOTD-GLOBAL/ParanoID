@@ -1,10 +1,10 @@
 name: iOS client
 on:
   pull_request:
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
+    paths: ["clients/ios/**", "clients/android/**", "clients/android-devnet/**", "blockchain/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
   push:
     branches: [main]
-    paths: ["clients/ios/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
+    paths: ["clients/ios/**", "clients/android/**", "clients/android-devnet/**", "blockchain/**", "clients/core/**", "key-protocol/**", "docs/**", "CHANGELOG.md", "README.md", ".github/workflows/ios.yml", "tools/test_ios_boundary_scope.py"]
 permissions:
   contents: read
 jobs:

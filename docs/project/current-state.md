@@ -1,11 +1,101 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-09-30
-last_reviewed_scope: Solana ID login/sponsored nicknames (PR60) and iOS stack; older dated records retained
+last_reviewed: 2026-10-06
+last_reviewed_scope: PR70 merge-gate repairs; dated historical records retained
 ---
 
 # Current project state
+
+## PR70 merge-gate repair candidate — 2026-10-06
+
+The owner requested necessary verification and merge after receiving the earlier
+preflight stop. This is source-work/merge authority only, not publication, SSH,
+server/DB changes or ADR acceptance. The feature branch retains v49 nickname,
+v50 own-link and v51 update-page fixes with their earlier scoped review/artifact
+receipts. New updater repairs are **not** in the already delivered v51 APK.
+
+The six iOS caption assertions were reproduced identically on base `2470dca` and
+head `2945526`. The exact caption-only correction from contributor commit
+`6aa73880e4924b9182a7a1977ac9d3161c7f2555` in PR #71 is incorporated: iOS retains
+those words as its own v2 UI, while Android removed them. All 29 iOS UI tests and
+15 Android UI tests pass; no Swift runtime or test algorithm is changed. PR #71's
+RFC and other changes remain separate. The iOS workflow now also triggers for
+Android/registrar changes; its new regression was observed RED, then GREEN.
+
+The updater repair restores REQ-CLIENT-003's no-fixed-ceiling/resource boundaries
+and rejects bogus negative-test successes. RFC-0013, draft ADR-0008 and Android
+reference now distinguish the existing fixed public service/platform CA transport
+from the historical per-messenger SPKI proposal; messenger TLS is unchanged.
+This is candidate reconciliation, not retroactive human architecture approval.
+Independent review and complete current-head CI remain required before merge;
+final receipts are recorded in PR #70. Historical legacy failures remain visible.
+
+The old SharedPreferences nickname-copy attempt in the main worktree is preserved
+but excluded: the reviewed implementation uses the existing encrypted identity
+store and introduces no new nickname persistence. Build-cache symlinks are not
+source commits. No worktree reset, stash/drop or other contributor edits are needed.
+
+## Android update-page correction — 2026-10-06
+
+Owner screenshot identifies installed version `0.0.49-solana-id`. A fresh public
+feed read still returned 49; private v50 was not published without SSH scope.
+Separately, source v48–v50 constructed UpdateController in an unattached `GONE`
+container, while the menu only scrolled a hidden My ID heading. Check results and
+check/download/install buttons therefore had no visible presentation.
+
+The bounded follow-up restores an attached page in the same Activity, preserving
+installer window-focus checks. It does not alter updater transport, verifier,
+provider, permissions, automatic-check cadence, phone identity/history or server
+configuration. Physical acceptance, final review, APK and publication are separate
+gates recorded in PR #70; no new SSH/publication authority follows from this fix.
+
+Transport-test caveat observed on the unchanged base: `test_updates.py` exits zero
+but its early malformed-origin probes hit an uninitialized fixture `server.mode`.
+Those negative probes are not accepted as reliable validation evidence. The old
+RFC's per-server transport and no-fixed-ceiling description also differs from the
+pre-existing fixed-service UpdateClient implementation. These are disclosed
+baseline transport/contract debts, not silently changed or approved by UI work.
+
+## Android contact-link correction — 2026-10-06
+
+Owner phone screenshot shows `@advix` and «Сервер подключён», but tapping the own
+contact link reports that it will appear after connecting. This confirms the
+nickname label on that phone, not offline/zero-membership acceptance. Source v49
+maps an empty `directory_name` OR missing `server_id` to that generic message;
+the nickname cache is filled by a separate best-effort directory-card operation.
+The exact phone-side reason for the empty cache is not established by a screenshot.
+
+The bounded follow-up in PR #70 asks the existing signed current-server card route
+on the share action and uses its confirmed name with the already trusted server
+pin. It does not replace the server name with the global cached nickname, reset
+keys/sessions/history, enable visibility or join unknown servers. Pending final
+verification, review and a retained-signer APK; no new server deployment authority.
+
+## Android nickname profile correction — 2026-10-05
+
+Candidate branch `fix/nickname-profile-independent`, based on `2470dca`.
+Merge, publication and physical-phone acceptance are separate gates recorded in
+the feature PR. REQ-ID-003 display bug: the messenger profile read
+`solana_nick`, but nothing supplied it. RegistrationFlow already persisted `name`
+and `verified` in encrypted DevnetStore, before any messenger server admission.
+The candidate adds a read-only projection and reachable profile without transport
+membership. The saved realm/pin, server data and E2EE state are not changed.
+
+Host regression demonstrates confirmed/pending/empty/corrupt snapshots, restart
+and no projection writes/secrets; Android SDK compilation and UI wiring checks
+pass. A deterministic JVM lifecycle regression also covers cached absence on
+Activity recreation, loading/creation gating and stale callbacks using production
+refresh/routing code with host adapters. Independent worker/UI queues execute the
+full production publisher: queued snapshots and pre-refresh worker repaints are
+fenced across replacement or same-Activity reattachment and explicit refresh. Device screenshot/installation acceptance
+remains NOT RUN. Six iOS caption origin checks already fail on the base revision
+and still fail unchanged; no test
+is suppressed. Other historical dated checkpoints below retain their own scope.
+
+Previous chat claims that v44-v48 completed server switching/multi-server operation
+or that blank nickname meant VDSina/Hetzner login failure were not established by
+source or phone evidence. They are not relied on for this correction.
 
 ## Server member directory and contact links candidate (RFC-0028) — 2026-09-30
 

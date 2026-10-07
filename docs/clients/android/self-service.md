@@ -6,6 +6,50 @@ last_reviewed: 2026-09-09
 
 # Android self-service candidate: actual local evidence
 
+## Nickname profile correction — 2026-10-05
+
+The v49 candidate displays the existing locally confirmed blockchain nickname in
+My ID, independent of whether any messenger server is configured or authenticated.
+This is cached finalized naming data from encrypted DevnetStore, not a fresh chain
+proof and not the transport account ID. See the bounded
+[RFC-0026 correction](../../rfcs/0026-solana-devnet-registration.md#android-local-profile-correction--2026-10-05).
+
+Install over the existing APK with the same signer; do not clear data or re-enter
+recovery words to obtain the label. On a new/restored account, confirm the nickname,
+then choose Later on the server screen to see it without logging into a server.
+With a retained messenger session, reopen My ID: no switch, reset or replacement
+request is issued. Offline display is supported. Pending registration and unreadable
+storage are shown separately from a missing identity. Server-specific link sharing
+still requires that server's active directory context. Multi-server operation and
+federation are not implemented by this display fix.
+
+Profile publication is state-owner-only, including the repaint after changing
+search visibility. The blocking directory request stays on the directory worker
+because it waits for the state owner; only its subsequent repaint is enqueued to
+the state owner. The executable lifecycle fixture extracts that production path
+and rejects a directory-worker snapshot before checking the retained nickname.
+
+Attach, detach and explicit refresh invalidate the request generation immediately
+on the UI thread, before queued worker tasks can run. Each worker refresh clears
+the display nickname and publishes `loading` before scheduling the raw read, and
+labels snapshots with that read's generation. UI delivery captures its observer
+and accepts only the current observer/read generation. Thus neither an already
+queued UI snapshot nor a pre-refresh worker repaint can send cached `none` to a
+replacement Activity or the same Activity after reattachment.
+
+At zero transport accounts, loading and unavailable states cannot launch creation;
+loading shows a disabled waiting action, while unavailable retains retry. Current
+`none`, `unregistered` and `pending` results remain actionable. The deterministic
+host JVM regression `python3 clients/android/test_nickname_profile_lifecycle.py`
+executes production listen/unlisten/refresh, the full `publish` method and UI
+routing with independently stepped worker/UI queues and delayed Devnet callbacks.
+It covers stale delivery/read results, detach/reattach, explicit refresh and the
+distinction between unreadable storage and confirmed absence. Raw reads still use
+the serialized Devnet owner; this display path adds no storage writes.
+
+Host/JNI, source wiring and SDK compilation checks do not replace physical-phone
+acceptance. Historical observations below retain their dated scope.
+
 Issue #16; REQ-ID-001/005/006/007/008, REQ-MSG-002/003/004, REQ-CLIENT-001,
 REQ-SEC-001. This component belongs in the **client/Android PR**, separately from
 the server PR and its shared wire library. No accepted ADR, live write/deployment,

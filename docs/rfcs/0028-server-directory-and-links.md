@@ -5,7 +5,7 @@ decision_owner: martadvix-web
 decision_deadline: 2026-10-07
 review_mode: closed-alpha-ai
 required_reviewers: []
-last_reviewed: 2026-09-30
+last_reviewed: 2026-10-06
 ---
 
 # RFC-0028: Server member directory and contact links
@@ -142,6 +142,25 @@ Status stays `draft`: implemented as a local candidate, not reviewed, merged or 
   and finds `bob`, rejects a substituted one-time key and a wrong registry binding, adds,
   sends; phone two receives. Registry in that test is the server's fixture file, not
   live Devnet.
+
+## Own-link client correction (2026-10-06)
+
+The connection indicator and a populated background `directory_name` cache are
+not equivalent. A connected phone can have an empty cache while its contact-card
+publication is pending or has failed. This must not be described as a disconnected
+server or repaired by forcing identity restoration.
+
+On the explicit share action, the Android follow-up uses the existing signed
+`directory_card` operation, asynchronously outside the state owner. It requires
+an acknowledged publication and a canonical nickname from that server; the URL's
+server-id remains derived only from the already configured TLS pin. The active
+account/card/trust context is checked across the request, and obsolete UI callbacks
+must not open a chooser after leaving/replacing that Activity. A cached global
+blockchain nickname alone is never substituted for server membership evidence.
+
+No wire/API or database format changes. Visibility, contact proof verification,
+recipient lookup and the no-unknown-server-auto-join rule are unchanged. Hidden
+members remain hidden; sharing a string does not change discovery permissions.
 
 ## Tests required before phone release
 

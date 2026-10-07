@@ -20,8 +20,28 @@ public final class MainActivity extends Activity {
     public static org.paranoid.text.IdentityPorts.Registry directoryRegistry(){
         return (owner,name,identity)->RegistrationFlow.verifyMember(new DevnetRpc(),owner,name,identity);
     }
-    private static final ExecutorService OWNER=Executors.newSingleThreadExecutor();
+    // All access to the retained registration snapshot uses this one owner, including onboarding.
+    static final ExecutorService OWNER=Executors.newSingleThreadExecutor();
     private static DevnetStore store;
+    static DevnetStore identityStore(android.content.Context context) {
+        if(store==null)store=new DevnetStore(context.getApplicationContext());
+        return store;
+    }
+    public interface ProfileCallback { void loaded(String nick,String state); }
+    /** Reads retained finalized naming data only; no RPC, login, mutation or secret in callback. */
+    public static void readPublicProfile(android.content.Context context,ProfileCallback callback) {
+        android.content.Context app=context.getApplicationContext();
+        OWNER.execute(()->{
+            String nick="",state="unavailable";
+            try {
+                JSONObject profile=RegistrationFlow.publicProfile(identityStore(app));
+                nick=profile.getString("solana_nick");state=profile.getString("nickname_state");
+            } catch(Exception | LinkageError unavailable) {
+                // Do not report absence or expose the exception/raw state on a storage failure.
+            }
+            callback.loaded(nick,state);
+        });
+    }
     private TextView status;
     private final UiGeneration generation=new UiGeneration();
     private EditText name;
@@ -54,7 +74,7 @@ public final class MainActivity extends Activity {
     private void post(long ticket,Runnable r){runOnUiThread(()->{if(generation.current(ticket)&&!isFinishing()&&!isDestroyed())r.run();});}
     @Override public void onDestroy(){generation.next();super.onDestroy();}
     private void work(Work action){final long ticket=generation.next();enabled(false);status.setText("Выполняется…");OWNER.execute(()->{
-        final String result=DevnetWork.run(()->{if(store==null)store=new DevnetStore(getApplicationContext());return action.run(store,ticket);});
+        final String result=DevnetWork.run(()->{return action.run(identityStore(getApplicationContext()),ticket);});
         post(ticket,()->{status.setText(result);enabled(true);});
     });}
     private static JSONObject nativeCall(String op,String field,String value)throws Exception{return SolanaBridge.run(new JSONObject().put("op",op).put(field,value));}

@@ -1,12 +1,54 @@
 ---
 status: draft
 owner: android-client
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-06
+last_reviewed_scope: current fixed-service contract and resource/test repairs
 ---
 
 # User-triggered Android update candidate (RFC-0013)
 
-Current candidate: versionCode 15 / `0.0.15-voice`, package
+## Current distribution contract — 2026-10-06
+
+Production `new UpdateClient()` uses `https://paranoid.global/updates/android.json`
+and digest-derived `https://paranoid.global/updates/<sha256>.apk`, regardless of
+messenger server or login. It uses normal platform CA/hostname validation, not the
+messenger's SPKI. The two-argument pinned-origin constructor is for local
+compatibility fixtures, not a production fallback. See the
+[RFC-0013 reconciliation](../../rfcs/0013-user-triggered-android-updates.md#fixed-service-implementation-reconciliation--2026-10-06)
+and draft ADR-0008 for history, scope and trust risks; no architecture acceptance
+or new publication authority is implied.
+
+The source repair after v51 restores actual cache free-space checks and removes
+accidental 64 MiB/512,000,000-byte APK limits. Both metadata and APK byte bounds
+apply before buffering/writing, even without Content-Length. No fixed APK ceiling
+replaces the old one. Local tests must fail on fixture exceptions and unexpected
+rejection causes. Default-route adapters, real local TLS and phone acceptance are
+reported separately. The already delivered v51 APK predates these source repairs;
+no revised binary is silently issued under its version or claimed tested on a phone.
+
+## Visible update-page correction — 2026-10-06
+
+The v51 UI candidate restores the controller to an attached scrollable page,
+opened through the menu or update banner, not an invisible My ID child. The page
+uses the Activity window (not an extra dialog that would defeat installer focus
+checks). Existing check, download and install stages remain explicit and visible;
+back/reopen retains the controller within that Activity. Opening at a later stage
+never advances download/install. Installation callback text is shown on this page
+without another metadata check. Ordinary profile refresh must not redirect it.
+
+Manual access does not require a messenger identity or healthy messaging snapshot:
+the actual retained controller uses the separate fixed public update service, not
+messenger state. This is presentation/routing only: UpdateClient, package/signer/
+size/hash policy, provider, installer and silent auto-check cadence are unchanged.
+This paragraph records the v51 presentation-only change. The later source repair
+and distribution reconciliation are described above; they are not part of that
+already delivered APK. UI adapters/SDK checks are not physical installer acceptance.
+
+On a phone with the broken page, the first fixed APK needs manual in-place
+installation. Do not uninstall or clear data. A same-version feed correctly
+shows no newer release; repairing the page does not itself publish a new APK.
+
+Historical candidate at the 2026-09-11 checkpoint: versionCode 15 / `0.0.15-voice`, package
 `global.paranoid.messenger`, ARM64,
 minSDK 26, targetSDK 35. This is implementation evidence, not feature acceptance,
 publication permission, installed-phone evidence, or production update security.
@@ -69,9 +111,9 @@ rejects it. A source merge does not publish an update or authorize deployment.
 The first APK containing the button still needs one external in-place APK handoff.
 Never uninstall, clear data, downgrade, or replace the signing key to make it work.
 
-1. Tap **Обновить — проверить**. The updater reads only saved origin/SPKI from the
-   existing state owner. No saved trust or unreadable state means no update request;
-   there is no fallback to defaults for a previously configured phone.
+1. Open **Проверить обновления** from the menu, then use the visible update page.
+   The fixed public feed is independent of messenger identity and saved server
+   trust; unreadable messaging state does not redirect or choose an update origin.
 2. A missing feed (404) or same/lower version says **Обновлений пока нет**. A compatible
    newer version offers **Скачать обновление**. No download starts without that tap.
 3. Download and verification use a separate worker, not the messaging worker or UI
@@ -93,7 +135,8 @@ install automatically. Cache files are disposable, not messaging data.
 
 ## Wire and trust
 
-- Only GET `/v2/updates/android` on the saved HTTPS origin; max 8192 UTF-8 bytes.
+- Production GET `https://paranoid.global/updates/android.json`; max 8192 UTF-8
+  bytes whether fixed-length, chunked or missing a length header.
 - Exactly `schema`, `package`, `version_code`, `version_name`, `min_sdk`, `abi`,
   `apk_sha256`, `apk_size`. Duplicate/unknown keys, invalid UTF-8/JSON, numeric
   strings/fractions/overflow, malformed escapes, trailing input and controls fail.
@@ -102,18 +145,18 @@ install automatically. Cache files are disposable, not messaging data.
   no control characters; 64 lowercase hex SHA256; positive signed-64-bit APK length,
   with no fixed size ceiling. The
   server implementation inspected uses the same 128-byte versionName bound.
-- APK path derives only from the validated digest:
-  `/v2/updates/android/apk/<apk_sha256>`. No metadata URL or filename is accepted.
-- The existing `PinnedTls` verifies one explicitly pinned **self-signed leaf**, its
-  self-signature, SAN/IP, expiry, key strength, usages and SPKI. It does **not** use
-  system CA-chain trust. RFC-0013's earlier “CA/IP/SAN/expiry/SPKI” wording was
-  clarified for FPD-D01 to describe this existing pinned self-signed-leaf policy,
-  not add CA-issued-chain acceptance or a new architecture decision. No TLS code
-  was changed, no pin was replaced and no trust-all or cleartext fallback was added.
+- Production APK path derives only from the validated digest:
+  `https://paranoid.global/updates/<apk_sha256>.apk`. No metadata URL or filename
+  is accepted; the selected messenger server cannot replace this origin.
+- Production HTTPS uses platform CA and hostname validation; no custom trust-all
+  manager, insecure fallback or saved messenger pin is used. Installed-signer
+  validation supplies a separate authority check. The local two-argument fixture
+  retains PinnedTls self-signed-leaf/SPKI checks and historical `/v2/updates/android`
+  paths. Those fixture results do not prove public-CA deployment behavior.
 - No HTTP redirect, proxy, cache, cookies or updater authentication fields. A global
   CookieHandler causes a fail-closed error. The app installs no global Authenticator.
-  Connection timeout 8 seconds, response read timeout 15 seconds (issue #39);
-  streaming deadline 60 seconds (checked per
+  Connection timeout 8 seconds, response read timeout 60 seconds;
+  streaming deadline 55 seconds (checked per
   read, therefore up to one read timeout beyond the deadline); bounded streaming
   works with fixed-length and chunked responses. Non-identity encoding is rejected.
 
@@ -148,7 +191,7 @@ signed release. No TUF, transparency log, signer rotation or Play compliance is
 claimed. APK/OS parser flaws and real OEM installer/permission behavior remain
 independent-review and phone-test concerns.
 
-## Invariants and executed verification
+## Historical invariants and executed verification
 
 REQ-ID-005/006/008 and SS-05: no new keys, registration or persistence from updater;
 read-only saved-trust getter exercised with nondefault realm/SPKI on real JVM/JNI.

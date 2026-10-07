@@ -241,6 +241,28 @@ class OnboardingContract(unittest.TestCase):
         self.assertIn('QrCodec.decode',scanner)
         self.assertIn('onPause()',scanner)
         self.assertIn('camera.release()',scanner)
+    def test_blockchain_profile_is_independent_of_transport_admission(self):
+        ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
+        engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()
+        devnet=ROOT.parent/'android-devnet/src/org/paranoid/devnet'
+        adapter=(devnet/'MainActivity.java').read_text()
+        onboarding=(devnet/'OnboardingActivity.java').read_text()
+        self.assertIn('readPublicProfile(context',engine)
+        self.assertIn('.put("solana_nick",profileNick)',engine)
+        self.assertIn('.put("nickname_state",profileState)',engine)
+        self.assertIn('RegistrationFlow.publicProfile(identityStore(app))',adapter)
+        self.assertIn('MainActivity.OWNER',onboarding)
+        self.assertIn('MainActivity.identityStore(getApplicationContext())',onboarding)
+        self.assertNotIn('putString("solana_nick"',onboarding)
+        self.assertIn('boolean profileAvailable=hasIdentity||hasBlockchainNick||nicknameReadFailed;',ui)
+        self.assertIn('hasBlockchainNick="verified".equals(view.optString("nickname_state"))',ui)
+        self.assertIn('nickView.setText(hasBlockchainNick?"@"+solNick:"")',ui)
+        self.assertNotIn('nickView.setText("Нет ника")',ui)
+        self.assertIn('"Ник сохранён. Подключите сервер, чтобы переписываться."',ui)
+        self.assertIn('"Ник пока недоступен"',ui)
+        self.assertIn('"Проверяем сохранённый ник…"',ui)
+        self.assertIn('"Позже", this::finish',onboarding)
+
     def test_phone_ui_uses_key_workflow_not_manual_bearer_roles(self):
         ui=(ROOT/'src/org/paranoid/text/MainActivity.java').read_text()
         engine=(ROOT/'src/org/paranoid/text/TextEngine.java').read_text()

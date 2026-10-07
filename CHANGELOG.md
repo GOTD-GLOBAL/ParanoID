@@ -8,6 +8,52 @@ public contract is declared.
 
 ## [Unreleased]
 
+### PR70 verification and updater regression repairs
+
+- Reconcile the Android fixed-service update contract without changing production
+  TLS selection, messenger state, installer consent or draft ADR status.
+- Restore actual free-space/declared-byte checks instead of fixed APK ceilings;
+  bound metadata and file writes before consuming excess bytes. Negative fixture
+  crashes are failures, not successful rejection evidence.
+- Incorporate the six-caption provenance correction from PR #71 commit `6aa7388`;
+  iOS still shows its retained v2 labels. No Swift behavior or caption test is
+  disabled. Run iOS gates when Android/registrar source dependencies change.
+- These source repairs follow the delivered v51 artifact; no replacement APK or
+  live publication is implied by source merge.
+
+### Android v51: visible in-app update page
+
+- Restore a dedicated, attached update page opened by the menu/banner. Removing
+  the update block from My ID had left the controller in an invisible container.
+- Keep the existing check/download/install controller and its integrity/consent
+  gates, but make its status/actions reachable independently of messenger login.
+  Navigating back/reopening does not itself download or install an APK.
+
+### Android v50: explicit current-server contact link
+
+- Separate connection status from the cached directory-name field. Sharing a link
+  asks the current authenticated server for the own contact-card result instead
+  of treating a missing background cache value as a disconnected server.
+- Keep card requests off the UI/state owner, reject changed account/trust context
+  and stale Activity callbacks, and surface real request/format errors. This is
+  not an invite, unknown-server auto-join or cross-server search capability.
+
+### Android v49: retained nickname independent of server login — 2026-10-05
+
+- My ID reads the already verified nickname from encrypted registration storage,
+  including existing installs. It no longer looks for an unpopulated transport field.
+- The nickname is visible without server membership and offline. A server can be
+  connected later; onboarding now has a Later action after nickname confirmation.
+- Loading, pending registration, no identity and unreadable identity are different
+  display states. No seed re-entry, reinstall, server switch or data reset is needed.
+- Reopening the app waits for the current nickname read instead of auto-opening
+  onboarding from cached absence. Queued UI snapshots and worker repaints from an
+  older subscription/read are discarded, including same-Activity reattachment.
+  Creation is disabled while that read is pending or unavailable with no transport
+  account.
+- Keeps the earlier removal of technical hashes and QR from the profile. Contact
+  proof checks and messaging/call authentication are unchanged.
+
 ### Server member directory and contact links (RFC-0028, candidate) — 2026-09-30
 
 - Identity-v3 servers: `POST /v3/directory/search`, `/v3/directory/visibility` and
