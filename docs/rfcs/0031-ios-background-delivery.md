@@ -5,11 +5,11 @@ decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 decision_deadline: 2026-10-15
 required_reviewers: []
-last_reviewed: 2026-10-02
-last_reviewed_scope: integration after PR60 and numbering; external platform research remains dated 2026-09-26
+last_reviewed: 2026-10-12
+last_reviewed_scope: renumbered to RFC-0031 after the 0029 collision with the invite RFC; content unchanged since 2026-10-02
 ---
 
-# RFC-0029: Content-free iOS background delivery through APNs
+# RFC-0031: Content-free iOS background delivery through APNs
 
 This is a draft. Nothing in it is accepted, implemented, deployed or measured.
 It proposes a decision that only a future ADR could record, and only with
@@ -18,7 +18,10 @@ the human decision owner's exact approval. The author is the contributor
 Solana server-authentication pull request (#60) took RFC-0027 and ADR-0016, so
 it was renumbered RFC-0028 on 2026-09-28. On 2026-10-02 it is renumbered
 RFC-0029 to avoid the published PR67 server-directory/links proposal's RFC-0028.
-The published branch inventory was checked before choosing 0029. No ADR number
+The published branch inventory was checked before choosing 0029. On 2026-10-05
+the invite RFC (`0029-invite-sponsored-registration.md`) was pushed to `main`
+directly under the same number, and PR #71 took RFC-0030, so on 2026-10-12
+this draft is renumbered RFC-0031. Only the number changed. No ADR number
 is reserved here: the push ADR gets the next free number when drafted. Numbers
 are re-checked before `proposed` using [the RFC index](README.md#naming).
 
@@ -1394,7 +1397,7 @@ Scope proposed for the owner's approval:
    `classify_v2` and `sign_read_v2` (their own pull request), the mirror, the
    extension, PushKit, CallKit, the audio branch and the protected-data guard.
 8. **Phase 5, closure.** Evidence gathered; the push ADR `accepted` with the
-   owner's exact approval, RFC-0029 `completed`, and the decision-log entry,
+   owner's exact approval, RFC-0031 `completed`, and the decision-log entry,
    in one pull request.
 
 **Rollback.** The server flip back to FCM-only restores today's behaviour; the

@@ -2,15 +2,15 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-10-02
-last_reviewed_scope: integration after PR60 and numbering; external platform research remains dated 2026-09-26
+last_reviewed: 2026-10-12
+last_reviewed_scope: RFC renumbered 0029 -> 0031; content unchanged since 2026-10-02
 ---
 
-# iOS push delivery threat delta (RFC-0029, draft)
+# iOS push delivery threat delta (RFC-0031, draft)
 
 Delta for threat-model boundary 8 (*mobile client to platform push
 notification services*) on the iOS client, proposed by
-[RFC-0029](../rfcs/0029-ios-background-delivery.md). It extends
+[RFC-0031](../rfcs/0031-ios-background-delivery.md). It extends
 [the threat model](threat-model.md), [the iOS client delta](ios-client-threats.md)
 and [the push wake delta](push-wake-threats.md); everything in those remains
 required.
@@ -42,7 +42,7 @@ Not used: server VoIP pushes, background (content-available) pushes, BGTaskSched
 
 ## Identity-v3 integration gate (after PR60)
 
-The [RFC integration checkpoint](../rfcs/0029-ios-background-delivery.md#integration-checkpoint-after-pr60-2026-10-02)
+The [RFC integration checkpoint](../rfcs/0031-ios-background-delivery.md#integration-checkpoint-after-pr60-2026-10-02)
 requires explicit retirement/current-transport checks for registration, queued
 APNs work and extension fetches. Existing v2-route reuse does not waive v3
 admission. A retired token or old App Group mirror must not become authority for

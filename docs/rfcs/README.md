@@ -45,14 +45,26 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
-- [RFC-0029: Content-free iOS background delivery through APNs](0029-ios-background-delivery.md)
+- [RFC-0031: Content-free iOS background delivery through APNs](0031-ios-background-delivery.md)
   (draft): a constant, content-free APNs alert wake as a second provider of the
   RFC-0020 gateway, then a read-only notification service extension with
   CallKit; Apple becomes an observer of the recipient device and wake timing;
   [threat delta](../security/ios-push-threats.md). Owner decisions, RFC-0020
   disposition and Apple team custody are open; nothing is implemented.
   Renumbered from 0028 on 2026-10-02 to leave RFC-0028 with the published
-  [server-directory/links PR67](https://github.com/GOTD-GLOBAL/ParanoID/pull/67).
+  [server-directory/links PR67](https://github.com/GOTD-GLOBAL/ParanoID/pull/67),
+  and from 0029 on 2026-10-12 after the invite RFC took 0029 on `main` and
+  PR #71 took 0030.
+
+- [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
+  (draft, written in Russian, decision deadline 2026-10-14): a single-use
+  invitation that lets a server sponsor one nickname registration. Pushed to
+  `main` on 2026-10-05 without a pull request; indexed here on 2026-10-12.
+
+- [RFC-0028: Server member directory and contact links](0028-server-directory-and-links.md)
+  (draft, decision deadline 2026-10-07): member-only nickname search,
+  owner-proof contact cards and `paranoid.global/c/` links on identity-v3
+  servers; the implementation was merged with PR #67.
 
 - [RFC-0027: Solana server authentication](0027-solana-server-authentication.md)
   (draft): identity membership, dual proof, single-device replacement and
