@@ -2,10 +2,28 @@
 status: draft
 owner: security
 last_reviewed: 2026-10-06
-last_reviewed_scope: update resource/test regression repair; retained fixed-service trust explicit
+last_reviewed_scope: pointer to the proposed iOS identity-v3 boundary (RFC-0030) alongside the update resource/test regression repair; retained fixed-service trust explicit; older dated records retained
 ---
 
 # Threat model
+
+## Proposed iOS identity-v3 boundary (RFC-0030) — 2026-10-06
+
+Draft; nothing is implemented. [The iOS identity-v3 delta](ios-identity-v3-threats.md)
+records the proposed boundary:
+
+- a second secret on the phone, the nickname owner entropy, in a
+  Keychain-wrapped sealed file readable only while the phone is unlocked;
+- one system-trust TLS session to the Devnet RPC, a trusted source. An
+  interceptor with a certificate the trust store accepts can show a false
+  registration or a false recovered name; a dishonest RPC provider can also
+  create a false membership and pass a false directory add, because the v3
+  servers read the same provider by default;
+- further compiled server pins;
+- contacts added by nickname through the directory, with QR to be removed
+  under the RFC's question 18.
+
+Everything in it is NOT RUN.
 
 ## Update distribution reconciliation — 2026-10-06
 
@@ -89,7 +107,8 @@ physical-phone acceptance or production security.
 
 ## Server member directory and contact links (RFC-0028) — 2026-09-30
 
-Candidate on branch `feat/server-directory-links`, not deployed.
+Merged into `main` as `082f826` (PR #67) on 2026-10-05; its deployment is
+described only in the pull request.
 [RFC-0028](../rfcs/0028-server-directory-and-links.md) lets authenticated active members
 of one identity-v3 server list/search that server's visible members and add one as a
 contact; share links carry server id + nickname.

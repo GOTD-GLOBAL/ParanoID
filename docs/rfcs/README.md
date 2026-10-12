@@ -56,6 +56,12 @@ Follow the human authority and acceptance-evidence rules in the
   and from 0029 on 2026-10-12 after the invite RFC took 0029 on `main` and
   PR #71 took 0030.
 
+- [RFC-0030: The iOS client on identity v3](0030-ios-identity-v3.md)
+  (draft): fresh iOS installs recover or create a Solana Devnet nickname, log
+  in to an identity-v3 server and find contacts through the directory, using
+  the same Rust crates as Android; a saved v2 realm is never switched
+  silently. Nothing is implemented, and the owner's scope approval is pending.
+
 - [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
   (draft, written in Russian, decision deadline 2026-10-14): a single-use
   invitation that lets a server sponsor one nickname registration. Pushed to
