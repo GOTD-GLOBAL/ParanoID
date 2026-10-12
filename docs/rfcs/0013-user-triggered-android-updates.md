@@ -2,7 +2,8 @@
 status: draft
 owner: architecture
 decision_owner: martadvix-web
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-06
+last_reviewed_scope: fixed-service candidate reconciliation and no-ceiling regression repair
 ---
 
 # RFC-0013: User-triggered signed Android updates
@@ -20,7 +21,7 @@ The first APK containing this button must still be installed in place manually.
 proposed decision; independent review precedes live publication.
 
 Scope: explicit button -> check -> download verified APK -> Android installer
-confirmation. No background update, forced upgrade, content-key/state export,
+confirmation. No background download/install, forced upgrade, content-key/state export,
 uninstall, data clear, downgrade flag, new signing key or credential in a URL.
 For in-place updates from v14 onward keep package `global.paranoid.messenger`,
 the existing signing certificate and all phone keys/history/contacts/outbox/server trust.
@@ -68,7 +69,50 @@ Tests: >16 MiB server roundtrip, snapshot immutability and permit lifetime;
 large client manifest/provider/download, exact length/hash rejection, numeric
 range/overflow and unchanged trust gates. Host fixtures are not phone acceptance.
 
-## Proposed interoperable contract
+## Fixed-service implementation reconciliation — 2026-10-06
+
+This dated amendment describes the retained private-alpha implementation introduced
+by `0f48d57` and repairs regressions under the existing no-ceiling direction. It
+supersedes the transport description below **for the current Android candidate**;
+the per-server section is historical, not an additional active production policy.
+The owner requested verification and merge of PR #70 after the discrepancies were
+reported (ParanoID Telegram, 2026-10-06; original permalink unavailable). That is
+bounded work/merge authority, not permanent architecture acceptance. ADR-0008 stays
+draft and independent implementation/security review is required before merge.
+
+- Production `new UpdateClient()` always fetches
+  `https://paranoid.global/updates/android.json` and derives
+  `https://paranoid.global/updates/<apk_sha256>.apk`. The selected messenger server,
+  identity state, metadata and contact links cannot redirect that origin.
+- HTTPS uses the platform CA store and normal hostname/certificate validation;
+  there is no trust-all manager, custom production pin, HTTP fallback or redirect.
+  A well-known domain, certificate transparency or a matching hash does not by
+  itself grant signer authority. The installed APK signer/package/version/ABI and
+  Android user consent are separate mandatory checks. DNS/CA/CDN/feed compromise
+  can censor or replay distribution; signing-key compromise remains a trusted
+  failure. This record does not retrospectively manufacture owner TLS approval or
+  claim production security; it makes the existing candidate and its risks explicit.
+- The two-argument pinned-origin constructor serves local compatibility fixtures,
+  using the historical `/v2/updates/android` paths; production callers do not select
+  it. It must reject malformed origins before any request. Its pinned-leaf tests
+  do not establish the default constructor's public-CA transport behavior.
+- Restore real cache free-space preflight, declared-length header/body limits and
+  fixed-buffer streaming, without an arbitrary 64 MiB or 512,000,000-byte ceiling.
+  Enforce the 8192-byte metadata limit also when Content-Length is absent/chunked,
+  and enforce bounds **before** writing the offending bytes. Retain SHA-256,
+  signer verification, private/no-follow cache writes and failure cleanup.
+- Test fixtures must fail on handler errors and verify the expected rejection
+  cause/zero requests for invalid origins, not call any process failure a security
+  pass. Exercise both default fixed-origin routing and pinned fixture transport;
+  name host-adapter, real local TLS, and physical Android evidence separately.
+
+No messenger TLS, key/session/history, server, publication, installer or permission
+change is authorized by this repair. The historical optional per-server feed may
+remain implemented on servers but is not the current APK's distribution source.
+A future architecture acceptance or distribution-policy change requires its own
+human evidence and ADR disposition; merge leaves that status unchanged.
+
+## Historical per-server interoperable proposal
 
 Use the phone's already trusted HTTPS origin and SPKI, never an arbitrary URL or
 trust-all TLS. Public update routes are read-only distribution, not signup/auth.
@@ -97,7 +141,7 @@ trust-all TLS. Public update routes are read-only distribution, not signup/auth.
   Publishing distribution content is a separately controlled coordinator action;
   no change to TLS, system services, firewall or neighboring applications.
 
-## Client trust and install gates
+## Historical pinned transport and retained install gates
 
 The check/download path must reuse the existing per-connection explicitly pinned
 self-signed-leaf TLS policy: saved origin/SPKI, leaf self-signature, exact IP SAN
@@ -136,6 +180,21 @@ failures; compromised server can withhold updates or replay an older still-highe
 signed version. No TUF/transparency, staged rollout or signer rotation is claimed.
 Review must independently examine the new permissions/provider and distribution
 routes, source-to-APK provenance, published artifact, and preserved phone state.
+
+## UI reachability correction (2026-10-06)
+
+The update controls must be in a visible, attached page reached from the menu or
+available-update banner, separate from My ID. A missing/older/same-version feed
+must display its result, not leave the user with an invisible action. Use the
+Activity's existing window so installer focus checks remain meaningful. Reopening
+the page must not advance download/install automatically; native consent remains
+mandatory. Installation-result routing shows the controller message without
+starting another check. Existing phone keys and data are untouched.
+
+This was a bounded presentation correction under REQ-CLIENT-003, not a new TLS or
+publication decision. The later fixed-service reconciliation above describes the
+retained distribution implementation and repairs its size/test regressions without
+changing its production trust selection. Neither amendment accepts architecture.
 
 ## Verification / delivery
 

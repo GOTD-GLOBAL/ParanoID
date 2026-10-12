@@ -23,7 +23,10 @@ with the command in [the RFC index](README.md#naming), fetch included. The
 highest number in use is 0029, held twice: `0029-invite-sponsored-registration.md`
 on `main` (PR #69) and `0029-ios-background-delivery.md` on the open PR #58.
 Under the naming rule PR #58 renumbers when it merges, to the next number free
-at that time. No ADR number is reserved here: the ADR gets the next free
+at that time. (Integration note, 2026-10-12: PR #58 was merged and the APNs
+draft was then renumbered to RFC-0031 in PR #72. Every other RFC-0029
+mention in this document is the invite RFC, which keeps 0029.) No ADR
+number is reserved here: the ADR gets the next free
 number when it is drafted, re-checked before `proposed`.
 
 ## Required review rationale

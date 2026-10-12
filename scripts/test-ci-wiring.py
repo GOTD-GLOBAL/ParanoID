@@ -7,6 +7,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class Wiring(unittest.TestCase):
+    def test_ios_shared_caption_dependencies_trigger_pr_and_main_checks(self):
+        workflow = (ROOT / '.github/workflows/ios.yml').read_text()
+        # Captions depend on Android sources; identity bridges depend on the
+        # registrar/core. A producer-only change must not skip the consumer gate.
+        for glob in ('clients/android/**', 'clients/android-devnet/**', 'blockchain/**'):
+            self.assertEqual(workflow.count('"' + glob + '"'), 2, glob)
+        self.assertIn('python3 clients/ios/test_ui_contract.py', workflow)
+        self.assertNotIn('continue-on-error:', workflow)
+
     def test_devnet_controller_and_integration_gate_ci(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
         self.assertEqual(workflow.count('"blockchain/**"'), 2)

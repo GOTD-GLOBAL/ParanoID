@@ -9,6 +9,28 @@ last_reviewed: 2026-09-21
 
 # RFC-0026: Fresh Solana Devnet nickname registration
 
+## Android local profile correction — 2026-10-05
+
+Sergey Maltsev clarified in Telegram (ParanoID thread 2, no permalink supplied):
+«Я могу быть вообще не авторизован ни на каком сервере, а ник свой уже буду видеть».
+This is a REQ-ID-003 display correction, not a new authentication protocol.
+
+The profile projects only `name` from the existing encrypted `devnet-state.enc`
+when its retained `verified` flag is boolean true, the name is canonical, and its
+program/genesis match the configured Devnet registry. This is the last successful
+finalized registration/recovery readback, **not a new online proof**. Displaying it
+needs no messenger account, active session, directory response or network request.
+Creation, restoration, profile reads and checks share one in-process Devnet owner.
+No duplicate nickname/seed is written to SharedPreferences and no storage format
+changes. Pending names are not shown as finalized. Missing and unreadable state
+remain distinct; unreadable state never triggers reset, rekey or auto-recovery.
+
+Server login/admission, contact-key verification, peer trust and E2EE remain
+independent and unchanged. Sharing a server-specific contact link still needs that
+server's active directory context. No multi-server/federation support is implied.
+Existing screenshots/clipboard policy and other historical sections are not
+re-disposed by this correction. RFC and ADR statuses remain unchanged.
+
 ## Revision 2026-09-30: server-sponsored nickname registration
 
 Owner `martadvix-web` (Сергей Мальцев), ParanoID Telegram thread, 2026-09-30, after the

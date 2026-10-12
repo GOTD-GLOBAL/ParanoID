@@ -216,6 +216,8 @@ def main():
                                    ENTROPY2['carol'], NAMES2['carol'], ENTROPY2['dave'], NAMES2['dave']],
                                   capture_output=True, text=True, timeout=180)
             assert loop.returncode == 0 and 'PASS' in loop.stdout, (loop.stdout[-1500:], loop.stderr[-3000:])
+            assert 'PASS explicit own-card link lookup:' in loop.stdout, 'own-link signed-route probe did not run'
+            print(next(line for line in loop.stdout.splitlines() if line.startswith('PASS explicit own-card link lookup:')))
             print('PASS identity-v3 real server + Android JVM/JNI: login without v2 registration, idempotent retry, '
                   'RFC-0028 directory find -> verify -> add -> first message, E2EE text both ways, restart persistence, explicit replacement retiring the old phone, new phone '
                   'messaging, background loop idles until login then delivers. NOT a physical-phone, live-Devnet or call test.')

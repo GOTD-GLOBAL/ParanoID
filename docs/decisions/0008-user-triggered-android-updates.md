@@ -2,12 +2,32 @@
 status: draft
 owner: architecture
 decision_owner: martadvix-web
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-06
+last_reviewed_scope: distinguish retained fixed-service candidate from historical pinned proposal
 ---
 
 # ADR-0008: User-triggered signed Android updates
 
-## Context and proposal
+## Retained implementation reconciliation — 2026-10-06
+
+[RFC-0013's dated amendment](../rfcs/0013-user-triggered-android-updates.md#fixed-service-implementation-reconciliation--2026-10-06)
+is the description of the current Android candidate: a fixed
+`https://paranoid.global/updates` service, platform CA trust with hostname checking,
+and independent installed-signer/package/version verification. The older pinned
+messenger-origin proposal below is historical, not the current transport contract.
+
+The source correction restores the already requested absence of a fixed APK-size
+ceiling and truthful transport tests. It does not change production CA selection,
+phone data, signing identity, installer consent or messenger trust. Domain-name
+recognition or SHA-256 alone is not publisher authentication. CA/CDN/feed and
+signing-key compromise risks remain distinct and documented in the threat model.
+
+This ADR is still **draft**. Source verification/merge authority does not constitute
+permanent distribution architecture acceptance or retrospectively manufacture
+missing human TLS approval evidence. Independent candidate review and physical
+installer acceptance remain separate. No server publication follows from merge.
+
+## Historical context and pinned-origin proposal
 
 Sergey requests downloading updates from inside ParanoID rather than receiving
 every APK in Telegram. [RFC-0013](../rfcs/0013-user-triggered-android-updates.md)

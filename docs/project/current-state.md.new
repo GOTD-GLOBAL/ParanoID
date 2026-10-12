@@ -1,0 +1,1805 @@
+---
+status: accepted
+owner: maintainers
+last_reviewed: 2026-10-06
+last_reviewed_scope: RFC-0030 proposal and the state of the servers seen on 2026-10-05, over the PR70 merge-gate repairs; dated historical records retained
+---
+
+# Current project state
+
+## iOS on identity v3 proposal (RFC-0030) — 2026-10-06
+
+`main` carries Android v48 at `2470dca`. Commits pushed to `main` on the
+evening of 2026-10-05, without pull requests, point Android's default realm
+and its sponsor at the identity-v3 endpoint on the production host
+(`157.180.49.125:38444`), while its login still creates the messenger
+identity on the test VPS `138.16.180.53:38444`
+(`clients/android/src/org/paranoid/text/TextEngine.java:289-290`), and mark
+the v2 service on `:38443` "stopped 2026-10-05" in a source comment
+(`clients/android/src/org/paranoid/text/KeyClient.java:9-14`). No document or
+owner permalink records that change. A read-only pinned health check from the
+build Mac at 2026-10-05T22:00:46Z found no answer on `:38443`, and
+`paranoid-identity-v3` on `:38444` and on the test VPS `138.16.180.53:38444`.
+
+The iOS client knows only the v2 service, so it has no reachable server.
+Since Android v30 a fresh install creates its identity through the Solana
+nickname onboarding, and contacts are bound to their server's realm and pin.
+[RFC-0030](../rfcs/0030-ios-identity-v3.md) (draft) proposes that fresh iOS
+installs adopt identity v3, including the nickname directory, through the
+same Rust crates as Android. A feasibility check on the build Mac compiled the
+Devnet crate for iOS, linked it with the core into an iOS executable that was
+not run, and reproduced the public recovery vector on the simulator in a
+separate Rust binary; the C ABI from Swift is NOT RUN
+([evidence](evidence/ios-identity-v3-20261006/feasibility-mac.md)). Nothing is
+implemented and no phone step was taken for this proposal; the owner's scope
+decision is pending. The iOS client still does not add Solana login.
+
+## PR70 merge-gate repair candidate — 2026-10-06
+
+The owner requested necessary verification and merge after receiving the earlier
+preflight stop. This is source-work/merge authority only, not publication, SSH,
+server/DB changes or ADR acceptance. The feature branch retains v49 nickname,
+v50 own-link and v51 update-page fixes with their earlier scoped review/artifact
+receipts. New updater repairs are **not** in the already delivered v51 APK.
+
+The six iOS caption assertions were reproduced identically on base `2470dca` and
+head `2945526`. The exact caption-only correction from contributor commit
+`6aa73880e4924b9182a7a1977ac9d3161c7f2555` in PR #71 is incorporated: iOS retains
+those words as its own v2 UI, while Android removed them. All 29 iOS UI tests and
+15 Android UI tests pass; no Swift runtime or test algorithm is changed. PR #71's
+RFC and other changes remain separate. The iOS workflow now also triggers for
+Android/registrar changes; its new regression was observed RED, then GREEN.
+
+The updater repair restores REQ-CLIENT-003's no-fixed-ceiling/resource boundaries
+and rejects bogus negative-test successes. RFC-0013, draft ADR-0008 and Android
+reference now distinguish the existing fixed public service/platform CA transport
+from the historical per-messenger SPKI proposal; messenger TLS is unchanged.
+This is candidate reconciliation, not retroactive human architecture approval.
+Independent review and complete current-head CI remain required before merge;
+final receipts are recorded in PR #70. Historical legacy failures remain visible.
+
+The old SharedPreferences nickname-copy attempt in the main worktree is preserved
+but excluded: the reviewed implementation uses the existing encrypted identity
+store and introduces no new nickname persistence. Build-cache symlinks are not
+source commits. No worktree reset, stash/drop or other contributor edits are needed.
+
+## Android update-page correction — 2026-10-06
+
+Owner screenshot identifies installed version `0.0.49-solana-id`. A fresh public
+feed read still returned 49; private v50 was not published without SSH scope.
+Separately, source v48–v50 constructed UpdateController in an unattached `GONE`
+container, while the menu only scrolled a hidden My ID heading. Check results and
+check/download/install buttons therefore had no visible presentation.
+
+The bounded follow-up restores an attached page in the same Activity, preserving
+installer window-focus checks. It does not alter updater transport, verifier,
+provider, permissions, automatic-check cadence, phone identity/history or server
+configuration. Physical acceptance, final review, APK and publication are separate
+gates recorded in PR #70; no new SSH/publication authority follows from this fix.
+
+Transport-test caveat observed on the unchanged base: `test_updates.py` exits zero
+but its early malformed-origin probes hit an uninitialized fixture `server.mode`.
+Those negative probes are not accepted as reliable validation evidence. The old
+RFC's per-server transport and no-fixed-ceiling description also differs from the
+pre-existing fixed-service UpdateClient implementation. These are disclosed
+baseline transport/contract debts, not silently changed or approved by UI work.
+
+## Android contact-link correction — 2026-10-06
+
+Owner phone screenshot shows `@advix` and «Сервер подключён», but tapping the own
+contact link reports that it will appear after connecting. This confirms the
+nickname label on that phone, not offline/zero-membership acceptance. Source v49
+maps an empty `directory_name` OR missing `server_id` to that generic message;
+the nickname cache is filled by a separate best-effort directory-card operation.
+The exact phone-side reason for the empty cache is not established by a screenshot.
+
+The bounded follow-up in PR #70 asks the existing signed current-server card route
+on the share action and uses its confirmed name with the already trusted server
+pin. It does not replace the server name with the global cached nickname, reset
+keys/sessions/history, enable visibility or join unknown servers. Pending final
+verification, review and a retained-signer APK; no new server deployment authority.
+
+## Android nickname profile correction — 2026-10-05
+
+Candidate branch `fix/nickname-profile-independent`, based on `2470dca`.
+Merge, publication and physical-phone acceptance are separate gates recorded in
+the feature PR. REQ-ID-003 display bug: the messenger profile read
+`solana_nick`, but nothing supplied it. RegistrationFlow already persisted `name`
+and `verified` in encrypted DevnetStore, before any messenger server admission.
+The candidate adds a read-only projection and reachable profile without transport
+membership. The saved realm/pin, server data and E2EE state are not changed.
+
+Host regression demonstrates confirmed/pending/empty/corrupt snapshots, restart
+and no projection writes/secrets; Android SDK compilation and UI wiring checks
+pass. A deterministic JVM lifecycle regression also covers cached absence on
+Activity recreation, loading/creation gating and stale callbacks using production
+refresh/routing code with host adapters. Independent worker/UI queues execute the
+full production publisher: queued snapshots and pre-refresh worker repaints are
+fenced across replacement or same-Activity reattachment and explicit refresh. Device screenshot/installation acceptance
+remains NOT RUN. Six iOS caption origin checks already fail on the base revision
+and still fail unchanged; no test
+is suppressed. Other historical dated checkpoints below retain their own scope.
+
+Previous chat claims that v44-v48 completed server switching/multi-server operation
+or that blank nickname meant VDSina/Hetzner login failure were not established by
+source or phone evidence. They are not relied on for this correction.
+
+## Server member directory and contact links candidate (RFC-0028) — 2026-09-30
+
+## Server member directory and contact links (RFC-0028) — 2026-09-30
+
+Merged into `main` as `082f826` (PR #67) on 2026-10-05; its deployment is
+described only in the pull request.
+Implements [RFC-0028](../rfcs/0028-server-directory-and-links.md): member-only directory
+routes on identity-v3 servers with stored owner proofs and contact cards, rate limits,
+core verification of entries (`verify_directory_entry_v1`/`pair_directory_entry_v1`),
+Android v36 search/add/visibility/share-link UI and `paranoid.global` App Link templates.
+Evidence: real-PostgreSQL server tests, core tests and the JVM/JNI end-to-end test
+(find -> verify -> add -> first message) pass locally. NOT run: physical phones,
+live Devnet registry check of a found member, deployed `assetlinks.json` verification,
+independent AI code review required by RFC-0028 before phone release. The test VPS
+database must be re-initialized (new schema, empty-database only) before deployment.
+
+## Solana ID login and sponsored nicknames on the test VPS — 2026-09-30
+
+PR60 merges the identity-v3 login candidate into `main`. On the private Devnet test
+VPS `138.16.180.53:38444` (installed by `deploy/one-touch/install.sh`) the server
+runs identity-v3 with server-sponsored Devnet nickname registration
+([RFC-0026 revision 2026-09-30](../rfcs/0026-solana-devnet-registration.md)).
+Android v35 opens a one-step-per-screen onboarding (create/restore nick with 12
+words, sponsored registration, server choice, login) and tolerates ±300 s phone
+clock skew on login challenges. Owner phone test 2026-09-30: phone 1 registered
+`first` and logged in; phone 2 registered a nick and first failed login with
+`challenge_mismatch` (fixed in v35, not yet re-run on the phone). Two-phone
+messaging and calls through this server are NOT yet confirmed. ADR-0016 stays
+`proposed`; the original v2 production service is unchanged. Invite and own-server
+options are shown in the app as upcoming, not implemented.
+
+## Solana login server candidate — 2026-09-24
+
+Local, not deployed. Shared Rust validator (`key-protocol/src/identity_v3.rs`,
+8 tests) and server mode `identity-v3-local` (`server/src/identity_v3.rs`) implement
+the [v3 contract](../protocol/identity-login-v3.md). 14 real-PostgreSQL tests cover
+enroll, transport reuse, membership-independent challenge, route-bound single-use
+proofs, identity-only inspect, replacement/retirement on all transport paths, lost-reply
+retries, rebind refusal, fail-closed registry, global start budget, cooldown, fixture
+ban and the eight-generation cap. Eight deliberate guard removals were each caught by a
+failing test. A read-only live Devnet check accepted the owner's real test name and
+rejected a wrong name and wrong owner. Three Fable code-review rounds; the last
+returned APPROVE_FOR_LOCAL_CANDIDATE and its recommendations were applied. The
+full server suite result is recorded in the PR. RPC here is a fake in integration tests; real RPC outage/lie/timeout behavior,
+Android login, phones, independent code review, human ADR disposition and any
+deployment remain NOT RUN.
+
+## Solana login protocol draft — 2026-09-24
+
+Independent [R2 review](evidence/identity-login-v3/r2-opus55.md) required three
+narrow corrections; [R3 delta review](evidence/identity-login-v3/r3-opus55.md)
+closed those blockers as APPROVE_FOR_LOCAL_IMPLEMENTATION only. RFC/ADR remain
+draft, human disposition and deployment authority pending. Local implementation
+has begun: shared Rust canonical generation parser and typed LP transcript encoder
+match seven independent Python/OpenSSL primitive fixtures. Two Rust tests pass;
+this is not full context/PDA/registry validation, server authorization or Android
+login. The encoder is not a signing/acceptance API. SQL/RPC/route and phone checks
+remain NOT RUN. Existing service and data are untouched.
+
+[RFC-0027](../rfcs/0027-solana-server-authentication.md) records the owner-requested
+next milestone: server login before Android-driven owner-server deployment.
+Current test-chat/contact migration is waived, not an instruction to wipe data.
+The draft proposes stable membership with a fresh transport account on device
+replacement, preserving immutable peer pins. New contact exchange after recovery
+is a disclosed proposal requiring owner disposition, not seamless chat recovery.
+Protocol review, ADR disposition, implementation/tests and deployment are pending.
+
+## iOS staged integration candidate — 2026-09-29
+
+The PR63 → PR64 → PR66 → PR65 → PR59 chain is reconciled locally with normal
+merge commits, preserving all feature and test additions. The
+[stack integration evidence](evidence/ios-client-20260929/stack-integration.md)
+records the frozen code checkpoints, conflict dispositions and passing Linux
+source gates. Exact-head combined Mac acceptance remains NOT RUN; the original
+per-feature receipts do not cover the newly combined source. PR58 stays a
+separate draft proposal and PR62 is excluded. Product wording and behavior
+choices remain for the owner; no RFC/ADR disposition changes.
+
+PR60 was still open/draft, not merged into `origin/main`, when checked. A pinned
+external health check observed its v3 protocol on a separate test VPS and the
+existing v2 protocol on the original endpoint; the installed SHA was not exposed.
+The iOS stack does not add Solana login or change either service. Neither a main
+merge nor any deployment is performed by this integration candidate.
+
+## iOS new-message marks, in memory only — 2026-09-26
+
+At Yaroslav's request the iOS client counts new messages: a row of «Чаты»
+shows how many messages of the peer this run has not shown, the chat opens at
+a «Новые сообщения» divider, a «↓» button leads down to them, and a reader
+scrolled up is not dragged down. The marks live in memory for the current run
+and reach no file, no defaults, no snapshot, no server and no peer;
+REQ-MSG-003 is unchanged — two marks mean delivered, never read. The feature
+and its words are proposed and await the owner; persisting the mark across
+launches is new stored metadata and needs a new RFC unless the owner widens
+RFC-0024. Android has no such markers yet. Evidence is contributor Mac
+execution on a simulator and a local stand, recorded in the
+[receipt](evidence/ios-client-20260926/unread-markers-mac.md); iOS 17, a
+physical phone and spoken VoiceOver are not run.
+[Rule and limits](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS chat composer and bubbles — 2026-09-29
+
+On iOS a bubble is as wide as its text (Android's margin, a 440-point cap on
+the bubble where Android caps the text), the byte
+counter stands only from 1800 bytes and turns red over 2048, dragging the
+history down dismisses the keyboard, and the text is sent trimmed at its ends
+with the draft put back as typed after a failed send. Core, protocol and the
+2048-byte wire limit are unchanged; Android sends the text as typed and should
+receive the same request. Evidence is contributor Mac execution, recorded in
+the [receipt](evidence/ios-client-20260929/chat-composer-mac.md); a physical
+phone is not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS contacts — 2026-09-29
+
+On iOS «Контакты» is in Russian alphabetical order of the local names with the
+blocked contacts in a folded section (they stay in «Чаты»), the fingerprint is
+shown in groups of eight everywhere and in the contact's own sheet, «Мой ID»
+names the owner's six characters, and the paste sheet has the system's paste
+control. Core, protocol and the shared contact text are unchanged; Android
+keeps the core's order and should receive the same request. Evidence is
+contributor Mac execution, recorded in the
+[receipt](evidence/ios-client-20260929/contacts-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#contacts-and-qr).
+
+## iOS chat list by recency — 2026-09-29
+
+«Чаты» on iOS is ordered by the time stamped on each conversation's last
+message, newest first, using the local time the core already stores for each
+message (RFC-0023, a fourth client-only reading the RFC did not list);
+conversations without a timed message follow in the core's order, and a call
+moves no chat because the call log keeps no time (RFC-0023 «Privacy»). A
+missed call in a row's preview is red, and the rows of both lists are buttons
+that show a grey fill while pressed. Core, protocol and server are unchanged; Android keeps the core's
+order and should receive the same request. Evidence is contributor Mac
+execution, recorded in the
+[receipt](evidence/ios-client-20260929/chat-list-mac.md); a physical phone is
+not run. [Rule](../clients/ios/self-service.md#text-receipts-and-the-lanes).
+
+## iOS call screen after the call — 2026-09-28
+
+The iOS call screen closes itself after the call (two seconds to read an
+outcome, five when it names a problem), offers «Перезвонить» for an own call
+that never connected — through the same confirmation as «Позвонить» — and a
+call put away with «К переписке» stands on a line over every screen with the
+way back. A call that already had audio and lost it to the system is named for
+it («Звонок прерван: система забрала звук») instead of «Не удалось установить
+связь». Controller, protocol, peer and server are
+unchanged; the captions are proposed and await the owner, and Android should
+receive the same request. Evidence is contributor Mac execution on a
+simulator, recorded in the
+[receipt](evidence/ios-client-20260928/call-screen-mac.md); a physical phone
+and a real audio interruption are not run.
+[Rule](../clients/ios/voice-calls.md#the-screen-after-the-call-and-the-call-behind-the-screens).
+
+## PR54 closure preparation — 2026-09-22
+
+Sergey reports that nickname registration now works and requests completion of
+PR51/PR54 and issue52, explicitly excluding issue38. This is an owner-reported
+registration result, not a new independently observed phone recovery/call test.
+The private v28 handoff already received independent review closure in the
+[evidence](evidence/android-v28-devnet-20260922/README.md). Merge authorization
+is separate from permanent ADR acceptance and from APK/feed/server deployment.
+The proposed ADR0015 and draft RFC0026 retain their status.
+
+A dedicated offline Devnet CI job now exercises Rust tests, real JNI/controller
+retries, UI generation/error fences and integration/notices checks. Exact SBF pin,
+Android storage/runtime and live-chain evidence remain separate gates; CI does
+not silently substitute synthetic RPC for live-chain proof. The historical
+legacy-history RED job remains visible and unchanged.
+
+Blockchain server login is deferred to the next workstream. Sergey confirms one
+active device initially (recovered-seed login replaces the previous device), with
+simultaneous multi-phone authorization required later, including ten phones as
+an example rather than a fixed maximum. This product direction is not a wire
+contract, implemented revocation or seed-based chat-history recovery. Existing
+messenger identity, contact verification, E2EE and stored data remain unchanged.
+
+## Integrated Android v28 candidate — 2026-09-22
+
+The owner rejected a standalone registrar and requested one main ParanoID APK
+with existing chats/calls and built-in Devnet nickname registration, then asked
+for an update build after disclosure that seed recovery currently restores ONLY
+the Devnet nickname key, not the messenger account/history. Package and retained
+signer remain unchanged. No server identity/QR/E2EE binding is silently changed.
+RFC0026's integrated amendment and proposed ADR0015 describe this boundary.
+
+The version28 candidate builds through the existing chat/call/TLS/updater gates.
+A separate disposable emulator package executes the same DevnetStore code against
+real Android Keystore/AtomicFile; restart and interrupted-write-marker checks pass.
+A real Devnet test name was registered through the new shared controller, finalized
+records verified, and its nickname identity recovered via24 words in a fresh
+local state. This host/JNI chain test is not physical-phone or full-account recovery.
+Independent integrated-artifact review and private handoff remain separate gates.
+The integrated ARM64 APK has not been launched here; Android runtime evidence is
+from the separate storage harness only. A latched Devnet store has no safe in-app
+reset in this build. Clearing application data would remove the latch but also
+lose the messenger ID/history, so users must NOT do that to repair Devnet; leave
+messenger data intact and report the error. Native module linkage failures are
+contained inside the Devnet worker and must not terminate the messenger process.
+
+## Android receipt presentation candidate — 2026-09-18
+
+At Yaroslav's request, a separate Android branch replaces typed delivery glyphs
+with Canvas marks in the outgoing bubble and chat-list receipt position, and
+adds the existing iOS one-time explanation after an own delivered message.
+REQ-MSG-003 is unchanged: queued/server-stored/peer-delivered, never read. One
+non-sensitive installation-local preference remembers dismissal; no core, wire,
+identity, snapshot, server or iOS source changes.
+[Implementation and scoped evidence](../clients/android/receipt-presentation.md)
+record JVM RED/GREEN, real SDK/full signed APK build and isolated emulator
+Canvas/density/font-scale/accessibility-label/dismissal-restart checks. The
+probe does not prove full MainActivity visuals, spoken TalkBack or physical
+phone behavior. No release-number bump, publication or messenger install.
+
+On 2026-09-22 Sergey requested completing and merging PR51/PR54, closing issue52
+and leaving issue38 untouched. PR51's integration with main preserves all fourteen
+non-conflict files byte-for-byte and retains added documentation from both sides
+of the two documentation-only conflicts. Actual receipt JVM, twelve Android UI
+contracts and six CI wiring checks pass on the integrated tree. The first JVM
+attempt lacked the pinned JSON dependency; after the canonical dependency
+preparation it passed. Actual Android35 SDK compilation, message presentation,
+time and call-log checks, twenty-three iOS UI source checks and Markdown with the
+CI-pinned CLI2 0.18.1 pass. An initial unpinned newer local linter reported baseline
+table-style warnings; no repository rule was weakened. Independent merge review
+and fresh CI remain gates; no server/phone/data action is authorized by source merge.
+
+## Solana Devnet registration workstream — 2026-09-21
+
+The owner requests fresh Devnet identities and explicitly permits loss of current
+test accounts/messages for this transition, removing legacy migration as a gate.
+[RFC-0026](../rfcs/0026-solana-devnet-registration.md) scopes a minimal registry and
+Android registration, separate from server login and multi-server membership.
+No hosted/phone reset or Mainnet action follows. The local SBF registry, shared
+Rust client and separate Android registration candidate now build and pass the
+[bounded local checks](evidence/solana-devnet-20260921/README.md). The owner-funded
+Devnet deployment address has a verified 1-test-SOL balance (finalized slot
+501971808). Funding is no longer a blocker. Independent code/artifact re-review approved
+bounded Devnet deployment/chain tests and closed B1-B5. The documentation
+supplement also passed independent review. On2026-09-22 Sergey explicitly
+instructed deployment in Devnet. The reviewed SBF is now deployed and finalized;
+canonical ProgramData/authority checks and an independent CLI dump matched the
+reviewed artifact. See the [actual deployment receipt](evidence/solana-devnet-deploy-20260922/README.md).
+Total spend0.37702096 test SOL; remaining0.62297904. No real registration or
+physical-phone acceptance is claimed. RFC0026 remains draft. Merge and APK
+publication remain separate gates; no Mainnet/server action followed.
+
+## iOS call-tone lifecycle correction — merged after contributor Mac receipt (2026-09-18)
+
+At Yaroslav's request PR50's initial tone player was corrected after review.
+[RFC-0025](../rfcs/0025-ios-call-tone-lifecycle.md), proposed, records the policy:
+ordered authenticated presentations drive a queue-confined session/tone policy;
+player I/O has its own executor, muted startup and generation/deadline fences.
+Incoming uses foreground-only ambient, not a pre-Answer recording session.
+Caller ringback and a bounded terminal busy tail use an already-owned call
+route; capture is revoked separately. Call/Answer awaits actual audio readiness
+within the shared setup deadline. SDK interruption/reset recovery balances the
+pinned WebRTC activation count rather than assuming activation is idempotent.
+
+The [handoff](../clients/ios/call-tones-handoff.md) describes new failure, held-
+player, timer, cancellation, coalesced-interruption and readiness regressions.
+Linux source checks can verify wiring, not Swift execution or audibility. The
+fresh Mac run this corrected tree needed was reported by Yaroslav for exact head
+`4066f36` (update recorded 2026-09-23): five focused suites 42/0, app target
+without Keychain 90/0, ad-hoc-signed Keychain 11/0, ParanoidKit 362/0, fresh
+device bundle 23 checks/1 skipped, all 16 ios-static Python gates green. This is
+contributor-reported, quoted in the coordinator's bot-authored merge-gate
+review, and not a coordinator run ([receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)).
+PR50 then merged into main as `02baeb2` on 2026-09-18. At main `c735f94`, the
+iOS, core and key-protocol trees are still byte-identical to `4066f36`. Physical-phone
+audibility, speaker/headset/silent-switch, haptics, real interruptions and
+real-peer results remain NOT RUN. No publication, deployment or RFC/ADR
+acceptance has occurred.
+
+Historical contributor receipt on `4db2f8c` (same initial iOS source as its
+pre-merge branch): package 362/0, app68/0 with tones12/12, fresh bundle23/1 and
+source gates green. That receipt does **not** cover the revised lifecycle.
+
+## Android v27 published — 2026-09-18
+
+[The v27 release receipt](../clients/android/v27-release.md) records the actual
+retained-signer publication of version27 / `0.0.27-timeout` from source abc998f
+(main after PR48 plus packaging metadata). Both the old v25 and current updater
+downloaded the live artifact with the expected digest. The downloaded APK also
+passed package/version/signer/alignment checks. No phone installation or issue38
+resolution is claimed; no server runtime/config/data change was performed.
+The source-preparation entry below is superseded by this dated receipt.
+
+## Android v27 release preparation — 2026-09-18
+
+Sergey requested merging PR48 and publishing a new in-app Android update. PR48
+merged as `408911f32833b2e3e62411bafff0adcdcfe90daf`; this release branch adds only
+version27 / `0.0.27-timeout` packaging and matching version assertions. Runtime
+code and shared core are the merged main, including PR45/46 UI/history/time and
+PR48 response timeout changes. The observed existing feed is version26.
+Retained signer/package, strict TLS, native installer consent and phone data
+remain protected. Build, independent artifact review and verified publication
+are separate gates; this source preparation is not a publication receipt.
+
+## iPhone local metadata out of the OS backup — merged source, decision proposed (2026-09-18)
+
+At Yaroslav's request the candidate takes the iPhone's local contact names and
+call log out of `UserDefaults`, which iCloud and encrypted local backups
+include, and puts them in `Application Support/paranoid/` files excluded from OS
+backup on their own inode
+([RFC-0024](../rfcs/0024-local-metadata-at-rest.md), **proposed**). The state
+file's commit sequence is reused: the candidate is created empty and flagged
+before a single row is written and before the rename, the committed file is read
+back byte for byte and its flag read back too. Positive readback mismatch or
+an explicitly false flag permits removal; inconclusive I/O and directory-sync
+failures preserve the remaining file. A phone updating from an earlier build migrates each preference
+once and clears it only after that proof, so an interrupted migration repeats
+instead of losing the table.
+
+This is backup exclusion, not encryption: the bytes stay plain JSON inside the
+container under `completeUntilFirstUserAuthentication`, and container access is
+unchanged. Sealing the files is RFC-0024 question 2. `ReceiptHint` stays in
+preferences, naming no contact and no call. Android is unaffected, its manifest
+already disabling application backup, and no core, protocol, server, route or
+snapshot behaviour changes.
+
+The first revision of this candidate was reviewed on 2026-09-18 and changed
+before merge. The review found five ways a failure of the store destroyed or
+dropped the table it held: a failed directory sync deleted the committed file, a
+transient read failure became an empty table that then overwrote the real one, a
+preference was retired against bytes nobody had parsed, the read ceiling sat
+below the largest admissible call log so that log would never migrate, and a
+save that succeeded after a failed migration left the old copy behind. All five
+are fixed, and the reviewer's five regressions are in the suite: run against the
+previous revision they are **5 tests, 5 failures**, including `7428417` bytes
+against the old `4194304` ceiling. A sixth was found here while fixing them —
+the candidate took its backup flag only after the rows were already written, so
+an interruption in between left them in a file a backup would take — and it is
+closed by flagging the candidate while it is still empty.
+
+An adversarial pass over that fix, run here the same day, judged twenty findings
+and confirmed twelve. Three were real defects of the same class as the first:
+a verification that *threw* after the rename still deleted the committed file,
+although the copy it replaced was already unlinked and an unanswered question
+proves nothing; a preference could be written back over a file that would not
+open, although that preference may be older than the file; and emptying a table
+removed the file before retiring the preference, so a failure in that window
+left the backup-eligible copy to resurrect it. All three are fixed with
+regressions. Two further behaviours are now stated in RFC-0024 as decisions
+rather than left implicit — an unparseable file is replaced rather than sealed,
+and a seal lasts the process because the model builds each store once. That
+revision still migrated metadata before `start()` decided `.noStand`; the
+bootstrap follow-up below corrects that regression. The rest of the twelve were stale
+statements in the client README, the voice-call document and two source
+comments, all corrected.
+
+Mac evidence on this candidate: ParanoidKit **362/0**; the UI-contract,
+storage-bootstrap, documents-against-evidence and component-boundary source
+gates green; the freshly rebuilt device bundle **23 checks, 1 skipped** (signing
+is the owner gate). No physical backup/restore experiment on a device is
+claimed, no simulator scenario covers a restore, and acceptance of the storage
+rule remains the decision owner's.
+
+### PR47 bootstrap follow-up — inclusion inferred from the 4066f36 full-target receipt
+
+At Yaroslav's request the coordinator corrected the remaining review findings
+on top of `57a45de`. `AppModel` now starts with in-memory-only metadata and loads
+the persistent stores once after successful client/runtime bootstrap, before
+starting lanes or showing `.running`. A denied or failed bootstrap does not
+migrate metadata; ordinary view reads cannot trigger migration. Three new
+app-level XCTest cases use isolated preferences/files and injected bootstrap
+outcomes. The Linux UI source regression was RED before the change and all
+23 UI contracts now pass. The earlier 362/0 on `57a45de` does not cover this
+patch. [Exact scope and Mac commands](../clients/pr47-bootstrap-followup.md).
+RFC0024 and client/threat documentation now consistently distinguish proven
+invalidity from inconclusive errors, and successful migration from retained
+legacy data or historical backups.
+
+Update recorded 2026-09-23: PR47 merged as `5026236`, which is an ancestor of
+PR50's `4066f36`. Between the two, the metadata store sources and
+`LocalMetadataBootstrapTests.swift` are unchanged, and `AppModel.swift` changes
+only in the call-audio path. So the full app-target (90/0, Keychain excluded)
+and ParanoidKit (362/0) runs of the
+[4066f36 contributor receipt](evidence/ios-client-20260918/mac-receipt-pr50-4066f36.md)
+support inferred inclusion of the three unchanged bootstrap cases, rather than
+a new dedicated PR47 receipt. Individual suite logs were not retrieved; the
+focused command was not reported separately, and there is no device, backup or
+restore evidence. No installation or ADR acceptance.
+
+## Android response timeout candidate — 2026-09-18
+
+Issue #39: ordinary self-service v2 reads use 15 seconds, events 30 seconds and
+connect 8 seconds. Key/auth, TURN and update transports are included. Real
+loopback pinned-TLS tests fail on the old 8-second reads and pass for delayed
+9-second replies and 10-second HTTP 408 responses. Existing pooling, independent
+lanes and redirect refusal pass. This is local JVM evidence, not phone, APK
+publication, merge or hosted rollout. Issue #38 remains separate; raising this
+bound does not establish or repair its network-drop cause.
+
+## Message time — local candidate (2026-09-17)
+
+The candidate gives a message the instant the device that wrote or received it
+saw, stored in the core's sealed snapshot and never transmitted
+([RFC-0023](../rfcs/0023-message-time.md), **proposed**). Both clients show it
+under the bubble, put a pill where the day turns and date the conversation rows.
+An entry written before this candidate keeps no time and is shown without one.
+
+PR45 has merged into main. The PR46 integration work now includes main
+`de439206172e36dcb6da0c55e6a886900d53f309`, preserving the current Android
+push/crash/packaging fixes and server maintenance gates. An older build cannot
+open a snapshot carrying the new field. Sergey selected device-local time and
+accepted coordinated alpha updates on 2026-09-17; the provenance and remaining
+ADR boundary are in [RFC-0023](../rfcs/0023-message-time.md#owner-direction-and-remaining-decision-boundary).
+PR46 has since merged into main as `c9ca0679`. That candidate did not implement
+the separate long-lived-history or iOS metadata-backup follow-ups; the latter is
+the 2026-09-18 candidate above.
+
+Original contributor Mac receipt for `7093845`: core `clean_first_contact` 20/0 including the two new
+time cases, `sync_recovery` 6/0, `state` 3/0, `realtime_signing` 6/0,
+`voice_calls` 14/0, `registration` 7/0, `key_vectors` 1/0, `self_service`
+unchanged at 10 passed with the same 14 legacy failures; `fmt` and `clippy`
+clean. **Not run:** any physical device, a signed build, the Android APK, and
+the hosted server. No merge, deployment or ADR acceptance is implied.
+
+The [2026-09-18 coordinator integration record](../clients/pr46-integration.md)
+adds actual Linux core, SDK/APK and source-gate evidence, including duplicate/
+receipt timestamp preservation and backwards-clock checks. The Android time test
+now gates both CI and APK build. Its retained-signer local versionCode26 APK is
+review-only, not the published v26 and not authorized for delivery. Original Mac
+results, Linux source checks and still-unrun phone/iOS runtime gates remain
+separate.
+
+## PR45 current-main integration candidate — 2026-09-17
+
+The [integration record](../clients/pr45-main-integration.md) combines PR45
+`ee8d043` with main `6b428c8` after PR34/35. Cold-push main-thread ownership,
+Firebase-only R8/DEX guards, structured crash reports and maintenance gates are
+preserved. Local retained-signer Android build and supported core tests pass;
+legacy keeps exactly 14 known failures. iOS/core sources remain identical to
+Yaroslav's Mac-verified `ee8d043`. The local APK inherits versionCode26 only for
+review: it is not the published v26 and must not be delivered under that number.
+RFC-0022 owner disposition, physical-device checks and main merge remain gates.
+No feed, phone, live server or architecture acceptance action occurred.
+
+## Chat marks, call rows and unlimited history — local candidate (2026-09-17)
+
+At Yaroslav's request the candidate removes the 200-entry conversation ceiling in
+the core, draws the iOS delivery marks instead of typing them, records a finished
+call as one local row in its conversation on both clients, and gives the iOS
+application an icon and an explicit display name. The reasoning, the compatibility
+consequences and the questions for the decision owner are in
+[RFC-0022](../rfcs/0022-unlimited-conversation-history.md), which is **proposed**:
+removing the ceiling changes which stored snapshots are valid, so an older build
+cannot open a newer state and a peer still on the old build drops what it cannot
+store. Both phones must be updated together, and acceptance is the owner's.
+
+Nothing crosses the wire that did not before: no in-band message kind, no server
+route, no schema column, no change to the sealed snapshot's shape, and no read
+receipt anywhere (REQ-MSG-003 is unchanged). A call row is each device's own
+account of a call it watched, kept beside the local contact names.
+
+Verified on this Mac: core `clean_first_contact` 18/0, `sync_recovery` 6/0,
+`state` 3/0, `realtime_signing` 6/0, `voice_calls` 14/0, `registration` 7/0,
+`key_vectors` 1/0, with `self_service` unchanged at 10 passed and the same 14
+legacy failures listed in `scripts/ci-legacy-client-tests.txt`; ParanoidKit 318/0;
+the unsigned simulator application builds with the new icon; Android host smokes
+(call controller, call log, message presentation, contact names) pass and the
+Android/iOS call-scenario parity gate reports 105/105. **Not run:** any physical
+device, a signed build, the Android APK (no SDK on this machine), the simulator
+text and voice flows, and the hosted server. No merge, deployment, TestFlight or
+ADR acceptance is implied.
+
+### Coordinator validation follow-up
+
+The [Linux validation and fixes](../clients/pr45-validation.md) record the
+real Android35 compile failure, its correction and a retained-signer local APK
+build, separate from Yaroslav's Mac receipt above. Core gates pass; local fixes
+also preserve call-repaint status, recheck missed-notice foreground state and
+restore the iOS receipt accessibility element. The subsequent Mac receipts below
+close compilation and simulator accessibility-label gates; physical VoiceOver
+speech remains unverified. No phone, feed publication, deployment or ADR acceptance
+follows; that earlier APK was a versionCode22 review candidate, not a release.
+
+### Mac receipt and iOS anchor parity follow-up
+
+Yaroslav reports ParanoidKit 318/0 and unsigned simulator build on `2ee749d`,
+then simulator text-flow PASS on `ed4e2f8` with the delivery accessibility
+labels checked at runtime. The [dated receipt and scope](../clients/pr45-validation.md#contributor-mac-receipt-and-ios-anchor-follow-up)
+separate contributor execution from coordinator checks. The iOS patch aligns
+unavailable/empty call anchors with Android and adds three XCTest cases.
+Yaroslav's subsequent `ee8d043` Mac receipt reports CallLogTests 16/0, full
+ParanoidKit 321/0 and unsigned simulator build PASS; see the validation record.
+Names/log backup exposure remains documented for owner disposition in RFC-0022,
+with no storage migration or live action.
+
+## PR35 source integration and maintenance gates — 2026-09-17
+
+The APK-cap rollout branch is integrated with main `4830134` in a separate
+review worktree. Both branches' dated Android/iOS/TLS and server evidence remain
+intact. New CI wiring covers the one-off metadata tests and freshly packaged v2
+backup/restore/rollback/interrupt checks on disposable synthetic PostgreSQL data.
+REQ-MSG-004 and REQ-DEPLOY-002/003 remain unchanged; draft RFCs/ADR-0008 are not
+accepted by this source merge. The dated hosted result below is from September 13,
+not a fresh host check or a new deployment. CI and independent review results
+are recorded on PR35 before merge; no new APK, phone or hosted action is implied.
+
+## APK-cap server rollout completed — 2026-09-13
+
+[The actual rollout record](../operations/apk-cap-rollout-2026-09-13.md) supersedes
+the initial blocker below. Message release9f37215d844b21abae3c is active under the
+unchanged coordinator CLI; the actual process binary hash matches the tested kit.
+Original records were preserved during exact maintenance reconciliation. The first
+attempt safely rolled back on the known optional FCM schema; a strict reference
+schema/backup-coverage correction then passed fifteen packaged tests and review.
+The successful update verified encrypted restore of all seven tables, including
+push tokens, before switching. TLS key/certificate/pin, PG identity, unit and
+semantic config were preserved. Live old-v25 updater downloads the unchanged v26
+feed correctly. Phone call/push/reboot acceptance remains unrun; no permanent
+ADR acceptance or generic future drift bypass is claimed.
+
+## APK-cap server deployment blocked — 2026-09-13
+
+The owner authorized server update and bridge publication after PRs32/33 merged.
+The locked native server candidate was built, but original coordinator status
+refused config/certificate/unit identity drift before deployment. Read-only worker
+inspection confirmed unchanged release, PG identifier, TLS key and pin. No drift
+adoption or code switch was attempted. [The blocked-rollout record](../operations/apk-cap-rollout-blocked-2026-09-13.md)
+retains evidence and required reviewed reconciliation. Android delivery is a
+separate operation; it does not prove the server was updated.
+
+## PR34 v26 source integration candidate
+
+The [integration review](../clients/android/pr34-integration-review.md) records
+local fixes, actual SDK/split-DEX and host test results, and remaining gates.
+
+The [dated v26 publication record](../clients/android/v26-bridge-release.md)
+covers the bridge published on 2026-09-13, including v25 call-owner and split-R8
+fixes absent from main. Its server-blocked statement is historical evidence for
+that operation, not a fresh host status check. This integration retains current
+main's complete evidence (including later iOS/TLS entries) and removes an
+accidentally committed output-truncation placeholder from the PR branch.
+Local integration/testing is not a new APK publication, phone acceptance,
+server deployment, main merge or architecture approval.
+
+## C1 integrated and verified at host/simulator scope (2026-09-14)
+
+PR43 merged as `96298cd2f3968374f9035226069bfe704079b33f`, with parents e9c767b
+and dad2f7d. The coordinator verified that clients/ios, .github and CHANGELOG.md
+are unchanged from tested dad2f7d; the only manual conflict resolution joined
+the C1 and PR42 documentation sections. No runtime resolution was introduced.
+Yaroslav's [complete dad2f7d Mac receipt](evidence/ios-client-20260913/mac-receipt-pr43-dad2f7d.md)
+reports C1 **7/0 GREEN**, full package **300/0**, lazy-key **14/0**, storage
+**25/0**, signed-simulator app **64/0**; the old cb52330 baseline executed
+**7 tests / 13 expected assertion failures / 0 unexpected**, Swift exit 1,
+harness exit 0. This closes C1 at that scope, not a real iPhone tap-race claim.
+All five named CI checks passed on 96298cd; informational legacy remains failed.
+[Final integration review](evidence/ios-client-20260913/pr36-review-96298cd.md)
+and [C1 handoff](../clients/ios/call-controls-handoff.md) distinguish contributor
+execution from coordinator source checks. PR36 main merge is still Sergey's
+explicit decision; ADR0014, physical-device acceptance, export/TestFlight and
+all live operations remain separate gates. None is authorized by this receipt.
+
+## iOS PR41 integrated; Mac package/simulator verified (2026-09-14)
+
+Yaroslav's [exact aab9e5d receipt](evidence/ios-client-20260913/mac-receipt-pr41-aab9e5d.md)
+reports package compilation and full suite **293/0**, lazy-key **14/0**, storage
+**25/0** and signed-simulator ParanoIDTests **64/0**. This closes the test-fixture
+Swift6 compile error; the [earlier e642907 failure](evidence/ios-client-20260913/mac-receipt-pr41-e642907.md)
+remains historical evidence, not erased or described as a passing package run.
+The coordinator verified PR41 merged into the iOS feature branch as cb52330,
+with an identical tree to aab9e5d and both receipt SHAs retained in history.
+All five named CI checks passed on cb52330; informational legacy history failed.
+[Handoff and review disposition](../clients/ios/review-integration-handoff.md).
+PR36 remains open. The [full cb52330 re-review](evidence/ios-client-20260913/pr36-review-cb52330.md)
+found C1/P2 in End/Reject and mute/speaker targeting. That historical finding
+is now closed by PR43 and the dad2f7d receipt described above; prior
+storage/Answer corrections remain closed at their own verified scope.
+Main integration and permanent ADR acceptance remain separate owner gates.
+No new device, export/TestFlight or live action
+is implied. The new receipt is contributor execution, not a coordinator Mac run.
+
+## iOS review integration corrections — local candidate (2026-09-14)
+
+Yaroslav requested coordinator implementation of F1–F7 from the full PR36 review
+on f1fbdb2, followed by his Mac verification. The separate candidate covers
+owner-ordered freeze notification, call-bound Answer consent, safe initial-open
+retry, valid onboarding checkpoint completion, call-scoped TURN cancellation,
+remote-video proximity and the pinned-session source gate. The scope remains
+iOS/tests/documentation only; RFC-0021 and ADR-0014 stay proposed.
+[Handoff and exact verification scope](../clients/ios/review-integration-handoff.md)
+separate coordinator Linux source checks from contributor Mac execution on
+aab9e5d, applicable to the identical cb52330 tree.
+No device, main merge, TestFlight or live-server action is implied.
+
+## iOS lazy wrapping-key correction — local candidate (2026-09-14)
+
+At Yaroslav's request, the coordinator implemented a separate candidate based on
+PR36 revision d96cea1: no key on Welcome, key acquisition at first commit, strict
+key/file XOR, and no pending-defaults recovery authority. Existing state/codec
+and reinstall-marker meaning are unchanged. Partial first-commit key creation
+can freeze the installation; no key is deleted as rollback. Source-contract
+RED/GREEN and UI checks ran on Linux. Yaroslav reported Mac execution of exact `0709212`: package 273/0,
+lazy-key 9/0, storage 25/0 and signed-simulator Keychain 11/0, with baseline RED.
+The [receipt](evidence/ios-client-20260913/lazy-storage-mac-0709212.md) records the
+initial missing-notices failure and setup. The subsequent key-readback/direct-commit follow-up `628958b` also has a
+[separate Mac receipt](evidence/ios-client-20260913/lazy-storage-mac-628958b.md):
+lazy-key 14/0, storage 25/0, full package 278/0 and signed simulator Keychain 11/0.
+Reviewed storage findings are closed at that host/simulator scope. The receipt
+commit is docs-only; physical device, upgrade and power loss remain NOT RUN. Earlier evidence
+below remains revision-scoped, not proof for this candidate. See
+[handoff](../clients/ios/lazy-storage-handoff.md). No merge, ADR acceptance,
+TestFlight or live-server action is implied.
+
+## APK ceiling removal — local Android candidate (2026-09-13)
+
+Sergey requested removal of the arbitrary APK cap on both components, while
+avoiding unnecessary binary growth. Android candidate removes parser/provider
+ceilings, keeps signed-long length and overflow-safe streaming checks, and checks
+available cache space before transfer. Local JVM/pinned-TLS tests pass with a
+23,400,000-byte synthetic transport fixture, plus unchanged integrity/trust
+rejections. This is not signed-APK installation or phone evidence. The separate
+server RFC-0013 amendment/PR owns the shared contract and server resource changes;
+the reviewed server candidate is integrated here; installed clients still enforce
+the old ceiling until updated.
+Review additionally moved fallback PackageInstaller allocation/copy/fsync off UI,
+with eight host-adapter lifecycle/fault cases and full SDK35 Java compilation
+passing. Commit remains foreground-gated and user-confirmed. Independent fallback AI review
+closed the UI-thread-copy and acquisition/close exception findings with APPROVE;
+Opus was unavailable, so no Opus or human-audit claim is made.
+A reviewed retained-signer bridge within the legacy ceiling must precede larger
+feed publication, unless manually installed in place. No release/deploy/merge.
+
+## APK ceiling removal — local server candidate (2026-09-13)
+
+Owner direction is recorded in RFC-0013 and draft ADR-0008: no fixed APK size
+ceiling, no unnecessary binary growth. Server candidate uses fixed-memory hashing
+and anonymous disk snapshots, retaining two permits through response lifetime.
+Local update unit/integration checks pass, including above-old-cap transport and
+source mutation after verification. Android is a separate PR; installed clients
+still require a bridge within the old ceiling. No merge, deployment, feed change
+or phone acceptance is implied. Independent fallback AI review approved the final
+bounded-channel implementation after fixing cancellation/I/O permit coupling;
+Opus CLI could not authenticate, so this is not an Opus or human audit. Rollout
+and physical-phone acceptance remain gates.
+
+## Automatic same-key TLS maintenance installed — 2026-09-13
+
+The [bounded same-key automation](../rfcs/tls-same-key-automation.md) is installed
+on the existing host with a daily persistent user timer. It renews within 30 days
+for 90 days, preserves key/pin/profile, journals public certificates and recovers
+pending transactions before any not-due shortcut. Independent review is APPROVE;
+13 crypto/file/control tests, four installer gates and actual local systemd/TLS
+renewal/no-op/rollback checks pass. The [runbook and hosted receipt](../operations/tls-auto-renewal.md#observed-installation--2026-09-13)
+record successful first `not_due` execution and enabled/active timer. Current
+certificate expiry remains `2026-12-12T07:38:09Z`; renewal becomes due on
+`2026-11-12T07:38:09Z`. Installation did not restart messaging or change its
+certificate/config/package. Sergey explicitly authorized automatic **same-key**
+renewal in this task; original Telegram permalink is unavailable. No permanent
+ADR acceptance, key rotation, Telegram failure alert or phone/iOS acceptance is
+claimed. The prior one-off record below remains historical evidence.
+
+## Same-key TLS certificate renewed — 2026-09-13
+
+The hosted alpha now serves a renewed self-signed certificate, valid through
+`2026-12-12T07:38:09Z`, with the original TLS private key and SPKI unchanged.
+The [operation and evidence](../operations/tls-renewal-2026-09-13.md) record
+owner-scoped authority, independent review, synthetic rollback tests and actual
+host/external checks. Only the dedicated messaging user service was stopped and
+started; configuration, package, PostgreSQL identity and neighboring services
+were preserved. Android `PinnedTls` on the JVM accepts the actual renewed
+endpoint; physical phones and iOS were not tested. This retained 90-day renewal
+is not automation: another renewal is needed before December 12. Key rotation
+and any contact/channel migration still require a separate RFC.
+
+## Native iOS client candidate — 2026-09-13
+
+A second client exists as a pull request: a native SwiftUI application over the
+**unchanged** shared Rust core, reached through a C-ABI bridge crate beside it.
+[RFC-0021](../rfcs/0021-ios-client.md) and
+[ADR-0014](../decisions/0014-ios-client.md) are `proposed`, not accepted;
+`server/`, `clients/core/src/`, `clients/android/`, `key-protocol/` and
+`deploy/` are untouched and a boundary gate enforces it.
+
+**CLAIMED (simulator, host or local stand — the unchanged server binary against
+a private PostgreSQL 16 on the build Mac).** Registration, QR contact exchange,
+E2EE text with one-check and two-check receipts, block and unblock, the
+first-contact story for a receiver with zero contacts, a reinstall that starts
+a new identity, the injected transport and storage faults, the nine pinned-TLS
+leaf checks, the call state machine against the Android smoke scenarios
+(`94/94` labels), the TURN credential lane over a real pinned socket, and two
+simulators placing and answering calls in both directions over direct ICE with
+about 2300 RTP packets per side per call. Since 2026-09-14 the lanes also
+**reconnect when the network changes**, which they did not before: a change of
+the default path mints a generation with the lanes left enabled, cancels what
+is on the socket and relaunches them, so a long poll over an interface the
+device no longer has ends there instead of at its own 30-second bound plus the
+backoff after it, while a change seen with the lanes stopped starts nothing;
+«Повторить подключение» does the same restart unless a call is live or the
+client is already connected, where it keeps Android's harmless half; and a
+start or a restart says «Подключение · подробнее» rather than leaving the
+previous caption standing, inventing no connected state. It is the port of
+`TextEngine.watchNetwork()` and `RealtimeLoop.restart()` (Android's own fix of
+2026-09-12, `2cdb850`), it adds no dependency, no background mode and no
+`URLSession` outside the pinning delegate, and it is `CLAIMED`: a real path
+change was never produced, because a simulator has no network of its own — the
+rule was driven through the shipped watcher, runner and policy instead
+([evidence](evidence/ios-client-20260913/README.md)). The 261 package tests
+pass, six of them the reconnect rule's and five the storage and camera answers
+to the review of 2026-09-14, with fifteen more in the application bundle and
+eleven on the signed simulator's real Keychain; the
+application test bundles and the local-stand scripts were run by the steps that
+delivered them, and their output stays under `clients/ios/out/`, which is not
+committed.
+
+**SHOWN (physical phone).** On 2026-09-13 a signed Debug build ran on an
+iPhone 16 Pro Max (iOS 26.6.1, Developer Mode on, team `5RPGVC566Q`, bundle
+`global.paranoid.messenger`, installed with `xcodebuild` and `devicectl`)
+against the local stand, bound to the Mac's LAN address so the phone could
+reach it: identity creation on the device, the client's own QR, a contact read
+off the Mac screen with the real camera, the fingerprint sheet, two texts
+device→peer and one peer→device with receipts, and a call to a simulator that
+connected and carried video from the device (the simulator has no camera;
+whether audio was heard is not recorded). Two defects surfaced there, neither
+on the device: an empty entitlements file made the simulator's Keychain answer
+`errSecMissingEntitlement` (fixed by declaring `keychain-access-groups`), and
+the fixture peer kept its key in memory only (a persistent peer replaced it —
+harness, not product). Later that day a Release build signed with the same
+team reached the hosted alpha, once App Transport Security was switched off:
+the iPhone registered, paired the owner's Android from his QR image (scanned
+off a screen) and sent one text the hosted server accepted — one check.
+Delivery to the owner's Android was still pending because his phone had not
+polled, and no reply exists. That pairing and that one accepted text were the
+only contact with the owner's Android until the joint session below.
+
+**SHOWN (joint, reported) — the owner's Android on the hosted alpha,
+2026-09-14.** Yaroslav (contributor, iPhone 16 Pro Max on iOS 26.6.1, the
+signed Release build of branch head `adb56be`) and Sergey (owner, Android)
+held an **unscheduled** session on the hosted alpha at `157.180.49.125:38443`.
+Yaroslav scanned Sergey's QR with the iPhone camera and the contact was
+paired. Text went both ways: Yaroslav's message reached Sergey and **both**
+checks appeared on the iPhone — the first time this client has seen the second
+check, which is the acknowledgement from a real Android client — and Sergey's
+reply appeared on the iPhone. Sergey then called the iPhone from his Android,
+Yaroslav answered and they spoke, so audio carried both ways, and both sides
+turned their cameras on and each saw the other. That call is the first this
+client has carried against the Android client rather than a simulator, and the
+first picture it has received from a real camera over call-v2. The contributor
+is the only participant this record has: every result of that session is **his
+report**, given immediately afterwards, not an observation by whoever writes
+this file and not a recording, which is why the stage files mark those rows
+`SHOWN (joint, reported)` rather than `SHOWN`. No owner "go" permalink exists
+for it, because the session was not planned. Sergey did not scan Yaroslav's
+QR, so the Android side of the pairing and the fingerprint compared aloud stay
+`NOT RUN`, and so does the outgoing direction — this client dialling an
+Android — which has been exercised only against a simulator on the local
+stand.
+
+**NOT RUN, with reasons.** No archive, no `.ipa` export and no TestFlight
+upload: the device installs above were direct `xcodebuild` installs,
+`build.sh`'s signed-archive gate did not run, there is no owner "go" for an
+upload, and the
+[export-compliance gate](../clients/ios/export-compliance.md) is closed —
+`ITSAppUsesNonExemptEncryption = YES` is prepared, not satisfied, and Apple
+applies the requirement to TestFlight too. The Data Protection class on the
+device was not measured, no real screen recording was made over the call stage,
+a screen lock during dialling moves to the joint test, and no relayed call was
+placed, so all of those stay `NOT RUN`. The open item of 2026-09-13/14 — after
+a network drop on the phone the application stayed at «Нет подключения» while
+the server answered from the Mac and the pinned key was unchanged — now has a
+cause and a fix (the connectivity restart above), but what stays `NOT RUN` is
+the proof: no real change of network path was ever produced, on a simulator or
+a phone, and no device log was ever collected for that drop.
+Interoperability with the Android client on its own hardware is shown
+only as far as the reported joint session above reaches; everything beyond it
+rests on the protocol comparison, which ran with both stacks as processes on
+the build Mac, where the real Android facade is compiled and agrees with the
+Swift client on identities, text with receipts, call-v2 bodies, the sealed
+snapshot codec and a QR contact, with twenty-one malformed bodies refused
+identically by both sides.
+The expectations are recomputed in Python from the protocol documents, so an
+agreement cannot come from the two clients sharing one core. `build.sh` runs
+that comparison and its Java host side as ordinary steps.
+`.github/workflows/ios.yml` ran on
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36), opened
+as a draft on 2026-09-14: `ios-static` passed, the docs workflow passed, and
+the server workflow's `client-core-and-tls` and `native-package` passed.
+Question 6 answered "no macOS runner", so nothing needing Xcode, a simulator,
+a phone or the local stand is in it, and every such check was run locally on
+the pinned build Mac. The two joint-test scenarios with the owner,
+[stage 1](evidence/ios-client-20260913/stage1-text.md) and
+[stage 2](evidence/ios-client-20260913/stage2-voice.md), are **partly run**:
+the session of 2026-09-14 turned stage 1 steps 4, 5 and 6 and stage 2 steps 4,
+8 and 9 into `SHOWN (joint, reported)`. Every other `Result` cell stays
+`NOT RUN` with its reason — stage 1 step 3 (Sergey scanning Yaroslav's QR and
+the fingerprint compared aloud) and steps 7-15 (closed-application delivery,
+screen lock, Wi-Fi to LTE, blocking, renaming, ten-minute idle), and stage 2
+steps 1-3, 5-7 and 10-17 (the outgoing call, the two-minute hold, hang-up
+behaviour, mute, speaker, screen recording, lock while dialling and during a
+call, background and closed-application calls, LTE, busy). Stage 1 steps 1, 2,
+4 and the first half of 5 were also exercised solo on 2026-09-13 against the
+hosted server with the owner's QR image, and stage 1 records that as a pre-run,
+not as the test.
+
+**Open since the joint session: the iPhone does not connect.** Measured on
+2026-09-14 at 07:06 (Europe/Moscow) and posted to
+[pull request #36](https://github.com/GOTD-GLOBAL/ParanoID/pull/36#issuecomment-5658890864):
+after that session the phone shows «Нет подключения» and has not recovered;
+relaunching the application does not clear it. A Debug build was installed on
+the same device and launched with its console attached — the first direct read
+of this client's failure, since device logs otherwise need root on the build
+Mac — and the log says, four times in 45 seconds:
+`realtime: lane failed: NSURLError Code=-1001 "The request timed out." URL: https://157.180.49.125:38443/v2/messages?after=1259&limit=20`.
+The pinned handshake did **not** fail (`PinnedSessionDelegate` logged no
+refusal and the connection was established) and App Transport Security is not
+involved (that was `adb56be`); the route is alive — the same URL unsigned
+answers `401` from the build Mac in 0.19 s and `/health` in 0.2 s with the pin
+unchanged, which is also why Safari on the phone reaches `/health`, a route
+that needs neither a signature nor the database. What hangs is the **signed**
+read for that account, on the first cycle of a generation, which asks for
+`messages` rather than `events` (`ReceiveLane`, mirroring
+`RealtimeLoop.java:254`), so the lane never reaches the long poll and never
+publishes a connected state. The client gives that request 8 s
+(`RealtimeTransport.readTimeout`) while the server's own budget for a
+non-`/v2/events` route is 10 s before it answers `408 request_timeout`; that is
+**not** an iOS divergence, because
+`clients/android/src/org/paranoid/text/RealtimeTransport.java:36` sets exactly
+`path.startsWith("/v2/events?") ? 30000 : 8000` for both clients, and this
+branch does not change it. This is a **different** failure from the
+connectivity-change parity gap above, whose fix is now in the branch: that gap
+left a lane parked after a network change, while this symptom was a signed read
+that did not return while the server was otherwise healthy, which no
+client-side restart fixes and which the fix does not address.
+
+**Hosted accounts spent: three.** `hosted_registrations` is 3: a
+`service-bridge` registration from the build Mac on 2026-09-13, made while
+diagnosing the phone's TLS failure to prove the client stack registers on the
+hosted server while the phone could not; the physical iPhone's registration
+once App Transport Security was switched off, which is the contributor's own
+account and is still in use; and a diagnostic registration from the build Mac
+on 2026-09-14 at 08:26:45.596+03:00 (`POST /v2/registration/commit`, 200 in
+50.7 ms, its challenge at 08:26:45.396+03:00, 200 in 198.0 ms), public account
+id `240060ebc49a9b7394f6fe4ccc30922e62dac9ae9a04ae89415423950ae16776`, opened
+to answer the owner agent's request for a comparative signed read while
+diagnosing the hosted server's intermittent failure (issue #38). That third
+account is diagnostic: no messages, no contacts, and no relation to the
+contributor's own account or to the owner's — it exists only to measure the
+hosted server from a second identity. A third exists at all because the
+2026-09-13 Mac account is permanently unreachable: that fixture kept its
+wrapping key in process memory only, so its state file no longer opens and the
+account is registered but dead. The diagnostic account is persistent instead —
+its wrapping key is kept beside its state in
+`clients/ios/out/evidence/hosted-probe-20260914/` (build output, not
+committed; key file mode 0600) — so this diagnosis needs no further
+registration. All three fall under the owner's answer to RFC-0021 question 4
+(as many accounts as the tests need, no fixed budget). The joint session of
+2026-09-14 consumed none: it used the account the iPhone registered on
+2026-09-13. The phone's failure was a defect that only the hosted server could
+show: ATS refused the self-signed leaf on a public IP before the pinning
+delegate ran (`NSURLErrorDomain -1200`), which a LAN stand never shows and
+`NSPinnedDomains` cannot exempt for an IP literal.
+`adb56be` sets `NSAllowsArbitraryLoads = YES`, `test_ui_contract.py` holds the
+contract "exactly that key and no `URLSession` outside `PinnedSessionDelegate`",
+and [the trust delta](../security/ios-client-threats.md) and ADR-0014 record
+why that removes nothing. Before those registrations the only contact this
+branch had with the hosted alpha was a single TLS handshake with no HTTP
+request, which confirmed that the pin this client carries still equals the
+live SubjectPublicKeyInfo digest after the owner renewed the certificate **with
+the same key** on 2026-09-13; the renewed leaf is valid to
+2026-12-12T07:38:09Z. A same-key renewal must repeat before that date — the
+[same-key automation](../operations/tls-auto-renewal.md) installed on the host
+on 2026-09-13 does that — and a key *change* needs its own deploy-trust RFC,
+because the pin feeds the first-contact channel transcript and would invalidate
+enrolled contacts, not only the transport. The server has no account-deletion
+path, so every future registration is permanent and is counted in the evidence
+directory.
+
+**Calls are call-v2, not voice v1.** RFC-0021 was drafted against voice v1;
+`main` moved to [call-v2](../protocol/call-v2.md) under RFC-0019 while the
+client was being written, and the client follows `main`: two media sections,
+audio then video, both `a=sendrecv`, H.264 first with VP8 as the mandatory
+fallback, camera on/off as a track flag plus an informative `media` control and
+never a renegotiation, and a 9000-byte description cap below the measured
+10040-byte frame2 ceiling. call-v2 rejects v1 bodies, so this client cannot
+call an Android build older than v16 — and the call carried on 2026-09-14
+therefore places the owner's Android at v16 or later; the exact version was
+not asked for and is not recorded.
+
+**Two differences from Android are permanent, not defects.** Delivery is
+foreground-only — no APNs, no PushKit, no background refresh, no CallKit — so a
+call placed to a locked or closed iPhone ends in the caller's expected
+45-second `timeout`, and threat-model boundary 8 stays unused by this client.
+And screen capture is not parity: Android's `FLAG_SECURE` has no iOS
+equivalent, so the client covers the video stage while the screen is recorded,
+mirrored or AirPlayed, while a screenshot and the app-switcher snapshot cannot
+be refused at all. Both are written into
+[the iOS trust delta](../security/ios-client-threats.md).
+
+**Governance.** The owner delegated technical decision authority to the
+contributor and recorded it at
+[issue #27, comment 5651949919](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919);
+the owner's agents answered RFC-0021 questions 5 and 10 in the same issue on
+2026-09-12. The delegation settles technical choices; it does not waive
+independent review, does not turn a `CLAIMED` row into evidence and is not the
+ADR acceptance the human decision owner still has to give. The doc-to-code
+discrepancies found while writing this client are **not** corrected in the
+client pull request; they go to a separate docs-only change. Seven of them —
+A.3, A.4, A.5, A.7, A.8, A.12 and B.5 — are carried as recorded waivers in
+[protocol-sources.md](../clients/ios/protocol-sources.md), one per affected
+row. That is the number this repository can show: the full findings report
+("Findings from iOS-client preparation",
+[issue #27](https://github.com/GOTD-GLOBAL/ParanoID/issues/27)) is not a file
+in this repository, so any larger count of it cannot be checked from here and
+is not claimed here.
+
+**CI note.** The `Server transport` workflow runs on `clients/**`, so this
+branch triggers it, and its `legacy-client-history` job is **deliberately red**
+and informational (the fourteen archived failures are retained on purpose).
+That workflow being non-green is therefore not a signal about this client, and
+"all checks green" is never the right phrase for this repository.
+
+## Video calls candidate (v16) and server f65254ab rollout — 2026-09-11
+
+The owner (Сергей Мальцев, Telegram) requested video calls and resolved the
+RFC-0019 questions (H.264 first with VP8 fallback; speaker on video unless a
+headset is active). [RFC-0019](../rfcs/0019-video-calls.md) is proposed,
+[ADR-0013](../decisions/0013-video-calls.md) is proposed and
+[call-v2](../protocol/call-v2.md) plus the [video threat delta](../security/video-v1-threats.md)
+are written. The native validator, `CallController`, media engine, call UI and
+foreground service implement call-v2 (`0.0.19-video`, versionCode 19, retained
+signer; v19 adds a PackageInstaller-session fallback for the in-app update; v16 was the first candidate, v17 fixed the video-call start permission
+result and installer visibility, v18 adds screen-on during video, local contact
+names, audible ring/ringback/busy and immediate reconnect on network change).
+Push wake (RFC-0020, proposed): the server gateway is in PR #28 and the
+client half ships in `0.0.20-push` (versionCode 20) — a content-free FCM wake
+only reconnects the E2EE channel. At this historical v20 preparation point,
+no wake was sent without the gateway's Firebase credential. The later
+[2026-09-13 rollout receipt](../operations/apk-cap-rollout-2026-09-13.md#actual-preservation-and-verification)
+records push configuration enabled and a dated snapshot of five token rows.
+That supersedes the deployment-pending description, not the separately unverified
+physical-phone wake behavior or today's live token count. The OEM-killed
+foreground connection remains the residual risk for devices without Google
+services. call-v2 rejects v1 bodies: both alpha phones must update; text is
+unaffected. v16 (`5041ca95…`) is published on `/v2/updates/android`
+(2026-09-12). The first phone download failed because the relay egress policy
+dropped orphaned TCP tails of the 16 MB response; that policy fix (PR #26, kit
+`fa371be1`) was deployed the same day and a real v15 client verified the full
+download against the live host. Physical two-phone video acceptance is
+outstanding.
+
+Earlier the same day, under explicit owner authority, the existing host was
+updated by the unified kit (`c7d9205b`, transaction `e7f3b9a6`) to messaging
+release `f65254ab` built from `main` `fe9c26c`, same data/TLS/PG identity,
+relay unchanged; `/v2/updates/android` now serves v15 for
+`global.paranoid.messenger` and the owner directed that later versions ship
+through the in-app updater.
+
+## v15 review follow-up — 2026-09-11
+
+The realtime threat delta now describes the actual opt-in START_STICKY/inexact
+watchdog behavior and Android/OEM limitations, not non-sticky or visible-only
+restarts. This corrects documentation, not device-level reliability evidence.
+The host APK verifier requires a same-package older APK, includes WebRTC in
+fresh Java/DEX compilation and runs policy against freshly compiled classes.
+Full retained-signer v14-to-v15 artifact verification and explicit old-package
+v13 rejection are exercised locally; this does not install or publish an APK.
+
+## v15 QR candidate and update publication status — 2026-09-11
+
+The built v15 (`0.0.15-voice`, `global.paranoid.messenger`) retains the v14
+signer and supports an in-place v14 update without resetting data. The scanner
+selects the largest supported preview within 1280px; six synthetic dense-QR
+frames pass the host regression. Physical-phone QR acceptance remains unverified.
+Active RFC-0013, draft ADR-0008 and update runbooks now name the current package;
+no permanent architecture acceptance is implied. Historical artifact evidence
+retains its original package names.
+The live update endpoint was checked with the retained TLS certificate and still
+advertises old-package v13. The current Android parser rejects that metadata.
+Source merge is separate from reviewed server rollout and APK/feed publication;
+none of those live changes is performed by this naming correction.
+
+## Application rename and background watchdog candidate — 2026-09-10
+
+By owner decision the Android application ID changes from
+`org.paranoid.devtext` to `global.paranoid.messenger` as a new application
+identity: testers install v14 (`0.0.14-voice`) fresh; the retained signing
+certificate is unchanged. Client manifest/provider/intents, RFC-0013 client
+package pinning and the server `android_updates.rs` metadata pinning now use
+the new package; the live server publication metadata still carries the old
+package and was intentionally not republished in this change. The
+user-enabled background channel additionally gets `START_STICKY` plus a
+non-exported inexact ~15-minute `AlarmManager` watchdog receiver that
+restarts the foreground service after firmware kills; no boot start and no
+exact-alarm permissions. Historical `org.paranoid.devtext` references below
+this section describe earlier releases and remain accurate for them.
+
+## Voice deployed to the existing host; first real phone call — 2026-09-10
+
+The unified kit (release `35ce8e7946f4879fd0a7`) was applied to the existing
+host in transaction `440fd9fc` (phase `active`, existing-v8 mode, same data):
+messaging updated to release `4eba2afd` with the `voice_turn` config, the
+coturn relay (credential build `948cec15`, turnserver `e13597df1855`) runs on
+the authorized TCP/UDP 34781 and UDP 40000–40015 scope, and the owner
+completed a real two-phone call with good audio (both apps foregrounded).
+External TURN reachability and a bidirectional relay media echo were verified
+from outside. Eight live-deployment installer defects were found and fixed
+with tests (`7c25d80..4974bdd`). Known remaining defects: the client drops
+durable call signaling (`knock`/`ready`) when its online flag flickers, the
+server forces reconnects (8s idle close, 120s connection kill), and background
+delivery requires the opt-in foreground connection; a client fix and APK v11
+are in progress. See issue #19 for the running record.
+
+## Voice acceptance simplification and VM-stand freeze — 2026-09-10
+
+The owner (Сергей, Telegram) decided: the isolated VM/KVM full-rehearsal stand
+is frozen and is no longer a production acceptance prerequisite. Acceptance for
+the one-host voice rollout is replaced by three real gates: local loopback
+coturn acceptance (expiry, invalid HMAC, quota, denied-peer ACL, relayed media,
+lifetime), a controlled journaled installation on the existing `157.180.49.125`
+host within the authorized port scope, and the owner's physical two-phone call.
+Details: [voice-single-host.md](../operations/voice-single-host.md#owner-acceptance-simplification--2026-09-10-telegram-сергей).
+The frozen VM material remains preserved in branch history. The reviewed
+installer change landed: production `GATES` now carry
+`local-loopback-acceptance` instead of the frozen rehearsal gate, and the
+executed loopback acceptance (6/6 PASS, TURN-RT01/TURN-ACL02, evidence in
+`docs/project/evidence/voice-local-acceptance-20260910/`) satisfies it after
+independent review; the verifier additionally binds the report to the exact
+kit turnserver digest and required case set. The owner's physical two-phone
+call remains the final product acceptance; no security property is weakened.
+
+## One-host installer candidate — 2026-09-10
+
+The owner confirmed the existing host and one unified installer. The
+[exact authority and remaining gates](../operations/voice-single-host.md)
+supersede earlier absence-of-host-permission statements for the bounded reviewed
+deployment only. Initial sources/evidence and the signed v10 APK are preserved.
+The coordinated offline kit implements plan/preflight/apply/status/update/rollback;
+real owned messaging/private-PG/TLS fixtures pass fresh and retained-v8 updates,
+idempotence, same-current-data rollback and one injected failure recovery.
+Those fixtures keep the issuer disabled and do not prove relay integration.
+A later targeted fresh-start run completed but has INVALID_RECEIPT acceptance:
+its prior offline report had an import error. The original records are preserved;
+a later passing offline run does not retroactively validate that receipt.
+
+Production activation is explicitly refused: the full-relay fixture runner and
+acceptance are unavailable, and TURN expiry/ACL/credential/lifecycle and CALL-CURRENT01 remain
+unrun. The parent then executed the separately approved one-unit credential
+diagnostic exactly once: root0440 rejection at `credential_descriptor` was observed,
+with owned cleanup and unchanged scoped neighbors. The separately reviewed metadata measurement then observed exact root0550
+directory and root0440 file ACLs: five entries granting only the service UID,
+with owning-group/other permissions zero. Cleanup passed. After Opus5 design confirmation and its corrections, a dedicated
+reader now implements the measured pair and private0400 fallback. Twenty-two
+offline tests pass; generic/source/issuer guards remain unchanged. Fresh independent
+Opus5 code review found no blocking runtime issue. After its required fixture
+corrections, all six actual inert system/user-manager cases completed, including
+planned restarts, missing-source243 failures, malformed-value rejection and verified
+cleanup. User cases are informational; persistent production-unit/static-UID and
+relay acceptance remain pending. No relay or deployment gate has passed. Initial Fable architecture review is
+valid historical evidence. The owner explicitly accepts fresh independent Opus
+review recorded as Opus; model branding is no longer a gate. All substantive
+security findings, actual tests and final source/artifact review remain mandatory.
+[The continuation record](evidence/voice-ready-20260910/README.md) supersedes the
+prior unrun-diagnostic and named-reviewer-availability statements.
+[Durable evidence](evidence/voice-single-host-20260910/README.md) preserves the
+failures, exact model provenance, candidate artifacts and remaining next steps.
+A reviewed disposable RAM-only development VM has now booted and verified live
+no-NIC/no-disk isolation, loopback-only guest routes and clean poweroff. Official
+pinned tools were extracted without a host installation. This establishes an
+isolation capability only; exact full guest fixture/packet scripts still need
+implementation, review and actual execution.
+The [new VM-profile contract](../operations/voice-vm-rehearsal.md) now has candidate
+dispatch, a separate current-boot boundary and real report/kit/log verification;
+19 offline regressions pass after independent Opus5 review corrections. Production
+availability stays empty while the full runner is implemented. Signed205-package
+guest acquisition completed, including OS/JRE/media dependencies. A base RAM image
+was then assembled and all17100 cpio records independently read back and verified;
+The first KVM prerequisite run stopped before guest continuation when its
+descriptor auditor rejected the observed read-only vCPU statistics object. The
+owned process stopped; no guest or relay executed. A narrow metadata-aware
+correction has thirteen passing offline tests and awaits independent review.
+Android's documented nested-emulator restriction
+is recorded as an unresolved compatibility limit, not current-call acceptance.
+One authorized read-only host check confirmed message UID1003/GID1004 and enp5s0;
+relay UID/GID1902 are free. The temporary SSH agent was cleaned up. No host account,
+credential source, service or firewall was changed by that check.
+CALL-CONNECT01 stays OPEN. No hosted deployment, firewall change, relay listener,
+public release or PR merge occurred.
+
+## Owner-confirmed one-host delivery — 2026-09-10
+
+The owner's [existing-host and one-touch installation confirmation](https://github.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5613364943)
+authorizes a coordinated messaging, private PostgreSQL and TURN installer on the
+existing host, with deployment conditional on mandatory acceptance tests, fresh
+independent review and rollback readiness. Retain the existing TLS, data, identity
+and neighboring services. This supersedes older no-deployment-authority statements
+only for that bounded same-host delivery; it does not authorize PR merge or accept
+the proposed ADRs. TURN expiry/ACL and actual relay CLI/lifecycle gates remain
+NOT RUN; full credential/lifecycle acceptance remains unestablished. No new
+deployment or relay exposure is established by this authority record.
+
+CALL-CONNECT01 remains OPEN for the unknown historical first cause. Initial
+genuine Fable design review C conditionally permits the separate three-case
+[CALL-CURRENT01 acceptance plan](../../clients/android/test/CALL-CONNECT01.md#current-build-acceptance-plan--2026-09-10):
+incoming first microphone grant and retained-permission redial each with at least
+30 seconds connected decoded audio, then an outgoing decoded-media call on the
+same candidate, after relay gates pass in the owned disposable installer fixture.
+All three cases remain NOT RUN. The source-time seam is deferred; the reviewed
+v10 APK is retained with no new build or runtime instrumentation. The [client
+handoff and review provenance](evidence/voice-single-host-client-20260910/README.md)
+distinguish that genuine initial review from the later Fable request that returned
+Opus models and Haiku, with no actual Fable usage. The one no-tool probe also
+returned no Fable. These responses do not supply required fresh Fable approval;
+final code/artifact review and technical acceptance remain outstanding.
+
+## Bounded incoming-call diagnostic — 2026-09-10
+
+One fresh ordinary baseline/fixed comparison used the same reviewed test observer
+and unchanged local fixture. The baseline naturally failed through SDK safe error
+`connection` then controller `mediaState`, 16.496 seconds after accepted Answer
+with 23.357 seconds of setup budget remaining. The fixed arm published once,
+installed the answer and decoded relay/relay Opus with complete normal cleanup.
+[The evidence](evidence/call-connect-ordinary-20260910/README.md) preserves the
+setup-only correction, partial native coverage, differing pre-Answer timing and
+unmeasured Android process start/maps. Final Fable evidence review approved the
+test-only publication and kept CALL-CONNECT01 OPEN; this does not
+establish the native cause or identify every historical failure. Only test/docs
+changes occurred; production sources and retained ARM64 APK are unchanged.
+Missing TURN/phone gates and deployment/merge blocks remain unchanged.
+
+## Current voice relay extension — 2026-09-10
+
+The direct-call checkpoint below passed fresh final Fable review. The original
+scope also requires REQ-CALL-006: issuer, Android integration and isolated relay
+package. Server foundation draft PR21 is implemented/tested independently;
+client draft PR20 now adds strict volatile credential retrieval, authorizing
+state and dual metadata disclosure. V10 retained-signer ARM64 is built;
+49 parser negatives, ten HTTPS/JNI scenarios and the stale401 race fix pass.
+The full server85-test matrix and24-sample text regression pass (P50 102.04 ms,
+P95 144.30 ms). Owned v9→v10 update retains identity/contact/history. Strict
+full-app relay audio passes in both roles, but a measured43.05-second outgoing
+setup exposed delayed SDP publication despite early usable relay candidates.
+Fresh Fable final review found this functional blocker and conditionally approved
+a500 ms relay-only publication window. The fix passes actual both-role relay
+media, mute/two-way text, cancellation/redial and late-COMPLETE tests: publication
+while still gathering has a0.545-second conservative upper bound after relay
+arrival, one callback and unchanged fingerprint/ICE. Direct-mode bidirectional
+tone/mute/cleanup also passes. Signed ARM64 v10 SHA256
+`a44278f46751216fdb37519ae6f66a2966e678bbba11b13529d0777669ff4c7d`
+passes independent44-input artifact correspondence. Fresh Fable exact-source
+closure succeeded and closed VOICE-PUB-01; it requires the reviewed bytes committed
+and refreshed CI correspondence. [Current evidence](evidence/voice-relay-client-20260910/README.md)
+retains failures and separate scopes. Earlier15-second incoming failures
+remain unexplained. All supported CI gates pass on the preceding exact commits;
+the separate legacy job retains exactly14 historical failures.
+Retained-allocation expiry/race/drain and ACL packet tests are NOT RUN after a
+platform worker rejection; those operations were not retried. No live deployment
+is authorized or performed. Proposed ADRs remain proposed. The dated checkpoint
+below retains its original artifact and test scope.
+
+## Voice relay foundation — 2026-09-10
+
+PR18 was independently verified merged at `2026-09-09T22:01:42Z`, exact commit
+`366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. This separate server branch starts
+from that commit under the [component policy](component-boundaries.md).
+[REQ-CALL-006](../product/voice-relay.md) now has a default-disabled authenticated
+issuer, strict local secret loader, locked binding recheck, quotas and a versioned
+offline coturn/controller package. Fourteen focused issuer tests, two quota unit
+tests, controller/package tests and native offline build checks pass. The full
+server matrix passes85 tests with one pre-existing APK-environment skip; the
+text/JNI/pinned-TLS regression passes24 warm samples, P50 102.04/P95 144.30 ms.
+[Durable evidence](evidence/voice-turn-20260910/README.md) separates these results
+from the pending final independent review.
+
+The actual direct-ICE client checkpoint is in [draft PR20](https://github.com/GOTD-GLOBAL/ParanoID/pull/20);
+its relay integration will depend on this exact foundation commit. A successful
+direct-ICE final review does not cover this extension. Required retained-allocation
+expiry and ACL packet tests remain **NOT RUN** after a platform worker rejection.
+[The runbook](../../deploy/turn/README.md) retains the exact proposed network
+scope and rollback; no public TURN/firewall/DNS or existing-server changes were
+authorized or performed. RFC-0018/ADR-0012 remain proposed.
+
+## Voice implementation after verified PR18 merge
+
+GitHub independently reports PR18 MERGED at `2026-09-09T22:01:42Z`, merge
+commit `366ceeda8e88d47e4a9dcbb8e7d5f13387b6ec9f`. The clean feature worktree
+`feat/voice-calls-20260909` starts from that exact commit. The owner's
+[voice scope](../product/voice-calls.md) now authorizes local actual 1:1 voice
+implementation, real tests, retained-signer APK and a GitHub PR for issue19.
+[RFC-0017](../rfcs/0017-voice-calls.md) and [ADR-0011](../decisions/0011-voice-calls.md)
+remain proposed. Fresh independent design review and exact-doc closure succeeded
+before runtime implementation. Strict encrypted controls, post-commit dispatch,
+the volatile consent/lifecycle controller, Android call UI/microphone service
+and pinned WebRTC/Opus adapter are implemented. The [durable evidence](evidence/voice-calls-20260909/README.md)
+records 62 supported native tests including 14 voice tests, actual old/current
+Java/JNI compatibility and controller/adapter checks passing. Twenty simulated
+maximum calls exchange 3700 real Olm controls without consuming the text Event
+ledger; this is signaling evidence, not decoded audio.
+
+Real Android M150/aiortc direct and isolated local TURN relay media pass with
+decoded synthetic tones in both directions, mute/unmute and complete capture/route
+cleanup. Exact captured SDP also passes real native/Olm validation and binding
+substitution rejection. These are separate media and encrypted-control fixtures;
+the owned Android v8→v9 in-place update also retains identity/contact/history and
+passes new delivered text, microphone denial and incoming-without-capture checks.
+Actual TLS retry/revocation and authenticated resume RED/GREEN pass. Full app
+acceptance passes 14 steps, first microphone grant and deferred SDK mute corrections
+pass, and actual process restart preserves identity/contact/history without media
+resurrection. Final text regression passes 24 warm samples at P50 105.92 ms and
+P95 122.99 ms. The final fixture5 app run repeats all 14 steps and visually
+verifies corrected call-dialog system-bar insets. The retained-signer ARM64
+`org.paranoid.devtext` version9, `0.0.9-voice`, is now built and verified:
+SHA256 `4a2744de3427917098db252ec8b8919abd0b07731315e847a47f8e8a63c3066f`,
+15,712,851 bytes. The [artifact/source record](evidence/voice-calls-20260909/signed-apk-artifact.json)
+retains the frozen uncommitted feature-source manifest; post-build documentation
+updates leave packaged code unchanged. Fresh independent exact-source final
+Fable review remains required before candidate handoff.
+Working v8 text/identity/pins/history remain protected. Live TURN/firewall/DNS
+or existing-server changes need separate concrete reviewed authorization. See
+[the current gates](../operations/voice-calls-local.md). Physical OPPO audio,
+Bluetooth, Doze/force-stop, public relay and production claims remain unverified.
+
+## Owner phone feedback and PR 18 merge direction
+
+After receiving v8, Sergey reports: "Работает отлично. Текст летает туда сюда".
+This is qualitative owner-observed responsive bidirectional phone messaging,
+not an instrumented latency measurement or proof of background/Doze/audio behavior.
+[The GitHub record](https://github.com/GOTD-GLOBAL/ParanoID/issues/16#issuecomment-5609070441)
+retains that distinction. It supersedes only the earlier absence of phone-text
+feedback, not the other NOT-RUN limits below.
+
+The owner explicitly requests testing/fixing/merging PR #18 and then implementing
+voice calls. [The scoped merge record](pr18-merge-scope.md) supersedes the PR's
+initial archival-only restriction for this one reviewed integration. Final CI and
+review gated that integration; its verified merge is recorded above.
+Voice calls are the next stage, not an implemented v8 feature. Existing identity,
+E2EE, TLS trust, history and working text remain protected.
+
+## Overnight realtime implementation and rollout — 2026-09-09
+
+The [current owner scope](../product/overnight-realtime.md) authorizes a tested
+in-place v7 improvement and safe existing-service update after independent Fable
+review and rollback readiness. Initial dirty sources are preserved; TLS, phone
+identity, v7 history and existing server data remain compatibility boundaries.
+The signed-session long-poll transport, independent network/state lanes, native
+messenger UI and optional visible background connection are implemented.
+Matched optimized JNI measurements improved from P50 3043.98/P95 3057.50 ms (v7,
+20 messages) to P50 102.94/P95 122.01 ms (24 messages). These are actual pinned-TLS/PG
+receiver commit/listener timings, not physical display-frame measurements.
+Populated-v7 upgrade continuity and all 14 realtime server tests pass. Android 35
+emulator real messaging, keyboard and background permission/delivery checks pass.
+
+[The dated rollout](../operations/realtime-rollout-2026-09-09.md) records successful
+independent final Fable review and bounded closure, the signed ARM64 version 8 APK,
+and the attended same-data update to release `3ed25173ad978e6b417c`. The existing
+unit is active/enabled; TLS, configuration, cluster and scoped neighbor checks
+match. An authenticated restore-verified encrypted backup preceded cutover.
+Actual hosted product Java/JNI messaging passed with two synthetic identities:
+12 sends measured P50 76.51/P95 85.74 ms to durable receiver notification, separately
+from the local benchmark and physical rendering. Final postflight passed at
+2026-09-09 20:59:04 UTC. The original packaged readiness failure remains UNKNOWN
+(13 PASS/1 FAIL); subsequent diagnostic passes and review closure do not fix it.
+The [runbook](../operations/overnight-realtime.md) retains attended recovery limits.
+RFC-0015/ADR-0010 remain proposed, with direct scoped task authority distinguished from permanent ADR
+acceptance. Physical phones, Doze/force-stop, voice, second-server operation and
+provider push remain unrun or unimplemented. Historical pre-v7 failures remain
+separately visible. Older dated sections below retain their original scope;
+the current task supersedes their no-deploy boundary only for this reviewed update.
+
+## Clean-install first-contact candidate — scoped implementation authorized
+
+The current **2026-09-09 Telegram implementation task** is quoted in
+[REQ-MSG-005](../product/requirements.md#first-contact-incoming-correction-2026-09-09)
+and [RFC-0014](../rfcs/0014-first-contact-incoming.md). No permalink/message ID
+was supplied. The selected recommendation is the mandatory signed deterministic
+account-ID channel for all new text/receipts, with immediate plaintext/reply for
+a recipient with zero contacts and visibly unverified identity.
+
+Exact current task excerpt (2026-09-09); earlier owner approval is reported by
+this task, not independently retrieved as a permanent message in this context:
+
+> DELIVER implementation + actual built APK candidate for CLEAN-INSTALL first-contact messenger now. User explicitly approved review recommendation and discarded old teststate/migration/recovery as release gates (see context).
+
+The human owner selected the first independent design-review recommendation:
+mandatory deterministic signed account-ID channels for all newly created text
+and delivery receipts, within the existing bounded private test-data alpha.
+Fresh app installations are the acceptance scope. Historical test-message
+preservation, migration and exact old-event recovery are explicitly NOT gates
+for this candidate. Historical failing tests remain present, run separately and
+reported honestly; this scope amendment does not make their bugs fixed.
+
+The owner will uninstall applications himself. This task authorizes local source,
+TDD, isolated PostgreSQL/pinned-TLS/JVM/JNI testing and retained-signer APK build
+before independent code review. It authorizes no phone action, snapshot reset,
+live database wipe, SSH, deploy, upload, publication or delivery to phones.
+Unsupported older client snapshots must fail clearly while preserving their
+bytes; clean installation is not an automatic migration or reset implementation.
+Permanent architecture disposition remains proposed, with independent review
+and durable approval provenance still outstanding. No additional permission
+question is required for this exact local implementation/testing/build scope.
+
+The clean Rust matrix actually passes **15 tests / 0 failures / 0 ignored,
+exit0**, plus a separate passing stripped-new-frame/historical-v0-decoder check;
+final additional boundary-suite results are in the external evidence record.
+The real exact-retained-server + generated
+pinned-TLS + isolated PostgreSQL + Android Java/JNI final fixture passes **exit0**:
+five automatic registrations, zero initial receiver contacts, immediate
+plaintext/unverified reply, genuine receipts, database frame2 comparison, exact
+lost-response retry, injected receipt-save rollback/freeze, same-key verification,
+block/unblock, unrelated progress, crossing and encrypted snapshot/server/JVM
+reopen. Native/Java/fixture sources were unchanged across that final run.
+Clean creation/reopen and genuine populated-old-state/pristine-interrupted-creation
+JVM boundary checks also pass. These are local results, not phone acceptance.
+
+Historical tests are retained and run separately: frozen initial core **39 passed /
+2 failed / 0 ignored, exit101**; final unchanged historical core **27 passed /
+14 failed / 0 ignored, exit101**. Two old JVM schema/migration smokes exit1;
+the original reciprocal-contact real fixture exits0. No old failure is suppressed
+or called fixed. [The local candidate record](../operations/clean-first-contact-local.md)
+identifies exact commands/results and the unique external source/build/APK
+verification record. Artifact hashes live in that evidence README, avoiding a
+circular hash in the source snapshot. Independent code review remains the next
+gate before any publication or phone delivery; no live action was performed.
+
+All older implementation/deployment sections below describe their dated scope;
+where they called historical recovery an immediate release blocker, this explicit
+clean-install amendment now controls this candidate only. Existing live state and
+previous authority records are preserved without new live verification/actions.
+
+## Historical self-service product priority — before the later implementation
+
+The active workstream is [issue #16](https://github.com/GOTD-GLOBAL/ParanoID/issues/16)
+and its [English product brief](../product/self-service-messenger.md). The
+`feat/self-service-registration` setup started from the preserved archive and
+did not itself implement or deploy self-service. The subsequent local server
+candidate is recorded below; the complete application journey is not delivered.
+
+The owner rejected operator-dependent onboarding and approved preserving the
+current implementation in an [archival checkpoint](operator-approval-checkpoint.md),
+without merging it wholesale into main. The next deliverable is the self-service
+app/server flow in [REQ-ID-008](../product/requirements.md#default-server-self-registration-correction-2026-09-09):
+create ID, automatically register on the common server, add a contact, message.
+It was not implemented by the historical operator-grant code. Blockchain registration
+and public/private server choice remain the later direction, with identity and
+history continuity required. No new runtime or hosting change follows merely
+from the archive/issue task. Historical implementation/rollout observations below
+remain evidence, not the target user experience.
+
+## Historical fresh v2 preparation — before the live rollout above
+
+Sergey explicitly requested a new database in place of the disposable old server
+database and no preservation/backup. The [fresh-v2 runbook](../operations/fresh-self-service-v2.md)
+records that supplied task provenance without a fabricated permanent approval.
+Only the isolated `data` cluster is the discard target; TLS, phone state, socket/
+locks, neighbors and other root contents remain protected. No live worker action.
+
+The local candidate adapts the existing bundle/controller: explicit exact-reviewed
+IPv4:38443 TLS v2 runtime, fresh initialization, stopped one-shot cluster replacement
+without dump/import, sticky v2 config, readiness and existing autostart/supervision.
+The separate retained `sr01-independent-rereview.md` reports `sr01_closed: true`
+for the original documentation-only correction. Earlier pending-SR-01 wording
+below is historical; that closure does not review these later deployment changes.
+V0/v1 remain separate; legacy backup/update/switch cannot operate on v2. Independent
+candidate review precedes any coordinator cutover. V2 update/restore and physical
+two-phone acceptance are not established by this fresh-only slice.
+
+Independent final candidate review found FV2-R01: SIGINT could falsely return
+success during destructive replacement. The local correction makes interrupted
+`replace-v2`/`fresh-v2`/`install-v2` operations exit 130 with a redacted fail-stopped
+diagnostic, preserving sticky state and legacy/graceful-run behavior. Regression
+and rebuilt-package evidence require bounded independent re-review before cutover;
+this correction accepts no ADR and performs no deployment.
+
+## Historical RFC-0013 bundle integration — before final review and rollout
+
+The optional read-only Android feed and v2-only controller environment are now
+combined locally after FV2-R01's independent bounded closure. The controller
+selects `ROOT/updates` without creating it; missing publication stays unavailable,
+and legacy modes do not inherit the feed. Strict RED/GREEN controller coverage
+checks that selection and preserved legacy authority. See the
+[publication contract](../operations/android-update-publication.md).
+The final combined bundle still requires independent review; this is not live
+publication, phone installer evidence or acceptance of draft ADR-0007/0008.
+
+## Historical self-service v2 local verification — before live rollout
+
+The `feat/self-service-server` worktree now implements the server part of issue #16:
+automatic device-proof registration, v2 exact-request one-use authentication,
+general accounts/devices/account-pair conversations, recipient cursor inboxes and
+commit-ordered idempotent ciphertext storage with non-evicting limits. Explicit
+offline initialization/migration preserves verified legacy ownership/history and
+revocation; downgrade guards reject old authority. The original runtime requires loopback TLS,
+a private PostgreSQL socket and single-worker ownership. The later explicit
+exact-IP candidate above adds a separate mode; it has not been deployed.
+
+[RFC-0012](../rfcs/0012-self-service-messenger.md), draft
+[ADR-0007](../decisions/0007-self-service-messenger.md),
+[the versioned contract](../protocol/self-service-v2.md) and
+[dedicated threat/test matrix](../security/self-service-v2-threats.md) accompany
+this implementation. No accepted historical decision was rewritten.
+
+[Independent server evidence](../server/self-service-local.md#independent-server-review-evidence)
+records 19 targeted and 43 full server tests passing, including populated DB
+dump/restore, plus independent Python Ed25519/TLS/PostgreSQL probes and actual
+historical executable downgrade tests. Review found no runtime blocker but failed
+overall on missing documentation (SR-01). This documentation correction supplies
+the artifacts; independent coordinator re-review remains pending. These are prior
+local runtime results, not a new runtime run, CI result or architecture approval.
+
+Major residual risks: shared budgets are not Sybil resistance/fairness; copied
+public credentials can starve challenges; no mutual-contact ACL prevents unsolicited
+messages to known IDs; authenticated recipient probing and server-visible metadata
+remain. Startup checks the v2 metadata row, not full schema attestation; health is
+liveness. Human residual risk/disposition owner is martadvix-web, pending acceptance.
+
+No client completion, multi-peer Olm/receipt interoperability, physical phones,
+installed snapshot migration, v2 package/controller lifecycle, public deployment
+or production readiness is established here. The historical hosted operator-grant
+rollout below is not a v2 rollout. Complete issue #16 acceptance, owner architecture
+disposition, separately authorized deployment and two-phone evidence remain open.
+
+## Phase
+
+**Inception and architecture discovery, with a locally tested messenger candidate.**
+The repository contains documentation, Android diagnostics, development transport
+and the clean-install signed first-contact Android/core candidate described above.
+Actual physical two-phone acceptance and production architecture are not yet
+established. Local JVM/JNI messaging is evidence within its documented scope.
+
+The earlier proof of concept is preserved in the private
+`GOTD-GLOBAL/ParanoID-legacy` repository. It may be mined for lessons, UX ideas,
+and experiments, but it is not a dependency or source of current architecture.
+
+## Experimental device evidence
+
+A disposable Android packaging diagnostic exists in
+`spikes/002-android-bootstrap`. The owner supplied a screenshot of installation
+and launch on OPPO CPH2671 (Android 16/API 36). It displays device information
+locally, has no network permission and is not a messenger or stack acceptance.
+
+## Present facts
+
+- The new repository is private and intentionally starts from a clean history.
+- The product vision is documented as a draft.
+- Initial product requirements are traceable but do not yet have complete
+  acceptance criteria.
+- Documentation-as-code is the first accepted project decision.
+- No production application stack, blockchain, identity protocol, messaging protocol,
+  cryptographic construction, database, hosting platform, or token model has
+  been selected.
+- No production security or privacy claims are valid yet.
+
+## Experimental Android evidence (not a production capability)
+
+The isolated [Android probe](../../spikes/002-android-bootstrap/README.md) builds
+an ARM64 APK using vodozemac with a JNI boundary for a local synthetic self-test.
+Host tests and cross-compilation pass. The session handoff records owner-reported
+local diagnostic PASS on OPPO CPH2671 and CPH2659 (Android 16 ARM64); this is not
+a new physical-device run or proof of phone-to-phone messaging. No server, real
+conversation, account recovery or production stack is introduced. RFC-0004
+(closed PR #6) is historical proposal context only.
+
+## Active single-server implementation boundary
+
+The founder now prioritizes one server and two OPPO phones exchanging E2EE text
+with history, reconnect and no duplicates. One check means server acceptance;
+two mean peer delivery, not reading. Server history remains until an additional
+explicit deletion request. iPhone and multiple-server support remain future
+scope; a second server is not an acceptance gate for this slice.
+
+[RFC-0006](../rfcs/0006-single-server-text-contract.md) records concrete assistant
+recommendations and their [acceptance matrix](../protocol/server-v0-acceptance.md).
+It is draft, not an accepted architecture. Identity/E2EE, delivery/persistence
+and stack still require their own disposition and durable owner approval
+evidence under the now-accepted ADR-0003 process. Absence of a second human
+is not itself a closed-alpha blocker. Earlier PRs #1, #2, #5, #6 and #10 were
+closed without merge during owner-requested cleanup. Their branches and research
+are retained, not accepted architecture. PR #12 published ADR-0003. This
+contract, native crypto evidence and host-access documentation are separate
+artifacts, not prerequisites requiring another broad research phase.
+
+A [dependency-only stack check](../research/2026-09-08-server-stack-check.md)
+compiled pinned Axum/Tokio/SQLx dependencies on Linux. It implements no server,
+API, message store or client. No phone-to-phone message has been demonstrated.
+The local Docker daemon was inaccessible to this invocation; no production host
+was changed. No iOS build or protected-domain implementation was performed.
+
+The older discovery list below is background, not a request to restart broad
+research. The immediate gate is disposition of the narrow contract, then the
+TDD implementation order in RFC-0006.
+
+## Closed-alpha review policy
+
+The founder requested removal of the mandatory second-human reviewer after
+reporting that none is available. [RFC-0007](../rfcs/0007-closed-alpha-review-policy.md)
+records a bounded private test-data alpha exception with independent AI review
+and retained human decision-owner approval, approved by martadvix-web in PR #12.
+[ADR-0003](../decisions/0003-closed-alpha-review-policy.md) records acceptance;
+the policy is normative on main. It accepts no application architecture,
+authorizes no deployment and makes no security claim.
+
+## Executable transport increment in development
+
+RFC-0008 and draft ADR-0004 accompany `server/`: a loopback HTTP process with
+PostgreSQL ciphertext append, idempotent retry, recipient cursor sync and
+non-evicting quotas. Real tests include killing/restarting the binary and Olm
+fixture ciphertext exchange. Fixture identities are trusted inside the test
+process, not two phones. This initial transport increment alone did not provide
+the subsequent Android client described below or a hosted rollout. The full
+RFC-0006 acceptance matrix remains unfulfilled; architecture is not accepted.
+
+A fresh owner-authorized read-only host inventory confirmed Docker, Nginx and
+PostgreSQL active and HTTP/HTTPS ports occupied. No remote mutation occurred.
+ParanoID deployment must be isolated from existing services. The local test
+runner creates/removes its own private PostgreSQL cluster; it does not connect
+to that host. Simple reproducible Linux deployment remains a product requirement.
+
+## Development client and IP-TLS work
+
+`clients/core` and the Android adapter now contain peer-pinned Olm text/receipt
+logic, an encrypted atomic local snapshot and IP-based pinned HTTPS. An ARM64
+APK builds; Rust, Linux JVM JNI/codec, packaging and local TLS smoke checks pass.
+These do not prove runtime behavior on OPPO. The [client README](../../clients/android/README.md)
+records the corrected synchronization cases, rejection/progress semantics and
+the bounded device-test sequence. Code regression results are not device evidence.
+No hosted TLS endpoint, new production process or public port is created by this
+increment. Full two-phone acceptance is still pending.
+
+## Locally verified deployment preparation
+
+`deploy/` now builds a native Linux alpha bundle with a separate explicit direct-TLS
+server mode on 38443, private PostgreSQL 16 data/socket, systemd user autostart and
+restart, authenticated DB readiness, and same-schema update/rollback retaining
+history. Real local systemd/PostgreSQL/TLS and dump/restore comparison tests pass;
+no Docker runtime test, host login/change, reboot or two-phone acceptance occurred.
+The [runbook](../operations/linux-alpha-deployment.md) records operator commands
+and remaining limits. RFC-0009 and ADR-0005 are draft; parent independent review
+is pending. The owner [authorized the bounded alpha](https://github.com/GOTD-GLOBAL/ParanoID/pull/14#issuecomment-5587328763)
+and isolated deployment after safety/rollback checks; no new broad research or
+second-human gate is inferred within that already approved scope. This task is
+local preparation only. Production architecture/privacy claims remain unaccepted.
+
+The independent package review reproduced stale-file bundling and redirected
+persistent-directory writes. Local fixes add fresh allowlisted build output,
+no-follow/private installation checks and exact IPv4/token configuration validation.
+Negative regressions and real native PG/TLS update/rollback checks pass; CI now
+includes non-systemd package coverage. Independent re-review is still pending;
+no hosted rollout or new architecture approval is inferred.
+
+## Authorized hosted attempt and narrowly scoped resume
+
+PR #15 merged as `f8131cd92e9e5945667b0257944552676885455d`; independent
+fresh-context review reported no package blockers and all four PR checks passed.
+These supersede preparation-time pending-review statements above, not the draft
+architecture disposition. The [actual rollout record](../operations/linux-alpha-rollout-2026-09-08.md)
+records matching artifact provenance, target ABI/prerequisites, disposable native
+retry/history/update/restore tests, and successful final-unit host-local TLS/DB
+readiness. External TCP/38443 timed out; read-only UFW inspection found incoming
+default-deny and no 38443 rule. No firewall or neighboring service was changed.
+
+The first attempt stopped/disabled the unit and restored `Linger=no`. The owner
+then explicitly authorized, in the current 2026-09-08 Telegram turn, inbound TCP
+38443 from any IPv4 source on the public IPv4 interface and resume of the retained
+service. No Telegram permalink is available. One precise UFW allow on `enp5s0`
+to `157.180.49.125` was added; other rules and neighboring services were preserved.
+The retained unit is now enabled/running with scoped linger. External verified
+certificate/IP/SPKI health and wrong-pin/missing/invalid-auth rejection passed,
+including the real Android TLS adapter on the Linux JVM. Explicit restart and
+child-crash recovery preserved original config/TLS and ordered database rows.
+The enrollment database still has zero envelopes; populated retry/restore evidence
+comes only from disposable fixtures. **The hosted alpha endpoint works; physical
+OPPO acceptance remains NOT RUN.** Parent independent endpoint verification and
+reviewed APK/signature/private enrollment precede device acceptance. Do not treat
+the old diagnostic APK as a messenger or reset any retained identity.
+
+## Registration UX correction — locally built candidate, not deployed
+
+The 2026-09-08 user input rejects manually obtaining a bearer and requests
+Threema-inspired on-phone identity creation, locally owned keys, automatic key
+proof and verified QR contacts, without phone/email. Baseline `7bef87b` had
+URL/pin/alice-or-bob/token fields and copied pairing codes. The local candidate
+replaces them rather than hiding those bearers in QR.
+
+[RFC-0010](../rfcs/0010-phone-key-registration.md), proposed
+[ADR-0006](../decisions/0006-phone-key-registration.md) and the
+[draft contract](../protocol/key-enrollment-v1.md) recommend exact-key maintainer
+approval for only the existing two testers, explicit legacy mapping and one-use
+request proof. A public TLS listener is not permission for anonymous public signup
+or first-free-slot assignment. Blockchain is later; no recovery redesign.
+The Telegram follow-up accepts Create ID -> one-time operator approval -> messaging
+for this alpha (“Пока что пойдет”); it does not approve the manual-token UI or prove
+the proposed flow works. Durable exact-scope/architecture evidence and independent
+review remain pending; ADR-0006 is still proposed, with no new rollout permission.
+The subsequent implementation-worker CLI instruction explicitly authorized only
+local implementation/build and isolated fixtures. It corrected a delegation typo:
+the actual application package stays `org.paranoid.devtext`, while Java/JNI remains
+`org.paranoid.text`. A signed ARM64 API26+ 0.0.4-dev/versionCode4 APK is built with
+the original signing identity. Independent root/device keys are saved before
+requests; known-phone approval explicitly maps the verified credential/old Olm
+digest to slot 0 or 1. No arbitrary-key registration rows or reusable key-login
+bearer are created. Active slots reject v0 bearers on every message route.
+
+`KeyClient` is exercised on the real Linux JVM/JNI against isolated Rust TLS and
+PostgreSQL: registration, login, QR encoding/decoding, E2EE text, receipts,
+restart, populated v0 state preservation and dump/restore. The client retains
+`text-state.enc`, the Keystore alias, old Olm state/history/pins/outbox and saved
+TLS trust. A missing snapshot with a retained wrapping key also fails closed.
+The [local runbook](../operations/key-registration-local.md) records commands,
+limits and evidence. This is a working local candidate, not a phone-test result.
+
+No live service, database, secret, firewall or other worktree was changed. The
+key-server mode intentionally binds only loopback and cannot be substituted into
+the existing deployment controller. The public APK default remains the supplied
+origin/SPKI, but the hosted endpoint was NOT upgraded to key registration here.
+Existing same-schema deployment gates remain intact. Parent independent review,
+separately authorized migration/deployment and physical OPPO acceptance remain
+outstanding; ADR-0006 is still proposed.
+
+## Authorized two-phone registration rollout preparation
+
+On 2026-09-09 Sergey supplied screenshots labelled phone 1 and phone 2 showing
+local ID creation/pending status, followed by the two labelled public registration
+requests. Both root signatures, account derivations, expected realm and SPKI were
+verified locally. This is user-supplied device/UI and credential evidence, not
+server activation, full Android Keystore acceptance or demonstrated messaging.
+
+Sergey then explicitly answered “Разрешаю” to the bounded isolated-server update
+and activation request after independent checks and history-preserving recovery.
+[The authority record](../operations/key-rollout-authorization-2026-09-09.md)
+supersedes the prior local-only task's no-deploy restriction for this exact scope;
+production architecture acceptance, neighboring changes and merge remain excluded.
+
+A fresh read-only host check found the retained v0 service and exact pinned TLS
+healthy, zero envelopes/sequence/usage, no key schema, unchanged neighboring
+service PIDs/activation times and private root/config/TLS permissions. That check
+made no mutation. The subsequent migration-capable package passed populated
+native/JNI/restore tests and independent review. The
+[actual rollout](../operations/key-rollout-2026-09-09.md) now records successful
+history-preserving migration and the reviewed ALPN correction, unchanged TLS and
+neighbors, working external key-auth routes, and two exact-key operator grants.
+The grants are `approved`, not yet proof of phone activation or messaging. Public
+phone inputs and grant descriptors remain outside Git. No phone reset or new APK
+was needed; physical activation/contact/message acceptance awaits the user's scan.
+
+## Future server onboarding direction — recorded, not implemented
+
+Sergey's supplied 2026-09-08 Telegram input prioritizes preserving the product idea
+rather than rebuilding today's implementation: default to the common project
+server, offer create/self-host or join a known existing server, and share server
+invites by QR/link. Without the app, guide to Google Play/App Store and resume the
+invite after user/platform-mediated installation. Deferred continuation is
+platform-dependent and unverified; fallback is to reopen the original invite.
+[Requirements REQ-SERVER-001/002 and REQ-CLIENT-002](../product/requirements.md#server-onboarding-direction-future-production-ux)
+and [RFC-0010](../rfcs/0010-phone-key-registration.md#future-server-onboarding-boundary)
+capture this direction without a new broad RFC or current implementation gate.
+Server invites are not verified contact pairing; independent server trust/admission
+and existing identities/history remain intact, with no permanent default-server
+authority, secret grants in app/store URLs or auth bypass. Simultaneous multi-server
+operation, iOS and store publishing are not two-OPPO alpha acceptance requirements.
+This is Telegram product provenance, not fabricated GitHub approval or delivered UX.
+
+## Confirmed client compatibility risk (2026-09-09)
+
+A synthetic reproduction confirms asymmetric retained-contact migration can
+select incompatible authenticated message contexts after genuine v2 QR pairing.
+This has not been attributed to the owner's phones.
+[RFC-0016](../rfcs/0016-asymmetric-retained-context.md) records why existing signed
+QR fields cannot distinguish a retained pair from a new conversation between
+original labelled identities. Focused acceptance is RED; no production client
+patch, general rejection replay, APK delivery or deployment follows. Existing
+symmetric/new-dialog tests are not evidence that the asymmetric case works.
+Independent review and disposition of the missing profile signal remain gates.
+
+## Next decision gates
+
+1. Validate and prioritize the initial requirements with the founder.
+2. Define assets, adversaries, metadata exposure, recovery, and trust boundaries.
+3. Specify identity and nickname lifecycle, including cost and abuse resistance.
+4. Compare protocol and implementation strategies, including open-source prior art.
+5. Select the first vertical slice and its measurable acceptance criteria.
+6. Accept the initial architecture and stack through RFCs and ADRs.
+
+## Update trigger
+
+Update this document whenever a gate is completed, a production capability is
+added, a major risk changes, or an accepted decision changes what a newcomer
+should believe about the project.
