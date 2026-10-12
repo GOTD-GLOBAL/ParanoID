@@ -6,6 +6,22 @@ last_reviewed: 2026-09-09
 
 # Initial product requirements
 
+## iOS concurrent-server direction — 2026-10-12
+
+Sergey Maltsev confirmed the iOS identity-v3 direction and requested both
+`157.180.49.125:38444` and `138.16.180.53:38444` connected simultaneously
+in one installation, not merely an either/or choice. This brings
+REQ-MULTI-001 into the iOS workstream alongside REQ-CLIENT-001 and
+REQ-ID-002/003. [RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12)
+records the exact Telegram reply, its missing permanent approval provenance
+and the required redesign of the original single-realm proposal.
+
+This is product input, not implemented multi-server support, an accepted
+identity/storage architecture, server federation or operational authorization.
+The earlier first-slice and two-OPPO exclusions below remain historical scope,
+not an exclusion of this new iOS direction. Independent review, exact-scope
+alpha approval and technical acceptance remain separate.
+
 ## Fresh Devnet scope correction — 2026-09-21
 
 Sergey explicitly waived preservation/migration of the CURRENT TEST accounts and
@@ -47,7 +63,7 @@ are complete.
 | REQ-SERVER-002 | Support server-selection/admission invitations by QR or link, distinct from verified contact pairing; server trust and admission remain explicit. | Confirmed future product direction; design unimplemented |
 | REQ-CLIENT-002 | When a server invite opens without the app, guide the user to Google Play/App Store and back to the invitation after installation; provide a reopen-original-invite fallback. | Confirmed future product direction; platform behavior unverified |
 | REQ-CLIENT-003 | Provide a user-triggered in-app update button to download a verified same-signer newer APK and invoke the native Android installer without erasing application identity or data. | Confirmed user direction; implementation/review pending |
-| REQ-MULTI-001 | A user must be able to connect to or participate through more than one server without creating an incoherent identity model. | Draft |
+| REQ-MULTI-001 | A user must be able to connect to or participate through more than one server without creating an incoherent identity model. | iOS concurrent use of both named v3 servers requested 2026-10-12; RFC-0030 records product input, permanent evidence and technical design pending |
 | REQ-EXT-001 | The platform must support modular extensions with explicit permissions and isolation. | Confirmed direction |
 | REQ-ENT-001 | The commercial platform must support configurable enterprise messaging and CRM workflows. | Confirmed direction |
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |

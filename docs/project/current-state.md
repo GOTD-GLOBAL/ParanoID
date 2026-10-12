@@ -1,11 +1,34 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-06
-last_reviewed_scope: RFC-0030 proposal and the state of the servers seen on 2026-10-05, over the PR70 merge-gate repairs; dated historical records retained
+last_reviewed: 2026-10-12
+last_reviewed_scope: owner input expands RFC-0030 to concurrent servers; implementation and approval-evidence gaps explicit; older dated records retained
 ---
 
 # Current project state
+
+## iOS owner direction: both servers concurrently — 2026-10-12
+
+Sergey Maltsev confirmed the identity-v3 direction, selected both existing v3
+endpoints and requested simultaneous connections in one iOS install. He stated
+that the decision is made now and requested "maximum rights" for continuing
+the work. [RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12)
+records the exact reply and distinguishes product input from protected-domain
+approval and operational authority. REQ-MULTI-001 now belongs to this iOS
+workstream; an either/or server selector is not the requested outcome.
+
+The original proposal assumes a single active realm and snapshot. That design
+must be revised, including identity/state isolation, concurrent transport,
+UI targeting, recovery and acceptance tests. No implementation or new phone
+evidence exists for this amendment. Both RFC and threat delta stay draft;
+no ADR changes status. The source Telegram permalink/message metadata is not
+available here, so permanent human approval evidence remains pending.
+
+Next: Yaroslav revises the design and bounded alpha scope; obtain direct owner
+confirmation on GitHub (or verifiable Telegram provenance) and independent
+review before protected implementation. Non-protected work can continue within
+existing delegation. No merge, server, DB, device, Apple-account, release or
+deployment action is performed or inferred by this record.
 
 ## iOS on identity v3 proposal (RFC-0030) — 2026-10-06
 

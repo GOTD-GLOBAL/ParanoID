@@ -60,7 +60,10 @@ Follow the human authority and acceptance-evidence rules in the
   (draft): fresh iOS installs recover or create a Solana Devnet nickname, log
   in to an identity-v3 server and find contacts through the directory, using
   the same Rust crates as Android; a saved v2 realm is never switched
-  silently. Nothing is implemented, and the owner's scope approval is pending.
+  silently. On 2026-10-12 the owner requested both v3 servers concurrently
+  in one installation, expanding the single-realm proposal (REQ-MULTI-001).
+  Nothing is implemented; the revised design, exact-scope permanent approval
+  evidence and independent review are pending.
 
 - [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
   (draft, written in Russian, decision deadline 2026-10-14): a single-use

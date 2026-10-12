@@ -1,11 +1,20 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-10-06
-last_reviewed_scope: pointer to the proposed iOS identity-v3 boundary (RFC-0030) alongside the update resource/test regression repair; retained fixed-service trust explicit; older dated records retained
+last_reviewed: 2026-10-12
+last_reviewed_scope: concurrent-server iOS threat questions for RFC-0030; older dated records retained
 ---
 
 # Threat model
+
+## iOS concurrent-server scope input — 2026-10-12
+
+The owner requested both v3 connections simultaneously in one iOS installation.
+[The draft delta](ios-identity-v3-threats.md#concurrent-server-expansion--2026-10-12)
+records cross-realm routing/proof confusion, persistence and recovery coupling,
+revocation/retry isolation, UI targeting and correlation risks. The original
+single-realm proposal does not resolve them. No new control is implemented,
+tested or accepted; no operational authority follows from this record.
 
 ## Proposed iOS identity-v3 boundary (RFC-0030) — 2026-10-06
 
