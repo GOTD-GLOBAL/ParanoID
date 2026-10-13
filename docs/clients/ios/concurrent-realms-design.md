@@ -13,7 +13,10 @@ accepted contract. Yaroslav requested the next design step on 2026-10-13,
 following Sergey's product direction recorded in PR #73: both named v3
 servers, simultaneously in one installation. The owner chose the outcome,
 **not the technical choices below**. Permanent product/scope evidence,
-technical disposition and implementation authorization retain the RFC's gates.
+implementation authorization and formal acceptance retain the RFC's gates.
+Yaroslav's [technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+agrees with this design at `efafe798` as the implementation basis with four
+remarks; it is not product/scope approval, ADR acceptance or live permission.
 No implementation, native execution, phone result or live authorization is
 claimed. All MR acceptance gates below are NOT RUN.
 
@@ -33,9 +36,18 @@ The candidate targets exactly two compiled identity-v3 profiles:
 
 Use the full saved pins in [RFC-0030](../../rfcs/0030-ios-identity-v3.md#server-profiles),
 not a fresh lookup or a user-entered pin. Those source values were not
-revalidated against live hosts during this design task. Debug/local testing
-uses two separately pinned synthetic realms and two isolated server databases;
-it must not dial either hosted profile or Devnet by default.
+revalidated against live hosts during this design task. Unit/negative testing
+uses separately pinned synthetic realm fixtures and controlled state/I/O;
+it must not dial either hosted profile or Devnet by default. The separate
+stand workstream was cancelled by the owner clarification in ADR-0017; no
+new instance or macOS server port is a prerequisite for phone acceptance.
+
+The [D5 order](../../rfcs/0030-ios-identity-v3.md#d5-order-and-external-dependencies)
+starts joint phone testing on VDSina, matching current Android v51 login.
+Android's Hetzner sponsor route is not a second messaging realm. Android
+second-realm capability is a separate scope; before D5 the owner confirms
+Hetzner v3 membership admission. Both remain explicit dependencies, not
+facts proven by compiled profile constants.
 
 Simultaneous means that, while foreground delivery is permitted, each joined
 realm can receive and send without selecting its screen. Choosing the visible
@@ -71,14 +83,16 @@ existing Rust cryptography and unchanged server-local identity-v3 exchanges.
   risks sending an old outbox under another trust pair. Do not use it.
 - One aggregate messaging snapshot makes every realm's write/failure depend
   on the other and expands the existing whole-snapshot cap. Not preferred.
-- Two unrelated nickname owners increase recovery burden and are not needed
-  by the stated product direction. Keep this alternative visible for human
-  disposition; common-owner correlation is a real consequence of the proposal.
+- Two unrelated nickname owners were considered and not selected in the
+  technical disposition. Common-owner correlation is the accepted consequence
+  of the selected "nickname is identity" model, not an open choice; it remains
+  disclosed, with no cross-server anonymity promise.
 - Two full app runtimes without coordination duplicate physical audio/camera,
   lifecycle observers and nominally global call budgets. Not sufficient.
 
-The candidate choices in this document remain open for human disposition;
-they are not derived permissions from the phrase "maximum rights".
+The candidate is agreed as the implementation basis, not an accepted ADR.
+The recorded disposition does not answer unspecified implementation details,
+replace product/scope approval or derive permissions from "maximum rights".
 
 ## Identity and ownership
 
@@ -488,8 +502,9 @@ server generations.
 ## Requirement and acceptance mapping
 
 MR labels are proposed test gates under existing requirements, not new accepted
-requirements. Every row is NOT RUN. Use two independent synthetic server DBs,
-controllable queues/clocks/I/O and explicit packet/request attribution.
+requirements. Every row is NOT RUN. Use independent synthetic realm-state
+fixtures, controllable queues/clocks/I/O and explicit packet/request attribution.
+Phone acceptance targets the existing instances, not a new stand workstream.
 
 | Gate | Requirements / invariant | Required observable result |
 | --- | --- | --- |
@@ -511,22 +526,33 @@ controllable queues/clocks/I/O and explicit packet/request attribution.
 | MR-16 | Delivered behavior | On an approved phone/peer setup both realms stay connected; text/receipts on both and a call on one while text continues on the other; exact-head Mac, device and server receipts |
 
 MR-01..14 begin on isolated host/simulator fixtures; MR-15/16 require separately
-authorized physical sessions. At least one real Android peer must be exercised
-on each realm; do not assume the current Android can join both simultaneously.
+authorized physical sessions. First joint iPhone/Android session: VDSina
+`138.16.180.53:38444`, with the second realm following. At least one real
+Android peer must be exercised on each realm. Android v51 login is VDSina-only,
+so the second Android leg needs separately scoped capability; no support for
+that leg, let alone simultaneous Android connections, is inferred here.
 Use independently enrolled approved test peers or separate named sessions,
 keeping the iPhone connected to both. Never reset the owner's daily Android
 merely to manufacture this evidence. These tests do not authorize enrollment,
 replacement, deletion, fault injection or spending on hosted services.
 
+Before D5 the owner confirms Hetzner `157.180.49.125:38444` membership admission.
+Yaroslav performs phone acceptance only with a separate explicit go per action.
+MR-16 remains NOT RUN until evidence covers both realms and the required peer
+scenarios; neither an absent Android capability nor the first successful
+VDSina run is a reason to weaken it.
+
 ## Implementation sequence and decision gates
 
-1. **Design closure:** permanent product evidence and exact bounded alpha scope;
-   independent review; draft ADR with next available number; no status acceptance
-   without the required human disposition and evidence.
+1. **Design closure:** technical basis disposition and draft ADR-0017 are
+   recorded; permanent product evidence, exact bounded alpha scope and the
+   remaining reviews/implementation evidence retain their gates. No automatic
+   ADR acceptance follows from basis agreement.
 2. **Storage first:** versioned codec/catalogue/store specifications and negative
    fixtures, commit/freeze matrix, tested downgrade barrier, scoped metadata.
 3. **Dual runtime:** typed targets, independent lanes, bounded scheduling,
-   lifecycle fan-out and global call/resource arbiter on local stand.
+   lifecycle fan-out and global call/resource arbiter with synthetic/native
+   component tests; no separate server-stand workstream.
 4. **Identity:** existing Rust Devnet bridge, owner store/RPC and per-realm
    login/recovery; use the unchanged shared derivation and proof algorithms.
 5. **Directory/UI:** scoped search/pair/visibility/links, explicit server labels,
@@ -535,10 +561,10 @@ replacement, deletion, fault injection or spending on hosted services.
    tests, then separately authorized physical sessions. Source checks are not
    runtime acceptance. No published delivery estimate until this scope is sized.
 
-Before protected implementation, obtain disposition of: common owner and
-correlation; catalogue/envelope/freeze and downgrade choices; global call policy
-and scheduler bounds; legacy transition; original owner-auth/RPC/words-screen
-questions; remote admission; exact features/devices/data/environments and risk
-owner. Product direction belongs to Sergey; technical disposition may use the
-recorded human delegation only within its bounds. This design neither moves
-that authority to AI nor changes ADR-0014/0016 to accepted.
+The common-owner/correlation, independent-store/freeze and shared-call variant
+has technical basis agreement. Before protected implementation, record the
+remaining exact product/alpha scope and resolve any unchosen format,
+owner-auth/RPC/words-screen or legacy-transition options; remote admission
+retains its own gate. Product direction belongs to Sergey; technical disposition
+uses the recorded human delegation only within its bounds. This design neither
+moves that authority to AI nor changes any ADR to accepted.

@@ -2,10 +2,29 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: PR75 Mac component receipt and PR76 gate integration; full wrapper and identity-v3 phone/MR acceptance remain incomplete
+last_reviewed_scope: verified technical-basis disposition with four remarks and 4aac29c Mac receipt; scope approval, implementation and phone acceptance remain separate
 ---
 
 # Current project state
+
+## iOS technical basis agreed, not ADR acceptance — 2026-10-13
+
+[Yaroslav / Cooldom66671's disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+agrees with design `efafe798` and draft ADR-0017 at `4aac29c` as the basis for
+implementation. The [ADR record](../decisions/0017-ios-concurrent-identity-v3.md)
+and [D5 order](../rfcs/0030-ios-identity-v3.md#d5-order-and-external-dependencies)
+carry all four remarks: VDSina-first iPhone/Android testing; current Android's
+single messaging realm and separate scope for its second-realm capability;
+owner confirmation of Hetzner v3 membership admission before D5; shared-owner
+correlation as the selected consequence, not an open question 19. Both realms
+still need evidence before MR-16 passes.
+
+The D1-D3 application goal is test-nickname recovery, existing-server login
+and retained login after restart. It is not delivered. Yaroslav performs phone
+acceptance with a separate explicit go per action. Product/scope approval in
+PR #73 remains pending; ADR-0017 and RFC-0030 stay `draft`. Technical basis
+agreement is neither formal acceptance nor permission to merge/deploy, install,
+register or replace an identity. No Android/server code or live state changed.
 
 ## iOS implementation task: existing-instance acceptance — 2026-10-13
 
@@ -36,8 +55,13 @@ unsigned device build were supplementary runs, not a successful wrapper.
 gate drifts and merged as `a74b3a49f15764bd053661eb3fc5a36dba885edb` after
 Yaroslav's authorization. PR75 incorporates that main with a merge commit,
 preserving PR73/74 ancestry and the old reviewed head without force-pushing.
-The integrated head still needs its own Mac receipt. Gate 11's attempt to
-build the Linux-only server on macOS remains unresolved; issue #37 is closed
+The [integrated-head Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150129691)
+for `4aac29c` is now received: focused native checks and ParanoidKit 389/0;
+supplementary simulator 117/0, Keychain 11/0 and unsigned device build passed.
+The QR gate is flaky (1 PASS / 3 FAIL), not green. The two handoff evidence paths
+needed correction to `out/checks/...`; the dirty-tree guard correctly refused
+the unintended output path. Gate 11's attempt to build the Linux-only server
+on macOS remains unresolved; issue #37 is closed
 as not planned, not a server-port prerequisite. The prior prebuilt-server
 run is historical evidence, not current-server or physical-device acceptance.
 
@@ -69,8 +93,9 @@ findings were corrected and re-reviewed without remaining blockers in that
 delta. Local checks and exact-design-head CI passed; this evidence-only update
 is not a new design review or runtime result. All MR gates remain NOT RUN.
 
-Next: human disposition and scoped approval evidence, then the applicable draft
-ADR/storage specifications and negative fixtures before dual-runtime networking.
+Technical basis disposition is now recorded above. Remaining: scoped product
+approval, versioned storage specifications and negative fixtures, then the
+applicable implementation/native review gates before dual-runtime delivery.
 
 ## iOS owner direction: both servers concurrently — 2026-10-12
 

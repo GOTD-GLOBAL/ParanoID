@@ -6,14 +6,16 @@ review_mode: closed-alpha-ai
 decision_deadline: 2026-10-12
 required_reviewers: []
 last_reviewed: 2026-10-13
-last_reviewed_scope: concurrent-realm design candidate, storage and runtime ownership, revised increments and acceptance; implementation NOT RUN
+last_reviewed_scope: delegated technical-basis disposition, four remarks and D5 ordering; scope approval and application acceptance remain pending
 ---
 
 # RFC-0030: The iOS client on identity v3
 
-This is a draft. Nothing in it is accepted, implemented, deployed or measured
-on a phone. It proposes a decision that only a future ADR could record, and
-only with the human decision owner's exact approval. The author is the
+This remains a draft, not an accepted architecture or a delivered identity-v3
+application. The C-ABI prerequisite has separate component evidence; no working
+v3 phone result is claimed. Technical basis agreement is recorded below, while
+formal ADR acceptance still needs the applicable human approvals and evidence.
+The author is the
 contributor `Cooldom66671`. Merging this file does not change its authority.
 
 The base is `main` `2470dca711929fb4575c75cd61578d77acdd3102` (Android
@@ -26,13 +28,13 @@ on `main` (PR #69) and `0029-ios-background-delivery.md` on the open PR #58.
 Under the naming rule PR #58 renumbers when it merges, to the next number free
 at that time. (Integration note, 2026-10-12: PR #58 was merged and the APNs
 draft was then renumbered to RFC-0031 in PR #72. Every other RFC-0029
-mention in this document is the invite RFC, which keeps 0029.) No ADR
-number is reserved here: the ADR gets the next free
-number when it is drafted, re-checked before `proposed`.
+mention in this document is the invite RFC, which keeps 0029.) The original
+RFC reserved no ADR number. [ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md)
+now records the candidate as `draft`; recheck numbering before `proposed`.
 
 ## Owner direction and scope expansion — 2026-10-12
 
-**Product direction received; technical disposition remains pending.** In
+**Product direction received; technical basis agreement recorded below.** In
 Telegram group ParanoID, thread 3, Sergey Maltsev answered the coordinator's
 four questions about the direction, server selection, closed-alpha scope and
 decision date. Exact reply (original Russian):
@@ -77,8 +79,9 @@ proposed technical choices, not owner-approved architecture or implemented
 behavior. This RFC's storage, runtime, migration, sequence and acceptance
 sections now point to that candidate instead of the obsolete single-realm plan.
 
-The linked draft proposes answers for the following areas; each remains
-subject to technical disposition, independent review and implementation tests:
+The linked draft covers the following areas. Its technical basis is agreed,
+not accepted as a normative ADR; scoped approval, any unchosen options,
+independent implementation review and actual tests retain their gates:
 
 - whether and how a nickname/owner identity is shared, and the distinct
   membership, device-credential and replacement lifecycles for each realm;
@@ -98,6 +101,24 @@ forwarding or approval for several active phones per server membership. Saved
 trust, E2EE, explicit replacement and the rule against silent rekeying remain
 constraints. No v2 history migration, reinstall, reset or deletion is authorized
 by the product reply.
+
+### Technical basis disposition — 2026-10-13
+
+[Yaroslav / Cooldom66671's human comment](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+under the recorded technical delegation agrees with design `efafe798` and
+draft ADR-0017 at `4aac29c` as the implementation basis, with four remarks.
+The [PR #74 cross-reference](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6150515450)
+points to that same record. This is **not** product/scope approval in PR #73,
+ADR acceptance or live authorization. The ADR remains `draft` through scope
+confirmation and implementation; phone acceptance is separate.
+
+The remarks require VDSina-first joint phone testing, an explicit separate
+Android dependency for cross-platform use of both realms, owner confirmation
+of Hetzner v3 membership admission before D5, and common-owner correlation
+recorded as the selected consequence rather than an open question 19. The
+agreed D1-D3 goal is test-nickname recovery, existing-server login and retained
+login after restart. Neither that goal nor the technical disposition is a
+claim of implementation. See [D5 order](#d5-order-and-external-dependencies).
 
 ### Work authority and remaining gates
 
@@ -197,10 +218,11 @@ Scope proposed for the owner's approval:
   Device actions and any new App ID still require explicit authorization.
 - **Data:** synthetic accounts, nicknames and messages only.
 - **Environment:** both named v3 endpoints, independently confirmed and scoped
-  before any live use, plus two isolated local realm/database fixtures; Solana
-  Devnet through `https://api.devnet.solana.com` with program
-  `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`; a local identity-v3 stand for
-  development builds.
+  before any live use; independent synthetic realm-state, storage and registry
+  fixtures for local unit/negative checks, not a separate server workstream.
+  Separately authorized Devnet operations use `https://api.devnet.solana.com`
+  with program `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`.
+  No new identity-v3 stand, macOS server port or container is required.
 - **Human risk owner:** `martadvix-web`.
 
 ## Summary
@@ -510,9 +532,10 @@ and route rules apply separately to each realm, not to one global active server.
   unknown server. Question 10 now needs a design for managing both concurrent
   connections, not a one-time either/or selector. The candidate server view
   changes only UI scope, not which connection is active.
-- The kind of a saved realm comes from the compiled list. A Debug build that
-  points at a local stand declares the kind with an explicit launch flag,
-  checked together with the realm and the pin. The kind is never inferred
+- The kind of a saved realm comes from the compiled list. Existing Debug
+  fixture plumbing, when used, declares the kind with an explicit launch flag,
+  checked together with the realm and the pin; this is not a requirement to
+  create a new stand or protocol mode. The kind is never inferred
   from `/health`; the proposed app catalogue/realm envelope bind it explicitly.
   The embedded core Snapshot v4 retains its current format.
 - Saved trust wins. A saved v2 realm stays v2. Nothing falls back from v3 to
@@ -966,16 +989,44 @@ by adding two profiles or by old one-realm receipts.
 
 | Step | Deliverable | Gate |
 | --- | --- | --- |
-| D0 | This design revision, threat/test mapping and alternatives | permanent product/scope evidence, independent review, technical disposition and draft ADR before protected implementation |
+| D0 | This design revision, threat/test mapping and alternatives | technical basis agreement and draft ADR recorded; permanent product/scope evidence and remaining review/acceptance gates still apply |
 | D1 | Versioned catalogue/owner/realm stores, allocation/commit/freeze rules, downgrade guard and scoped metadata | questions 8, 9, 17; MR-06/07/14 |
 | D2 | Typed runtime/peer/call targets, independent foreground lanes, bounded queues and lifecycle fan-out; one call/media arbiter | MR-02/03/09/10/11/12 |
 | D3 | Existing Rust Devnet bridge/lock/notices; owner storage/RPC; per-realm login and recovery | original questions 5, 6, 7, 13, 15; MR-01/04/05/13 |
 | D4 | Directory/visibility, explicit per-server UI, safe pasted-link routing and one sponsored nickname registration | RFC-0028 disposition; questions 11, 12, 18; MR-08/09/13 |
-| D5 | Full two-realm Mac/stand matrix, old-v2 regressions, then separately authorized device/Android-peer evidence | original question 4 remote admission, questions 14/17 and all MR gates |
+| D5 | Two-realm native/synthetic matrix, old-v2 regressions, then VDSina-first and second-realm phone/peer evidence on the existing instances | owner-confirmed Hetzner admission, separately scoped Android second-realm capability, questions 4/14/17 and all MR gates; separate go per live action |
 
 The [design sequence](../clients/ios/concurrent-realms-design.md#implementation-sequence-and-decision-gates)
 explains dependencies. This does not widen the allowed component boundary or
 turn owner source-work authority into permission for hosted actions.
+
+### D5 order and external dependencies
+
+1. The first jointly authorized iPhone/Android session targets
+   `138.16.180.53:38444`. At the inspected Android v51 source, `TextEngine.java:307-318`
+   binds login to `KeyClient.IDENTITY_TEST_REALM` and rejects another realm;
+   `KeyClient.java:15-18` identifies VDSina. Record the D1-D3 milestone
+   (recover test nickname, log in, restart with login retained) as a real result
+   only after Yaroslav performs it under the separate go for each phone action.
+2. The second iOS realm follows. Android is currently a one-messaging-realm
+   client; `OnboardingActivity.java:443-465` invokes that login path and
+   `:513-517` uses Hetzner `DEFAULT_REALM` only for the sponsor in this flow.
+   Sponsor traffic does not establish messaging membership. Cross-platform
+   operation on both servers needs separate Android work outside RFC-0030.
+3. Before D5, the owner confirms that `157.180.49.125:38444` accepts identity-v3
+   memberships. Constants, the displayed common-server label, a health response
+   or a sponsor response do not establish the required admission/topology fact.
+   It is unverified here; this record neither probes nor changes that server.
+4. MR-16 is credited only after both realms and required peer scenarios pass.
+   The first VDSina success cannot substitute for the second realm. If its
+   Android peer capability or admission evidence is missing, record that
+   dependency and NOT RUN, not a reduced acceptance criterion.
+
+The order chooses no new endpoint and authorizes no enrollment, replacement,
+spending, reinstall, server/DB modification or deploy. Use existing instances;
+synthetic unit/negative fixtures are not a separate stand workstream. The
+coordinator's next Mac request must carry new feature code and its tests, not
+another unchanged-app rerun presented as progress toward this milestone.
 
 ## Alternatives
 
@@ -984,7 +1035,7 @@ turn owner source-work authority into permission for hosted actions.
 | Keep iOS on v2 | The v2 service is stopped, so the client would have no server at all. |
 | Move iOS to v3 without a nickname | v3 has no self-registration: `/v2/registration/` answers `404`. It would need a server change and an admission policy that does not exist (`docs/protocol/identity-login-v3.md:40-42`). |
 | Recovery, login and the directory only, registration later | This can be an intermediate milestone within D3/D4, not final delivery. Stopping there would leave an iOS user without an Android unable to obtain a nickname (REQ-ID-003, REQ-ID-004), so registration stays in scope. |
-| Independent identities for each server | Both servers are required, but two unrelated nickname owners are not. The new candidate prefers one owner and independent per-realm transport state, with correlation disclosed; still subject to disposition. |
+| Independent identities for each server | Considered but not selected in the technical disposition: one common nickname owner, independent per-realm transport state and disclosed correlation are the agreed implementation basis. Product/scope approval and ADR acceptance remain separate. |
 | Two static libraries | Each would keep its Android lock exactly, and they linked into one executable on 2026-10-06 without duplicate-symbol errors. But both carry their own `std` and shared crates, and whether the linker keeps resolving the duplicated members depends on each future toolchain and graph. |
 | Owner operations rebuilt inside the iOS bridge over `key-protocol` | `key-protocol` already has the transcript, PDA and record checks (`key-protocol/src/identity_v3.rs`), and the server builds the registration message with `key-protocol` alone, without any `solana-*` crate (`server/src/sponsor.rs:102-149`). The lock rule would hold, but BIP39, SLIP-0010 and the transaction would get a second implementation that no Android test exercises, contrary to RFC-0026:174-175 (draft). |
 | Owner cryptography in Swift | Contrary to RFC-0026:174-175 (draft); a second implementation of key derivation and transaction building. |
@@ -1077,15 +1128,17 @@ Proposed physical acceptance boundary (question 14; D5), not authorization:
 - one separately approved replacement on each server if the agreed test budget
   permits, with exact generation/cooldown effects recorded, never automatic
   repeats or a reset of the owner's daily phone;
-- real Android peer coverage on each realm, using approved test peers or named
-  sessions; do not assume the current Android joins both concurrently;
+- real Android peer coverage on each realm, with the first joint session on
+  VDSina; the current Android login does not support the second realm, so that
+  leg needs separately scoped Android capability and approved peers/sessions;
 - the iPhone remains joined to both while text/receipts operate on each and a
   call on one does not stop text on the other (MR-16).
 
 Before any live step, record the chosen device/app ID, endpoint/build/schema,
 synthetic accounts, operation counts, sponsor budget and rollback/stop plan.
 A spare device, new Apple App ID, reinstall, DB reset or fault injection is not
-implicitly authorized. Local two-DB fixtures cover destructive/race scenarios;
+implicitly authorized. Synthetic storage/realm-state fixtures cover
+destructive/race scenarios without touching hosted data;
 phone acceptance and remote admission still need the owner's bounded go.
 
 Any distribution beyond the contributor's phone reopens Apple questions that
@@ -1129,23 +1182,24 @@ through `2470dca`, change only Android files. None of it is phone evidence.
 
 - **[CI]** The iOS static gates, with the restated bridge-lock rule, notices
   and captions.
-- **[Mac]** `swift test`, application tests and simulator runs against a local
-  identity-v3 stand with a registry fixture, as Android's
-  `clients/android/test_identity_login.py` does
-  (`PARANOID_MODE=identity-v3-local`, `PARANOID_REGISTRY_FIXTURE`).
-  - The server does not build on macOS. The stand needs either a small
-    portability fix in the server (cfg-gating the Linux-only `O_TMPFILE`
-    snapshot in `server/src/android_updates.rs:293-299`), as a separate pull
-    request for the owner's agents, or a Linux container on the build Mac
-    (question 15).
-  - `clients/ios/local_stand.py` knows only `self-service-v2-local`
-    (`:71-72`), and `clients/ios/test_android_compatibility.py` has no v3
-    operation. Step D2 adds the identity-v3 mode and a v3 scenario.
-  - Every pull request that touches the profiles, health, transport or
-    `ProofFlow` also runs the v2 path on the v2 stand.
-  - RPC flows use an injected fake transport. Simulators never touch Devnet or
-    a v3 server.
-- **[device]** The live actions above, each with its go.
+- **[Mac]** `swift test`, application tests and simulator checks use synthetic
+  inputs and controlled storage, registry, transport, queue and clock fixtures.
+  Preserve identity-v3 success/negative/replay/restart and cross-realm scenarios;
+  Android's `clients/android/test_identity_login.py` is a source for cases, not
+  an instruction to reproduce its server environment on the Mac.
+  - No server portability fix, Linux container, new stand or added server mode
+    is part of D2. The separately proposed stand workstream is cancelled.
+  - Preserve applicable v2 regressions when profiles, health, transport or
+    `ProofFlow` change. Existing stand-dependent checks retain their actual
+    execution limits: full-wrapper gate 11 still stops while building the
+    Linux-only server on macOS. It is not fixed, skipped or made passing by
+    this documentation change. A separate legacy-server receipt is not a
+    current-server result; unavailable checks remain explicitly NOT RUN/blocked.
+  - RPC flows use an injected fake transport; local/simulator component tests
+    do not contact Devnet or either hosted v3 server.
+- **[device]** Acceptance uses the existing configured instances in the
+  VDSina-first D5 order above, each action with its own go. Synthetic fixtures
+  never substitute for those phone/Android-peer results or complete MR-16.
 
 ### Requirement-to-test mapping (proposal)
 
@@ -1303,10 +1357,13 @@ ADR-0014 gets a pointer to it when both are disposed.
 
 ## Open questions
 
-The decision owner is `martadvix-web` for every item. Product answers to
-items 1 and 2 were received on 2026-10-12 as recorded above; permanent evidence,
-technical disposition of the concurrent-realm candidate and the remaining review gates still block
-`proposed`. "Maximum rights" does not answer the other technical questions.
+Product/scope decisions remain with `martadvix-web`; delegated technical
+disposition belongs to `Cooldom66671` within the recorded private-alpha bounds.
+Product answers to items 1 and 2 were received on 2026-10-12; the concurrent
+technical basis and question 19 have the human disposition above. Permanent
+product/scope approval, any unchosen options and remaining review/implementation
+gates are not supplied by that disposition. "Maximum rights" is not a blanket
+answer to technical questions or permission for live operations.
 
 | # | Question (proposed answer) | Needed by |
 | --- | --- | --- |
@@ -1324,19 +1381,21 @@ technical disposition of the concurrent-realm candidate and the remaining review
 | 12 | Wording: say "Devnet" and confirm the canonical name before signing (RFC-0026:72, 226; proposed), or Android's wording. | step D4 |
 | 13 | The login intent persisted as the protocol requires (proposed for iOS), and whether Android follows. | step D3 |
 | 14 | The live-action budget for step D5, whether it includes an Android leg of the replacement test, and the confirmed state of the chosen v3 server. | step D5 |
-| 15 | The local identity-v3 stand: the server portability fix, or a Linux container on the build Mac. | step D2 |
+| 15 | The separately proposed stand workstream is cancelled by the owner clarification recorded in ADR-0017. Use synthetic unit/negative fixtures for component checks and existing configured instances for separately authorized phone acceptance; no macOS server port or new deployment is required. | component tests and D5; no live authority implied |
 | 16 | The call screen: keep covering video during capture, which is stricter than Android since 2026-10-05 (proposed), or follow Android. The iOS documents that describe Android's call window as protected are corrected either way. | separate UI cleanup / D2 |
 | 17 | Development builds under a separate bundle identifier (proposed), which needs a new App ID in team `5RPGVC566Q` and a development exception in `clients/ios/test_app_bundle.py`, or an explicitly authorized fresh same-bundle installation with the tested v5 downgrade barrier. Switching between joined server views requires no reinstall. | D1 compatibility; D5 devices |
 | 18 | Contact exchange: by nickname through the directory only, with QR removed on both clients (proposed: the direction relayed by the contributor on 2026-10-06), or QR kept alongside; REQ-ID-007 amended to match either way. | step D4 |
-| 19 | One common nickname owner with independent per-realm credentials/memberships (recommended candidate), accepting correlation and per-realm partial recovery, or separate owner identities. | design disposition before D1 |
+| 19 | Recommended common-owner variant selected by Cooldom66671 in comment 6150510664. Cross-server correlation is an accepted consequence of the "nickname is identity" model, not an open alternative; independent credentials/memberships and visible per-realm recovery remain. | technical basis agreed; product/scope approval and ADR acceptance remain separate |
 | 20 | One application-wide call/media arbiter, typed target leases, scoped UI and bounded scheduling as specified in the linked candidate (recommended), including the finite queue limits. | design disposition before D2 |
 
 ## Decision and follow-up
 
 - Disposition: product direction received 2026-10-12; concurrent-realm design
-  candidate drafted 2026-10-13; durable scope approval, technical disposition
-  and implementation evidence remain pending.
-- Decision-owner approval permalink: pending.
+  candidate drafted 2026-10-13; delegated technical basis agreed with four
+  remarks. Durable product/scope approval, implementation and formal acceptance
+  remain pending; this RFC remains `draft`.
+- Technical disposition permalink: <https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664>.
+- Product/scope approval permalink: pending in PR #73.
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical authority only).
@@ -1349,8 +1408,9 @@ technical disposition of the concurrent-realm candidate and the remaining review
   exact-revision review; this citation-only tail does not relabel the reviewed SHA.
 - Resulting ADR: [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md),
   allocated after checking published branches. This records the candidate,
-  not acceptance; exact scope/disposition and implementation evidence remain gates.
+  not acceptance; exact product/scope approval and implementation evidence remain gates.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: none.
-- Implementation issues: D0-D5 and MR-01..16 above; no implementation is started.
+- Implementation issues: D0-D5 and MR-01..16 above. C-ABI component evidence is
+  separate; the owner storage/login and concurrent iOS application are not delivered.

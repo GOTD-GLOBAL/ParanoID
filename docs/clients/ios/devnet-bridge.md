@@ -192,9 +192,12 @@ branch was exercised here. The [contributor's Mac receipt](https://github.com/GO
 on `7a39897f83511d368358f606e88193bf4a6594ad` now reports Darwin C-link/run,
 three regenerated xcframework slices and 389 passing package tests. Its full
 wrapper stopped at gate 9; later individually run simulator/device checks are
-not a successful wrapper or a working identity-v3 application. The integrated
-PR76 head needs a new receipt; the [handoff](identity-v3-mac-handoff.md)
-records the retained gate 11 limitation without requiring a server port.
+not a successful wrapper or a working identity-v3 application. The [integrated
+PR76-head receipt at 4aac29c](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150129691)
+now reports the focused native checks passing; full-wrapper gate 11 remains
+blocked and the QR gate is flaky (1 PASS / 3 FAIL). The [handoff](identity-v3-mac-handoff.md)
+records these limits without requiring a server port or a repeat of unchanged
+native code just for a documentation correction.
 
 On Yaroslav's pinned Mac, regenerate native artifacts and run native regressions:
 

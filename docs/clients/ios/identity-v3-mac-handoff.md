@@ -40,6 +40,15 @@ changes; no such client session has been executed by this handoff yet.
 
 ### Known limitation and receipt already received
 
+The [integrated-head receipt for 4aac29c](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150129691)
+has now arrived. All focused native checks passed; full-wrapper gate 11 still
+stopped, and the supplementary QR gate was flaky (1 PASS / 3 FAIL). Do not
+request another full unchanged-app run for this documentation-only update.
+The next Mac request must identify new feature code and its targeted tests.
+Yaroslav's [technical basis disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+is separate from these receipts; phone acceptance requires an explicit go per
+action and follows the VDSina-first [D5 order](../../rfcs/0030-ios-identity-v3.md#d5-order-and-external-dependencies).
+
 The [Mac receipt for 7a39897](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6147113616)
 reports native C ABI checks, regenerated xcframework slices and ParanoidKit
 389/0. Its wrapper stopped at gate 9. Supplementary simulator 117/0,
@@ -105,10 +114,10 @@ bash clients/ios/toolchain.sh swift build \
   --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
   --product core-bridge
 bash clients/ios/toolchain.sh python3 clients/ios/test_android_compatibility.py \
-  --skip-stand --evidence-dir clients/ios/out/checks/compat-no-stand
+  --skip-stand --evidence-dir out/checks/compat-no-stand
 bash clients/ios/toolchain.sh python3 clients/ios/check-pinned-tls.py
 bash clients/ios/toolchain.sh python3 clients/ios/test_realtime_transport.py \
-  --evidence-dir clients/ios/out/checks/transport
+  --evidence-dir out/checks/transport
 ```
 
 The pinned WebRTC archive must already be cached for `--offline`; do not reuse
@@ -116,6 +125,11 @@ an extracted framework without verification or change its pin. The extraction
 step is required before standalone SwiftPM tests in a fresh worktree. The
 `--skip-stand` result omits server scenarios explicitly; it is never the full
 compatibility receipt. Loopback TLS/transport fixtures are not hosted instances.
+
+Those two relative evidence paths are resolved by the scripts against
+`clients/ios`, not the caller's current directory. Do not prefix them with
+`clients/ios/`: that creates an untracked nested directory and the exact-source
+wrapper correctly refuses it as a dirty tree.
 
 ## Required receipt
 

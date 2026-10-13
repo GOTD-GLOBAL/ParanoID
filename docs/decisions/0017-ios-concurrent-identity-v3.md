@@ -5,6 +5,8 @@ decision_owner: Cooldom66671
 product_decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 required_reviewers: []
+technical_disposition_date: 2026-10-13
+technical_disposition_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664
 last_reviewed: 2026-10-13
 ---
 
@@ -22,9 +24,13 @@ recheck before proposing/merging if another branch allocates it first.
 Technical decision authority for bounded private non-sensitive alpha is
 [delegated to Yaroslav / Cooldom66671 by martadvix-web](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919).
 Product scope, priorities and case-specific server/production authorization
-remain with Sergey. Yaroslav's reported three-remark GitHub comment was not
-visible during the latest readback; it is not invented or treated as evidence.
-The product input and its evidence limitations remain in owner-input PR #73.
+remain with Sergey. Yaroslav's [verified technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+agrees with design `efafe798f89b5bef7b411b8aeb9af661f52a39e0` and this draft
+at `4aac29c0ecb90c1cca1d49fc934403018779f3f9` as the basis for implementation,
+with four non-blocking remarks recorded below. His [cross-reference in PR #74](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6150515450)
+points to the same single source. This is not product/scope approval, ADR
+acceptance or live authorization. Product/scope evidence remains pending in
+owner-input PR #73; the earlier reported three-remark comment is not relied on.
 
 The current Telegram task requests urgent progress toward a working iOS test
 version. Work starts with locally exercised implementation prerequisites rather
@@ -44,8 +50,8 @@ Xcode/native build and tests. No reachable Mac or self-hosted GitHub macOS runne
 was found here, and no paid runner is provisioned. This is a task-specific
 build handoff, not a permanent hosting or staffing policy.
 
-Formal technical disposition, permanent exact alpha-scope evidence and the
-full acceptance record remain pending. This draft is not a blanket approval
+Technical basis agreement is recorded; permanent exact alpha-scope approval,
+implementation and the full acceptance record remain pending. This draft is not a blanket approval
 or an instruction to bypass protected-domain gates. Merge/release, changes to
 either hosted server, phone installation/replacement, Apple account and
 TestFlight remain separately scoped; none is performed by drafting this ADR.
@@ -85,6 +91,9 @@ core/device credentials, memberships, encrypted state, session and lanes for
 each full realm/pin. Use existing Rust derivation/signing through a thin C ABI;
 Swift performs orchestration, not a second cryptographic implementation.
 
+The delegated technical decision owner agreed to this variant as the
+implementation basis, not as accepted or completed application architecture.
+
 - An authenticated install catalogue at the legacy path and independent owner/
   realm stores provide explicit allocation, crash/freeze and context checks.
 - Immutable realm login intents survive unknown outcomes; mismatches preserve
@@ -100,14 +109,21 @@ Swift performs orchestration, not a second cryptographic implementation.
 
 Rejected as the preferred candidate: one mutable active-realm/core state
 (does not meet concurrency); unrelated owners for each server (extra recovery
-burden, still an alternative for human disposition); one aggregate messaging
+burden; considered alternative not selected in the technical disposition); one aggregate messaging
 snapshot (coupled write/failure boundaries); two uncoordinated app runtimes
 (shared physical resources and nominally global budgets conflict).
 
 ## Consequences and retained risks
 
-One owner simplifies nickname recovery but correlates memberships and lets a
-compromised owner compete for replacement on either server. Transport revocation
+One owner simplifies nickname recovery and correlates memberships. In remark 4,
+Yaroslav selects the recommended answer to RFC-0030 question 19 and accepts this
+correlation as a consequence of the product model "nickname is identity", not
+an unresolved choice between shared and unrelated owners. This technical
+disposition does not supply the missing product/scope approval in PR #73.
+Correlation remains observable and must be disclosed; cross-server anonymity
+is not promised. A compromised owner can still compete for replacement on
+either server; that security risk is not eliminated by choosing correlation.
+Transport revocation
 does not erase owner authority or restore history. RPC remains a trusted source;
 server-local capacity/cooldown and shared host/disk limits remain real.
 
@@ -118,6 +134,38 @@ The first-admitted owner/call policy can refuse an incoming call during a
 foreground owner operation; it is explicit, not a claim of call waiting.
 
 ## Validation, compatibility and rollback
+
+### Disposition remarks and D5 order
+
+1. First jointly authorized iPhone/Android test: `138.16.180.53:38444`.
+   The inspected Android v51 login creates/binds the device to
+   `IDENTITY_TEST_REALM` and refuses a different realm
+   (`clients/android/src/org/paranoid/text/TextEngine.java:307-318`;
+   `KeyClient.java:15-18`). The second iOS realm follows; the first successful
+   VDSina session alone never satisfies MR-16.
+2. Android currently has one messaging realm. Its onboarding join uses that
+   login path (`clients/android-devnet/src/org/paranoid/devnet/OnboardingActivity.java:443-465`),
+   while its sponsor uses Hetzner `DEFAULT_REALM` (`:513-517`). Sponsor use is
+   not messaging membership or concurrent-server support. Cross-platform
+   operation on both servers therefore needs separately scoped Android work,
+   outside RFC-0030; this iOS work must not silently modify Android to provide it.
+3. Before D5, the owner confirms that `157.180.49.125:38444` actually accepts
+   identity-v3 memberships. Source constants or a sponsor response do not prove
+   admission, correct deployment or independent live databases. No live
+   topology/admission verification has been performed by recording this remark.
+4. Common-owner correlation is the selected consequence described above, not
+   an open question 19. Other security residuals and approval gates remain.
+
+The accepted **goal** for D1-D3 is: recover a test nickname on iPhone, enter
+the existing server, then restart with the identity and login retained. It is
+not an achieved test result. Yaroslav performs phone acceptance only after a
+separate explicit go for each action; the planned order is not an enrollment,
+replacement, installation, server-change or deployment permission. Record each
+action's applicable owner authorization and exact test scope before execution.
+
+MR-16 stays unfulfilled until both realms and their required peer scenarios
+have actual evidence. If the second Android leg is unavailable, record the
+external Android dependency and NOT RUN result rather than weakening MR-16.
 
 The D0-D5 sequence and MR-01..16 in the linked design define implementation and
 acceptance. All MR runtime/device gates are NOT RUN at drafting. Initial Linux
@@ -134,10 +182,13 @@ server DB reset, reinstall or data deletion is authorized by this document.
 
 ## Disposition and acceptance evidence
 
-- Disposition: pending; status remains `draft`.
+- Technical disposition: agreed as an implementation basis, with four remarks,
+  in the linked human comment; status remains `draft` until scope confirmation
+  in PR #73 and implementation, with formal acceptance still a separate gate.
 - Technical decision owner: Cooldom66671, within the linked delegation only.
 - Product/risk owner: martadvix-web.
-- Permanent exact-scope product/technical approval evidence: pending.
+- Permanent technical-basis evidence: comment 6150510664 above, not ADR acceptance.
+- Permanent exact-scope product approval evidence: pending in PR #73.
 - Independent design evidence: PR #74 closure above; code review is separate.
 - Resulting implementation evidence: to be recorded per exact-head PR.
 - No accepted ADR is superseded by this draft.
