@@ -311,6 +311,11 @@ do not silently choose them in code or treat the current design as executable:
 
 Reusable framing is `SnapshotCodec`'s existing AES-GCM envelope, with the smaller
 catalogue bound enforced before sealing and a bounded file read before opening.
+Do not assume its reader is a strict UTF-8 decoder: `SnapshotCodec.open` uses
+`String(decoding:as:)` (`SnapshotCodec.swift:127-129`), which repairs malformed
+bytes. The new-format decoding path must preserve strict byte validation; add
+an authenticated-invalid-UTF-8 negative without silently changing legacy v4
+semantics. Reusing the framing does not require inventing new cryptography.
 `WrappingKeyStore` supports create/load/readback seams. Reuse those invariants,
 not the whole old `SnapshotStore.commit`: it creates a key before any new intent
 marker and removes its temporary file on failure (`SnapshotStore.swift:112-161`).
