@@ -305,13 +305,21 @@ def run(args):
 
         drawn = ios_draw(contact)
         png = base64.b64decode(drawn['png'])
-        truncated = base64.b64encode(png[:len(png) // 2]).decode()
-        record('a truncated PNG is refused by the ZXing reader',
-               'text' not in zxing_read(truncated) and 'qr_error' in zxing_read(truncated),
-               'the ZXing reader read a truncated PNG')
-        record('a truncated PNG is refused by the reader on this side',
-               'text' not in ios_read(truncated), 'the fixture reader read a truncated PNG')
-        for refusal in (zxing_read(truncated), ios_read(truncated)):
+        # Half a compressed PNG can still yield enough pixels to read a QR.
+        # Keep only its signature: no IHDR/dimensions or IDAT/pixels remain.
+        # This tests an incomplete image with no pixels, not strict rejection
+        # of every truncated PNG an image decoder might legitimately recover.
+        require(png.startswith(b'\x89PNG\r\n\x1a\n'), 'the encoder did not return a PNG')
+        truncated = base64.b64encode(png[:8]).decode()
+        zxing_refusal = zxing_read(truncated)
+        ios_refusal = ios_read(truncated)
+        record('a signature-only PNG is refused by the ZXing reader',
+               zxing_refusal == {'qr_error': 'IIOException'},
+               'the ZXing reader did not report an unreadable image')
+        record('a signature-only PNG is refused by the reader on this side',
+               ios_refusal == {'fixture_error': 'IOException'},
+               'the fixture reader did not report an unreadable image')
+        for refusal in (zxing_refusal, ios_refusal):
             require(contact not in json.dumps(refusal),
                     'a refusal echoed the contact it was given')
         checks.append(f'{len(negatives)} refusals hold on both sides: the two byte bounds, a '
