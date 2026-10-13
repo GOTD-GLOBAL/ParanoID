@@ -11,6 +11,23 @@ The coordinator is on Linux, has no Xcode/Apple SDK or attached macOS runner,
 and cannot claim a native Apple build. No paid runner, Apple-account change or phone
 installation is part of this handoff. See [draft ADR-0017](../../decisions/0017-ios-concurrent-identity-v3.md).
 
+## New-facade and QR receipts received
+
+The [native receipts record](../../project/evidence/ios-identity-v3-20261013/native-mac-receipts.md)
+now covers `c1e9b9045e16e6b39b3821dbf2a4c5e39f445c3c` (PR #78):
+21/0 Devnet, 10/0 core, 410/0 full package and unsigned iOS compilation.
+The first Xcode attempt failed on missing notices; normal generation fixed that
+build prerequisite without source edits. The [corrected focused app commands](devnet-bridge.md#swift-evidence-and-native-checks)
+include `notices.py --offline` and its tests before `xcodebuild`. Do not omit
+that prerequisite just because the full `build.sh` wrapper is not being run.
+
+Separate PR #79 at `7029d805315441ecfcd923cd38b268f3786a259b` has six passing
+Mac QR runs, four checks each; its fixture is not incorporated in this tree.
+No repeat of either unchanged candidate is requested. The next native request
+must include new application code and its tests. These receipts do not deliver
+owner/realm storage, login or the phone recovery/login/restart milestone; the
+remaining #73 scope record and draft ADR-0017 boundaries still apply.
+
 ## Scope of the first handoff
 
 The initial source candidate contains implementation prerequisites, not the full

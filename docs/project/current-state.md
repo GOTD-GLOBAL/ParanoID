@@ -2,7 +2,7 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: new Swift Devnet facade component execution; full native package, storage/login runtime, scope approval and phone acceptance remain separate
+last_reviewed_scope: verified contributor Mac receipts for Swift facade and separate QR fixture; storage/login runtime, scope approval and phone acceptance remain separate
 ---
 
 # Current project state
@@ -21,11 +21,20 @@ debug and optimized Swift linked to release Rust.
 These are component results, not full Mac/package/phone acceptance. No new
 Linux pipeline or repository package target was added.
 
-New-head Mac checks are still needed; the old `4aac29c` receipt does not cover
-the new Swift code. No app call site, persistent owner, registry lookup, server
-login or dual-runtime implementation is delivered by the facade. The D1-D3
-phone milestone remains NOT RUN; #73 scope and all protected-domain gates stay
-in force. Independent review and exact-head receipts are tracked in the PR.
+The [Mac receipts](evidence/ios-identity-v3-20261013/native-mac-receipts.md) now
+record exact `c1e9b9045e16e6b39b3821dbf2a4c5e39f445c3c`: 21/0 Devnet,
+10/0 core, 410/0 full package with no skips, and an unsigned iOS Release build.
+The first build failed (exit 65) because the handoff omitted notices generation;
+after the normal notices step, the same command passed with source unchanged.
+The instruction is corrected; no repeat of this unchanged native run is needed.
+Separate QR-only PR #79 at `7029d805315441ecfcd923cd38b268f3786a259b` passed
+six Mac runs of four checks each. That fix is not incorporated into this tree;
+its result does not make this tree's older QR fixture or full wrapper green.
+
+No app call site, persistent owner, registry lookup, server login or dual-runtime
+implementation is delivered by the facade. The D1-D3 phone milestone remains
+NOT RUN; #73 scope and all protected-domain gates stay in force. Independent
+source review is closed for the facade; native evidence is not runtime approval.
 
 ## iOS technical basis agreed, not ADR acceptance — 2026-10-13
 
