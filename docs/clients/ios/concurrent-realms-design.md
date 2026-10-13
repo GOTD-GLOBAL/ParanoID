@@ -227,6 +227,106 @@ existing SnapshotCodec's 8 MiB **whole-plaintext** cap cannot be advertised as
 already supporting the enlarged envelope. Overflow refuses before mutation;
 no pruning of history, intents or unresolved registration evidence to make room.
 
+### PROPOSED in-memory bootstrap encoding
+
+This narrow RFC-0030/ADR-0017 proposal specifies an executable **in-memory
+prerequisite**, not adoption of a persistence format or delivery of the durable
+bootstrap slice below. It grants no allocation, registry, login or app-startup
+authority. Permanent authenticated scope provenance remains incomplete in #73;
+no ADR or protected-domain gate becomes accepted through this component.
+
+The bootstrap JSON object has exactly this shape (synthetic public metadata):
+
+```json
+{
+  "version": 5,
+  "minReader": 5,
+  "kind": "catalogue",
+  "installID": "11111111-1111-4111-8111-111111111111",
+  "owner": {
+    "ref": "22222222-2222-4222-8222-222222222222",
+    "allocation": "unallocated",
+    "binding": null
+  },
+  "realms": [
+    {
+      "slot": "fi",
+      "origin": "https://fi.example.invalid:38444",
+      "pin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "protocol": "identity-v3",
+      "allocation": "unallocated"
+    },
+    {
+      "slot": "ru",
+      "origin": "https://ru.example.invalid:38444",
+      "pin": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "protocol": "identity-v3",
+      "allocation": "unallocated"
+    }
+  ]
+}
+```
+
+- `version` and `minReader` are both exactly the JSON integer token `5` for
+  this writer/reader. Other integer versions are unsupported; strings, booleans,
+  signed, fractional or exponent spellings are invalid, not coerced.
+- `installID` and owner `ref` are caller-supplied canonical lowercase UUID text
+  (`8-4-4-4-12` ASCII hex). UUID version/variant bits are not interpreted by
+  this codec. The caller is responsible for fresh random identifiers in any
+  future authorized bootstrap. `ref` is an opaque, nonsecret store identifier,
+  never an owner public key or a value derived from owner secret material.
+- Only all-`unallocated` state and `binding: null` are supported. `allocated`
+  and every non-null binding refuse explicitly as unsupported; unknown
+  allocation tokens/types refuse as invalid. There is no allocation mutation
+  API, entropy generation, binding verification or promise of monotonic durable
+  allocation. Those remain requirements for a later full catalogue/store.
+- The caller supplies validated expected `fi`/`ru` full trust descriptors.
+  Their `(origin, pin, protocol)` tuples must differ (shared pins on different
+  origins are not collapsed). Each decoded slot must match its complete
+  expected tuple, not merely its short name. Pins are exactly 64 lowercase
+  ASCII hex characters; protocol is exactly `identity-v3`. No default production
+  profiles, live lookup, repinning, URL resolution or normalization occur.
+- This bootstrap origin grammar deliberately supports canonical ASCII DNS
+  names (lowercase labels of 1–63 letters/digits/hyphens, no edge hyphen,
+  total host length at most 253, rightmost label starting with a letter) and
+  canonical dotted-decimal IPv4. This excludes alternate numeric/hex IPv4 host
+  aliases rather than letting another URL stack reinterpret them. All-numeric
+  hosts must be four octets, 0–255, without leading zeroes. The exact prefix is
+  `https://`; an optional port is decimal 1–65535 without leading zeroes and
+  must not be the default `443`. No credentials, path (even `/`), query,
+  fragment, percent escapes, trailing dot or whitespace. IPv6 and Unicode host
+  spellings are outside this initial grammar and refuse, never get rewritten.
+  An origin is at most 300 UTF-8 bytes. Extending this grammar needs fixtures
+  and explicit schema review; it does not change any existing URL validator.
+- Object field order and either realm array order are accepted. Output is
+  compact UTF-8 with no BOM/newline, fields in the order shown, realms `fi`
+  then `ru`. Valid JSON escapes in keys/values and the four JSON whitespace
+  bytes are accepted; escapes do not bypass duplicate-key or value checks.
+- Admission checks the raw 64 KiB maximum **before** parser copies, then strict
+  UTF-8, with no lossy conversion. A schema-directed parser has no recursive
+  arbitrary-value traversal: the deepest admitted container is a realm object
+  (root object → realms array → realm object). Unknown fields/containers refuse
+  immediately. Decoded strings are capped at 300 UTF-8 bytes, objects at their
+  exact field sets, and arrays at two entries. Invalid escapes/surrogates,
+  control bytes, trailing commas/data, duplicate decoded keys at every object
+  level, unknown/missing fields and wrong/null types all refuse. No Foundation
+  dictionary collapse or permissive JSON parser defines admission.
+- The immutable `Equatable`/`Sendable` value and codec APIs contain only this
+  public metadata. Decoding requires the expected install UUID as well as
+  expected trust pairs; foreign install IDs refuse. Owner-reference continuity
+  beyond UUID syntax is not authenticated here. Errors contain fixed categories,
+  never source values/payloads. Parsing is not authentication, freshness,
+  anti-rollback, encryption or evidence that an installation is actually fresh.
+
+These checks support REQ-CLIENT-001/REQ-MULTI-001 and the MR-02/06/14 design
+constraints, but satisfy none of the full MR gates. Threats remain as recorded
+in the [identity-v3 delta](../../security/ios-identity-v3-threats.md): untrusted
+bytes may try to alias keys/trust targets or exhaust parsing resources; local
+strict admission bounds that surface only. A hostile caller can still supply
+hostile trust context. Sealing, filesystem/Keychain continuity, allocated-state
+loss, downgrade refusal and application integration require separate work and
+review. No legacy codec or storage semantics change.
+
 ### Commit and crash rules
 
 Only that store's serial owner may write it. Catalogue/owner I/O runs on its

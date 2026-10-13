@@ -1,0 +1,165 @@
+Identity catalogue bootstrap codec — isolated in-memory proposal receipt
+2026-10-13; implementer execution on Linux x86_64, Swift 6.3.3.
+Base: 67f2631a63e6b3c2421cf4b1072a573ee289c831
+Branch: feat/ios-identity-catalogue-20261013
+
+Scope and contract
+------------------
+RFC-0030 / draft ADR-0017; REQ-CLIENT-001, REQ-MULTI-001, REQ-SEC-001;
+MR-02/06/14 parser/context prerequisites only. ALL full MR gates remain NOT RUN.
+The exact PROPOSED schema was appended before code to the existing design:
+docs/clients/ios/concurrent-realms-design.md#proposed-in-memory-bootstrap-encoding
+The previous 67f2631 preflight is unchanged outside that subsection.
+
+Real immutable Equatable/Sendable IdentityCatalogue, nested Realm/Realms,
+IdentityCatalogueCodec.encode/decode, fixed-category IdentityCatalogueError.
+Caller supplies canonical UUIDs, expected install ID and both complete trust
+pairs. Bootstrap only: v5/minReader5, unallocated owner/fi/ru, null binding.
+Allocated owner/realm or non-null binding is explicitly unsupported. No store
+stub, allocation API, entropy, key generation, encryption or randomness.
+Canonical ASCII DNS/IPv4 origin subset, no IPv6/Unicode host or URL repair.
+64 KiB raw cap precedes strict UTF-8; schema-directed nonrecursive parser,
+300-byte decoded strings, exact field sets and exactly two realm descriptors.
+Both input orders accepted; compact fi-then-ru writer. Errors never carry input.
+
+Source hashes (sha256sum)
+------------------------
+b07cfc66b50041ce083fae47c26383aa615db57b0417dcb87e99897cbaceb30e  IdentityCatalogue.swift
+059b8d02c4d801bc59feb08d7924850a3aea60c522c30a2b4e5caa90674f4421  IdentityCatalogueTests.swift
+
+Actual vertical TDD
+-------------------
+Every implementation increment followed its observed failure and was followed
+by a run of all current component tests. Counts below are XCTest method counts
+and assertion failures, not an all-app total. Logs01 and12 first failed to
+compile because the value/encoder and then decoder APIs did not exist; those
+are NOT runtime RED tests. Logs02 and13 then exercised the not-yet-implemented
+behavior in real production types before their implementations were completed.
+
+log pair / behavior             RED tests, failures                  GREEN
+02->03  encoder-empty             1 tests /  1 failures (0 unexpected) -> 1 / 0
+04->05  uuid                      2 tests / 14 failures (0 unexpected) -> 2 / 0
+06->07  trust-descriptor          3 tests / 10 failures (0 unexpected) -> 3 / 0
+08->09  origin                    4 tests / 30 failures (0 unexpected) -> 4 / 0
+10->11  distinct                  5 tests /  1 failures (0 unexpected) -> 5 / 0
+13->14  decoder-unimplemented     6 tests /  2 failures (2 unexpected) -> 6 / 0
+15->16  context                   7 tests /  8 failures (0 unexpected) -> 7 / 0
+17->18  trailing                  8 tests /  7 failures (0 unexpected) -> 8 / 0
+19->20  duplicates                9 tests /  4 failures (0 unexpected) -> 9 / 0
+21->22  escapes                  10 tests /  2 failures (2 unexpected) -> 10 / 0
+24->25  payload-cap              12 tests /  2 failures (0 unexpected) -> 12 / 0
+26->27  utf8                     13 tests / 18 failures (0 unexpected) -> 13 / 0
+28->29  version                  14 tests /  8 failures (0 unexpected) -> 14 / 0
+30->31  unsupported-state        15 tests /  9 failures (0 unexpected) -> 15 / 0
+32->33  null-literal             16 tests /  4 failures (0 unexpected) -> 16 / 0
+34->35  string-cap               17 tests /  3 failures (0 unexpected) -> 17 / 0
+36->37  surrogate                18 tests /  1 failures (0 unexpected) -> 18 / 0
+46->47  host-alias               27 tests /  5 failures (0 unexpected) -> 27 / 0
+
+Log23 escaped-duplicate checks were already GREEN after string decoding and
+key-set checks; no new RED is claimed. Logs38-45 extended regression coverage
+with malformed strings/JSON, every truncated fixture prefix, field/realm order,
+slot counts, missing/unknown fields, wrong types, semantic values and deep
+unknown containers. They were already GREEN (19 through26 tests). Log48 adds
+maximum-host/output-bound coverage, already GREEN at28. No guard was removed
+just to manufacture a RED; no previous count was edited.
+
+Build issue retained, not hidden
+-------------------------------
+Logs49/50: an attempted global `-Xswiftc -swift-version -Xswiftc 6` alongside
+strict concurrency/warnings-as-errors failed BEFORE tests in SwiftPM-generated
+CatalogueProbePackageDiscoveredTests: unnecessary `nonisolated(unsafe)` on its
+Sendable function-list constant. No production/test diagnostic was reported.
+No generated file, repository manifest, test suppression or dependency changed.
+Logs51/52 used the manifest's native language modes instead. Verbose compilation
+confirms ParanoidKit and ParanoidKitTests both use `-swift-version 6`; the
+SwiftPM-generated runner keeps its own language mode. Both pass28/0.
+After deleting the scratch import-only bootstrap file and cleaning that scratch
+build, logs54/55 pass28/0 again. Separate direct source and test typechecks with
+explicit Swift6/strict-concurrency/warnings-as-errors pass (logs56/57).
+
+Reproduction and full local transcripts
+--------------------------------------
+All numbered .log files and parsed run-index.json are retained at the path
+below. Log51's first capture was tool-truncated; its unchanged original remains,
+and 51-debug-native-language-modes-full.log preserves the recovered complete
+command/output/exit-code transcript. Other numbered execution logs are complete.
+/home/codex/.hermes/profiles/paranoid/cache/scratch/ios-catalogue-codec-20261013
+Scratch is ephemeral; the recorded counts/excerpts here are durable, and final
+runs can be reproduced below. No old Devnet verifier/evidence source was changed.
+
+R=/home/codex/projects/paranoid-worktrees/ios-identity-catalogue-20261013
+P=/home/codex/.hermes/profiles/paranoid/cache/scratch/ios-catalogue-codec-20261013
+S=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift
+
+The scratch-only Package.swift is exactly:
+// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(name: "CatalogueProbe", targets: [
+    .target(name: "ParanoidKit"),
+    .testTarget(name: "ParanoidKitTests", dependencies: ["ParanoidKit"])
+])
+
+Its only source/test inputs are symlinks:
+$P/Sources/ParanoidKit/IdentityCatalogue.swift ->
+  $R/clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/IdentityCatalogue.swift
+$P/Tests/ParanoidKitTests/IdentityCatalogueTests.swift ->
+  $R/clients/ios/ParanoidKit/Tests/ParanoidKitTests/IdentityCatalogueTests.swift
+Do not copy this manifest into the repository or add a Linux package/dependency.
+The files already belong to the EXISTING repository ParanoidKit target/test target.
+
+Exact final command forms (expanded commands in numbered logs):
+"$S" package --package-path "$P" clean
+"$S" test --package-path "$P" --configuration debug -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors --filter IdentityCatalogueTests
+"$S" test --package-path "$P" --configuration release -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors --filter IdentityCatalogueTests
+"${S}c" -typecheck -swift-version 6 -strict-concurrency=complete -warnings-as-errors -module-name ParanoidKit "$R/clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/IdentityCatalogue.swift"
+"${S}c" -typecheck -swift-version 6 -strict-concurrency=complete -warnings-as-errors -I "$P/.build/x86_64-unknown-linux-gnu/debug/Modules" "$R/clients/ios/ParanoidKit/Tests/ParanoidKitTests/IdentityCatalogueTests.swift"
+
+Exact final XCTest excerpts (no skips):
+
+54-final-debug
+Build complete! (9.37s)
+Test Suite 'IdentityCatalogueTests' started at 2026-10-13 20:15:06.422
+Test Suite 'IdentityCatalogueTests' passed at 2026-10-13 20:15:06.663
+	 Executed 28 tests, with 0 failures (0 unexpected) in 0.241 (0.241) seconds
+	 Executed 28 tests, with 0 failures (0 unexpected) in 0.241 (0.241) seconds
+EXIT_CODE=0
+
+55-final-release
+Build complete! (14.33s)
+Test Suite 'IdentityCatalogueTests' started at 2026-10-13 20:15:21.559
+Test Suite 'IdentityCatalogueTests' passed at 2026-10-13 20:15:21.699
+	 Executed 28 tests, with 0 failures (0 unexpected) in 0.14 (0.14) seconds
+	 Executed 28 tests, with 0 failures (0 unexpected) in 0.14 (0.14) seconds
+EXIT_CODE=0
+
+Other verification and remaining gates
+--------------------------------------
+- Swift6 direct typechecks: exit0, no diagnostics (logs56/57).
+- Cached markdownlint-cli2 0.18.1 real CLI: 251 files / 0 errors (log61).
+  Logs58/60 invoked the library module, which did nothing; NOT lint evidence.
+  Correct command, no installation/network:
+  node /home/codex/.npm/_npx/5bf8557687b9b9bc/node_modules/markdownlint-cli2/markdownlint-cli2-bin.mjs docs/clients/ios/concurrent-realms-design.md
+- New local citation resolves. Byte-preservation check passes (log59). An initial
+  comparison used terminal text with its trailing newline stripped; comparison
+  inside subprocess against raw bytes then passed, with no document change.
+- git diff --check passes. Scope inspection: keep only codec, XCTest, the exact
+  design subsection and this receipt. No package/dependency/CI/ABI/runtime edit.
+- Independent source review NOT RUN in this subagent; parent review is next.
+  No delegate capability is available here; self-review is not independent.
+- Full ParanoidKit/Mac/Xcode, CryptoKit/filesystem/Keychain, restart/power-loss,
+  v4 downgrade, app/phone/live-server/RPC acceptance: NOT RUN by this task.
+- Formal authenticated scope provenance remains incomplete (#73); no ADR/gate
+  acceptance or persistence/runtime adoption follows. No push/PR/merge/deploy.
+
+Residual security limits: parsing public metadata does not authenticate it,
+prove a fresh installation, authorize allocation, verify owner binding or supply
+anti-rollback. Caller trust context can itself be hostile. A future store still
+needs sealing, continuity/artifact scanning, crash/freeze and monotonic allocation
+contracts and tests. Owner-reference continuity beyond UUID grammar is not checked.
+Early rejection need not classify the unvisited suffix or unsupported binding as
+valid JSON. No secrets belong in these values. Synthetic fixtures only.
+
+Next: independent review of this exact source/schema, then normal exact-head Mac
+focused/full-target checks through the existing package prerequisites. Separately
+resolve storage/authority open points before any persistence or app adoption.
