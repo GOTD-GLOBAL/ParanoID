@@ -13,8 +13,10 @@ At Yaroslav's request, RFC-0030 now links a
 [concrete design candidate](../clients/ios/concurrent-realms-design.md): one
 nickname owner, independent per-realm credentials/stores/lanes, a versioned
 install catalogue and one application-wide call/media arbiter. The catalogue
-at the legacy path is a proposed downgrade barrier; a missing old snapshot
-must not cause an older client to register a new identity. Storage crash,
+at the legacy path is a proposed intact-catalogue downgrade barrier. If both
+legacy catalogue/key are lost while realm files survive, a v4-only reader
+may mistake them for a fresh install and is unsupported for rollback; the
+v5 reader must detect the surviving state and freeze. Storage crash,
 callback ownership, resource bounds, directory targeting and two-realm
 recovery are specified as proposed rules, not implemented capabilities.
 

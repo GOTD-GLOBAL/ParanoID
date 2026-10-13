@@ -91,6 +91,7 @@ Use these typed internal targets (names are proposed, not exported APIs):
 ```text
 RealmKey = (exact HTTPS origin, full SPKI pin, protocol kind)
 RuntimeTarget = (RealmKey, installID, runtimeIncarnation, credentialFingerprint)
+OwnerOperationTarget = (installID, ownerRef, operationID, phase, targetContext)
 PeerTarget = (RuntimeTarget, peerAccount)
 CallTarget = (PeerTarget, callID, callGeneration, mediaLeaseEpoch)
 ```
@@ -136,24 +137,42 @@ Application Support/paranoid/
 
 The catalogue deliberately occupies the existing `text-state.enc` path and
 uses the existing `paranoid-text-state-v0` Keychain account and messaging
-protection class. The checked old reader decrypts it but rejects JSON version
-5 before constructing a runtime. It must never look like an empty installation.
+protection class. With the catalogue and its key intact, the checked old
+reader decrypts it but rejects JSON version 5 before constructing a runtime.
+This is not protection against loss of both legacy objects; the supported
+rollback boundary below explicitly excludes unsafe old-reader downgrades.
 The current version-1 AES-GCM envelope can seal this small catalogue; do not
 invent a cryptographic primitive or silently reuse a format number with changed
 meaning. The per-store codec reuses standard CryptoKit AES-GCM, with explicit
 per-type size limits and authenticated plaintext context.
 
-Catalogue v5 contains `minReader`, random `installID`, owner reference, confirmed
-public identity binding (once available), and exactly two fixed slot descriptors
+Catalogue v5 contains `minReader`, random `installID`, owner reference, an
+optional **confirmed registry binding** (absent before finalized verification),
+and exactly two fixed slot descriptors
 with full RealmKeys and monotonic `unallocated`/`allocated` flags. Unknown
 versions, duplicate fields, unknown slots, invalid descriptors or unsupported
 limits fail closed. The owner reference is not secret key material.
 
-- Reserve owner allocation in the catalogue durably before generating or
-  storing entropy. Commit owner storage, then commit its public binding in the
-  catalogue before any realm allocation or network side effect. A crash between
-  these commits does not authorize new entropy; an inconsistent pair freezes
-  owner onboarding. No realm exists yet in this phase.
+- **New nickname:** reserve owner allocation durably before generating/storing
+  entropy. Commit owner material with derived owner public key/PDA and
+  genesis/program in the `unregistered` phase; a candidate name is not a
+  confirmed registry binding. This permits the explicit registration flow,
+  but no realm allocation/enrollment yet. Before any signed request leaves
+  the phone, durably record the exact sponsor RealmKey and pending attempt
+  in the owner store. The catalogue's confirmed binding remains absent.
+- On finalized paired registry verification, commit `registryConfirmed` in
+  the owner store, then publish the matching confirmed binding in the
+  catalogue. Only a matched durable pair allows realm allocation. A crash
+  between the two commits preserves owner bytes/ledger and refuses realm
+  onboarding; it never regenerates entropy or treats a tentative name as
+  confirmed. Ambiguous persistence follows the freeze rules below.
+- **Recovery:** first derive and verify the nickname through read-only RPC
+  using volatile entered material. If no nickname exists, verification fails
+  or the user cancels, perform no recovery-related catalogue allocation or
+  owner/realm write. No automatic registration follows. Only after successful
+  verification allocate and commit the owner store as `registryConfirmed`,
+  then publish the matching catalogue binding. Existing committed state is
+  never overwritten by an unsuccessful recovery attempt.
 - Reserve a realm's allocation in the catalogue before its first key/core
   creation. Allocation never returns to `unallocated` in this candidate.
   A missing key **and** file for an allocated slot is loss, not a new slot.
@@ -161,9 +180,15 @@ limits fail closed. The owner reference is not secret key material.
   embedded Snapshot v4 with core state preserved verbatim, pending immutable
   login intent, confirmed membership result and terminal membership state.
   The same atomic realm commit stores core and login bookkeeping together.
-- Owner envelope v1 contains entropy, registry binding, words-backup confirmation
-  and the bounded registration-attempt ledger. It does not contain the only
-  copy of realm login intent, device state or revocation flags.
+- Owner envelope v1 contains entropy, derived owner/PDA, explicit phase,
+  optional confirmed registry binding, words-backup confirmation and the
+  bounded registration-attempt ledger. Phases are `unregistered`,
+  `registrationPending`, and `registryConfirmed`; durable catalogue allocation
+  precedes creation of this envelope. `registrationPending` carries candidate
+  name and exact attempt bytes, never a forged confirmed nickname. Registry
+  uncertainty stays pending; no new candidate name while an attempt can land.
+  Recovery enters only `registryConfirmed` after verification. This store
+  does not hold the only copy of realm login intent/device/revocation state.
 - Owner key: proposed `WhenUnlockedThisDeviceOnly`, file protection complete;
   catalogue/realm keys and files retain messaging protection semantics. All are
   non-synchronizable and excluded from backup. Existing key/filesystem adapters
@@ -189,8 +214,10 @@ Store initialization and subsequent commits follow:
 
 1. Validate catalogue, allocation flag, identity and key/file continuity.
    A Keychain error or inaccessible protected file is not absence.
-2. Persist and sync a write-intent marker. Creation of a wrapping key occurs
-   only on the first commit of a genuinely unallocated-to-allocated store;
+2. Persist/full-sync the write-intent marker **and sync its parent directory**
+   before key creation or candidate writes; file sync alone is insufficient.
+   Creation of a wrapping key occurs only on the first commit of a
+   genuinely unallocated-to-allocated store;
    verify its retained bytes by readback. No error deletes that key.
 3. Write the candidate to a temporary inode, set its protection and backup
    exclusion, full-sync it, rename, read back exactly, and sync the directory.
@@ -220,10 +247,36 @@ detectable anti-rollback; AEAD and the words do not restore message ratchets.
 ## Per-realm login and recovery
 
 Every operation captures its full target before UI suspension or authentication.
+Before a realm runtime exists, OwnerOperationTarget binds the proposed owner
+phase and exact purpose: fixed chain context for read-only recovery, selected
+sponsor RealmKey for registration, or RealmKey plus retained candidate/intent
+for login. It never fabricates a RuntimeTarget with nonexistent credentials.
 An owner-operation coordinator serializes explicit foreground signing and
 sponsor registration; it never holds a realm state queue during a prompt/RPC.
-One owner prompt authorizes its displayed realm and operation, not all future
-operations or an automatic second enrollment.
+One owner prompt authorizes its displayed operation and chain/sponsor/realm
+target, not all future operations or an automatic second enrollment.
+
+Owner operations and call admission share one process-wide exclusive admission
+state: `idle`, `ownerOperation(lease)`, `call(CallTarget)`, or `closing`.
+The chosen policy is **first admitted wins, no preemption**. Acquiring an owner
+lease before authentication refuses/defer-prompts while a call/closing state
+exists; a valid incoming offer while owner work holds the lease receives the
+existing authenticated `busy` on its own realm, with no ring/media admission.
+Outgoing call intent similarly fails visibly rather than queuing an automatic
+future call. Device-only messaging/status needs no owner lease.
+
+A short critical section changes this state; it is not a global lock held over
+Face ID, network or storage. The owner lease has its operation's finite deadline
+and is checked again after authentication, immediately before Rust signing,
+and before submitting bytes. Late auth callbacks after expiry/cancellation
+cannot sign or send. Cancel/expiry fences the lease, cancels work and enters
+`closing` until the signer/submission path is quiescent; only then may a call
+acquire authority. An already dispatched mutation is not recalled: retain its
+intent/ledger as unknown outcome and reconcile without new owner signing until
+a fresh explicit owner lease is admitted. A late device-only result may be
+reconciled under its realm target, never clear another operation's intent.
+A hung closing path denies new owner/media authority visibly, not sibling text.
+No owner signer may run concurrently with an admitted call on either realm.
 
 1. For an explicitly added, allocated slot, create a fresh core identity for
    its full trust pair, commit it, run `upgrade_v2`, then commit schema-3 state
@@ -247,6 +300,13 @@ operations or an automatic second enrollment.
 7. Persist the validated result and core `server_status_v2` in one realm
    envelope before clearing the intent with another durable commit. A crash
    before clearing is an idempotent reconciliation case, not a fresh login.
+
+If retained intent and core credential/RealmKey disagree, refuse the operation,
+preserve both original byte sequences and freeze that realm. Do not discard
+or replace the intent or start a new operation to get past the inconsistency.
+An explicit, separately reviewed recovery procedure is needed; this candidate
+provides no automatic repair. Sibling operation remains subject to verified
+catalogue/sibling integrity, not the faulty realm's assertions.
 
 `generation_conflict` requires a new user-confirmed inspect; `revoked` or
 `banned` stops only that realm and revokes any media lease it owns. `absent`
@@ -298,11 +358,22 @@ All queued work has a finite deadline, bounded by its parent operation and
 existing route/call deadlines; an expired ticket sends no request.
 
 One process lifecycle/network observer fans out ordered events. Foreground
-allows both connections. Background with no admitted call stops both. During
-call A, only A's permitted signaling/teardown survives the existing lifecycle
-rules; B does not gain background messaging. Permission-sheet resign-active is
-not background. Preserve microphone/camera consent and existing call deadlines;
-reconnect and screen changes cannot renew them.
+allows both connections. Background with neither an admitted call nor a valid
+post-call drain stops both. During call A, only A's permitted signaling survives;
+B does not gain background messaging. Preserve the existing post-call window
+(`LifecyclePolicy.swift:200-203,257-290`) **only for the former call-owning
+realm**: on its single transition to ended, capture a drain token with that
+RealmKey/runtime/call epoch and an absolute monotonic deadline ten seconds
+later. It permits the existing final control/receipt drain, not new calls,
+owner signing or background permission for the other realm.
+
+The drain token is separate from the already revoked media lease. Stop that
+realm on the original deadline even if requests/callbacks are pending; freeze
+or confirmed authority loss stops earlier. Late ended events, reconnect,
+network hints and scope changes cannot rearm or extend it. A newly admitted
+call clears the prior drain token; two background exceptions cannot accumulate.
+Permission-sheet resign-active is not background. Preserve microphone/camera
+consent and existing call deadlines; reconnect cannot renew them.
 
 ## One application-wide call and media owner
 
@@ -313,7 +384,8 @@ tone, proximity/idle and camera resource owner.
 
 - An explicit outgoing intent reserves the call slot; an authenticated,
   nonce/readiness-validated incoming offer requests admission before ringing
-  or media authority. A knock alone never reserves physical media.
+  or media authority, through the same exclusive admission state as owner
+  operations. A knock alone never reserves physical media.
 - Admission is serialized in a short critical section. The losing realm emits
   existing authenticated `busy` through its own committed core/outbox, without
   new wire kinds, automatic answer, ending the winning call or a second prompt.
@@ -389,13 +461,22 @@ fresh onboarding, preferably a separately authorized development App ID. An
 in-place archive/migration path is a separate scoped design, not a deletion
 shortcut or reset action hidden in the connection UI.
 
-For a fresh multirealm installation the catalogue's v5 at the legacy path is
-the proposed downgrade barrier. The inspected v4 reader rejects it before
-Runtime construction; execute old-new-old-new binary tests to prove that
-property for every allowed downgrade target. Unsupported historical readers
-are not covered by this claim. Never delete the catalogue to make an old
-build launch. Rollback is a compatible v5-reading client or a stopped preserved
-installation, not restoring stale ratchets or decreasing server generations.
+With the catalogue **and its legacy key intact**, the inspected v4 reader
+rejects catalogue v5 before Runtime construction. Old-new-old-new fixture tests
+must verify this narrower property, not a universal downgrade guarantee. If
+both legacy objects disappear while namespaced realm files survive, that old
+reader cannot see those files and may treat the install as fresh. A v5-aware
+reader must detect them and freeze globally. Test this combined-loss case
+explicitly and record the old reader as **unsafe/unsupported for rollback**,
+not as a passing safe downgrade. This design does not backport detection to
+previous binaries or claim the OS prevents users from launching one.
+
+No operational rollback to a v4-only reader is authorized by this candidate,
+even after a successful intact-catalogue refusal test. Rollback is a compatible
+v5-reading client with the complete continuity scan, or a stopped preserved
+installation. Unsupported historical readers are not certified. Never remove
+the catalogue/key to make an old build launch, restore old ratchets or decrease
+server generations.
 
 ## Requirement and acceptance mapping
 
@@ -409,15 +490,15 @@ controllable queues/clocks/I/O and explicit packet/request attribution.
 | MR-02 | REQ-SEC-001, saved trust, AUTH-01/02 | Swap A/B proofs, intent, sessions, snapshots and pins; all cross-realm uses refuse before unauthorized side effect |
 | MR-03 | REQ-MSG-003/005 | Hold A's long poll while B sends/receives/commits text and receipts before A is released; repeat reversed, restart and no duplicate display |
 | MR-04 | REQ-ID-002, AUTH-04/07 | Recover owner once; replace A while B is active; old A stops, B keys/history/generation unchanged; reverse; partial recovery visible |
-| MR-05 | AUTH-03/04 | Lost commit reply, server restart, cancelled prompt and crash after result/before intent clear use the same persisted operation; no duplicate replacement |
-| MR-06 | Persistence / REQ-SEC-001 | Fault every key/marker/write/rename/readback/sync boundary, both halves missing after allocation, swapped stores, owner lock, corrupt catalogue; correct scoped/global freeze and no key regeneration |
-| MR-07 | Compatibility / REQ-MSG-004 | Existing v2 retained byte-for-byte; old-new-old-new binaries refuse unsupported v5 without network/onboarding or data reset; compatible resume only |
+| MR-05 | AUTH-03/04 | Lost commit reply, restart, cancelled/late auth and crash before intent clear retain the same operation; intent/core mismatch preserves bytes and freezes; owner-lease cancellation after dispatch retains unknown outcome, never signs during a call |
+| MR-06 | Persistence / REQ-SEC-001 | Fault every key/marker and marker-parent-sync/write/rename/readback/sync boundary; allocated halves lost, intent/core mismatch, swapped stores, owner lock, corrupt/missing catalogue; correct scoped/global freeze and no key/intent regeneration; combine with MR-07 legacy-pair loss |
+| MR-07 | Compatibility / REQ-MSG-004 | Existing v2 retained byte-for-byte; old reader refuses intact catalogue v5 without network/reset; loss of legacy catalogue+key with surviving realm stores freezes the new reader and records old reader rollback as unsafe/unsupported, not a successful safe downgrade |
 | MR-08 | REQ-ID-007, REQ-MSG-005 | Directory proof/registry/confirmation same target; changed card, wrong pin, RPC uncertainty and ambiguous link ID add nothing; A visibility does not affect B |
 | MR-09 | REQ-MULTI-001 / callback ownership | Force identical account/call IDs and local generations; delayed A responses, MainActor hops, permission results and draft restoration cannot mutate B |
-| MR-10 | REQ-CALL-001 / voice consent | Simultaneous A/B offers and outgoing/incoming collision admit at most one call; other gets authenticated busy, no second prompt or capture |
+| MR-10 | REQ-CALL-001 / voice consent | Simultaneous offers admit one call; test owner Face ID A then incoming B, and call B then owner A: first admitted wins, no overlapping signer/call, loser busy/refused; cancelled/late auth cannot regain signing authority |
 | MR-11 | REQ-CALL-001 / media lease | Delay A teardown, tone stop, TURN, renderer detach and permission while B is next; no stale control of B; revoke/freeze A cannot stop call B |
-| MR-12 | Foreground boundary / resources | Lifecycle/network storms and full directory/transport queues stay bounded, cancellation removes waiters, send/receive progress survives, no background B delivery during call A |
-| MR-13 | AUTH-08, REQ-ID-004/006 | Capacity/cooldown/ban A leaves B valid; active traffic survives generation cap; registration once, sponsor attempts retain source realm and budgets |
+| MR-12 | Foreground boundary / resources | Bounded lifecycle/network/queue storms and cancellation; no background B during call A; A-ended preserves only A terminal/receipt drain for original ten seconds, late callbacks/reconnect never extend it, deadline/freeze stops it and new call clears old drain |
+| MR-13 | AUTH-08, REQ-ID-004/006 | Capacity/cooldown/ban A leaves B valid; new owner allocated/unregistered/pending/registryConfirmed stages survive crashes without false confirmation, pending ledger precedes signed send; recovery without registered nickname writes nothing; realm allocation waits for durable confirmed binding; registration once |
 | MR-14 | REQ-SEC-001 / metadata | Logs/crash reports contain no words, owner secret, snapshots, proofs or raw directory queries; correlation and recovery limitations are disclosed |
 | MR-15 | REQ-CALL-001 / physical evidence | Real iPhone interruption, Bluetooth/speaker, background camera and scanner contention; same-call deadlines and consent survive target changes |
 | MR-16 | Delivered behavior | On an approved phone/peer setup both realms stay connected; text/receipts on both and a call on one while text continues on the other; exact-head Mac, device and server receipts |

@@ -57,9 +57,9 @@ every MR execution gate remains NOT RUN.
 | --- | --- | --- |
 | Cross-realm proof, message, cursor or delayed callback confusion | Full RealmKey and runtime/credential target; independent core/store/session; final UI/renderer fence | MR-02/03/09; malicious/compromised app remains trusted failure |
 | State from A overwrites B, or lost allocated state appears fresh | Per-realm keys/envelopes plus authenticated catalogue with monotonic allocation; intent/fsync/readback before adoption | MR-06; ambiguous writes freeze, shared catalogue failure stops all |
-| An older build ignores new stores and creates a v2 identity | Catalogue v5 occupies old path/account; audited v4 reader refuses before runtime | MR-07 old-new-old-new binary tests; unknown historical readers are not certified |
+| An older build ignores new stores and creates a v2 identity | Intact catalogue v5/key occupy old path/account; audited v4 reader refuses; v5 continuity scan handles surviving realm files after legacy-pair loss | MR-06/07 intact and combined-loss tests; v4-only readers remain unsupported for operational rollback |
 | Locked owner store blocks unrelated traffic, or global revoked flag stops both | Realm-local intents/terminal state; owner gate affects owner operations only | MR-04/05/06/13; common OS/disk failure can still stop both |
-| Two audio controllers or a stale call callback capture/control the wrong realm | One app-wide admission/media owner and revocable CallTarget lease; acknowledged cleanup before handoff | MR-10/11/15; a stuck teardown denies new calls, not independent text |
+| Two audio controllers or a stale call callback capture/control the wrong realm | One app-wide owner-operation/call admission state, revocable CallTarget lease and acknowledged cleanup; realm-scoped fixed post-call drain | MR-05/10/11/12/15; late auth cannot sign during a call; a stuck teardown denies new calls, not independent text |
 | A flooded directory or unbounded waiters starve text/lifecycle safety | Bounded per-realm scheduling, cancellation/deadline removal, coalescing; lifecycle overflow stops/fences | MR-03/12; server-side availability and shared host contention remain |
 | Same nickname or short link ID causes a mistaken pair/send/share | Explicit textual realm targeting; proof plus registry check; reject ambiguous/unknown short-ID routing | MR-08/09; RPC trust/stale-card residuals remain |
 | One shared owner correlates both memberships and compromises both | Disclose correlation, scoped foreground signing, separate random transport keys | MR-14; no anonymity, seed-theft recovery or owner-key rotation claim |
@@ -115,7 +115,7 @@ RPC, words-screen and sponsor residuals below still apply to both realms.
 | Threat | Proposed control | Residual |
 | --- | --- | --- |
 | The sponsor, which is the v3 server, front-runs a name with its own key, withholds or delays the transaction, or misreports its limits | The pending attempt is sealed before the signature leaves the phone; success only from the registry | **Can block registration**; the server learns the name before the chain does |
-| The sponsor is drained, or the 128 memberships are filled | Server-side caps of 20 per hour, 60 per day and 3 distinct names per owner (`server/src/sponsor.rs:25-30`) | The caps live in process memory and reset on restart (`threat-model.md`, section «Fresh Solana Devnet identity boundary»); the realms and pins are public in the repository, so anyone can reach the servers; this can block increment 9 |
+| The sponsor is drained, or the 128 memberships are filled | Server-side caps of 20 per hour, 60 per day and 3 distinct names per owner (`server/src/sponsor.rs:25-30`) | The caps live in process memory and reset on restart (`threat-model.md`, section «Fresh Solana Devnet identity boundary»); the realms and pins are public in the repository, so anyone can reach the servers; this can block D5 |
 
 ## Supply chain
 

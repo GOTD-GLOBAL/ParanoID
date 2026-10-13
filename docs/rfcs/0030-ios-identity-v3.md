@@ -563,6 +563,12 @@ implement exact byte formats and negative fixtures before allowing networking.
 
 ### Owner signing (question 7)
 
+Owner work and call admission share the linked design's exclusive, epoch-bound
+[admission state](../clients/ios/concurrent-realms-design.md#per-realm-login-and-recovery).
+First admitted wins; there is no owner signer during a call on either realm.
+Cancellation retains dispatched intents as unknown outcomes and late auth
+callbacks cannot reacquire authority. Device-only status/traffic is separate.
+
 Owner operations run only from an explicit foreground screen and never during
 a call: registration (`sponsored_sign`), `inspect`, `enroll` and `replace`
 (`docs/protocol/identity-login-v3.md:410-412`; RFC-0026:107-108). Status,
@@ -717,9 +723,11 @@ are invoked only with the captured realm target.
      that result and core `server_status_v2` in one realm envelope.
   7. Only then clear that realm's intent with another durable commit.
 
-  An intent that names a credential other than the core's current one is
-  discarded and reported, never committed. `409 generation_conflict` leads
-  only to a new, user-confirmed `inspect`.
+  An intent that disagrees with the retained core credential or realm causes
+  refusal and scoped freeze, preserving the original intent/core bytes. Never
+  discard it or start a replacement operation to bypass the inconsistency;
+  recovery requires a separately reviewed procedure. A normal, matching-intent
+  `409 generation_conflict` still requires a new user-confirmed `inspect`.
 - **Replacement confirmation.** It states:
   - the other phone is disconnected, and history and contacts are not
     transferred;
@@ -812,6 +820,14 @@ disposed:
   section «Server member directory and contact links (RFC-0028)», applies.
 
 ### Registration
+
+The [owner phases](../clients/ios/concurrent-realms-design.md#versioned-persistence-candidate)
+distinguish allocated/unregistered material, a pending sponsored attempt and
+registry-confirmed binding. Commit material and pending ledger before signed
+network submission; do not require a confirmed nickname before the registration
+that creates it. Realm allocation waits until finalized binding is durably
+confirmed in both owner store and catalogue. Recovery keeps the separate rule:
+a failed/no-nickname read-only lookup writes no owner/realm state.
 
 1. Check the genesis, then the program accounts.
 2. Draw 16 random bytes (`SecRandomCopyBytes`) and pass them to
@@ -1021,12 +1037,13 @@ details. In short:
 ## Compatibility and migration
 
 The [failure/migration design](../clients/ios/concurrent-realms-design.md#failure-migration-and-rollback)
-replaces the old claim that the wrapper stays unchanged and every downgrade
-merely stops on `/health`. With namespaced stores alone an old client could
-mistake the legacy location for a new install; the proposed catalogue v5 at
-that location makes the audited v4 reader refuse before runtime construction.
-Old-new-old-new binary tests remain a release gate; no universal claim about
-uninspected historical readers is made.
+replaces the old unchanged-wrapper/health-only downgrade claim. An intact
+catalogue v5 and key at the legacy location make the audited v4 reader refuse
+before runtime construction. If both legacy objects are lost while realm files
+survive, that old reader may instead see a fresh install; it is unsafe and
+unsupported for rollback. The new reader must scan and freeze in that case.
+Old-new-old-new fixture tests must distinguish those outcomes. Only a compatible
+v5-reading client or a stopped preserved installation is a supported rollback.
 
 Existing v2 state/trust is retained without automatic in-place conversion.
 Fresh onboarding or a separate development App ID needs explicit authority;
