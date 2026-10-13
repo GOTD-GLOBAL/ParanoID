@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS catalogue bootstrap codec (in-memory proposal)
+
+- Add immutable public catalogue metadata and a strict bounded JSON codec with
+  exact installation and full per-realm context checks and deterministic output.
+- Add native XCTest cases for valid round trips, malformed/duplicate/oversized
+  input, trust mismatches and unsupported allocation/binding states. Isolated
+  debug/release component runs pass; new-head Mac verification remains separate.
+- This is not a persistent store, migration, owner recovery or application login;
+  no existing data, keys or application startup behavior changes.
+
 ### iOS Swift Devnet facade (component candidate)
 
 - Add a stateless Swift wrapper for the existing Rust Devnet commands, with

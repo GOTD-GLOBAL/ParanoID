@@ -2,10 +2,34 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: verified contributor Mac receipts for Swift facade and separate QR fixture; storage/login runtime, scope approval and phone acceptance remain separate
+last_reviewed_scope: isolated in-memory catalogue codec execution; native catalogue, durable storage/login runtime, formal scope evidence and phone acceptance remain separate
 ---
 
 # Current project state
+
+## In-memory catalogue codec candidate — 2026-10-13
+
+`IdentityCatalogue` and its codec implement only the
+[proposed fresh bootstrap encoding](../clients/ios/concurrent-realms-design.md#proposed-in-memory-bootstrap-encoding):
+bounded strict JSON/UTF-8, expected installation/full realm context, deterministic
+fi/ru serialization and immutable public metadata. Allocated or bound owner/
+realm forms refuse; there is no store, entropy, allocation or I/O API. No app
+call site, legacy storage or core/Rust/ABI/package/dependency contract changed.
+
+[Execution evidence](../../clients/ios/bridge/evidence/identity-catalogue-codec-tdd.txt)
+records 28 XCTest methods passing in debug and release, repeated by the parent
+on the actual committed source. Explicit Swift 6 strict-concurrency and
+warnings-as-errors source/test typechecks pass. Scratch-only component execution
+adds no repository Linux infrastructure. Independent review is in progress;
+new-head Mac/full-package/Xcode checks are NOT RUN. The earlier `c1e9b90`
+Devnet receipt does not cover this added code.
+
+This is an unmerged in-memory proposal, not durable catalogue bootstrap or a
+working owner/realm login. Sergey's Telegram scope confirmation was received;
+[the remaining authenticated-record limitation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153858611)
+is disclosed, not marked closed by proceeding with this isolated component.
+Formal acceptance, persistence/runtime adoption and all live/phone/merge gates
+remain separate. No existing-server or device action occurred.
 
 ## Swift Devnet facade component — 2026-10-13
 

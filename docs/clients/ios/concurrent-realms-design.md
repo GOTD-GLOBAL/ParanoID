@@ -227,6 +227,106 @@ existing SnapshotCodec's 8 MiB **whole-plaintext** cap cannot be advertised as
 already supporting the enlarged envelope. Overflow refuses before mutation;
 no pruning of history, intents or unresolved registration evidence to make room.
 
+### PROPOSED in-memory bootstrap encoding
+
+This narrow RFC-0030/ADR-0017 proposal specifies an executable **in-memory
+prerequisite**, not adoption of a persistence format or delivery of the durable
+bootstrap slice below. It grants no allocation, registry, login or app-startup
+authority. Permanent authenticated scope provenance remains incomplete in #73;
+no ADR or protected-domain gate becomes accepted through this component.
+
+The bootstrap JSON object has exactly this shape (synthetic public metadata):
+
+```json
+{
+  "version": 5,
+  "minReader": 5,
+  "kind": "catalogue",
+  "installID": "11111111-1111-4111-8111-111111111111",
+  "owner": {
+    "ref": "22222222-2222-4222-8222-222222222222",
+    "allocation": "unallocated",
+    "binding": null
+  },
+  "realms": [
+    {
+      "slot": "fi",
+      "origin": "https://fi.example.invalid:38444",
+      "pin": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "protocol": "identity-v3",
+      "allocation": "unallocated"
+    },
+    {
+      "slot": "ru",
+      "origin": "https://ru.example.invalid:38444",
+      "pin": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "protocol": "identity-v3",
+      "allocation": "unallocated"
+    }
+  ]
+}
+```
+
+- `version` and `minReader` are both exactly the JSON integer token `5` for
+  this writer/reader. Other integer versions are unsupported; strings, booleans,
+  signed, fractional or exponent spellings are invalid, not coerced.
+- `installID` and owner `ref` are caller-supplied canonical lowercase UUID text
+  (`8-4-4-4-12` ASCII hex). UUID version/variant bits are not interpreted by
+  this codec. The caller is responsible for fresh random identifiers in any
+  future authorized bootstrap. `ref` is an opaque, nonsecret store identifier,
+  never an owner public key or a value derived from owner secret material.
+- Only all-`unallocated` state and `binding: null` are supported. `allocated`
+  and every non-null binding refuse explicitly as unsupported; unknown
+  allocation tokens/types refuse as invalid. There is no allocation mutation
+  API, entropy generation, binding verification or promise of monotonic durable
+  allocation. Those remain requirements for a later full catalogue/store.
+- The caller supplies validated expected `fi`/`ru` full trust descriptors.
+  Their `(origin, pin, protocol)` tuples must differ (shared pins on different
+  origins are not collapsed). Each decoded slot must match its complete
+  expected tuple, not merely its short name. Pins are exactly 64 lowercase
+  ASCII hex characters; protocol is exactly `identity-v3`. No default production
+  profiles, live lookup, repinning, URL resolution or normalization occur.
+- This bootstrap origin grammar deliberately supports canonical ASCII DNS
+  names (lowercase labels of 1–63 letters/digits/hyphens, no edge hyphen,
+  total host length at most 253, rightmost label starting with a letter) and
+  canonical dotted-decimal IPv4. This excludes alternate numeric/hex IPv4 host
+  aliases rather than letting another URL stack reinterpret them. All-numeric
+  hosts must be four octets, 0–255, without leading zeroes. The exact prefix is
+  `https://`; an optional port is decimal 1–65535 without leading zeroes and
+  must not be the default `443`. No credentials, path (even `/`), query,
+  fragment, percent escapes, trailing dot or whitespace. IPv6 and Unicode host
+  spellings are outside this initial grammar and refuse, never get rewritten.
+  An origin is at most 300 UTF-8 bytes. Extending this grammar needs fixtures
+  and explicit schema review; it does not change any existing URL validator.
+- Object field order and either realm array order are accepted. Output is
+  compact UTF-8 with no BOM/newline, fields in the order shown, realms `fi`
+  then `ru`. Valid JSON escapes in keys/values and the four JSON whitespace
+  bytes are accepted; escapes do not bypass duplicate-key or value checks.
+- Admission checks the raw 64 KiB maximum **before** parser copies, then strict
+  UTF-8, with no lossy conversion. A schema-directed parser has no recursive
+  arbitrary-value traversal: the deepest admitted container is a realm object
+  (root object → realms array → realm object). Unknown fields/containers refuse
+  immediately. Decoded strings are capped at 300 UTF-8 bytes, objects at their
+  exact field sets, and arrays at two entries. Invalid escapes/surrogates,
+  control bytes, trailing commas/data, duplicate decoded keys at every object
+  level, unknown/missing fields and wrong/null types all refuse. No Foundation
+  dictionary collapse or permissive JSON parser defines admission.
+- The immutable `Equatable`/`Sendable` value and codec APIs contain only this
+  public metadata. Decoding requires the expected install UUID as well as
+  expected trust pairs; foreign install IDs refuse. Owner-reference continuity
+  beyond UUID syntax is not authenticated here. Errors contain fixed categories,
+  never source values/payloads. Parsing is not authentication, freshness,
+  anti-rollback, encryption or evidence that an installation is actually fresh.
+
+These checks support REQ-CLIENT-001/REQ-MULTI-001 and the MR-02/06/14 design
+constraints, but satisfy none of the full MR gates. Threats remain as recorded
+in the [identity-v3 delta](../../security/ios-identity-v3-threats.md): untrusted
+bytes may try to alias keys/trust targets or exhaust parsing resources; local
+strict admission bounds that surface only. A hostile caller can still supply
+hostile trust context. Sealing, filesystem/Keychain continuity, allocated-state
+loss, downgrade refusal and application integration require separate work and
+review. No legacy codec or storage semantics change.
+
 ### Commit and crash rules
 
 Only that store's serial owner may write it. Catalogue/owner I/O runs on its
@@ -264,6 +364,73 @@ integrity remain verified. Owner-frozen/locked blocks owner operations, not
 already authorized device-only traffic/status. Common disk/Keychain failure
 can still stop both. Complete loss/rollback of container and markers is not
 detectable anti-rollback; AEAD and the words do not restore message ratchets.
+
+### First implementation slice and unresolved storage details
+
+Read-only preflight against `bff84039a9098b19a3645fd4fd10b1d7d2b23e78`
+(the same package/app/bridge sources as Mac-tested `c1e9b90`) recommends a
+**catalogue-only durable bootstrap component** before owner recovery or login.
+This is a proposed implementation boundary, not delivered code or an additional
+architecture approval. The existing product/scope and review gates remain.
+
+In an explicitly fresh synthetic installation, commit a bounded v5 catalogue,
+reopen it with the same install identity and two fixed full RealmKeys, and refuse
+ambiguous continuity without deleting evidence. Owner and realm slots remain
+unallocated; no owner entropy, core identity, RPC or login is needed. Existing
+v4 installations remain unchanged. Do not integrate this component into app
+startup until the bootstrap distinction below is specified and tested.
+
+Complete these details in this storage contract and the implementation PR;
+do not silently choose them in code or treat the current design as executable:
+
+- **Exact catalogue schema:** field names/types, `minReader` interpretation,
+  installID/owner-reference encoding and the owner-allocation representation.
+  Owner allocation must be durable before entropy, just as realm allocation
+  precedes its first key/core creation. Existing duplicate-field, fixed-slot,
+  full-trust-pair and 64 KiB bounds still apply.
+- **Fresh Welcome versus lost catalogue:** `InstallMarker.swift:3-14` means the
+  container was opened, not that identity or a catalogue was committed.
+  `StorageGuard.swift:28-36` permits a marker-present, key-absent, file-absent
+  pristine Welcome restart. Define the first-catalogue creation point and how
+  a retained v5 installation is distinguished; do not reinterpret `install.v1`
+  or accidentally freeze this valid v4 case. Surviving owner/realm/temporary/
+  intent artifacts must still prevent stale-key deletion and fresh creation.
+- **Allocation versus restart:** a newly reserved slot may perform its first
+  commit only under an explicitly checked current-process creation authority.
+  The same allocated slot with missing key and file after restart is lost state,
+  not permission to generate new material. Specify the authority lifetime and
+  invalidation before implementing first writes.
+- **Locked owner versus failed commit:** the owner-key locked/read-only case
+  may retry after unlock as stated in the threat model. An uncertain write,
+  readback or sync stays a terminal failure with its evidence retained. Do not
+  collapse both into either a universal retry or the old store's broken latch.
+- **Before realm persistence:** specify complete framing and byte accounting
+  for the embedded raw Snapshot v4 and its metadata. The current 8 MiB
+  whole-plaintext codec cap does not implement the proposed enlarged realm
+  envelope; an object decode/re-encode is not verbatim preservation.
+
+Reusable framing is `SnapshotCodec`'s existing AES-GCM envelope, with the smaller
+catalogue bound enforced before sealing and a bounded file read before opening.
+Do not assume its reader is a strict UTF-8 decoder: `SnapshotCodec.open` uses
+`String(decoding:as:)` (`SnapshotCodec.swift:127-129`), which repairs malformed
+bytes. The new-format decoding path must preserve strict byte validation; add
+an authenticated-invalid-UTF-8 negative without silently changing legacy v4
+semantics. Reusing the framing does not require inventing new cryptography.
+`WrappingKeyStore` supports create/load/readback seams. Reuse those invariants,
+not the whole old `SnapshotStore.commit`: it creates a key before any new intent
+marker and removes its temporary file on failure (`SnapshotStore.swift:112-161`).
+The new sequence above instead syncs the intent and parent first and retains
+ambiguous artifacts. File inspection must distinguish true absence from an I/O
+or protected-data error; `FileSystem.fileExists -> Bool` alone cannot do that.
+
+First meaningful RED/GREEN cases are intent-parent-sync failure before any key
+or candidate creation; real-codec commit/reopen with final sync before success;
+failures at each commit boundary and leftover intent after restart; surviving
+artifacts before stale-key cleanup; unchanged v4 data and v4-reader refusal of
+v5; strict parser/size/context negatives. Test doubles must record full store
+paths, not just basenames, before claiming owner/fi/ru isolation. Place XCTest
+cases in the existing package target. Real CryptoKit/filesystem execution is a
+Mac gate, not a Linux source assertion or a missing-SDK compile failure.
 
 ## Per-realm login and recovery
 
