@@ -218,10 +218,11 @@ Scope proposed for the owner's approval:
   Device actions and any new App ID still require explicit authorization.
 - **Data:** synthetic accounts, nicknames and messages only.
 - **Environment:** both named v3 endpoints, independently confirmed and scoped
-  before any live use, plus two isolated local realm/database fixtures; Solana
-  Devnet through `https://api.devnet.solana.com` with program
-  `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`; a local identity-v3 stand for
-  development builds.
+  before any live use; independent synthetic realm-state, storage and registry
+  fixtures for local unit/negative checks, not a separate server workstream.
+  Separately authorized Devnet operations use `https://api.devnet.solana.com`
+  with program `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`.
+  No new identity-v3 stand, macOS server port or container is required.
 - **Human risk owner:** `martadvix-web`.
 
 ## Summary
@@ -531,9 +532,10 @@ and route rules apply separately to each realm, not to one global active server.
   unknown server. Question 10 now needs a design for managing both concurrent
   connections, not a one-time either/or selector. The candidate server view
   changes only UI scope, not which connection is active.
-- The kind of a saved realm comes from the compiled list. A Debug build that
-  points at a local stand declares the kind with an explicit launch flag,
-  checked together with the realm and the pin. The kind is never inferred
+- The kind of a saved realm comes from the compiled list. Existing Debug
+  fixture plumbing, when used, declares the kind with an explicit launch flag,
+  checked together with the realm and the pin; this is not a requirement to
+  create a new stand or protocol mode. The kind is never inferred
   from `/health`; the proposed app catalogue/realm envelope bind it explicitly.
   The embedded core Snapshot v4 retains its current format.
 - Saved trust wins. A saved v2 realm stays v2. Nothing falls back from v3 to
@@ -1135,7 +1137,8 @@ Proposed physical acceptance boundary (question 14; D5), not authorization:
 Before any live step, record the chosen device/app ID, endpoint/build/schema,
 synthetic accounts, operation counts, sponsor budget and rollback/stop plan.
 A spare device, new Apple App ID, reinstall, DB reset or fault injection is not
-implicitly authorized. Local two-DB fixtures cover destructive/race scenarios;
+implicitly authorized. Synthetic storage/realm-state fixtures cover
+destructive/race scenarios without touching hosted data;
 phone acceptance and remote admission still need the owner's bounded go.
 
 Any distribution beyond the contributor's phone reopens Apple questions that
@@ -1179,23 +1182,24 @@ through `2470dca`, change only Android files. None of it is phone evidence.
 
 - **[CI]** The iOS static gates, with the restated bridge-lock rule, notices
   and captions.
-- **[Mac]** `swift test`, application tests and simulator runs against a local
-  identity-v3 stand with a registry fixture, as Android's
-  `clients/android/test_identity_login.py` does
-  (`PARANOID_MODE=identity-v3-local`, `PARANOID_REGISTRY_FIXTURE`).
-  - The server does not build on macOS. The stand needs either a small
-    portability fix in the server (cfg-gating the Linux-only `O_TMPFILE`
-    snapshot in `server/src/android_updates.rs:293-299`), as a separate pull
-    request for the owner's agents, or a Linux container on the build Mac
-    (question 15).
-  - `clients/ios/local_stand.py` knows only `self-service-v2-local`
-    (`:71-72`), and `clients/ios/test_android_compatibility.py` has no v3
-    operation. Step D2 adds the identity-v3 mode and a v3 scenario.
-  - Every pull request that touches the profiles, health, transport or
-    `ProofFlow` also runs the v2 path on the v2 stand.
-  - RPC flows use an injected fake transport. Simulators never touch Devnet or
-    a v3 server.
-- **[device]** The live actions above, each with its go.
+- **[Mac]** `swift test`, application tests and simulator checks use synthetic
+  inputs and controlled storage, registry, transport, queue and clock fixtures.
+  Preserve identity-v3 success/negative/replay/restart and cross-realm scenarios;
+  Android's `clients/android/test_identity_login.py` is a source for cases, not
+  an instruction to reproduce its server environment on the Mac.
+  - No server portability fix, Linux container, new stand or added server mode
+    is part of D2. The separately proposed stand workstream is cancelled.
+  - Preserve applicable v2 regressions when profiles, health, transport or
+    `ProofFlow` change. Existing stand-dependent checks retain their actual
+    execution limits: full-wrapper gate 11 still stops while building the
+    Linux-only server on macOS. It is not fixed, skipped or made passing by
+    this documentation change. A separate legacy-server receipt is not a
+    current-server result; unavailable checks remain explicitly NOT RUN/blocked.
+  - RPC flows use an injected fake transport; local/simulator component tests
+    do not contact Devnet or either hosted v3 server.
+- **[device]** Acceptance uses the existing configured instances in the
+  VDSina-first D5 order above, each action with its own go. Synthetic fixtures
+  never substitute for those phone/Android-peer results or complete MR-16.
 
 ### Requirement-to-test mapping (proposal)
 
