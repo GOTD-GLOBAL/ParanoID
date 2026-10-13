@@ -7,8 +7,8 @@ last_reviewed: 2026-10-13
 # Identity-v3 candidate: exact-head Mac handoff
 
 The current task selected Yaroslav's local Mac agent for Xcode/native execution.
-The coordinator is on Linux, has neither Swift/Xcode nor an attached macOS runner,
-and cannot claim a native build. No paid runner, Apple-account change or phone
+The coordinator is on Linux, has no Xcode/Apple SDK or attached macOS runner,
+and cannot claim a native Apple build. No paid runner, Apple-account change or phone
 installation is part of this handoff. See [draft ADR-0017](../../decisions/0017-ios-concurrent-identity-v3.md).
 
 ## Scope of the first handoff
@@ -38,6 +38,27 @@ changes; no such client session has been executed by this handoff yet.
 
 ## Safe build entry point
 
+### Known limitation and receipt already received
+
+The [Mac receipt for 7a39897](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6147113616)
+reports native C ABI checks, regenerated xcframework slices and ParanoidKit
+389/0. Its wrapper stopped at gate 9. Supplementary simulator 117/0,
+signed-simulator Keychain 11/0 and unsigned device build results were obtained
+individually, not by completing that wrapper.
+
+[PR #76](https://github.com/GOTD-GLOBAL/ParanoID/pull/76) is now merged and
+integrated into this candidate. It fixes the Java inventory, TLS report parsing,
+timeout expectations and Android-only view-field comparison. It does **not**
+fix gate 11: `test_android_compatibility.py` still tries to build the server
+on macOS. [Issue #37](https://github.com/GOTD-GLOBAL/ParanoID/issues/37#issuecomment-5728208805)
+records the Linux-only server direction and is closed as not planned. Do not
+port, replace or redeploy the server to make this gate pass. The old separately
+supplied macOS server binary proves only the historical artifact's scenarios.
+Expect the full wrapper to stop there until a separately reviewed correction
+of that test dependency; do not label a partial run green or weaken the gate.
+
+### Exact-source wrapper
+
 Use a dedicated clean worktree at the exact full SHA in the candidate PR.
 Preserve other worktrees and simulator accounts; do not reset/clean them to make
 this worktree pass. Select a newly created disposable simulator with the pinned
@@ -61,10 +82,40 @@ archive/provisioning environment variables removed. The canonical toolchain
 wrapper still runs. A failed command remains failed; no cleanup/reset is used
 as a workaround. The archive gate intentionally stays skipped, not passed.
 
-`build.sh` rebuilds the C bridge/xcframework, runs the package and simulator
-checks (including separate ad-hoc signed simulator Keychain tests) and produces
-an **unsigned** device bundle. This is not an installable signed IPA, phone
+When all preceding gates pass, `build.sh` rebuilds the C bridge/xcframework,
+runs the package and simulator checks (including separate ad-hoc signed
+simulator Keychain tests) and produces an **unsigned** device bundle.
+The known gate 11 stop prevents the later steps from running in the wrapper.
+An unsigned bundle is not an installable signed IPA, phone
 execution, TestFlight upload or native proof of unimplemented v3 flows.
+
+### Focused native checks without building a server
+
+In the same exact-head clean worktree, these are individually reported component
+checks, not a substitute for a successful full wrapper or phone acceptance:
+
+```sh
+bash clients/ios/toolchain.sh bash clients/ios/bridge/check.sh
+bash clients/ios/build-core.sh
+bash clients/ios/toolchain.sh python3 clients/ios/webrtc_dependency.py --offline
+bash clients/ios/toolchain.sh swift test \
+  --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm
+bash clients/ios/toolchain.sh bash clients/ios/java_deps.sh
+bash clients/ios/toolchain.sh swift build \
+  --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
+  --product core-bridge
+bash clients/ios/toolchain.sh python3 clients/ios/test_android_compatibility.py \
+  --skip-stand --evidence-dir clients/ios/out/checks/compat-no-stand
+bash clients/ios/toolchain.sh python3 clients/ios/check-pinned-tls.py
+bash clients/ios/toolchain.sh python3 clients/ios/test_realtime_transport.py \
+  --evidence-dir clients/ios/out/checks/transport
+```
+
+The pinned WebRTC archive must already be cached for `--offline`; do not reuse
+an extracted framework without verification or change its pin. The extraction
+step is required before standalone SwiftPM tests in a fresh worktree. The
+`--skip-stand` result omits server scenarios explicitly; it is never the full
+compatibility receipt. Loopback TLS/transport fixtures are not hosted instances.
 
 ## Required receipt
 

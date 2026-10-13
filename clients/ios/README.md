@@ -1598,7 +1598,8 @@ call-v2 round — knock, ready, offer, answer, media, heartbeat, end — alterna
 sides, each control arriving as a `call_event` whose body is byte-identical and
 whose `video` is still a JSON boolean; the snapshot codec crossed both ways;
 both saved wrappers reopened by both adapters with no write and the same public
-view; twenty-one malformed call bodies refused by the harness and then by both
+view (Android's v29 screen flag `identity_login` left out until iOS has
+identity-v3 realms); twenty-one malformed call bodies refused by the harness and then by both
 clients with one and the same code; a tampered envelope refused in both
 directions without moving anything but the rejection counters.
 

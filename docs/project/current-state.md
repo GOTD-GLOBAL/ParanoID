@@ -2,7 +2,7 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: local Devnet C-ABI component and existing-server acceptance target; native app and MR gates unrun; older records retained
+last_reviewed_scope: PR75 Mac component receipt and PR76 gate integration; full wrapper and identity-v3 phone/MR acceptance remain incomplete
 ---
 
 # Current project state
@@ -26,6 +26,20 @@ including refusal on Git-status error; these are not Swift/Xcode/device evidence
 agent on his Mac. See [handoff](../clients/ios/identity-v3-mac-handoff.md).
 No server configuration/schema change, DB reset or new instance is performed.
 Actual existing-server login/text/call acceptance is still NOT RUN.
+
+Yaroslav's [exact-head Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6147113616)
+for `7a39897f83511d368358f606e88193bf4a6594ad` reports native C smoke,
+three regenerated xcframework slices and ParanoidKit 389/0. The full wrapper
+stopped at gate 9; simulator 117/0, signed-simulator Keychain 11/0 and the
+unsigned device build were supplementary runs, not a successful wrapper.
+[PR #76](https://github.com/GOTD-GLOBAL/ParanoID/pull/76) repaired four existing
+gate drifts and merged as `a74b3a49f15764bd053661eb3fc5a36dba885edb` after
+Yaroslav's authorization. PR75 incorporates that main with a merge commit,
+preserving PR73/74 ancestry and the old reviewed head without force-pushing.
+The integrated head still needs its own Mac receipt. Gate 11's attempt to
+build the Linux-only server on macOS remains unresolved; issue #37 is closed
+as not planned, not a server-port prerequisite. The prior prebuilt-server
+run is historical evidence, not current-server or physical-device acceptance.
 
 ## iOS concurrent-realm design candidate — 2026-10-13
 

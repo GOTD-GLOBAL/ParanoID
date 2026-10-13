@@ -3,7 +3,7 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-13
-last_reviewed_scope: local C-ABI memory/combined-graph component checks; storage, Swift runtime and MR gates remain NOT RUN
+last_reviewed_scope: C-ABI checks and exact-head Mac component receipt; new identity-v3 storage/runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -122,7 +122,7 @@ RPC, words-screen and sponsor residuals below still apply to both realms.
 | Threat | Proposed control | Residual |
 | --- | --- | --- |
 | A dependency drifting from the Android builds | The bridge lock keeps every core-lock entry with its name, version, source and checksum, and every other entry must match the Devnet crate's lock | Measured combined lock: 123 core registry entries retained, 58 matching Devnet additions; six shared pins use core versions. Host ABI/public-vector checks pass; no full application assurance |
-| C or assembly compiled for an Apple target on a CI host without its SDK | `blake3/pure` through feature unification | All three Apple-triple type checks with `pure` pass on Linux; Apple SDK linking and native app execution are NOT RUN |
+| C or assembly compiled for an Apple target on a CI host without its SDK | `blake3/pure` through feature unification | All three Apple-triple type checks with `pure` pass on Linux; Mac C-link/xcframework and old-app regression results are reported separately below; new v3 runtime and phone acceptance are NOT RUN |
 
 ## New observers
 
@@ -156,6 +156,13 @@ unchanged Rust recovery/identity operations, two-lock preservation and the
 pure Apple dependency graph. Original Rust intermediate/Swift-memory erasure
 is not directly proved by the allocator test. No host check proves iOS storage,
 authentication UI, live RPC trust, native linking or current-server interop.
+
+The [exact-head Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6147113616)
+for `7a39897` adds reported native C smoke, xcframework regeneration and
+ParanoidKit 389/0. Its separately run simulator/Keychain and unsigned device
+checks exercise the unchanged old application, not owner storage/login or v3
+realm isolation. The complete wrapper failed, and the integrated PR76 head
+still needs a new Mac receipt. No mitigation is upgraded to phone assurance.
 
 The remaining controls and MR-01..16 execution remain proposed/NOT RUN. The
 older [feasibility record](../project/evidence/ios-identity-v3-20261006/feasibility-mac.md)

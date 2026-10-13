@@ -163,8 +163,9 @@ fail-open on Git-status error and stale lock reseeding instructions; both were
 corrected with negative tests/documentation. Duplicate path names in any source
 or bridge lock are now rejected (ten lock tests). Mac runner regression coverage
 is now nine tests, including a real corrupted Git index with retained dirty
-source. Independent delta closure is still required before marking these fixes
-reviewed. The allocator test directly observes the request copy and returned C
+source. [Scoped review closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6146347252)
+records B1/B2 closure on `7a39897`, not whole-app or architecture acceptance.
+The allocator test directly observes the request copy and returned C
 buffer; extra assertions for original Rust response capacity/unwind cleanup are
 a non-blocking follow-up, not claimed coverage.
 
@@ -187,19 +188,27 @@ bash clients/ios/bridge/check.sh
 
 This runner is offline and fails on missing prerequisites; it never provisions
 servers, contacts RPC, installs an app or operates Apple credentials. Its Linux
-branch was exercised here; its Darwin C-link branch still needs the Mac run.
+branch was exercised here. The [contributor's Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6147113616)
+on `7a39897f83511d368358f606e88193bf4a6594ad` now reports Darwin C-link/run,
+three regenerated xcframework slices and 389 passing package tests. Its full
+wrapper stopped at gate 9; later individually run simulator/device checks are
+not a successful wrapper or a working identity-v3 application. The integrated
+PR76 head needs a new receipt; the [handoff](identity-v3-mac-handoff.md)
+records the retained gate 11 limitation without requiring a server port.
 
 On Yaroslav's pinned Mac, regenerate native artifacts and run native regressions:
 
 ```sh
 bash clients/ios/toolchain.sh bash clients/ios/bridge/check.sh
 bash clients/ios/build-core.sh
+bash clients/ios/toolchain.sh python3 clients/ios/webrtc_dependency.py --offline
 bash clients/ios/toolchain.sh swift test \
   --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm
 ```
 
-The existing pinned WebRTC xcframework must already be present for SwiftPM;
+The pinned WebRTC archive must already be cached for offline extraction;
 follow the existing [build prerequisites](build-and-testflight.md) if absent.
+SwiftPM needs the verified extracted xcframework even for the host package run.
 Do not replace these commands with a Linux `cargo check` receipt, reuse a stale
 native library, or infer permission to upload/sign/install anything.
 
