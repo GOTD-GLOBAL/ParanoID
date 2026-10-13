@@ -5,9 +5,11 @@ Same algorithm as clients/android/notices.py: resolve the dependency graph
 once, walk it from the root so only crates that actually link are counted,
 and copy every license text those crates ship, verbatim. A linked crate whose
 package carries no license text is a build error, never a silent skip; the
-three crates that publish none upstream (matrix-pickle, matrix-pickle-derive,
-jni-sys-macros) are served from the pinned copies recorded in
-licenses/README.md.
+core crates that publish none upstream (matrix-pickle, matrix-pickle-derive,
+jni-sys-macros) are served from the pinned copies in licenses/README.md. Devnet
+crates use the existing checksum-pinned texts/provenance under
+clients/android/licenses/devnet; declared licenses must match. Nothing is fetched
+or silently omitted. This is packaging evidence, not legal approval.
 
 What differs from the APK: the graph is rooted at bridge/Cargo.toml and
 filtered for aarch64-apple-ios, so it carries whatever the shared core pulls
@@ -23,6 +25,7 @@ Usage: python3 clients/ios/notices.py [--offline] [--manifest-path P]
 """
 import argparse
 import importlib.util
+import hashlib
 import json
 import os
 import shutil
@@ -36,6 +39,7 @@ LICENSES_DIR = IOS_DIR / "licenses"
 WEBRTC_NOTICES = LICENSES_DIR / "webrtc-150.7871.01"
 MATRIX_PICKLE_LICENSE = (REPO_ROOT / "spikes" / "002-android-bootstrap" / "licenses"
                          / "matrix-pickle-LICENSE")
+DEVNET_LICENSES_DIR = REPO_ROOT / "clients" / "android" / "licenses" / "devnet"
 DEFAULT_MANIFEST = IOS_DIR / "bridge" / "Cargo.toml"
 DEFAULT_OUTPUT = IOS_DIR / "out" / "THIRD_PARTY_NOTICES.txt"
 
@@ -78,7 +82,7 @@ def load_metadata(manifest_path=DEFAULT_MANIFEST, offline=False):
 def linked_packages(metadata):
     """Registry crates reachable from the resolve root, sorted by name/version.
 
-    Path packages (the bridge, the core, key-protocol) carry the project's own
+    Path packages (bridge, core, key-protocol, Devnet) carry the project's own
     licence and are not third-party notices; unreachable packages are resolved
     for other platforms and never link into the app.
     """
@@ -114,9 +118,28 @@ def license_texts(package):
     if packaged:
         return [(str(path.relative_to(root)), path.read_text(errors="replace")) for path in packaged]
     pinned = [path for path in pinned_license_files(package["name"]) if path.is_file()]
-    if not pinned:
+    if pinned:
+        return [(path.name, path.read_text(errors="replace")) for path in pinned]
+    if package["name"] in ("matrix-pickle", "matrix-pickle-derive", "jni-sys-macros"):
         raise RuntimeError("Missing license text: " + package["name"] + " " + package["version"])
-    return [(path.name, path.read_text(errors="replace")) for path in pinned]
+    # Reuse the checked-in Devnet provenance/texts; never fetch at build time.
+    sources = json.loads((DEVNET_LICENSES_DIR / "sources.json").read_text())
+    for entry in sources:
+        if package["name"] not in entry["packages"]:
+            continue
+        if package["license"] != entry["declared_license"]:
+            raise RuntimeError("License declaration mismatch: " + package["name"])
+        path = DEVNET_LICENSES_DIR / entry["file"]
+        if not path.is_file():
+            raise RuntimeError("Missing license text: " + package["name"])
+        data = path.read_bytes()
+        if hashlib.sha256(data).hexdigest() != entry["sha256"]:
+            raise RuntimeError("License integrity: " + package["name"])
+        label = entry["file"] + " (source: " + entry["source"] + ")"
+        if "provenance" in entry:
+            label += "\n" + entry["provenance"]
+        return [(label, data.decode("utf-8"))]
+    raise RuntimeError("Missing license text: " + package["name"] + " " + package["version"])
 
 
 def crate_notice(package):

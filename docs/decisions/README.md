@@ -27,6 +27,10 @@ with the video-call work.
 
 ## Draft implementation records
 
+- [ADR-0017](0017-ios-concurrent-identity-v3.md): draft iOS identity-v3/concurrent-realm
+  candidate and local component preparation; no architecture acceptance,
+  native-app result or live authority is implied.
+
 - [ADR-0016](0016-solana-server-authentication.md): proposed Solana server login;
   owner approved scope, limits, local REQ-ID-006 exception and residual risks on
   PR #60; acceptance waits for two-phone AUTH-06/07 evidence.

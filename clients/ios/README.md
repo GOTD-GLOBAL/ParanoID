@@ -56,7 +56,7 @@ the name alone is not a claim that the code exists or works.
 
 ## Bridge crate (`bridge/`)
 
-`paranoid-ios-bridge` exports two C symbols, declared in
+`paranoid-ios-bridge` exports four C symbols, declared in
 [`bridge/include/paranoid_core.h`](bridge/include/paranoid_core.h) and exposed
 to Swift as the `ParanoidCoreFFI` module:
 
@@ -64,7 +64,15 @@ to Swift as the `ParanoidCoreFFI` module:
   `paranoid_client_core::command`; it never returns NULL and reports
   `{"error":"invalid_request"}` for NULL/non-UTF-8 input and
   `{"error":"native_failure"}` for a caught panic.
-- `void paranoid_core_free(char *text)` releases a reply; NULL is ignored.
+- `void paranoid_core_free(char *text)` releases a core reply; NULL is ignored.
+- `char *paranoid_devnet_command(const char *request)` forwards the unchanged
+  Rust Devnet JSON contract with a 16384-byte input cap and zeroizing copies.
+- `void paranoid_devnet_free(char *reply)` overwrites and frees a Devnet reply;
+  NULL is ignored. Never use the core free or libc free for that reply.
+
+The [Devnet ABI contract and receipts](../../docs/clients/ios/devnet-bridge.md)
+define pointer ownership, limits and erasure guarantees. These exports alone
+perform no network or app login and are not a native iOS acceptance result.
 
 Input limits (8 MiB state, 65536-byte request) and every state rule stay in
 the core; the bridge holds no state and no network code. The crate is built as
@@ -81,21 +89,25 @@ cargo +1.98.1 test --locked --manifest-path clients/ios/bridge/Cargo.toml
 
 ### Lock-file rule
 
-`bridge/Cargo.lock` is seeded from `clients/core/Cargo.lock`, so the iOS
-build pins exactly the crate versions the Android build ships. The seeding is
-the only cargo invocation that runs **without** `--locked`; it keeps every
-pinned version and adds only the root `paranoid-ios-bridge` package:
+Use the committed **combined** `bridge/Cargo.lock`. Under RFC-0030 it retains
+all core registry name/version/source/checksum entries and permits additions
+only when they match `blockchain/solana/client/Cargo.lock`. Exactly one entry
+per permitted path package is allowed: core, key-protocol, Devnet and bridge.
+Do not copy the core lock over this file: that destroys the combined graph.
 
 ```sh
-cp clients/core/Cargo.lock clients/ios/bridge/Cargo.lock
-cargo +1.98.1 build --release --target aarch64-apple-ios \
+python3 clients/ios/test_bridge_lock.py
+python3 clients/ios/bridge/tests/test_lock.py
+cargo +1.98.1 build --locked --release --target aarch64-apple-ios \
   --manifest-path clients/ios/bridge/Cargo.toml --target-dir clients/ios/out/bridge-target
-git diff --no-index clients/core/Cargo.lock clients/ios/bridge/Cargo.lock   # only the paranoid-ios-bridge block
 ```
 
-Every other command uses `--locked`. Whenever `clients/core/Cargo.lock` is
-bumped, repeat the seeding; `python3 clients/ios/test_bridge_lock.py` catches
-any divergence between the two lock files (`OK` or `FAIL: ...` lines).
+Ordinary builds always use `--locked`. Dependency maintenance is a separate
+reviewed change starting from the committed combined lock; preserve the two
+source-lock invariants and rerun the negative gate. If a source lock update
+cannot satisfy them, stop and report the conflict. Do not update shared locks
+or disable checks simply to make the iOS build pass. Historical initial
+resolution is recorded in the ABI receipt, not a reseeding instruction.
 
 ## Core xcframework (`build-core.sh`)
 
@@ -1586,7 +1598,8 @@ call-v2 round — knock, ready, offer, answer, media, heartbeat, end — alterna
 sides, each control arriving as a `call_event` whose body is byte-identical and
 whose `video` is still a JSON boolean; the snapshot codec crossed both ways;
 both saved wrappers reopened by both adapters with no write and the same public
-view; twenty-one malformed call bodies refused by the harness and then by both
+view (Android's v29 screen flag `identity_login` left out until iOS has
+identity-v3 realms); twenty-one malformed call bodies refused by the harness and then by both
 clients with one and the same code; a tampered envelope refused in both
 directions without moving anything but the rejection counters.
 
@@ -1666,16 +1679,20 @@ Android's algorithm (`clients/android/notices.py`), rooted here at
 graph once, walk it from the root so only crates that actually link are
 counted, and copy every `license*`/`licence*`/`copying*`/`notice*`/
 `copyright*` file those crates ship, verbatim, into
-`out/THIRD_PARTY_NOTICES.txt` — 91 crates today, whatever the shared core
-pulls in. A linked crate whose package carries no license text fails the
+`out/THIRD_PARTY_NOTICES.txt` — the current combined graph resolves 146 linked
+registry packages plus WebRTC, as recorded in the [ABI receipt](../../docs/clients/ios/devnet-bridge.md).
+A linked crate without packaged or verified fallback license text fails the
 build with `Missing license text: <crate> <version>`; it is never skipped.
-Three crates publish none upstream and are served from pinned copies:
+The original core fallback set covers three crates:
 `matrix-pickle` and `matrix-pickle-derive` from
 `spikes/002-android-bootstrap/licenses/matrix-pickle-LICENSE`, `jni-sys-macros`
 from `licenses/jni-sys-macros-LICENSE-{APACHE,MIT}` (byte-for-byte copies of
 Android's, see [licenses/README.md](licenses/README.md)). `jni` itself stays
 in the graph — the core depends on it unconditionally — so its notices ship
-here too.
+here too. Additional missing Devnet texts use the existing Android Devnet
+license source records, with declared-license equality and SHA-256 checks; see
+[the combined-graph packaging contract](../../docs/clients/ios/devnet-bridge.md#dependency-and-build-integration).
+No shared license files are rewritten.
 
 After the crates comes the pinned `WebRTC.xcframework`: its version, the
 archive and slice digests that `webrtc_dependency.py` enforces, the upstream
@@ -1712,7 +1729,8 @@ without `~/.cargo/bin` on `PATH` is fine.
 1. `test_toolchain.py` — the pinned tool versions.
 2. `webrtc_dependency.py`, `test_webrtc_dependency.py` — the pinned WebRTC
    archive, re-extracted into the SwiftPM binary target on every build.
-3. `test_bridge_lock.py` — the bridge lock still equals `clients/core`'s.
+3. `test_bridge_lock.py` — all core pins retained; added pins match the Devnet
+   lock, with exactly one entry per allowed path package.
 4. `cargo test --release` of the shared core with the same test targets as
    `clients/android/build.sh:25` (`--lib`, `clean_first_contact`,
    `realtime_signing`, `voice_calls`), into `out/core-target` so the red-zone
@@ -1807,7 +1825,7 @@ jq '.steps[] | [.step, .status] | @tsv' clients/ios/out/evidence/build-manifest.
 ```sh
 python3 clients/ios/test_toolchain.py           # pinned tool versions (--no-xcode skips Xcode/SDK/Swift/PostgreSQL)
 python3 clients/ios/test_component_boundary.py  # committed changes stay inside the iOS allowlist
-python3 clients/ios/test_bridge_lock.py         # bridge lock matches clients/core/Cargo.lock
+python3 clients/ios/test_bridge_lock.py         # preserves core pins; additions match the Devnet lock
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests   # Swift adapter over the bridge (needs build-core.sh)
 xcodebuild -project clients/ios/App/ParanoID.xcodeproj -list                  # three targets
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
@@ -1884,7 +1902,9 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   fixtures, PostgreSQL 16 for the local stand. No XcodeGen, no CocoaPods, no
   third-party Swift packages; the only binary dependency is
   `WebRTC.xcframework` `150.7871.01`, verified by digest before extraction.
-  The lock-file rule above keeps the Rust graph identical to Android's.
+  The lock-file rule above preserves every core pin and permits only matching
+  Devnet-lock additions. The unified iOS graph is not identical to Android's
+  separately resolved core and Devnet graphs.
 - **Behaviour comes from the protocol and the core.** Write from
   `docs/protocol/*.md` and `clients/core`; use the Java client only as a
   cross-check and record every mismatch in

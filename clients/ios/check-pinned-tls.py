@@ -340,10 +340,16 @@ def run_smoke(binary, cases):
     if finished.returncode == 2 or not finished.stdout.strip():
         raise CheckError('tls-smoke could not run: '
                          + (finished.stderr.strip() or f'exit {finished.returncode}'))
+    # The report is the last stdout line. ParanoidKit's pinned delegate prints
+    # one `pinned-tls: refused: …` diagnostic per refused handshake to stdout
+    # before it (`PinnedSessionDelegate.swift`); those lines are kept as
+    # evidence, never parsed as the report.
+    lines = [line for line in finished.stdout.splitlines() if line.strip()]
     try:
-        report = json.loads(finished.stdout)
-    except json.JSONDecodeError as broken:
+        report = json.loads(lines[-1])
+    except (IndexError, json.JSONDecodeError) as broken:
         raise CheckError(f'tls-smoke printed no report ({broken})') from broken
+    report['diagnostics'] = lines[:-1]
     report['exit_status'] = finished.returncode
     return report
 

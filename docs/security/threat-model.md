@@ -7,6 +7,15 @@ last_reviewed_scope: proposed concurrent-realm state, downgrade and media owners
 
 # Threat model
 
+## iOS Devnet bridge component evidence — 2026-10-13
+
+The [C-ABI contract/receipt](../clients/ios/devnet-bridge.md) records a local
+implementation over unchanged Rust crypto: bounded input, scoped memory
+erasure, preserved core pins with verified Devnet additions and `blake3/pure`
+Apple type checks. It adds no network action, server trust or persistent user
+state. Swift/native storage/login, concurrent runtime, existing-server Android
+interop and the MR gates remain unrun; no architecture acceptance follows.
+
 ## iOS concurrent-realm design controls — 2026-10-13
 
 The [RFC-0030 candidate](../clients/ios/concurrent-realms-design.md) proposes

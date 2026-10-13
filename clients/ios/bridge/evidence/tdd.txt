@@ -1,0 +1,500 @@
+Initial test-first receipts. Synthetic/public data only. No server/RPC calls.
+Commands ran with CARGO_HOME=/home/codex/.cargo RUSTUP_HOME=/home/codex/.rustup RUSTUP_TOOLCHAIN=1.98.1 and /home/codex/.cargo/bin on PATH.
+Expected RED exits are not final failures. Boundary/identity checks beyond recovery are regression coverage of the unchanged upstream contract.
+
+=== recovery-red ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --test devnet public_mnemonic_recovery_vector
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+error[E0432]: unresolved imports `paranoid_ios_bridge::paranoid_devnet_command`, `paranoid_ios_bridge::paranoid_devnet_free`
+ --> tests/devnet.rs:2:27
+  |
+2 | use paranoid_ios_bridge::{paranoid_devnet_command, paranoid_devnet_free};
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^ no `paranoid_devnet_free` in the root
+  |                           |
+  |                           no `paranoid_devnet_command` in the root
+  |
+help: a similar name exists in the module
+  |
+2 - use paranoid_ios_bridge::{paranoid_devnet_command, paranoid_devnet_free};
+2 + use paranoid_ios_bridge::{paranoid_core_command, paranoid_devnet_free};
+  |
+help: a similar name exists in the module
+  |
+2 - use paranoid_ios_bridge::{paranoid_devnet_command, paranoid_devnet_free};
+2 + use paranoid_ios_bridge::{paranoid_devnet_command, paranoid_core_free};
+  |
+
+For more information about this error, try `rustc --explain E0432`.
+error: could not compile `paranoid-ios-bridge` (test "devnet") due to 1 previous error
+exit_code=101
+
+=== request-wipe-red ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --test devnet_memory
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.35s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-bfd19ac9976b310c)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... FAILED
+
+failures:
+
+---- copied_request_and_owned_reply_are_wiped_before_deallocation stdout ----
+
+thread 'copied_request_and_owned_reply_are_wiped_before_deallocation' (2811867) panicked at tests/devnet_memory.rs:52:5:
+copied request not wiped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    copied_request_and_owned_reply_are_wiped_before_deallocation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test devnet_memory`
+exit_code=101
+
+=== reply-wipe-red ===
+$ cargo test --offline --manifest-path clients/ios/bridge/Cargo.toml --test devnet_memory
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+warning: unused import: `Zeroize`
+  --> src/lib.rs:12:15
+   |
+12 | use zeroize::{Zeroize, Zeroizing};
+   |               ^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `paranoid-ios-bridge` (lib) generated 1 warning (run `cargo fix --lib -p paranoid-ios-bridge` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.56s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-ba482e4d44772bf9)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... FAILED
+
+failures:
+
+---- copied_request_and_owned_reply_are_wiped_before_deallocation stdout ----
+
+thread 'copied_request_and_owned_reply_are_wiped_before_deallocation' (2812954) panicked at tests/devnet_memory.rs:54:5:
+owned reply not wiped
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    copied_request_and_owned_reply_are_wiped_before_deallocation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test devnet_memory`
+exit_code=101
+
+=== wipe-green ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --test devnet_memory
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.63s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-ba482e4d44772bf9)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+exit_code=0
+
+=== bounded-copy-red ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --test devnet_memory
+Compiling blake3 v1.8.7
+   Compiling constant_time_eq v0.4.2
+   Compiling solana-message v4.2.4
+   Compiling solana-transaction v4.1.5
+   Compiling paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/blockchain/solana/client)
+   Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.41s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-7058c8233a11be6d)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... FAILED
+
+failures:
+
+---- copied_request_and_owned_reply_are_wiped_before_deallocation stdout ----
+
+thread 'copied_request_and_owned_reply_are_wiped_before_deallocation' (2825103) panicked at tests/devnet_memory.rs:65:5:
+assertion `left == right` failed: oversized input was copied
+  left: 0
+ right: 16385
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    copied_request_and_owned_reply_are_wiped_before_deallocation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `--test devnet_memory`
+exit_code=101
+
+=== bounded-copy-green ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --test devnet_memory
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.61s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-7058c8233a11be6d)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+exit_code=0
+
+=== reply-transfer-red ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml --lib
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+error[E0425]: cannot find function `devnet_reply` in this scope
+  --> src/lib.rs:91:22
+   |
+91 |         let output = devnet_reply(Zeroizing::new("synthetic\0invalid".to_owned()));
+   |                      ^^^^^^^^^^^^ not found in this scope
+
+For more information about this error, try `rustc --explain E0425`.
+error: could not compile `paranoid-ios-bridge` (lib test) due to 1 previous error
+exit_code=101
+
+=== reply-transfer-green ===
+$ cargo test --locked --manifest-path clients/ios/bridge/Cargo.toml
+Compiling paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.73s
+     Running unittests src/lib.rs (clients/ios/bridge/target/debug/deps/paranoid_ios_bridge-53885142f06ff4c5)
+
+running 2 tests
+test devnet_tests::reply_transfer_rejects_interior_nul_without_leaking_partial_text ... ok
+test devnet_tests::unwind_is_a_fixed_failure_not_a_panic_across_c ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/abi.rs (clients/ios/bridge/target/debug/deps/abi-9ff087edc5497ecc)
+
+running 6 tests
+test free_null_is_a_no_op ... ok
+test null_arguments_are_invalid_request ... ok
+test non_utf8_arguments_are_invalid_request ... ok
+test garbage_request_is_invalid_request ... ok
+test request_over_limit_is_input_limit ... ok
+test create_identity_from_empty_state_then_upgrade_v2 ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/devnet.rs (clients/ios/bridge/target/debug/deps/devnet-60da1317b42040f9)
+
+running 6 tests
+test null_and_invalid_utf8_follow_core_abi_errors ... ok
+test malformed_requests_preserve_the_devnet_error_contract ... ok
+test public_mnemonic_recovery_vector ... ok
+test allocations_are_independent_and_each_can_be_freed_once ... ok
+test size_boundary_is_bytes_not_characters ... ok
+test public_identity_vectors_use_the_existing_rust_crypto ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-7058c8233a11be6d)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests paranoid_ios_bridge
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+exit_code=0
+
+=== c-header-red ===
+$ cc -std=c11 -Wall -Wextra -Werror -Iclients/ios/bridge/include -fsyntax-only clients/ios/bridge/tests/abi.c
+clients/ios/bridge/tests/abi.c: In function ‘main’:
+clients/ios/bridge/tests/abi.c:10:23: error: implicit declaration of function ‘paranoid_devnet_command’; did you mean ‘paranoid_core_command’? [-Werror=implicit-function-declaration]
+   10 |         char *reply = paranoid_devnet_command(recover);
+      |                       ^~~~~~~~~~~~~~~~~~~~~~~
+      |                       paranoid_core_command
+clients/ios/bridge/tests/abi.c:10:23: error: initialization of ‘char *’ from ‘int’ makes pointer from integer without a cast [-Werror=int-conversion]
+clients/ios/bridge/tests/abi.c:13:9: error: implicit declaration of function ‘paranoid_devnet_free’; did you mean ‘paranoid_core_free’? [-Werror=implicit-function-declaration]
+   13 |         paranoid_devnet_free(reply);
+      |         ^~~~~~~~~~~~~~~~~~~~
+      |         paranoid_core_free
+clients/ios/bridge/tests/abi.c:15:22: error: initialization of ‘char *’ from ‘int’ makes pointer from integer without a cast [-Werror=int-conversion]
+   15 |     char *identity = paranoid_devnet_command("{\"op\":\"identity\",\"entropy\":\"AAAAAAAAAAAAAAAAAAAAAA==\"}");
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~
+clients/ios/bridge/tests/abi.c:20:21: error: initialization of ‘char *’ from ‘int’ makes pointer from integer without a cast [-Werror=int-conversion]
+   20 |     char *failure = paranoid_devnet_command(NULL);
+      |                     ^~~~~~~~~~~~~~~~~~~~~~~
+cc1: all warnings being treated as errors
+exit_code=1
+
+=== c-header-green ===
+$ cc -std=c11 -Wall -Wextra -Werror -Iclients/ios/bridge/include -fsyntax-only clients/ios/bridge/tests/abi.c
+
+exit_code=0
+
+=== lock-allowlist-red ===
+$ python3 clients/ios/bridge/tests/test_lock.py
+.......F.
+======================================================================
+FAIL: test_new_core_path_cannot_expand_the_four_package_allowlist (__main__.LockTest.test_new_core_path_cannot_expand_the_four_package_allowlist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge/tests/test_lock.py", line 84, in test_new_core_path_cannot_expand_the_four_package_allowlist
+    self.assertTrue(gate.compare(self.core, self.devnet, self.bridge))
+AssertionError: [] is not true
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+FAILED (failures=1)
+exit_code=1
+
+=== lock-negatives-green ===
+$ python3 clients/ios/bridge/tests/test_lock.py && python3 clients/ios/test_bridge_lock.py
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+OK
+OK: all 123 core registry pins and 2 core paths retained; 58 added registry pins match Devnet; 4 path packages
+exit_code=0
+
+=== notices-fallback-red ===
+$ python3 -m unittest discover -s clients/ios -p test_notices.py -k test_devnet_missing_text
+E
+======================================================================
+ERROR: test_devnet_missing_text_uses_existing_hash_pinned_source (test_notices.LicenseTextTest.test_devnet_missing_text_uses_existing_hash_pinned_source)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/test_notices.py", line 167, in test_devnet_missing_text_uses_existing_hash_pinned_source
+    texts = self.notices.license_texts(entry)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/notices.py", line 118, in license_texts
+    raise RuntimeError("Missing license text: " + package["name"] + " " + package["version"])
+RuntimeError: Missing license text: bitcoin_hashes 0.14.101
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+FAILED (errors=1)
+exit_code=1
+
+=== notices-fallback-green ===
+$ python3 -m unittest discover -s clients/ios -p test_notices.py -k test_devnet_missing_text
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.005s
+
+OK
+exit_code=0
+
+=== apple-pure-red ===
+$ cargo check --locked --target aarch64-apple-ios --manifest-path clients/ios/bridge/Cargo.toml
+Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.24
+   Compiling libc v0.2.189
+    Checking cfg-if v1.0.4
+    Checking typenum v1.20.1
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.229
+   Compiling serde v1.0.229
+    Checking subtle v2.6.1
+   Compiling semver v1.0.28
+   Compiling thiserror v2.0.20
+   Compiling strsim v0.11.1
+   Compiling ident_case v1.0.1
+   Compiling pastey v0.2.3
+    Checking five8_core v1.0.0
+   Compiling rustc_version v0.4.1
+    Checking solana-sanitize v3.0.1
+    Checking five8 v1.0.0
+   Compiling zerocopy v0.8.56
+    Checking solana-program-error v3.0.1
+   Compiling generic-array v0.14.7
+    Checking signature v2.2.0
+   Compiling autocfg v1.5.1
+   Compiling getrandom v0.3.4
+    Checking five8_const v1.0.0
+   Compiling winnow v1.0.4
+   Compiling hashbrown v0.17.1
+    Checking sha2-const-stable v0.1.0
+   Compiling curve25519-dalek v4.1.3
+   Compiling equivalent v1.0.2
+   Compiling toml_datetime v1.1.1+spec-1.1.0
+   Compiling anyhow v1.0.104
+   Compiling shlex v2.0.1
+    Checking hybrid-array v0.4.15
+   Compiling syn v2.0.119
+   Compiling syn v3.0.5
+   Compiling num-traits v0.2.19
+    Checking getrandom v0.2.17
+    Checking cpufeatures v0.2.17
+   Compiling indexmap v2.14.2
+    Checking rand_core v0.6.4
+   Compiling wincode v0.5.5
+   Compiling zmij v1.0.23
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking block-padding v0.3.3
+    Checking memchr v2.8.3
+    Checking digest v0.10.7
+    Checking inout v0.1.4
+   Compiling find-msvc-tools v0.1.13
+   Compiling toml_parser v1.1.3+spec-1.1.0
+    Checking sha2 v0.10.9
+    Checking hmac v0.12.1
+   Compiling either v1.18.0
+    Checking bytes v1.12.1
+   Compiling cc v1.4.7
+    Checking universal-hash v0.5.1
+    Checking opaque-debug v0.3.1
+    Checking cmov v0.5.4
+   Compiling serde_json v1.0.151
+    Checking poly1305 v0.8.0
+   Compiling itertools v0.14.0
+    Checking ctutils v0.4.2
+   Compiling toml_edit v0.25.13+spec-1.1.0
+    Checking aead v0.5.2
+    Checking block-buffer v0.12.1
+    Checking crypto-common v0.2.2
+    Checking itoa v1.0.18
+   Compiling thiserror v1.0.69
+   Compiling jni-sys v0.3.1
+    Checking serde_bytes v0.11.19
+    Checking hkdf v0.12.4
+    Checking rand_core v0.9.5
+    Checking base64ct v1.8.3
+    Checking base64 v0.22.1
+    Checking constant_time_eq v0.4.2
+    Checking combine v4.6.8
+    Checking pbkdf2 v0.11.0
+   Compiling proc-macro-crate v3.5.0
+    Checking uuid v1.18.1
+    Checking cesu8 v1.1.0
+    Checking digest v0.11.3
+    Checking log v0.4.34
+    Checking tinyvec v1.13.3
+    Checking solana-seed-phrase v3.0.0
+    Checking derivation-path v0.2.0
+    Checking unicode-normalization v0.1.25
+   Compiling blake3 v1.8.7
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.20
+warning: blake3@1.8.7: Compiler family detection failed due to error: ToolNotFound: failed to find tool "clang": No such file or directory (os error 2)
+warning: blake3@1.8.7: Compiler family detection failed due to error: ToolNotFound: failed to find tool "clang": No such file or directory (os error 2)
+error: failed to run custom build command for `blake3 v1.8.7`
+
+Caused by:
+  process didn't exit successfully: `/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge/target/debug/build/blake3-bb67bf822269c890/build-script-build` (exit status: 1)
+  --- stdout
+  cargo::rustc-check-cfg=cfg(blake3_sse2_ffi, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_sse2_rust, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_sse41_ffi, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_sse41_rust, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_avx2_ffi, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_avx2_rust, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_avx512_ffi, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_neon, values(none()))
+  cargo::rustc-check-cfg=cfg(blake3_wasm32_simd, values(none()))
+  cargo::rerun-if-env-changed=CARGO_FEATURE_PURE
+  cargo::rerun-if-env-changed=CARGO_FEATURE_NO_NEON
+  cargo::rerun-if-env-changed=CARGO_FEATURE_NEON
+  cargo::rerun-if-env-changed=CARGO_FEATURE_NEON
+  cargo::rerun-if-env-changed=CARGO_FEATURE_NO_NEON
+  cargo::rerun-if-env-changed=CARGO_FEATURE_PURE
+  cargo::rustc-cfg=blake3_neon
+  CC_FORCE_DISABLE = None
+  CC_aarch64-apple-ios = None
+  CC_aarch64_apple_ios = None
+  TARGET_CC = None
+  CC = None
+  cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+  cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "clang": No such file or directory (os error 2)
+  CRATE_CC_NO_DEFAULTS = None
+  cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+  cargo:warning=Compiler family detection failed due to error: ToolNotFound: failed to find tool "clang": No such file or directory (os error 2)
+  CRATE_CC_NO_DEFAULTS = None
+  IPHONEOS_DEPLOYMENT_TARGET = None
+  Detecting "ios" SDK path for iphoneos
+  SDKROOT = None
+  Detecting "ios" SDK path for iphoneos
+  SDKROOT = None
+
+  --- stderr
+
+
+  error occurred in cc-rs: failed to find tool "xcrun": No such file or directory (os error 2)
+
+
+warning: build failed, waiting for other jobs to finish...
+exit_code=101
+
+=== apple-pure-green ===
+$ cargo check --offline --target aarch64-apple-ios --manifest-path clients/ios/bridge/Cargo.toml
+Compiling zeroize_derive v1.5.0
+   Compiling darling_core v0.23.0
+    Checking serde v1.0.229
+    Checking thiserror v2.0.20
+    Checking ppv-lite86 v0.2.21
+   Compiling matrix-pickle-derive v0.2.3
+   Compiling prost-derive v0.14.4
+   Compiling blake3 v1.8.7
+   Compiling jni-sys-macros v0.4.1
+   Compiling thiserror-impl v1.0.69
+    Checking constant_time_eq v0.4.2
+    Checking rand_chacha v0.3.1
+    Checking rand_chacha v0.9.0
+    Checking rand v0.9.5
+    Checking rand v0.8.8
+    Checking ed25519 v2.2.3
+    Checking arrayvec v0.7.8
+    Checking solana-instruction-error v2.5.0
+    Checking serde-big-array v0.5.1
+    Checking jni-sys v0.4.1
+    Checking zeroize v1.9.0
+    Checking matrix-pickle v0.2.3
+    Checking bincode v1.3.3
+    Checking solana-transaction-error v3.4.0
+    Checking curve25519-dalek v4.1.3
+    Checking cipher v0.4.4
+    Checking hex-conservative v0.2.3
+    Checking jni-sys v0.3.1
+    Checking chacha20 v0.9.1
+    Checking aes v0.8.4
+    Checking cbc v0.1.2
+    Checking bitcoin_hashes v0.14.101
+    Checking chacha20poly1305 v0.10.1
+    Checking thiserror v1.0.69
+    Checking ed25519-dalek v2.2.0
+    Checking x25519-dalek v2.0.1
+    Checking jni v0.21.1
+    Checking ed25519-dalek-bip32 v0.3.0
+    Checking prost v0.14.4
+    Checking bip39 v3.0.0
+    Checking vodozemac v0.10.0
+   Compiling darling_macro v0.23.0
+   Compiling darling v0.23.0
+   Compiling wincode-derive v0.4.6
+    Checking paranoid-key-protocol v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/key-protocol)
+    Checking paranoid-client-core v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/core)
+    Checking wincode v0.5.5
+    Checking solana-hash v4.5.0
+    Checking solana-signature v3.4.1
+    Checking solana-short-vec v3.2.2
+    Checking solana-sha256-hasher v3.1.0
+    Checking solana-address v2.6.1
+    Checking solana-pubkey v4.2.1
+    Checking solana-sdk-ids v3.1.0
+    Checking solana-signer v3.0.1
+    Checking solana-instruction v3.4.0
+    Checking solana-message v4.2.4
+    Checking solana-keypair v3.1.2
+    Checking solana-transaction v4.1.5
+    Checking paranoid-devnet-client v0.1.0 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/blockchain/solana/client)
+    Checking paranoid-ios-bridge v0.0.1 (/home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/bridge)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.65s
+exit_code=0

@@ -13,4 +13,8 @@ crate-type = ["staticlib", "rlib"]
 
 [dependencies]
 paranoid-client-core = { path = "../../core" }
+paranoid-devnet-client = { path = "../../../blockchain/solana/client" }
 serde_json = "1"
+zeroize = "=1.9.0"
+# RFC-0030: unify the Devnet hash backend without C/assembly or an Apple SDK.
+blake3 = { version = "=1.8.7", features = ["pure"] }

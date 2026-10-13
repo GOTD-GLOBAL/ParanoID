@@ -1,0 +1,43 @@
+$ npx --offline markdownlint-cli2 docs/clients/ios/devnet-bridge.md
+markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+Finding: docs/clients/ios/devnet-bridge.md **/*.md !tmp/**
+Linting: 249 files
+Summary: 24 issues in 4 files
+docs/project/evidence/voice-local-acceptance-20260910/summary.md:6:1 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/project/evidence/voice-local-acceptance-20260910/summary.md:6:5 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/project/evidence/voice-local-acceptance-20260910/summary.md:6:5 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/project/evidence/voice-local-acceptance-20260910/summary.md:6:9 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:1 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:5 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:5 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:9 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:9 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:13 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:13 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/reviews/2026-09-22-pr51-pr54-integration.md:23:17 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:1 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:5 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:5 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:9 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:9 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/rfcs/0029-invite-sponsored-registration.md:136:13 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/security/push-wake-threats.md:6:1 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/security/push-wake-threats.md:6:5 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/security/push-wake-threats.md:6:5 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/security/push-wake-threats.md:6:9 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+docs/security/push-wake-threats.md:6:9 error MD060/table-column-style Table column style [Table pipe is missing space to the right for style "compact"]
+docs/security/push-wake-threats.md:6:13 error MD060/table-column-style Table column style [Table pipe is missing space to the left for style "compact"]
+exit_code=1
+
+Scoped identical-document lint in scratch with repository rules and without repository-wide globs:
+markdownlint-cli2 v0.23.3 (markdownlint v0.41.1)
+Finding: devnet-bridge.md
+Linting: 1 file
+Summary: 0 issues in 0 files
+exit_code=0
+$ ruff check clients/ios/test_bridge_lock.py clients/ios/notices.py clients/ios/test_notices.py clients/ios/bridge/tests/test_lock.py
+All checks passed!
+exit_code=0
+
+Local links: 9 resolved; no remote link/RPC checks.
+The four Markdown failure files have no diff from base 02881cfbcddb8ebb1b60bb44b723aa2c0b211dae.

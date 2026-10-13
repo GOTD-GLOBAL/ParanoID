@@ -1347,8 +1347,9 @@ technical disposition of the concurrent-realm candidate and the remaining review
   This is scoped draft-design review, not human acceptance or implementation
   evidence. Any changed design and every implementation still need their own
   exact-revision review; this citation-only tail does not relabel the reviewed SHA.
-- Resulting ADR: to be drafted for the revised concurrent-realm proposal, with
-  the next free number after checking published branches. No ADR is accepted.
+- Resulting ADR: [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md),
+  allocated after checking published branches. This records the candidate,
+  not acceptance; exact scope/disposition and implementation evidence remain gates.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: none.
