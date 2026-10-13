@@ -191,4 +191,35 @@ Scope: new core, existing-target unit tests, staged native-first tests, narrow
 proposed design/threat delta and this receipt only. No legacy source, AppModel,
 install.v1, shared Rust/C ABI, server/Android, package/lock/pin/CI changes. Parent
 edits to current-state, iOS README and native-mac-receipts are intentional and
-must not be staged in this component commit. No push, PR, merge or publication.
+must not be staged in this component commit. The implementer performed no
+push, PR, merge or publication.
+
+## Parent verification and native execution assignment
+
+The parent inspected the production core, active and staged native tests,
+replay script and proposed contract. Independent review of exact source
+`98d97efb6be478f1f9ea6b649b0de2159099d1f9` is running; no verdict is claimed yet.
+Its production/test hashes were checked against the immutable replay receipts.
+
+Actual parent replays (same scratch root as above):
+
+- `parent-verified-debug-e067f438c2564309a2e63c3d99488a15`: exit 0,
+  23 store + 28 codec = 51 individually passed tests; 142 fault cases.
+- `parent-verified-release-3f8a82e33e3e4e1fb39355e45b1c77ac`: exit 0,
+  the same 51 individually passed tests and 142 fault cases.
+
+The core, tests and codec bytes in those receipts match the committed source.
+No staged native adapter test was included in either passing run.
+
+Yaroslav selected this bounded execution arrangement in the current task:
+**his Mac agent implements the Apple adapter against the native tests; the
+coordinator performs review and integration.** This is not a permanent authority
+delegation, ADR acceptance or main-merge/server/phone permission. Use a separate
+feature branch from the published checkpoint, preserve existing worktrees and
+all real accounts/keys, activate the staged tests in the existing package target,
+observe runtime RED after minimum compilable signatures, and implement one
+behavior at a time. Do not count missing types/SDKs or zero discovered tests as
+RED/GREEN. Complete the native-specific fault tests listed above, then the
+normal full-package/notices/unsigned-build sequence. Record actual model/source
+provenance and test outputs, return a commit/branch for review, and do not merge
+into main or change an existing installation.

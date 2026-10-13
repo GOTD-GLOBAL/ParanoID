@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS catalogue transaction core (partial proposal)
+
+- Add explicit fresh/retained catalogue transaction orchestration and failure
+  latching with ordered intent/key/candidate/readback/directory-sync operations.
+- Add executable fault tests for preservation and context/continuity refusal;
+  the Apple filesystem/crypto adapter is not implemented in this checkpoint.
+- No app integration, existing-state migration, owner recovery or server login
+  is delivered; unit token backends are not native encryption/durability proof.
+
 ### iOS catalogue bootstrap codec (in-memory proposal)
 
 - Add immutable public catalogue metadata and a strict bounded JSON codec with

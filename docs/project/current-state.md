@@ -2,10 +2,30 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: isolated in-memory catalogue codec execution; native catalogue, durable storage/login runtime, formal scope evidence and phone acceptance remain separate
+last_reviewed_scope: exercised catalogue transaction core and verified base Mac receipt; Apple adapter implementation/native checks and owner/realm login remain separate
 ---
 
 # Current project state
+
+## Catalogue transaction-core checkpoint — 2026-10-13
+
+The [isolated store checkpoint](evidence/ios-identity-v3-20261013/catalogue-store.md)
+adds executable `CatalogueStore` ordering and continuity checks behind explicit
+file/opaque-key interfaces. Parent replays of exact implementation `98d97efb`
+pass 23 new store plus 28 codec tests, 51/0 in debug and release, including
+142 before/after-effect fault cases. These use explicit non-cryptographic unit
+backends: they do not prove native encryption or disk durability.
+
+The Apple filesystem/crypto adapter is **not implemented** at this checkpoint.
+Four native-first tests are staged outside the active target and are NOT RUN,
+not included in the 51-test count. Yaroslav selected his Mac agent to implement
+that narrow adapter through native RED/GREEN, with coordinator review and
+feature-branch integration. This changes only task execution responsibilities,
+not decision authority or server/phone/merge permissions. Independent review
+of the transaction core is in progress; no full storage or login result exists.
+No existing app startup, legacy storage, install marker, Keychain or live state
+changed. Fresh-Welcome classification and actual persistent-format/runtime
+adoption remain separate from this explicitly isolated candidate.
 
 ## In-memory catalogue codec candidate — 2026-10-13
 
@@ -20,9 +40,13 @@ call site, legacy storage or core/Rust/ABI/package/dependency contract changed.
 records 28 XCTest methods passing in debug and release, repeated by the parent
 on the actual committed source. Explicit Swift 6 strict-concurrency and
 warnings-as-errors source/test typechecks pass. Scratch-only component execution
-adds no repository Linux infrastructure. Independent review is in progress;
-new-head Mac/full-package/Xcode checks are NOT RUN. The earlier `c1e9b90`
-Devnet receipt does not cover this added code.
+adds no repository Linux infrastructure. Independent source review is closed
+without blockers. The [exact ea93daf Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/81#issuecomment-6155112817)
+now reports all seven steps exit 0: 28/0 catalogue tests, 438/0 full package
+with no skips, notices 32 PASS and unsigned iOS BUILD SUCCEEDED, with clean
+source before/after. The earlier `c1e9b90` receipt remains separate. No repeat
+of either unchanged head is requested. This receipt does not cover the later
+CatalogueStore candidate or prove persistence, restart or application login.
 
 This is an unmerged in-memory proposal, not durable catalogue bootstrap or a
 working owner/realm login. Sergey's Telegram scope confirmation was received;

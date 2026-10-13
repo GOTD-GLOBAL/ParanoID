@@ -138,6 +138,26 @@ The archives keep rustc's default minimum OS versions (iOS 10.0, simulator
 is applied by the application target, which links these older-minimum static
 libraries without a warning.
 
+## Catalogue transaction core (native adapter pending)
+
+`CatalogueStore<Crypto>` implements the proposed commit/reopen ordering behind
+explicit `CatalogueFileIO` and opaque-key `CatalogueCryptography` interfaces.
+It requires a caller-owned isolated root and trusted complete catalogue context;
+there is no default app directory, standard Keychain, migration or startup hook.
+Fresh inspection and retained opening are separate; intent and parent sync
+precede key creation, and readback plus both directory syncs precede success.
+Failures break the instance without deleting keys or ambiguous artifacts.
+
+This delivery is **partial**: 23 new store tests plus 28 unchanged codec tests
+pass in isolated debug/release execution, with 142 before/after-effect fault
+cases. Their I/O/key/token backends are explicitly non-cryptographic doubles.
+The [receipt and native-first checkpoint](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-store.md)
+identify the missing Apple file/crypto adapter. Its four staged XCTest cases
+are outside the active package target and are not compiled, passed or skipped.
+The selected next execution step is native adapter RED/GREEN on the build Mac;
+coordinator review and feature-branch integration follow. No new native-store,
+Keychain, process-restart or phone acceptance is claimed by the 51 host tests.
+
 ## In-memory catalogue bootstrap (proposal component)
 
 `IdentityCatalogue`, its nested `Realm`/`Realms` values and
@@ -160,10 +180,13 @@ The [receipt](bridge/evidence/identity-catalogue-codec-tdd.txt) records real
 vertical RED/GREEN and 28 XCTest methods, independently repeated by the parent
 in debug and release on the existing Swift host toolchain. This is an isolated
 component, not a full ParanoidKit/Mac/Xcode or persistent-storage result.
-Independent source review and new-head native verification remain separate;
-no MR gate or formal authority record is closed by these tests. Use the existing
-package's `IdentityCatalogueTests` filter for the next native feature check,
-with normal bridge/WebRTC prerequisites and notices before unsigned Xcode.
+Independent source review closed without blockers. The later
+[exact ea93daf Mac receipt](../../docs/project/evidence/ios-identity-v3-20261013/native-mac-receipts.md#catalogue-codec-ea93daf)
+reports 28/0 catalogue tests, 438/0 full package, notices 32 PASS and unsigned
+iOS BUILD SUCCEEDED with clean source. No repeat of that unchanged head is
+requested. These results do not cover later CatalogueStore code or complete
+an MR/phone gate or formal authority record. Future changed-head native checks
+retain bridge/WebRTC prerequisites and notices before unsigned Xcode.
 
 ## Swift package (`ParanoidKit/`)
 
