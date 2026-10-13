@@ -14,11 +14,27 @@ installation is part of this handoff. See [draft ADR-0017](../../decisions/0017-
 ## Scope of the first handoff
 
 The initial source candidate contains implementation prerequisites, not the full
-working identity-v3 application. A Devnet C ABI and isolated identity-v3 stand
-must pass their component checks; Swift owner storage/login UI, dual-runtime
+working identity-v3 application. The Devnet C ABI must pass its component
+checks; Swift owner storage/login UI, dual-runtime
 integration and MR device acceptance are not implied by a successful old-app
 regression build. Report each gate separately and do not distribute the bundle
 as a working v3 client before its actual onboarding/text/call path passes.
+
+## Application acceptance target — owner clarification
+
+The iOS app must connect to the **existing configured identity-v3 servers**
+and interoperate with other clients, including Android, on the same instance.
+No new test-server deployment or separate local-stand workstream is required.
+The compiled Finland and Russia profiles remain in scope; this does not add
+cross-server federation or make peers on different realms one conversation.
+
+Acceptance means actual login, contact discovery/pairing, text and delivery
+receipts, and voice/video calls with the other client on the existing instance.
+Local unit/negative checks may support development but never substitute for
+that result. Do not reset/recreate either server, change its configuration/schema
+or wipe its data to make the client pass. Ordinary client registration/message
+operations are distinguished from infrastructure or database-administration
+changes; no such client session has been executed by this handoff yet.
 
 ## Safe build entry point
 

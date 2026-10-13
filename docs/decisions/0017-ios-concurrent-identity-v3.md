@@ -29,8 +29,11 @@ The product input and its evidence limitations remain in owner-input PR #73.
 The current Telegram task requests urgent progress toward a working iOS test
 version. Work starts with locally exercised implementation prerequisites rather
 than another request to repeat the same product direction. The initial slice
-is bounded to the iOS C ABI over the existing Devnet/core crates and an isolated
-identity-v3 test stand, using synthetic/public fixture data only. No changed
+is bounded to the iOS C ABI over the existing Devnet/core crates, with local
+synthetic/public-fixture unit checks. The owner clarified that application
+acceptance must use the existing configured identity-v3 instances and existing
+Android clients on the same realm. The separately proposed local-stand
+workstream is cancelled; it is not a prerequisite for that acceptance. No changed
 cryptographic algorithm, live RPC/registration, server login, persistent user
 identity, Apple-account action or delivery claim follows from that slice.
 The application/runtime portions still need their own native tests and review.

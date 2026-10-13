@@ -7,6 +7,23 @@ last_reviewed_scope: concurrent-realm iOS design candidate and MR acceptance gat
 
 # Current project state
 
+## iOS implementation task: existing-instance acceptance — 2026-10-13
+
+The current owner clarification requires iOS builds to connect to the existing
+configured identity-v3 instance and communicate with other clients, including
+Android on the same realm. No new instance/local-stand workstream is wanted;
+the separate stand task has been cancelled. Local unit/negative fixtures remain
+component checks, not substitutes for real iPhone/Android acceptance. Both
+compiled server profiles stay in the requested product scope.
+
+Local preparation is in progress under [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md).
+The Devnet C-ABI work is running; no working iOS-v3 application is claimed.
+The exact-head Mac runner has eight passing guard/dispatch unit tests, which
+are not Swift/Xcode/device evidence. The selected execution path is Yaroslav's
+agent on his Mac. See [handoff](../clients/ios/identity-v3-mac-handoff.md).
+No server configuration/schema change, DB reset or new instance is performed.
+Actual existing-server login/text/call acceptance is still NOT RUN.
+
 ## iOS concurrent-realm design candidate — 2026-10-13
 
 At Yaroslav's request, RFC-0030 now links a
