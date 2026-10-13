@@ -1724,7 +1724,8 @@ without `~/.cargo/bin` on `PATH` is fine.
 1. `test_toolchain.py` — the pinned tool versions.
 2. `webrtc_dependency.py`, `test_webrtc_dependency.py` — the pinned WebRTC
    archive, re-extracted into the SwiftPM binary target on every build.
-3. `test_bridge_lock.py` — the bridge lock still equals `clients/core`'s.
+3. `test_bridge_lock.py` — all core pins retained; added pins match the Devnet
+   lock, with exactly one entry per allowed path package.
 4. `cargo test --release` of the shared core with the same test targets as
    `clients/android/build.sh:25` (`--lib`, `clean_first_contact`,
    `realtime_signing`, `voice_calls`), into `out/core-target` so the red-zone
@@ -1819,7 +1820,7 @@ jq '.steps[] | [.step, .status] | @tsv' clients/ios/out/evidence/build-manifest.
 ```sh
 python3 clients/ios/test_toolchain.py           # pinned tool versions (--no-xcode skips Xcode/SDK/Swift/PostgreSQL)
 python3 clients/ios/test_component_boundary.py  # committed changes stay inside the iOS allowlist
-python3 clients/ios/test_bridge_lock.py         # bridge lock matches clients/core/Cargo.lock
+python3 clients/ios/test_bridge_lock.py         # preserves core pins; additions match the Devnet lock
 swift test --package-path clients/ios/ParanoidKit --filter CoreBridgeTests   # Swift adapter over the bridge (needs build-core.sh)
 xcodebuild -project clients/ios/App/ParanoID.xcodeproj -list                  # three targets
 xcodebuild test -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
