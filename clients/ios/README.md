@@ -1678,16 +1678,20 @@ Android's algorithm (`clients/android/notices.py`), rooted here at
 graph once, walk it from the root so only crates that actually link are
 counted, and copy every `license*`/`licence*`/`copying*`/`notice*`/
 `copyright*` file those crates ship, verbatim, into
-`out/THIRD_PARTY_NOTICES.txt` — 91 crates today, whatever the shared core
-pulls in. A linked crate whose package carries no license text fails the
+`out/THIRD_PARTY_NOTICES.txt` — the current combined graph resolves 146 linked
+registry packages plus WebRTC, as recorded in the [ABI receipt](../../docs/clients/ios/devnet-bridge.md).
+A linked crate without packaged or verified fallback license text fails the
 build with `Missing license text: <crate> <version>`; it is never skipped.
-Three crates publish none upstream and are served from pinned copies:
+The original core fallback set covers three crates:
 `matrix-pickle` and `matrix-pickle-derive` from
 `spikes/002-android-bootstrap/licenses/matrix-pickle-LICENSE`, `jni-sys-macros`
 from `licenses/jni-sys-macros-LICENSE-{APACHE,MIT}` (byte-for-byte copies of
 Android's, see [licenses/README.md](licenses/README.md)). `jni` itself stays
 in the graph — the core depends on it unconditionally — so its notices ship
-here too.
+here too. Additional missing Devnet texts use the existing Android Devnet
+license source records, with declared-license equality and SHA-256 checks; see
+[the combined-graph packaging contract](../../docs/clients/ios/devnet-bridge.md#dependency-and-build-integration).
+No shared license files are rewritten.
 
 After the crates comes the pinned `WebRTC.xcframework`: its version, the
 archive and slice digests that `webrtc_dependency.py` enforces, the upstream
@@ -1897,7 +1901,9 @@ python3 clients/ios/test_qr_cross.py --evidence-dir out/checks/qr-cross
   fixtures, PostgreSQL 16 for the local stand. No XcodeGen, no CocoaPods, no
   third-party Swift packages; the only binary dependency is
   `WebRTC.xcframework` `150.7871.01`, verified by digest before extraction.
-  The lock-file rule above keeps the Rust graph identical to Android's.
+  The lock-file rule above preserves every core pin and permits only matching
+  Devnet-lock additions. The unified iOS graph is not identical to Android's
+  separately resolved core and Devnet graphs.
 - **Behaviour comes from the protocol and the core.** Write from
   `docs/protocol/*.md` and `clients/core`; use the Java client only as a
   cross-check and record every mismatch in
