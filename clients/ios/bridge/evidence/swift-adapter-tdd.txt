@@ -1,0 +1,484 @@
+Swift Devnet adapter: isolated component TDD receipt
+
+Base: 57bccdf5a6187e65c7181202d9d8abeb193dbde6
+Branch: feat/ios-swift-devnet-adapter-20261013
+Working directory for all shell commands: /home/codex/projects/paranoid-worktrees/ios-swift-devnet-adapter-20261013
+
+Scope: REQ-CLIENT-001, REQ-ID-002/003, REQ-SEC-001; draft RFC-0030 /
+ADR-0017. Pure ABI prerequisite, not architecture acceptance or an adopted
+application identity. Public/synthetic fixtures only. No network, server/DB,
+phone, Apple-account, persistence, UI, owner policy or shared Rust/header/lock
+changes. No new repository build script, package target or Linux harness.
+
+Execution: the exact CoreBridge.swift, JsonSpan.swift, DevnetBridge.swift,
+CoreBridgeTests.swift and DevnetBridgeTests.swift were symlinked into:
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd
+The only temporary SwiftPM manifest and build products live there; it uses
+swift-tools-version 6.0, swiftLanguageModes [.v6], the real source module map,
+and the rebuilt offline libparanoid_ios_bridge.a. The first baseline used only
+CoreBridge.swift/JsonSpan.swift and its existing 10 tests. The first Devnet test
+was written and failed before DevnetBridge.swift existed. Sources/tests were
+never duplicated or downgraded to Swift 5. The normal SwiftPM-generated test
+discovery uses its own compiler defaults; verbose product/test invocations
+below explicitly show -swift-version 6.
+
+Nine vertical RED->GREEN slices, in order:
+1. Missing adapter for real Rust public identity vector (compile-time RED).
+2. Real Rust invalid_mnemonic must throw CoreError.rejected, not return success.
+3. Embedded NUL must refuse before native call/free (counter assertions).
+4. Over-16384-byte input must refuse before native call/free (counter assertions).
+5. NULL must throw nativeFailure with zero frees (initial missing-guard trap).
+6. Malformed native JSON must map Foundation error to nativeFailure.
+7. Native JSON arrays must fail the top-level-object contract.
+8. Non-string error member must be nativeFailure.
+9. Invalid UTF-8 within a JSON string must fail, never be lossily repaired.
+
+After each minimal production fix, the complete available component suite ran.
+Native allocation/free delegation was introduced with the first real call.
+Further ownership, public 32-byte identity, 12/24-word recovery/export,
+program_info, exact limit, multibyte-byte-limit and Rust error regressions
+passed immediately: they are NOT claimed as new REDs or new Rust crypto.
+Fault tests allocate explicit terminated buffers, check unchanged bytes at
+free, overwrite/deallocate once, and assert returned Swift copies afterward.
+Swift-managed copies cannot be guaranteed zeroized.
+
+Final actual executions: debug 29/0 and release 29/0 (19 new Devnet XCTest
+cases + 10 unchanged CoreBridge XCTest cases, no skips). Release optimizes
+Swift; both link the same debug-profile Rust staticlib. Source/test target
+also builds in Swift 6 with warnings-as-errors.
+
+Diagnostic failures retained below, NOT TDD REDs: globally forwarding
+-Xswiftc -swift-version -Xswiftc 6 to swift test changed SwiftPM-generated
+Linux discovery as well. Adding warnings-as-errors first rejected its
+unnecessary nonisolated(unsafe); without that flag its @Sendable XCTest
+method-array cast aborted before tests. Normal manifest-driven SwiftPM
+execution passes without changing product/test language modes, generated
+files, repository gates or SDK pins. A Python code-cell quoting error also
+occurred before any tool invocation/file edit; it is not a test result.
+
+NOT RUN: full ParanoidKit package, regenerated Apple xcframework, Xcode,
+Keychain, simulator, device, app login/restart, MR gates or iPhone/Android
+acceptance. Mac remains the full native acceptance path. Existing flaky QR
+and blocked gate 11 are not repaired or waived by these subset results.
+
+Below: exact shell commands and selected original output with line-end spaces
+trimmed for git diff --check (the first whitespace check rejected XCTest's
+trailing spaces). Repeated compiler progress/full stack registers are omitted;
+exit codes are tool-returned. The complete transcript retains original bytes.
+Full captured local transcript (ephemeral, not needed for Mac validation):
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/complete-transcript.txt
+
+
+=== Tool versions ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift --version && /home/codex/.cargo/bin/rustc +1.98.1 --version
+exit_code=0
+Swift version 6.3.3 (swift-6.3.3-RELEASE)
+Target: x86_64-unknown-linux-gnu
+rustc 1.98.1 (48a229cea 2026-09-01)
+
+
+=== Offline real native staticlib ===
+$ RUSTUP_HOME=/home/codex/.rustup CARGO_HOME=/home/codex/.cargo PATH=/home/codex/.cargo/bin:$PATH cargo +1.98.1 build --offline --locked --manifest-path clients/ios/bridge/Cargo.toml
+exit_code=0
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 10.32s
+
+
+=== Component baseline: unchanged CoreBridgeTests ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (9.91s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:32:24.102
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:32:24.102
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:32:24.102
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+
+
+=== RED 1: public identity, DevnetBridge missing ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testPublicIdentityVectorUsesRustDerivation
+exit_code=1
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:9:25: error: cannot find 'DevnetBridge' in scope
+   |                         `- error: cannot find 'DevnetBridge' in scope
+error: fatalError
+
+
+=== GREEN 1: real Rust identity + unchanged core regressions ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (2.23s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:32:53.633
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.259 (0.259) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:32:53.781
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.148 (0.148) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:32:53.781
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.406 (0.406) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:32:53.781
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.406 (0.406) seconds
+
+
+=== RED 2: real Rust error must reject ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testInvalidMnemonicPreservesRustErrorCode
+exit_code=1
+Build complete! (1.76s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:17: error: DevnetBridgeTests.testInvalidMnemonicPreservesRustErrorCode : XCTAssertThrowsError failed: did not throw error -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:33:14.750
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:33:14.750
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 2: error code mapping ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.97s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:33:25.935
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.154 (0.154) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:33:25.968
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.033 (0.033) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:33:25.968
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.187 (0.187) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:33:25.968
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.187 (0.187) seconds
+
+
+=== REFACTOR 2: per-call seam, behavior unchanged ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (1.12s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:33:27.750
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:33:27.782
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.032 (0.032) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:33:27.782
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.086 (0.086) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:33:27.782
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.086 (0.086) seconds
+
+
+=== RED 3: embedded NUL must refuse before native invocation ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall
+exit_code=1
+Build complete! (1.82s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:17: error: DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:18: error: DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:13: error: DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:17: error: DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:18: error: DevnetBridgeTests.testEmbeddedNulIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:33:43.425
+	 Executed 1 test, with 5 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:33:43.425
+	 Executed 1 test, with 5 failures (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 3: NUL preflight ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.96s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:33:57.988
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.053 (0.053) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:33:58.020
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.032 (0.032) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:33:58.020
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.085 (0.085) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:33:58.020
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.085 (0.085) seconds
+
+
+=== RED 4: oversized input must refuse before native invocation ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testOversizedRequestIsRefusedBeforeNativeCall
+exit_code=1
+Build complete! (1.78s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:19: error: DevnetBridgeTests.testOversizedRequestIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:20: error: DevnetBridgeTests.testOversizedRequestIsRefusedBeforeNativeCall : XCTAssertEqual failed: ("1") is not equal to ("0") -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:34:00.346
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:34:00.346
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.002 (0.002) seconds
+
+
+=== GREEN 4: 16384-byte Swift preflight ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.98s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:34:14.335
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:34:14.367
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.033 (0.033) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:34:14.367
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.087 (0.087) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:34:14.367
+	 Executed 14 tests, with 0 failures (0 unexpected) in 0.087 (0.087) seconds
+
+
+=== RED 5: NULL reply traps without guard ===
+$ ulimit -c 0; SWIFT_BACKTRACE=enable=no /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testNullReplyIsNativeFailureWithoutFree
+exit_code=1
+Build complete! (1.91s)
+error: Process '/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageTests.xctest ParanoidKitTests.DevnetBridgeTests/testNullReplyIsNativeFailureWithoutFree' exited with unexpected signal code 4
+ParanoidKit/DevnetBridge.swift:29: Fatal error: Unexpectedly found nil while unwrapping an Optional value
+
+
+=== GREEN 5: NULL nativeFailure, no free ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (1.09s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:35:01.650
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.155 (0.155) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:35:01.783
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.133 (0.133) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:35:01.783
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.288 (0.288) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:35:01.783
+	 Executed 15 tests, with 0 failures (0 unexpected) in 0.288 (0.288) seconds
+
+
+=== RED 6: malformed native JSON must map to CoreError ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testMalformedNativeJsonIsNativeFailureAndFreedOnce
+exit_code=1
+Build complete! (1.89s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:61: error: DevnetBridgeTests.testMalformedNativeJsonIsNativeFailureAndFreedOnce : XCTAssertEqual failed: ("nil") is not equal to ("Optional(ParanoidKit.CoreError.nativeFailure)") -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:35:04.292
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:35:04.292
+	 Executed 1 test, with 1 failure (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 6: malformed JSON mapping with exactly one free ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.96s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:35:17.691
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:35:17.725
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.034 (0.034) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:35:17.725
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.088 (0.088) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:35:17.725
+	 Executed 16 tests, with 0 failures (0 unexpected) in 0.088 (0.088) seconds
+
+
+=== RED 7: native JSON must be a top-level object ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testNonObjectNativeJsonIsNativeFailureAndFreedOnce
+exit_code=1
+Build complete! (1.91s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonObjectNativeJsonIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonObjectNativeJsonIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:35:20.161
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:35:20.161
+	 Executed 1 test, with 2 failures (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 7: object-only native JSON ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.97s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:35:32.311
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:35:32.344
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.033 (0.033) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:35:32.344
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.087 (0.087) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:35:32.344
+	 Executed 17 tests, with 0 failures (0 unexpected) in 0.087 (0.087) seconds
+
+
+=== RED 8: non-string error is a native contract violation ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce
+exit_code=1
+Build complete! (1.89s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:12: error: DevnetBridgeTests.testNonStringNativeErrorIsNativeFailureAndFreedOnce : XCTAssertThrowsError failed: did not throw error -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:35:34.782
+	 Executed 1 test, with 5 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:35:34.782
+	 Executed 1 test, with 5 failures (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 8: malformed error member mapping ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.95s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:37:47.442
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.053 (0.053) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:37:47.577
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.135 (0.135) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:37:47.577
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.188 (0.188) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:37:47.577
+	 Executed 18 tests, with 0 failures (0 unexpected) in 0.188 (0.188) seconds
+
+
+=== RED 9: native UTF-8 must reject rather than replace invalid bytes ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testInvalidNativeUtf8IsNotLossilyRepairedAndIsFreedOnce
+exit_code=1
+Build complete! (1.88s)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:15: error: DevnetBridgeTests.testInvalidNativeUtf8IsNotLossilyRepairedAndIsFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:15: error: DevnetBridgeTests.testInvalidNativeUtf8IsNotLossilyRepairedAndIsFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:15: error: DevnetBridgeTests.testInvalidNativeUtf8IsNotLossilyRepairedAndIsFreedOnce : XCTAssertThrowsError failed: did not throw error -
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Tests/ParanoidKitTests/DevnetBridgeTests.swift:15: error: DevnetBridgeTests.testInvalidNativeUtf8IsNotLossilyRepairedAndIsFreedOnce : XCTAssertThrowsError failed: did not throw error -
+Test Suite 'DevnetBridgeTests' failed at 2026-10-13 17:37:50.126
+	 Executed 1 test, with 4 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Selected tests' failed at 2026-10-13 17:37:50.126
+	 Executed 1 test, with 4 failures (0 unexpected) in 0.001 (0.001) seconds
+
+
+=== GREEN 9: strict UTF-8 native decoding ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.99s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:38:15.076
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.154 (0.154) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:38:15.226
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.15 (0.15) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:38:15.226
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.304 (0.304) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:38:15.226
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.304 (0.304) seconds
+
+
+=== Regression: returned copies and native error ownership (not new RED) ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (1.92s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:38:17.931
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.055 (0.055) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:38:17.965
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.034 (0.034) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:38:17.965
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.09 (0.09) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:38:17.965
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.09 (0.09) seconds
+
+
+=== Regression: real public vectors, program info, exact/multibyte limits, Rust errors (not new RED) ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (2.10s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:40:19.847
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.054 (0.054) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:40:20.022
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.175 (0.175) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:40:20.023
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.229 (0.229) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:40:20.023
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.229 (0.229) seconds
+
+
+=== Documented adapter: all component regressions ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (0.95s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:40:22.180
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.283 (0.283) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:40:22.556
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.376 (0.376) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:40:22.556
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.659 (0.659) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:40:22.556
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.659 (0.659) seconds
+
+
+=== Final debug component: explicit Swift 6, warnings as errors ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -Xswiftc -swift-version -Xswiftc 6 -Xswiftc -warnings-as-errors
+exit_code=1
+error: emit-module command failed with exit code 1 (use -v to see invocation)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+error: fatalError
+
+
+=== Final release component: explicit Swift 6, warnings as errors ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -c release -Xswiftc -swift-version -Xswiftc 6 -Xswiftc -warnings-as-errors
+exit_code=1
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- error: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+error: fatalError
+
+
+=== Source/test target only: Swift 6 warnings-as-errors ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift build --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --target ParanoidKitTests -Xswiftc -swift-version -Xswiftc 6 -Xswiftc -warnings-as-errors
+exit_code=0
+Build of target: 'ParanoidKitTests' complete! (0.23s)
+
+
+=== Final debug component execution: Swift 6 ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -Xswiftc -swift-version -Xswiftc 6
+exit_code=1
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+Build complete! (2.90s)
+Could not cast value of type '@Sendable (ParanoidKitTests.CoreBridgeTests) -> () throws -> ()' (0x785928901028) to '(ParanoidKitTests.CoreBridgeTests) -> () throws -> ()' (0x785928901218).
+0x0000785926c00000–0x0000785926derror: Process '/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/DevnetComponentCheckPackageTests.xctest' exited with unexpected signal code 6
+
+
+=== Final release component execution: Swift 6 ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -c release -Xswiftc -swift-version -Xswiftc 6
+exit_code=1
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:6:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (CoreBridgeTests) -> () throws -> ())]', consider removing it
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/DevnetComponentCheckPackageDiscoveredTests.derived/ParanoidKitTests.swift:22:12: warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+   |            `- warning: 'nonisolated(unsafe)' is unnecessary for a constant with 'Sendable' type '[(String, @Sendable (DevnetBridgeTests) -> () throws -> ())]', consider removing it
+Build complete! (6.92s)
+Could not cast value of type '@Sendable (ParanoidKitTests.CoreBridgeTests) -> () throws -> ()' (0x778ae8300e10) to '(ParanoidKitTests.CoreBridgeTests) -> () throws -> ()' (0x778ae8300f98).
+0x0000778ae7c00000–0x0000778ae81d34b0 7d4a799e2c94987855d527e2de660d4455172149 libswiftCore.so                         /home/codex/.hermes/profiles/paranoid/cache/scratcerror: Process '/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/DevnetComponentCheckPackageTests.xctest' exited with unexpected signal code 6
+
+
+=== Final debug component execution: manifest Swift 6, normal SwiftPM discovery ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -v
+exit_code=0
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swiftc -module-name ParanoidKit -emit-dependencies -emit-module -emit-module-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/Modules/ParanoidKit.swiftmodule -output-file-map /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ParanoidKit.build/output-file-map.json -parse-as-library -incremental -c @/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ParanoidKit.build/sources -I /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/Modules -target x86_64-unknown-linux-gnu -v -incremental -enable-batch-mode -serialize-diagnostics -index-store-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/index/store -Onone -enable-testing -j12 -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Sources/ParanoidCoreFFI/module.modulemap -module-cache-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ModuleCache -parseable-output -parse-as-library -emit-objc-header -emit-objc-header-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ParanoidKit.build/include/ParanoidKit-Swift.h -swift-version 6 -g -Xcc -fPIC -Xcc -g -package-name swift_devnet_adapter_tdd -Xcc -fno-omit-frame-pointer
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swiftc -module-name ParanoidKitTests -emit-dependencies -emit-module -emit-module-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/Modules/ParanoidKitTests.swiftmodule -output-file-map /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ParanoidKitTests.build/output-file-map.json -parse-as-library -incremental -c @/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ParanoidKitTests.build/sources -I /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/Modules -target x86_64-unknown-linux-gnu -v -incremental -enable-batch-mode -serialize-diagnostics -index-store-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/index/store -Onone -enable-testing -Xfrontend -enable-cross-import-overlays -j12 -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Sources/ParanoidCoreFFI/module.modulemap -module-cache-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/debug/ModuleCache -parseable-output -parse-as-library -swift-version 6 -g -Xcc -fPIC -Xcc -g -package-name swift_devnet_adapter_tdd -Xcc -fno-omit-frame-pointer
+Build complete! (2.86s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:42:31.359
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.155 (0.155) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:42:31.533
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.174 (0.174) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 17:42:31.533
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.329 (0.329) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:42:31.533
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.329 (0.329) seconds
+
+
+=== Final release component execution: manifest Swift 6, normal SwiftPM discovery ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build -c release -v
+exit_code=0
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swiftc -module-name ParanoidKit -emit-dependencies -emit-module -emit-module-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/Modules/ParanoidKit.swiftmodule -output-file-map /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ParanoidKit.build/output-file-map.json -parse-as-library -whole-module-optimization -num-threads 12 -c @/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ParanoidKit.build/sources -I /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/Modules -target x86_64-unknown-linux-gnu -v -whole-module-optimization -num-threads 12 -serialize-diagnostics -O -enable-testing -j12 -DSWIFT_PACKAGE -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Sources/ParanoidCoreFFI/module.modulemap -module-cache-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ModuleCache -parseable-output -parse-as-library -emit-objc-header -emit-objc-header-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ParanoidKit.build/include/ParanoidKit-Swift.h -swift-version 6 -g -Xcc -fPIC -Xcc -g -package-name swift_devnet_adapter_tdd -Xcc -fno-omit-frame-pointer
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swiftc -module-name ParanoidKitTests -emit-dependencies -emit-module -emit-module-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/Modules/ParanoidKitTests.swiftmodule -output-file-map /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ParanoidKitTests.build/output-file-map.json -parse-as-library -whole-module-optimization -num-threads 12 -c @/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ParanoidKitTests.build/sources -I /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/Modules -target x86_64-unknown-linux-gnu -v -whole-module-optimization -num-threads 12 -serialize-diagnostics -index-store-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/index/store -O -enable-testing -Xfrontend -enable-cross-import-overlays -j12 -DSWIFT_PACKAGE -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -Xcc -fmodule-map-file=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/Sources/ParanoidCoreFFI/module.modulemap -module-cache-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build/x86_64-unknown-linux-gnu/release/ModuleCache -parseable-output -parse-as-library -swift-version 6 -g -Xcc -fPIC -Xcc -g -package-name swift_devnet_adapter_tdd -Xcc -fno-omit-frame-pointer
+Build complete! (6.09s)
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 17:42:38.331
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.165 (0.165) seconds
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 17:42:38.501
+	 Executed 19 tests, with 0 failures (0 unexpected) in 0.17 (0.17) seconds
+Test Suite 'release.xctest' passed at 2026-10-13 17:42:38.501
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.335 (0.335) seconds
+Test Suite 'All tests' passed at 2026-10-13 17:42:38.501
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.335 (0.335) seconds
+
+
+=== Final source/native hashes ===
+$ sha256sum clients/ios/ParanoidKit/Sources/ParanoidKit/Core/DevnetBridge.swift clients/ios/ParanoidKit/Tests/ParanoidKitTests/DevnetBridgeTests.swift clients/ios/bridge/target/debug/libparanoid_ios_bridge.a clients/ios/bridge/include/paranoid_core.h clients/ios/bridge/include/module.modulemap
+exit_code=0
+1fcf4405d3a2b5a431c169d387ed820a6b3a5e717f12cdb2a39361106f8e7797  clients/ios/ParanoidKit/Sources/ParanoidKit/Core/DevnetBridge.swift
+7e74ff1ae26ca0d1cd0a2640ac15218c94dad2b458cecf3acd25037295527afe  clients/ios/ParanoidKit/Tests/ParanoidKitTests/DevnetBridgeTests.swift
+901686b418aac5e9bea15b0ec8483eb3adc423003ff125c68ee250c6c3ae16ca  clients/ios/bridge/target/debug/libparanoid_ios_bridge.a
+8e5f537b0cc04f7ec6c91bc74197247269ffe76a83bfd9dab2f17dca9023df10  clients/ios/bridge/include/paranoid_core.h
+d70548d4002fefe360c89b3e7d244009b6f6c222a392794067766a60e572c940  clients/ios/bridge/include/module.modulemap
