@@ -1,0 +1,103 @@
+$ bash clients/ios/bridge/check.sh
+rustc 1.98.1 (48a229cea 2026-09-01)
+cargo 1.98.1 (797e8a9bc 2026-08-05)
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.001s
+
+OK
+OK: all 123 core registry pins and 2 core paths retained; 58 added registry pins match Devnet; 4 path packages
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.10s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running unittests src/lib.rs (clients/ios/bridge/target/debug/deps/paranoid_ios_bridge-53885142f06ff4c5)
+
+running 2 tests
+test devnet_tests::reply_transfer_rejects_interior_nul_without_leaking_partial_text ... ok
+test devnet_tests::unwind_is_a_fixed_failure_not_a_panic_across_c ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/abi.rs (clients/ios/bridge/target/debug/deps/abi-9ff087edc5497ecc)
+
+running 6 tests
+test free_null_is_a_no_op ... ok
+test non_utf8_arguments_are_invalid_request ... ok
+test null_arguments_are_invalid_request ... ok
+test garbage_request_is_invalid_request ... ok
+test request_over_limit_is_input_limit ... ok
+test create_identity_from_empty_state_then_upgrade_v2 ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/devnet.rs (clients/ios/bridge/target/debug/deps/devnet-60da1317b42040f9)
+
+running 6 tests
+test null_and_invalid_utf8_follow_core_abi_errors ... ok
+test malformed_requests_preserve_the_devnet_error_contract ... ok
+test public_mnemonic_recovery_vector ... ok
+test allocations_are_independent_and_each_can_be_freed_once ... ok
+test size_boundary_is_bytes_not_characters ... ok
+test public_identity_vectors_use_the_existing_rust_crypto ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/debug/deps/devnet_memory-7058c8233a11be6d)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests paranoid_ios_bridge
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running unittests src/lib.rs (clients/ios/bridge/target/debug/deps/paranoid_devnet_client-4648679668cbff9d)
+
+running 10 tests
+test tests::program_info_exposes_only_fixed_public_deployment_pins ... ok
+test tests::slip0010_published_vector_and_nonhardened_rejection ... ok
+test tests::registry_readback_requires_both_exact_records ... ok
+test tests::rejects_wrong_cluster_arbitrary_fields_mnemonic_and_names ... ok
+test tests::registration_transaction_is_fixed_and_signature_verifies ... ok
+test tests::prepare_is_unsigned_and_matches_fixed_signed_message ... ok
+test tests::identity_does_not_export_recovery_material ... ok
+test tests::standard_public_recovery_vector ... ok
+test tests::twelve_word_public_recovery_vector ... ok
+test tests::sponsored_registration_needs_both_signatures ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+    Finished `release` profile [optimized] target(s) in 0.07s
+     Running tests/devnet_memory.rs (clients/ios/bridge/target/release/deps/devnet_memory-b0ab4dccd8632494)
+
+running 1 test
+test copied_request_and_owned_reply_are_wiped_before_deallocation ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+Apple type-check only: aarch64-apple-ios
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+Apple type-check only: aarch64-apple-ios-sim
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+Apple type-check only: aarch64-apple-darwin
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s
+PASS: real C header/staticlib recovery, identity, allocation/free, core ABI
+Wrote /home/codex/projects/paranoid-worktrees/ios-devnet-abi-20261013/clients/ios/out/THIRD_PARTY_NOTICES.txt: 146 crates + WebRTC 150.7871.01, 1705627 bytes
+................................
+----------------------------------------------------------------------
+Ran 32 tests in 0.848s
+
+OK
+PASS: 32 tests
+PASS: bridge component checks only; native iOS app/device gates remain separate
+exit_code=0
+
+$ python3 -c 'import json, subprocess; m=json.loads(subprocess.check_output(["cargo","metadata","--offline","--locked","--format-version","1","--filter-platform","aarch64-apple-ios","--manifest-path","clients/ios/bridge/Cargo.toml"])); p=next(p for p in m["packages"] if p["name"]=="blake3"); n=next(n for n in m["resolve"]["nodes"] if n["id"]==p["id"]); assert "pure" in n["features"]; print(p["name"],p["version"],n["features"]); print("PASS: pure enabled in resolved Apple device graph")'
+blake3 1.8.7 ['default', 'pure', 'std', 'traits-preview']
+PASS: pure enabled in resolved Apple device graph
+exit_code=0

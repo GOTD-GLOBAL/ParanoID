@@ -6,8 +6,8 @@ metadata and temporary crate directories, so the failure modes that must stay
 failures — a linked crate with no license text, a pinned copy that went
 missing, an empty WebRTC notice directory — are proven, not assumed. The real
 half resolves the actual locked graph for aarch64-apple-ios (offline) and
-checks the rendered file: every linked crate present, the three crates with no
-packaged license served from pinned copies, the WebRTC block byte-for-byte,
+checks the rendered file: every linked crate present, core/Devnet crates without
+packaged licenses served from pinned copies, the WebRTC block byte-for-byte,
 and none of the Android-only components.
 
 Neither half touches the network; a missing cargo is a failure, never a skip.
@@ -161,6 +161,35 @@ class LicenseTextTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"Missing license text: jni-sys-macros 0\.4\.1"):
             self.notices.license_texts(self.crate_package(name="jni-sys-macros", version="0.4.1"))
 
+    def test_devnet_missing_text_uses_existing_hash_pinned_source(self):
+        entry = self.crate_package(name="bitcoin_hashes", version="0.14.101")
+        entry["license"] = "CC0-1.0"
+        texts = self.notices.license_texts(entry)
+        source = ANDROID_LICENSES / "devnet" / "CC0-1.0.txt"
+        self.assertEqual(texts[0][1], source.read_text())
+        self.assertIn("CC0-1.0.txt", texts[0][0])
+
+    def test_devnet_fallback_rejects_corrupt_missing_or_relicensed_text(self):
+        import json
+        entry = self.crate_package(name="bitcoin_hashes", version="0.14.101")
+        entry["license"] = "CC0-1.0"
+        original = self.notices.DEVNET_LICENSES_DIR
+        fallback = self.root / "devnet"
+        shutil.copytree(original, fallback)
+        self.notices.DEVNET_LICENSES_DIR = fallback
+        source = next(e for e in json.loads((fallback / "sources.json").read_text())
+                      if "bitcoin_hashes" in e["packages"])
+        license_file = fallback / source["file"]
+        license_file.write_text("substituted")
+        with self.assertRaisesRegex(RuntimeError, "License integrity"):
+            self.notices.license_texts(entry)
+        license_file.unlink()
+        with self.assertRaisesRegex(RuntimeError, "Missing license text"):
+            self.notices.license_texts(entry)
+        entry["license"] = "MIT"
+        with self.assertRaisesRegex(RuntimeError, "License declaration mismatch"):
+            self.notices.license_texts(entry)
+
     def test_a_crate_the_project_does_not_pin_gets_no_fallback(self):
         self.assertEqual(self.notices.pinned_license_files("serde"), [])
 
@@ -283,7 +312,12 @@ class RealGraphTest(unittest.TestCase):
             if not any(path.is_file() and path.name.lower().startswith(self.notices.LICENSE_PREFIXES)
                        for path in root.rglob("*")):
                 packaged.add(entry["name"])
-        self.assertEqual(packaged, {"matrix-pickle", "matrix-pickle-derive", "jni-sys-macros"})
+        import json
+        sources = json.loads((self.notices.DEVNET_LICENSES_DIR / "sources.json").read_text())
+        devnet_names = {name for entry in sources for name in entry["packages"]}
+        linked_names = {entry["name"] for entry in self.packages}
+        self.assertEqual(packaged, {"matrix-pickle", "matrix-pickle-derive", "jni-sys-macros"}
+                         | (devnet_names & linked_names))
         self.assertIn("matrix-pickle-LICENSE\n" + self.notices.MATRIX_PICKLE_LICENSE.read_text(),
                       self.text)
         for label in ("jni-sys-macros-LICENSE-APACHE", "jni-sys-macros-LICENSE-MIT"):
