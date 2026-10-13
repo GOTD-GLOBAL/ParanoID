@@ -54,7 +54,9 @@ bash clients/ios/run-candidate-mac.sh "$EXPECTED_SHA"
 ```
 
 The runner checks a full lowercase SHA, Darwin, exact HEAD, clean source and an
-explicit simulator UUID. It then invokes the existing complete `build.sh` with
+explicit simulator UUID. Any failure to read Git status refuses the build,
+including a corrupt/unreadable index; empty stdout is not proof of cleanliness.
+It then invokes the existing complete `build.sh` with
 archive/provisioning environment variables removed. The canonical toolchain
 wrapper still runs. A failed command remains failed; no cleanup/reset is used
 as a workaround. The archive gate intentionally stays skipped, not passed.

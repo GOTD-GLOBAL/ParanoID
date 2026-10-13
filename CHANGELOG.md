@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS Devnet C-ABI prerequisite (local candidate)
+
+- Expose the existing Rust Devnet commands and a zeroizing release function
+  alongside the unchanged core ABI; bound input and keep pointer ownership
+  explicit. No new cryptographic implementation or network operation.
+- Preserve core dependency pins while allowing verified Devnet-lock additions;
+  update notices, combined-lock instructions and native-header rebuild guidance.
+- Add an exact-head Mac test entry point which refuses dirty/unverifiable source
+  and strips archive/provisioning variables. Host/component tests do not certify
+  Swift/app execution, existing-server interoperability or an installable IPA.
+
 ### PR70 verification and updater regression repairs
 
 - Reconcile the Android fixed-service update contract without changing production

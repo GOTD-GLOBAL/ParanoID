@@ -56,7 +56,7 @@ the name alone is not a claim that the code exists or works.
 
 ## Bridge crate (`bridge/`)
 
-`paranoid-ios-bridge` exports two C symbols, declared in
+`paranoid-ios-bridge` exports four C symbols, declared in
 [`bridge/include/paranoid_core.h`](bridge/include/paranoid_core.h) and exposed
 to Swift as the `ParanoidCoreFFI` module:
 
@@ -64,7 +64,15 @@ to Swift as the `ParanoidCoreFFI` module:
   `paranoid_client_core::command`; it never returns NULL and reports
   `{"error":"invalid_request"}` for NULL/non-UTF-8 input and
   `{"error":"native_failure"}` for a caught panic.
-- `void paranoid_core_free(char *text)` releases a reply; NULL is ignored.
+- `void paranoid_core_free(char *text)` releases a core reply; NULL is ignored.
+- `char *paranoid_devnet_command(const char *request)` forwards the unchanged
+  Rust Devnet JSON contract with a 16384-byte input cap and zeroizing copies.
+- `void paranoid_devnet_free(char *reply)` overwrites and frees a Devnet reply;
+  NULL is ignored. Never use the core free or libc free for that reply.
+
+The [Devnet ABI contract and receipts](../../docs/clients/ios/devnet-bridge.md)
+define pointer ownership, limits and erasure guarantees. These exports alone
+perform no network or app login and are not a native iOS acceptance result.
 
 Input limits (8 MiB state, 65536-byte request) and every state rule stay in
 the core; the bridge holds no state and no network code. The crate is built as
@@ -81,21 +89,25 @@ cargo +1.98.1 test --locked --manifest-path clients/ios/bridge/Cargo.toml
 
 ### Lock-file rule
 
-`bridge/Cargo.lock` is seeded from `clients/core/Cargo.lock`, so the iOS
-build pins exactly the crate versions the Android build ships. The seeding is
-the only cargo invocation that runs **without** `--locked`; it keeps every
-pinned version and adds only the root `paranoid-ios-bridge` package:
+Use the committed **combined** `bridge/Cargo.lock`. Under RFC-0030 it retains
+all core registry name/version/source/checksum entries and permits additions
+only when they match `blockchain/solana/client/Cargo.lock`. Exactly one entry
+per permitted path package is allowed: core, key-protocol, Devnet and bridge.
+Do not copy the core lock over this file: that destroys the combined graph.
 
 ```sh
-cp clients/core/Cargo.lock clients/ios/bridge/Cargo.lock
-cargo +1.98.1 build --release --target aarch64-apple-ios \
+python3 clients/ios/test_bridge_lock.py
+python3 clients/ios/bridge/tests/test_lock.py
+cargo +1.98.1 build --locked --release --target aarch64-apple-ios \
   --manifest-path clients/ios/bridge/Cargo.toml --target-dir clients/ios/out/bridge-target
-git diff --no-index clients/core/Cargo.lock clients/ios/bridge/Cargo.lock   # only the paranoid-ios-bridge block
 ```
 
-Every other command uses `--locked`. Whenever `clients/core/Cargo.lock` is
-bumped, repeat the seeding; `python3 clients/ios/test_bridge_lock.py` catches
-any divergence between the two lock files (`OK` or `FAIL: ...` lines).
+Ordinary builds always use `--locked`. Dependency maintenance is a separate
+reviewed change starting from the committed combined lock; preserve the two
+source-lock invariants and rerun the negative gate. If a source lock update
+cannot satisfy them, stop and report the conflict. Do not update shared locks
+or disable checks simply to make the iOS build pass. Historical initial
+resolution is recorded in the ABI receipt, not a reseeding instruction.
 
 ## Core xcframework (`build-core.sh`)
 

@@ -118,6 +118,22 @@ class CandidateMacRunnerTests(unittest.TestCase):
             self.assertEqual(retained.read_text(), "keep this fixture")
             self.assertNotIn("BUILD_SUBPROCESS_CALLED", result.stdout)
 
+    def test_git_status_error_refuses_dirty_build_and_preserves_index(self):
+        with mac_fixture() as (root, runner, sha, env):
+            build = root / "clients/ios/build.sh"
+            retained = build.read_bytes() + b"# uncommitted fixture edit\n"
+            build.write_bytes(retained)
+            index = root / ".git/index"
+            index.write_bytes(b"broken-index-fixture")
+            result = subprocess.run(["bash", str(runner), sha], env=env,
+                                    text=True, capture_output=True)
+            self.assertEqual(result.returncode, 67)
+            self.assertIn("cannot verify source worktree", result.stderr)
+            self.assertNotIn("BUILD_SUBPROCESS_CALLED", result.stdout)
+            self.assertNotIn("Exact source checked", result.stdout)
+            self.assertEqual(build.read_bytes(), retained)
+            self.assertEqual(index.read_bytes(), b"broken-index-fixture")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,7 +1,8 @@
 ---
 status: draft
 owner: ios
-last_reviewed: 2026-09-14
+last_reviewed: 2026-10-13
+last_reviewed_scope: combined Devnet/core bridge-lock and export contract; old native receipts retained
 ---
 
 # iOS client: build, signing and the TestFlight gates
@@ -28,9 +29,14 @@ shell without `~/.cargo/bin` on `PATH` still works.
 There is **no** project generator, no CocoaPods and no third-party Swift
 package. `App/ParanoID.xcodeproj` is hand-written and reviewable as text;
 ADR-0014 rejects XcodeGen as an additional unpinned binary in the build path.
-`bridge/Cargo.lock` is seeded from `clients/core/Cargo.lock`, so the iOS build
-pins exactly the crate versions the Android build ships, and
-`test_bridge_lock.py` catches any divergence.
+The committed `bridge/Cargo.lock` combines the unchanged core and Devnet
+crates: every core registry pin is retained and added registry pins must match
+the Devnet lock. `test_bridge_lock.py` also restricts unique path packages to
+core/key-protocol/Devnet/bridge. Do not overwrite the combined lock with a copy
+of the core lock. The bridge now exposes core command/free and Devnet
+command/zeroizing-free in the same library; regenerate all xcframework slices
+and headers. See the [ABI contract/evidence](devnet-bridge.md). This component
+change does not make the Swift app an identity-v3 client or prove a native build.
 
 ## One command
 

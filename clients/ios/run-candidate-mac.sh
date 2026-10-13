@@ -15,7 +15,11 @@ if [[ "$(git -C "$ROOT" rev-parse HEAD)" != "$1" ]]; then
   printf '%s\n' 'source commit mismatch; no build performed' >&2
   exit 65
 fi
-if [[ -n "$(git -C "$ROOT" status --porcelain --untracked-files=normal)" ]]; then
+if ! SOURCE_STATUS="$(git -C "$ROOT" status --porcelain --untracked-files=normal)"; then
+  printf '%s\n' 'cannot verify source worktree; no build performed' >&2
+  exit 67
+fi
+if [[ -n "$SOURCE_STATUS" ]]; then
   printf '%s\n' 'source worktree is not clean; preserve edits and use a separate worktree' >&2
   exit 66
 fi

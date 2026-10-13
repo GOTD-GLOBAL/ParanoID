@@ -52,6 +52,16 @@ def describe(entry):
 def compare(core, devnet, bridge):
     """Compare package identities, not dependency edges changed by unification."""
     failures = []
+    # Never let name-keyed maps conceal an earlier path version, even in a
+    # source lock. Each permitted path package must have exactly one entry.
+    for label, lock in (("core", core), ("Devnet", devnet), ("bridge", bridge)):
+        seen_paths = set()
+        for package in lock.get('package', []):
+            if 'source' not in package:
+                name = package['name']
+                if name in seen_paths:
+                    failures.append(f'{label} has duplicate path package {name}')
+                seen_paths.add(name)
     if core.get('version') != bridge.get('version'):
         failures.append(f'lock format differs: core version={core.get("version")} bridge version={bridge.get("version")}')
     core_registry, core_paths = split(core)
@@ -74,7 +84,7 @@ def compare(core, devnet, bridge):
     for name in sorted(set(bridge_paths) - allowed_paths):
         failures.append(f'bridge adds unexpected path package {name}')
     if BRIDGE_PACKAGE not in bridge_paths:
-        failures.append(f'bridge lock has no {BRIDGE_PACKAGE} package (seed it: cp core lock, build once without --locked)')
+        failures.append(f'bridge lock has no {BRIDGE_PACKAGE} package; restore the reviewed combined lock, do not overwrite it with the core lock')
     return failures
 
 

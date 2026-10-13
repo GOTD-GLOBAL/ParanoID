@@ -147,13 +147,26 @@ crypto, allocation/free and C-link tests use the real implementation.
 - Lock gate and nine negative tests: pass. Notices and 32 notice tests: pass.
 - No iOS app, simulator, native Swift or physical-device result is claimed.
 - Changed Python files: `ruff check` passes; local Markdown links resolve.
-  Full-repository Markdown lint reports 24 MD060 errors in four untouched files
+  The child's unpinned markdownlint-cli2 0.23.3 / markdownlint 0.41.1 invocation
+  reported 24 MD060 errors in four untouched files
   (older voice evidence, PR51/54 review, RFC-0029 and push-wake threats). None
   comes from this document; these unrelated baseline files were not changed.
+  The parent reran the CI-pinned markdownlint-cli2 0.18.1 over the integrated
+  repository: 250 files, zero errors. The unpinned result is not a CI failure.
 - Independent CLI code review: **NOT RUN**; the attempt failed with HTTP 401.
   No authentication/provider/sandbox retry or credential operation followed.
   The parent will perform fresh-context review after this stable handoff; the
-  candidate commit is not review approval, merge authority or architecture acceptance.
+  the candidate commit is not review approval, merge authority or architecture acceptance.
+
+The subsequent source review found no C-ABI blocker. It identified a Mac-runner
+fail-open on Git-status error and stale lock reseeding instructions; both were
+corrected with negative tests/documentation. Duplicate path names in any source
+or bridge lock are now rejected (ten lock tests). Mac runner regression coverage
+is now nine tests, including a real corrupted Git index with retained dirty
+source. Independent delta closure is still required before marking these fixes
+reviewed. The allocator test directly observes the request copy and returned C
+buffer; extra assertions for original Rust response capacity/unwind cleanup are
+a non-blocking follow-up, not claimed coverage.
 
 The [threat delta](../../security/ios-identity-v3-threats.md#secret-at-rest) remains
 draft. This component evidence covers only its FFI memory and supply-chain rows;

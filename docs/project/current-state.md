@@ -2,7 +2,7 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: concurrent-realm iOS design candidate and MR acceptance gates; no implementation or new live authority; older records retained
+last_reviewed_scope: local Devnet C-ABI component and existing-server acceptance target; native app and MR gates unrun; older records retained
 ---
 
 # Current project state
@@ -17,9 +17,12 @@ component checks, not substitutes for real iPhone/Android acceptance. Both
 compiled server profiles stay in the requested product scope.
 
 Local preparation is in progress under [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md).
-The Devnet C-ABI work is running; no working iOS-v3 application is claimed.
-The exact-head Mac runner has eight passing guard/dispatch unit tests, which
-are not Swift/Xcode/device evidence. The selected execution path is Yaroslav's
+The [Devnet C-ABI prerequisite](../clients/ios/devnet-bridge.md) is implemented
+and host-checked: fifteen bridge tests, optimized erasure test, real C link/run,
+three Apple-target type checks, combined lock and notices gates. Shared Rust
+crypto/core/server sources are unchanged. No working iOS-v3 application is
+claimed. The exact-head Mac runner has nine passing guard/dispatch unit tests,
+including refusal on Git-status error; these are not Swift/Xcode/device evidence. The selected execution path is Yaroslav's
 agent on his Mac. See [handoff](../clients/ios/identity-v3-mac-handoff.md).
 No server configuration/schema change, DB reset or new instance is performed.
 Actual existing-server login/text/call acceptance is still NOT RUN.

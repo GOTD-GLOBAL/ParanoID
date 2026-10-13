@@ -96,7 +96,7 @@ skip() {
 step "toolchain pins" python3 test_toolchain.py
 step "WebRTC xcframework (pinned 150.7871.01)" python3 webrtc_dependency.py
 step "WebRTC pin rules" python3 test_webrtc_dependency.py
-step "bridge lock == clients/core lock" python3 test_bridge_lock.py
+step "bridge lock preserves core pins and permits only Devnet additions" python3 test_bridge_lock.py
 
 # 5. The shared core, in the release profile the application ships, with the
 # same test targets as clients/android/build.sh:25. clients/core is a red zone:

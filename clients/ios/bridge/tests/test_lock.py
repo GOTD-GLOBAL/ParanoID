@@ -73,7 +73,10 @@ class LockTest(unittest.TestCase):
 
     def test_bridge_package_must_exist(self):
         self.bridge["package"].remove(path("paranoid-ios-bridge"))
-        self.assertTrue(gate.compare(self.core, self.devnet, self.bridge))
+        failures = gate.compare(self.core, self.devnet, self.bridge)
+        self.assertTrue(failures)
+        self.assertIn("restore the reviewed combined lock", " ".join(failures))
+        self.assertNotIn("cp core lock", " ".join(failures))
 
     def test_lock_format_must_match_core(self):
         self.bridge["version"] = 3
@@ -83,6 +86,19 @@ class LockTest(unittest.TestCase):
         self.core["package"].append(path("unexpected"))
         self.bridge["package"].append(path("unexpected"))
         self.assertTrue(gate.compare(self.core, self.devnet, self.bridge))
+
+    def test_duplicate_path_names_never_hide_earlier_versions(self):
+        for which in ("core", "devnet", "bridge"):
+            original = getattr(self, which)
+            for item in [p for p in original["package"] if "source" not in p]:
+                for version in (item["version"], "0.0.99"):
+                    with self.subTest(lock=which, name=item["name"], version=version):
+                        bad = copy.deepcopy(original)
+                        bad["package"].insert(0, path(item["name"], version))
+                        inputs = {"core": self.core, "devnet": self.devnet, "bridge": self.bridge}
+                        inputs[which] = bad
+                        failures = gate.compare(inputs["core"], inputs["devnet"], inputs["bridge"])
+                        self.assertTrue(any("duplicate path package" in f for f in failures), failures)
 
 
 if __name__ == "__main__":
