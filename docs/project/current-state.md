@@ -29,8 +29,14 @@ independent design review and human technical disposition retain their gates;
 RFC-0030 remains draft and ADR-0014/0016 remain proposed. This design branch is
 based on unmerged owner-input PR #73; neither document is normative yet.
 
-Next: review and dispose of the candidate and scoped evidence/authorization,
-then implement storage/negative fixtures before dual-runtime networking.
+The [independent design closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
+covers `71eda964b6f41986c0e85c43ed88676807f753df`: four initial documentation
+findings were corrected and re-reviewed without remaining blockers in that
+delta. Local checks and exact-design-head CI passed; this evidence-only update
+is not a new design review or runtime result. All MR gates remain NOT RUN.
+
+Next: human disposition and scoped approval evidence, then the applicable draft
+ADR/storage specifications and negative fixtures before dual-runtime networking.
 
 ## iOS owner direction: both servers concurrently — 2026-10-12
 

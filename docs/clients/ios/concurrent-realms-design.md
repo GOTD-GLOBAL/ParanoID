@@ -17,6 +17,13 @@ technical disposition and implementation authorization retain the RFC's gates.
 No implementation, native execution, phone result or live authorization is
 claimed. All MR acceptance gates below are NOT RUN.
 
+[Independent design-review closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
+covers design revision `71eda964b6f41986c0e85c43ed88676807f753df`, with four
+initial findings fixed and closed in a fresh-context delta review. All reviewers
+used gpt-6-astra; no human audit/acceptance is implied. This evidence pointer
+is a later documentation-only addition, not a claim that a future changed
+design or implementation has already been reviewed.
+
 ## Scope and source baseline
 
 The candidate targets exactly two compiled identity-v3 profiles:

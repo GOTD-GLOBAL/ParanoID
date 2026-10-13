@@ -1340,8 +1340,13 @@ technical disposition of the concurrent-realm candidate and the remaining review
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical authority only).
-- Required-review evidence permalinks: pending, namely the independent AI
-  review of the exact revision.
+- Design-review evidence: [independent review and closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
+  on design revision `71eda964b6f41986c0e85c43ed88676807f753df`. Two initial
+  fresh-context gpt-6-astra reviews found four P2 contradictions; another
+  fresh-context delta review closed them. Same-model blind spots remain.
+  This is scoped draft-design review, not human acceptance or implementation
+  evidence. Any changed design and every implementation still need their own
+  exact-revision review; this citation-only tail does not relabel the reviewed SHA.
 - Resulting ADR: to be drafted for the revised concurrent-realm proposal, with
   the next free number after checking published branches. No ADR is accepted.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
