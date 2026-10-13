@@ -65,8 +65,9 @@ real wallet credentials and must not be replaced with real wallet words in tests
 
 [`DevnetBridge.command(request:)`](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/DevnetBridge.swift)
 now returns a `DevnetReply` with verbatim UTF-8 `text` and the decoded top-level
-`object`. It is exercised as an isolated Swift/Rust component; full Mac package,
-application and device validation of this new Swift code remain NOT RUN.
+`object`. Isolated Swift/Rust checks and the exact `c1e9b90` Mac package run
+plus unsigned iOS compilation have passed, as recorded below. Application
+execution and device validation of this new Swift code remain NOT RUN.
 There is no new wire version: the JSON operations remain the unchanged Rust
 `Command` contract, and the facade is not an owner-authentication policy.
 
@@ -106,7 +107,7 @@ The existing `CoreBridge` and core allocation semantics are unchanged. Full
 ParanoidKit/Xcode/Keychain/application and phone checks remain the selected Mac
 and physical-device gates; an isolated component compile is not that receipt.
 
-### Swift evidence and next native check
+### Swift evidence and native checks
 
 [`DevnetBridgeTests`](../../../clients/ios/ParanoidKit/Tests/ParanoidKitTests/DevnetBridgeTests.swift)
 has 21 XCTest methods. The [TDD receipt](../../../clients/ios/bridge/evidence/swift-adapter-tdd.txt)
@@ -157,11 +158,36 @@ bash clients/ios/toolchain.sh swift test \
   --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm
 ```
 
-Return the actual new-head compiler/test results. The old `4aac29c` receipt
-does not cover this facade. No phone installation, registration, login, owner
-replacement, signed export or server action is included. Gate 11 and the QR
-flake remain open, not made green by passing these targeted tests. A caller
-still needs the reviewed storage/registry/login flows before app integration.
+Before a standalone unsigned app build, generate the resource that `build.sh`
+ordinarily creates before Xcode. A fresh worktree has no notices file; do not
+reuse a stale one from another source tree:
+
+```sh
+bash clients/ios/toolchain.sh python3 clients/ios/notices.py --offline
+bash clients/ios/toolchain.sh python3 clients/ios/test_notices.py
+bash clients/ios/toolchain.sh xcodebuild build \
+  -project clients/ios/App/ParanoID.xcodeproj -scheme ParanoID \
+  -configuration Release -destination 'generic/platform=iOS' \
+  -derivedDataPath clients/ios/out/DerivedData-devnet-adapter \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+Run commands in order and stop on any nonzero return; do not proceed to Xcode
+if notices generation or validation fails. No signing/provisioning flags apply.
+
+The [exact-source Mac receipt](../../project/evidence/ios-identity-v3-20261013/native-mac-receipts.md)
+for `c1e9b9045e16e6b39b3821dbf2a4c5e39f445c3c` reports 21/0 Devnet,
+10/0 core and 410/0 full package, no skipped package tests. Its first unsigned
+build failed with exit 65 because the original handoff omitted notices; after
+normal generation and 32 passing notices tests, the identical build command
+succeeded without source changes. Do not repeat this run for documentation only.
+The old `4aac29c` receipt remains separate from this new-facade result.
+
+No phone installation, registration, login, owner replacement, signed export or
+server action is included. Gate 11 remains blocked. The separate QR correction
+in PR #79 at `7029d80` now has six passing native runs; it is not part of this
+source tree and does not make the unchanged older fixture green. A caller still
+needs the reviewed storage/registry/login flows before app integration.
 
 ## Dependency and build integration
 

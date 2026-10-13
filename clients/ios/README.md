@@ -173,7 +173,9 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   result exactly once with `paranoid_devnet_free`. The reply carries copied
   verbatim text and the decoded object, not a messenger snapshot. Its 21 new
   XCTest methods exercise public Rust vectors and explicit native fault buffers;
-  isolated component runs pass, full new-head Mac acceptance remains NOT RUN.
+  isolated component runs pass. The [exact-source Mac receipt](../../docs/project/evidence/ios-identity-v3-20261013/native-mac-receipts.md)
+  reports 21/0 Devnet, 10/0 core, full package 410/0 and unsigned iOS compilation
+  after normal notices generation; simulator/device execution remains NOT RUN.
   No storage, RPC, login UI or owner-consent policy is added by this facade.
   See the [contract and native commands](../../docs/clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate).
 - `JsonSpan.state(in:)` slices the top-level `"state"` member out of the
