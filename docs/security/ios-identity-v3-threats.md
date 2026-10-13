@@ -3,10 +3,29 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-13
-last_reviewed_scope: recorded common-owner technical disposition and retained security residuals; new identity-v3 storage/runtime and MR gates remain NOT RUN
+last_reviewed_scope: Swift facade bounds/decoding/ownership component evidence and retained residuals; new identity-v3 storage/runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
+
+## Swift facade component evidence — 2026-10-13
+
+The [new Swift facade contract](../clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate)
+refuses embedded NUL and over-limit UTF-8 requests before the C call, strictly
+decodes native replies, rejects Foundation's trailing-comma extension outside
+quoted strings, and delegates each non-NULL allocation to the Devnet
+free exactly once, including thrown error/parse paths. Its XCTest coverage uses
+real Rust public vectors for positive behavior and explicit terminated buffers
+only for native contract faults. Isolated Swift/native component runs pass;
+Mac package/app/device evidence for the new Swift source remains NOT RUN.
+
+The facade neither normalizes/signs cryptographic bytes in Swift nor performs
+network or persistence actions. Swift text/dictionary copies are not guaranteed
+zeroized; caller lifetime/logging discipline remains necessary. Invalid native
+pointers, nonterminated allocations and process abort/OOM remain outside the
+valid C contract. Passing recovery vectors does not verify a registered nickname,
+membership or message history and does not implement owner-operation consent,
+registry trust or state-preservation controls. No MR gate is upgraded to passed.
 
 Delta for [RFC-0030](../rfcs/0030-ios-identity-v3.md), the proposal that the
 iOS client adopt identity v3. It extends [the iOS client delta](ios-client-threats.md),

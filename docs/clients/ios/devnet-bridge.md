@@ -4,7 +4,7 @@ owner: ios
 last_reviewed: 2026-10-13
 ---
 
-# Devnet C ABI: local component prerequisite
+# Devnet C ABI and Swift facade: component prerequisites
 
 This implements only the bridge prerequisite of [RFC-0030](../../rfcs/0030-ios-identity-v3.md#the-native-bridge-question-5)
 under [draft ADR-0017](../../decisions/0017-ios-concurrent-identity-v3.md#authority-and-work-boundary).
@@ -60,6 +60,108 @@ registration/sponsored transaction operations and `identity_owner_proof_v3`.
 `identity` exposes only public owner/PDA/program/genesis/RPC information;
 `recover` and `export_mnemonic` return secret material. Public test words are not
 real wallet credentials and must not be replaced with real wallet words in tests.
+
+## Implemented Swift facade contract (component candidate)
+
+[`DevnetBridge.command(request:)`](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/DevnetBridge.swift)
+now returns a `DevnetReply` with verbatim UTF-8 `text` and the decoded top-level
+`object`. It is exercised as an isolated Swift/Rust component; full Mac package,
+application and device validation of this new Swift code remain NOT RUN.
+There is no new wire version: the JSON operations remain the unchanged Rust
+`Command` contract, and the facade is not an owner-authentication policy.
+
+- The Swift request must contain no embedded NUL and no more than 16384 UTF-8
+  bytes. Refuse before creating the temporary C string or invoking native code;
+  character count is not a byte bound. The mirrored cap must remain covered by
+  exact-limit/over-limit/multibyte tests against the real Rust ABI.
+- Invoke only `paranoid_devnet_command` for these operations. Every non-NULL
+  result is paired exactly once with `paranoid_devnet_free`, including decoding
+  and error paths. Neither `free()` nor the core's release function is valid.
+- Decode native UTF-8 strictly, without replacement characters, and require a
+  JSON object. A quote/escape-aware UTF-8 scan refuses trailing commas outside
+  strings at any nesting depth, which Foundation otherwise accepts; Foundation
+  validates the remaining grammar. Neither response bytes nor strings are repaired.
+  NULL, invalid UTF-8/JSON, a non-object or a non-string `error`
+  member is `CoreError.nativeFailure`. A Rust string error is forwarded as
+  `CoreError.rejected(code)`, including Rust's fixed `native_failure` code;
+  no request, response or recovery material is appended to that error.
+- Keep successful response text verbatim rather than reserializing it. Swift
+  values must own their copies before the native allocation is released.
+  The native allocation is erased by Rust; Swift strings/dictionaries and
+  their serialization copies are **not** guaranteed to be zeroized. Minimize
+  their lifetime; do not log them, retain them in diagnostic/unbounded caches
+  or place them on a clipboard. Reviewed encrypted owner persistence is a
+  separate layer, not a cache of raw native replies.
+- Public recovery/identity/program-info tests must call the real Rust library.
+  Explicit internal native-fault fixtures may exercise impossible NULL or
+  malformed-response paths and exact-once release, but cannot substitute for
+  positive cryptographic vectors or native linking.
+- A successful `recover` returns candidate entropy, not a registry-confirmed
+  nickname, server membership, message keys or chat history. Registry checks,
+  preservation/freeze, durable intents, owner-operation admission, persistence
+  and UI remain separate work. This facade performs no RPC or server call and
+  writes no owner state; it cannot itself authorize enrollment or replacement.
+
+The existing `CoreBridge` and core allocation semantics are unchanged. Full
+ParanoidKit/Xcode/Keychain/application and phone checks remain the selected Mac
+and physical-device gates; an isolated component compile is not that receipt.
+
+### Swift evidence and next native check
+
+[`DevnetBridgeTests`](../../../clients/ios/ParanoidKit/Tests/ParanoidKitTests/DevnetBridgeTests.swift)
+has 21 XCTest methods. The [TDD receipt](../../../clients/ios/bridge/evidence/swift-adapter-tdd.txt)
+records nine vertical RED/GREEN slices and labels the additional passing
+regressions as regressions, not manufactured REDs. Public 12/24-word recovery,
+owner derivation and program information use the actual Rust library. Explicit
+terminated-buffer fault fixtures check NULL, invalid native UTF-8/JSON/error
+types, unmodified native bytes, exact-once release and surviving Swift copies.
+
+On Swift 6.3.3 / Rust 1.98.1, x86_64 Linux, the exact repository sources/tests
+were symlinked into a disposable scratch-only component manifest. Product and
+test targets use Swift 6 language mode. Debug and Swift-release runs passed
+19 new tests plus 10 unchanged CoreBridge tests. The coordinator repeated these,
+then linked a rebuilt **release Rust staticlib** for an additional optimized
+Swift/release-Rust run: 29/0 again. Source/test-target warnings-as-errors passed.
+No repository package target, dependency, SDK pin, CI gate or Linux runner was
+added or changed. This does not run the full ParanoidKit package on Linux.
+
+The [review-correction receipt](../../../clients/ios/bridge/evidence/swift-adapter-json-review.txt)
+records Foundation accepting malformed trailing commas in the independent review.
+A new XCTest first failed with seven assertions on the old facade, then passed
+with the lexical guard. Additional valid-string/escape and malformed-grammar
+regressions preserve byte-exact data and release counts. Current component
+results are **21 Devnet plus 10 core tests, 31/0** in debug and in optimized
+Swift linked to release Rust. This is native-contract fault handling, not a
+reported vulnerability in normal Rust output. Mac validation remains separate.
+
+The receipt retains failed optional global Swift-version flag experiments in
+SwiftPM-generated Linux discovery; they are not TDD REDs or successful runs.
+Manifest-driven product/test compilation stayed Swift 6. Do not carry those
+diagnostic flags into the canonical Mac commands or edit generated discovery
+to claim a pass.
+
+On the exact reviewed new source SHA, in a clean dedicated worktree with pinned
+tools and cached WebRTC, regenerate the native bridge, verify dependencies,
+and execute the new feature before the complete existing package:
+
+```sh
+bash clients/ios/build-core.sh
+bash clients/ios/toolchain.sh python3 clients/ios/webrtc_dependency.py --offline
+bash clients/ios/toolchain.sh swift test \
+  --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
+  --filter DevnetBridgeTests
+bash clients/ios/toolchain.sh swift test \
+  --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
+  --filter CoreBridgeTests
+bash clients/ios/toolchain.sh swift test \
+  --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm
+```
+
+Return the actual new-head compiler/test results. The old `4aac29c` receipt
+does not cover this facade. No phone installation, registration, login, owner
+replacement, signed export or server action is included. Gate 11 and the QR
+flake remain open, not made green by passing these targeted tests. A caller
+still needs the reviewed storage/registry/login flows before app integration.
 
 ## Dependency and build integration
 
@@ -215,7 +317,7 @@ SwiftPM needs the verified extracted xcframework even for the host package run.
 Do not replace these commands with a Linux `cargo check` receipt, reuse a stale
 native library, or infer permission to upload/sign/install anything.
 
-The forthcoming Swift adapter imports `ParanoidCoreFFI`, invokes
+The Swift adapter imports `ParanoidCoreFFI`, invokes
 `paranoid_devnet_command` with the complete UTF-8 JSON request, parses the reply
 and uses `defer` to call `paranoid_devnet_free` once. Use the existing core ABI
 for independently scoped messenger device credentials. Preserve current compiled

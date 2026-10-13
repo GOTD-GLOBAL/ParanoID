@@ -8,6 +8,16 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS Swift Devnet facade (component candidate)
+
+- Add a stateless Swift wrapper for the existing Rust Devnet commands, with
+  UTF-8 byte/NUL guards, strict native response decoding and exact-once release.
+- Add native XCTest cases for public recovery/identity vectors, error mapping
+  and pointer ownership. Real isolated Swift/Rust component tests pass; full
+  Mac/package/device acceptance for this source remains separate.
+- No new crypto, persistent identity, RPC, server login or application UI flow
+  is introduced by this prerequisite.
+
 ### iOS Devnet C-ABI prerequisite (local candidate)
 
 - Expose the existing Rust Devnet commands and a zeroizing release function

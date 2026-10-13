@@ -1,0 +1,77 @@
+Swift Devnet native JSON review correction (public/synthetic fixtures only)
+
+Before-fix published head: 799456c1bd291af24159d8ad33f76b62274f094b
+Original independently reviewed implementation: 20a3d0ff2a7509e8547fd71c5718765619447b81
+Reviewer: fresh-context gpt-6-astra. One P2: Foundation JSONSerialization
+accepts trailing commas; no ownership blocker found. This is a violated native
+reply/error contract, not an observed vulnerability of normal Rust output.
+
+Actual RED, before production edits:
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --filter DevnetBridgeTests.testTrailingCommasInNativeJsonAreRefusedAndFreedOnce
+exit_code=1
+Test Case 'DevnetBridgeTests.testTrailingCommasInNativeJsonAreRefusedAndFreedOnce' failed (0.001 seconds)
+Executed 1 test, with 7 failures (0 unexpected) in 0.001 (0.001) seconds
+Six fixtures returned success; the malformed error-object fixture returned
+CoreError.rejected("invalid_request") instead of CoreError.nativeFailure.
+All release-count checks still passed; the defect was classification, not a leak.
+
+A direct Foundation-only diagnostic confirmed JSONSerialization AND JSONDecoder
+both accept {"value":1,} and {"value":[1,]}. Invalid numeric forms (01,+1,1.,.5,
+NaN,0x10,1e), comments, unquoted keys, undefined and raw newline strings were
+rejected. An initial inline diagnostic had a Swift literal quoting mistake
+and did not compile; that environment/probe error is NOT a TDD RED.
+
+Fix: streaming quote/escape-aware UTF-8 scan for comma followed by JSON whitespace
+and a closing brace/bracket outside strings, then existing Foundation decoding.
+No input/output repair, shared JsonSpan change, new dependency or Rust change.
+
+Actual GREEN for the identical focused test/command above:
+exit_code=0
+Test Case 'DevnetBridgeTests.testTrailingCommasInNativeJsonAreRefusedAndFreedOnce' passed (0.001 seconds)
+Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+
+Further regression cases (not claimed new REDs): quoted comma/closing punctuation
+in names/values, escaped quote/backslash, escaped Unicode punctuation, empty and
+nested containers, all JSON whitespace; broader malformed grammar. Copy identity
+and exact-once free checks retained. Total now21 new Devnet XCTest methods plus
+10 unchanged CoreBridge methods. Full Mac/package/app/device remains NOT RUN.
+
+
+=== debug ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build
+exit_code=0
+Build complete! (2.06s)
+Test Suite 'All tests' started at 2026-10-13 18:23:58.043
+Test Suite 'debug.xctest' started at 2026-10-13 18:23:58.044
+Test Suite 'CoreBridgeTests' started at 2026-10-13 18:23:58.044
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 18:23:58.198
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.154 (0.154) seconds
+Test Suite 'DevnetBridgeTests' started at 2026-10-13 18:23:58.198
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 18:23:58.271
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.072 (0.072) seconds
+Test Suite 'debug.xctest' passed at 2026-10-13 18:23:58.271
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.227 (0.227) seconds
+Test Suite 'All tests' passed at 2026-10-13 18:23:58.271
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.227 (0.227) seconds
+
+=== release-swift-rust ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-release-tmta79td --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-release-tmta79td/.build -c release
+exit_code=0
+Build complete! (4.20s)
+Test Suite 'All tests' started at 2026-10-13 18:24:03.330
+Test Suite 'release.xctest' started at 2026-10-13 18:24:03.331
+Test Suite 'CoreBridgeTests' started at 2026-10-13 18:24:03.331
+Test Suite 'CoreBridgeTests' passed at 2026-10-13 18:24:03.539
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.208 (0.208) seconds
+Test Suite 'DevnetBridgeTests' started at 2026-10-13 18:24:03.539
+Test Suite 'DevnetBridgeTests' passed at 2026-10-13 18:24:03.557
+	 Executed 21 tests, with 0 failures (0 unexpected) in 0.018 (0.018) seconds
+Test Suite 'release.xctest' passed at 2026-10-13 18:24:03.557
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.226 (0.226) seconds
+Test Suite 'All tests' passed at 2026-10-13 18:24:03.557
+	 Executed 31 tests, with 0 failures (0 unexpected) in 0.226 (0.226) seconds
+
+=== warnings-as-errors ===
+$ /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift build --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-devnet-adapter-tdd/.build --target ParanoidKitTests -Xswiftc -warnings-as-errors
+exit_code=0
+Build of target: 'ParanoidKitTests' complete! (0.91s)

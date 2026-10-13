@@ -2,10 +2,20 @@
 status: draft
 owner: security
 last_reviewed: 2026-10-13
-last_reviewed_scope: proposed concurrent-realm state, downgrade and media ownership controls for RFC-0030; older records retained
+last_reviewed_scope: Swift facade component ownership evidence and retained concurrent-realm proposals; full native app and MR gates remain NOT RUN
 ---
 
 # Threat model
+
+## Swift Devnet facade component — 2026-10-13
+
+The [iOS delta](ios-identity-v3-threats.md#swift-facade-component-evidence--2026-10-13)
+records executed input-bound, native-decoding and allocation-ownership tests
+for the thin Swift facade over unchanged Rust crypto. Managed Swift copies are
+not guaranteed zeroized. The facade adds no persistence, RPC, server trust or
+owner-operation policy; full new-head Mac and physical acceptance remain unrun.
+This component evidence neither accepts the architecture nor closes the
+storage/login/concurrent-runtime MR gates.
 
 ## iOS common-owner disposition — 2026-10-13
 

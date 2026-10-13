@@ -2,10 +2,30 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-13
-last_reviewed_scope: verified technical-basis disposition with four remarks and 4aac29c Mac receipt; scope approval, implementation and phone acceptance remain separate
+last_reviewed_scope: new Swift Devnet facade component execution; full native package, storage/login runtime, scope approval and phone acceptance remain separate
 ---
 
 # Current project state
+
+## Swift Devnet facade component — 2026-10-13
+
+The [Swift facade](../clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate)
+is implemented over the unchanged Rust C ABI: bounded/NUL-free input, strict
+native UTF-8/object decoding, existing error codes, copied response text and
+exact-once Devnet release. It now has 21 XCTest methods with public/native
+vectors and explicit ownership/fault fixtures. After the initial 29/0 component
+receipt, review exposed Foundation accepting trailing commas. The correction
+was observed RED (seven assertions) then GREEN, with string/escape regressions.
+Current isolated Swift 6 checks pass 21 Devnet plus 10 core tests, 31/0, in
+debug and optimized Swift linked to release Rust.
+These are component results, not full Mac/package/phone acceptance. No new
+Linux pipeline or repository package target was added.
+
+New-head Mac checks are still needed; the old `4aac29c` receipt does not cover
+the new Swift code. No app call site, persistent owner, registry lookup, server
+login or dual-runtime implementation is delivered by the facade. The D1-D3
+phone milestone remains NOT RUN; #73 scope and all protected-domain gates stay
+in force. Independent review and exact-head receipts are tracked in the PR.
 
 ## iOS technical basis agreed, not ADR acceptance — 2026-10-13
 

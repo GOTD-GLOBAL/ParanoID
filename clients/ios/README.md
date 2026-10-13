@@ -166,6 +166,16 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   refused as `invalid_request` before the call, because a C string would
   silently truncate it. `CoreReply` carries the reply text, the decoded
   object (`org.json`-style member access) and the verbatim `state`.
+- `DevnetBridge.command(request:) throws -> DevnetReply` is the new stateless
+  facade for the existing Rust Devnet C ABI. It refuses embedded NUL and requests
+  over 16384 UTF-8 bytes before the call, decodes native UTF-8/JSON strictly,
+  forwards string error codes through `CoreError` and releases every non-NULL
+  result exactly once with `paranoid_devnet_free`. The reply carries copied
+  verbatim text and the decoded object, not a messenger snapshot. Its 21 new
+  XCTest methods exercise public Rust vectors and explicit native fault buffers;
+  isolated component runs pass, full new-head Mac acceptance remains NOT RUN.
+  No storage, RPC, login UI or owner-consent policy is added by this facade.
+  See the [contract and native commands](../../docs/clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate).
 - `JsonSpan.state(in:)` slices the top-level `"state"` member out of the
   reply byte for byte, without re-serialising it, so the persisted snapshot
   and the `next == current` comparison use exactly the text the core
