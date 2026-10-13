@@ -26,8 +26,8 @@ long poll that was attempted exactly twice.
 `request_limit`      a 70 000-byte POST is refused before a socket is used
                      (`:41`)
 `response_limit`     a 3 MiB 200 body is abandoned at 2 MiB (`:50-51`)
-`read_timeout`       8 s everywhere, 30 s on `/v2/events?…` (`:36`), and a
-                     timeout is never repeated
+`read_timeout`       15 s everywhere, 30 s on `/v2/events?…`
+                     (`realtime-v1.md:154-156`), and a timeout is never repeated
 `error_body`         an error body is cut at 4096 bytes and the status survives
                      (`:50-56`)
 `capacity`           two requests at a time; the third waits (`:18`, `:30`)
@@ -275,16 +275,16 @@ def verify(report, record):
     verdicts.append(check)
 
     # 4 ----------------------------------------------------- read timeout
-    check = Verdict('read_timeout', '8 s everywhere, 30 s on /v2/events, never repeated')
+    check = Verdict('read_timeout', '15 s everywhere, 30 s on /v2/events, never repeated')
     seen = scenario(report, 'read_timeout')
     bounded, poll = seen['bounded'], seen['long_poll']
     check.require(bounded['kind'] == 'failed' and bounded.get('error') == 'timed_out',
                   f'a silent server gave {bounded.get("error") or bounded["kind"]}, expected timed_out')
-    check.require(7000 <= bounded['ms'] < 12000,
-                  f'the bounded request failed after {bounded["ms"]} ms, expected about 8000')
-    check.require(poll['kind'] == 'ok' and poll['ms'] >= 9000,
+    check.require(14000 <= bounded['ms'] < 19000,
+                  f'the bounded request failed after {bounded["ms"]} ms, expected about 15000')
+    check.require(poll['kind'] == 'ok' and poll['ms'] >= 16000,
                   f'the long poll ended as {poll["kind"]} after {poll["ms"]} ms, '
-                  'expected a reply past the eight-second bound')
+                  'expected a reply past the fifteen-second bound')
     attempts = record.count(path='/v2/sleep')
     check.require(attempts == 1, f'a timeout was repeated ({attempts} attempts)')
     check.require(seen['read_timeout_s'] == READ_TIMEOUT_S

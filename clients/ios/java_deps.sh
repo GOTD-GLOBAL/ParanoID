@@ -72,7 +72,7 @@ FACADE=(CoreBridge IdentityPorts SelfServiceClient SnapshotCodec KeyClient KeyTr
 # framework, so it has no host counterpart and nothing here compiles it.
 ANDROID_ONLY=(MainActivity TextEngine QrScanActivity WebRtcAudioEngine VoiceCallService
               BackgroundConnectionService ConnectionWatchdog UpdateController UpdateProvider
-              AndroidUpdateVerifier CallTones ContactNames CrashLog)
+              AndroidUpdateVerifier CallTones ContactNames CrashLog CallLog ReceiptHint ReceiptMark)
 # Left out although free of the Android framework, so the split above is not
 # read as "everything else compiles here": PushService extends Firebase's
 # messaging service, a Google SDK that is not on this host classpath (the iOS
