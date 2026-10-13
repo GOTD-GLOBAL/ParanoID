@@ -17,8 +17,9 @@ implementation authorization and formal acceptance retain the RFC's gates.
 Yaroslav's [technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
 agrees with this design at `efafe798` as the implementation basis with four
 remarks; it is not product/scope approval, ADR acceptance or live permission.
-No implementation, native execution, phone result or live authorization is
-claimed. All MR acceptance gates below are NOT RUN.
+No complete concurrent-realm implementation, phone result or live authorization
+is claimed. Narrow component execution is recorded separately below; all full
+MR acceptance gates below are NOT RUN.
 
 [Independent design-review closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
 covers design revision `71eda964b6f41986c0e85c43ed88676807f753df`, with four
@@ -326,6 +327,75 @@ strict admission bounds that surface only. A hostile caller can still supply
 hostile trust context. Sealing, filesystem/Keychain continuity, allocated-state
 loss, downgrade refusal and application integration require separate work and
 review. No legacy codec or storage semantics change.
+
+### PROPOSED isolated first-store contract
+
+This clarification is a non-adopted catalogue-only component proposal under
+RFC-0030 / draft ADR-0017, not app bootstrap authority or closure of #73. It
+preserves the bootstrap schema above: all slots unallocated, null binding,
+public metadata only. REQ-CLIENT-001/REQ-MULTI-001 and MR-02/06/07/14 motivate
+the context, continuity and preservation checks; no full MR gate passes here.
+
+- The caller supplies an **existing, isolated directory**, trusted installID,
+  ownerRef and full fi/ru descriptors, plus explicit file and opaque-key
+  backends. There is no default container, default Keychain account or install
+  marker API. The caller serializes every operation and grants exclusive access
+  to that root/key namespace for the instance lifetime; multiprocess writers
+  and hostile concurrent filesystem mutation are not supported by this slice.
+- The catalogue is `text-state.enc`, its create-only candidate is
+  `text-state.enc.tmp`, and its create-only intent is `catalogue.write.pending`.
+  Intent contents are the fixed ASCII `catalogue-write-v1\n`: evidence of an
+  uncertain transaction, **never** permission to recreate a key. Presence alone
+  refuses reopening, including an empty, malformed or foreign marker.
+- Inspect the root and every named catalogue/owner/realm path with throwing
+  inspection before any write. Known foreign artifacts are `owner`, `realms`,
+  `realms/fi`, `realms/ru`, and each store's `state.enc`, `state.enc.tmp`,
+  `write.pending`. Even empty foreign directories refuse this all-unallocated
+  slice. Inspect catalogue, owner, fi and ru key namespaces; surviving foreign
+  keys refuse. Errors, symlinks and wrong inode types are not absence. No
+  cleanup, stale-key deletion, directory creation or repair is offered.
+- Explicit `inspectFresh` grants only that instance one first-write authority
+  after all named artifacts and keys are absent. `loadRetained` is a distinct,
+  read-only operation requiring both key and file, including on a new instance;
+  both absent refuses. Calling commit on a new unchecked instance refuses.
+  Recheck continuity at commit, consume first-write authority before effects,
+  and never retry a failed instance. A new instance cannot inherit authority.
+  Automatic fresh-Welcome versus lost-catalogue classification remains **open**;
+  callers must not use a fresh inspection as a restart/recovery heuristic.
+- Every load and commit compares all trusted context, including ownerRef (not
+  just the codec's UUID syntax). Retained bytes must decrypt and pass the strict
+  existing bootstrap codec before replacement. v4/allocated/bound data refuses
+  unchanged, never migrates. No owner/realm allocation or entropy API is added.
+- Catalogue plaintext is at most 65,536 bytes; the framed read cap is that cap
+  plus `SnapshotCodec.headerBytes + SnapshotCodec.tagBytes`. Read is bounded
+  before decoding. The native opening adapter returns authenticated raw bytes,
+  not `SnapshotCodec.open`'s lossy String. Sealing reuses the existing version-1
+  AES-GCM framing/primitive; the legacy codec itself remains unchanged.
+- Commit follows the ordering below, including loading and comparing the exact
+  retained opaque key **after** intent and its parent are synced, even when no
+  new key is needed. Only byte-exact bounded readback, directory full-sync,
+  intent removal and final directory full-sync allow success/adoption. Failed
+  writes do not delete keys, temporary inodes or remaining intent evidence.
+- Public errors are fixed categories: `broken`, `authorityRequired`,
+  `invalidDirectory`, `continuity`, `artifactsPresent`, `contextMismatch`,
+  `invalidCatalogue`, `limitExceeded`, `keyMismatch`, `readbackMismatch`,
+  `backendFailure`. Underlying errors/payloads/keys are not attached or logged.
+  Any failed operation terminally breaks that instance; subsequent calls return
+  `broken` without backend access. Read-only locked-key retry semantics for a
+  future owner store are not changed by this catalogue rule.
+
+The [transaction-core receipt](../../project/evidence/ios-identity-v3-20261013/catalogue-store.md)
+records executable `CatalogueStore` orchestration with faultable unit backends.
+The Apple file/crypto adapter is **not implemented** in that checkpoint; its
+native-first XCTest source is staged outside the package test target. No real
+AES-GCM/disk/Keychain result follows from those doubles. The earlier preflight
+and remaining app-level questions below are preserved, not declared resolved.
+
+Complete loss/rollback of all evidence is still not detectable. In particular,
+a failure after intent removal (or lost final sync acknowledgement) can leave a
+valid pair that another instance opens; the failing instance still cannot
+adopt/retry. This is not a promise that every ambiguous failure is detectable
+across restart or that marker durability gives anti-rollback.
 
 ### Commit and crash rules
 

@@ -3,10 +3,37 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-13
-last_reviewed_scope: in-memory catalogue parser/context component and retained residuals; durable identity-v3 storage/runtime and MR gates remain NOT RUN
+last_reviewed_scope: isolated catalogue transaction-core fault tests; native adapter, durable identity-v3 runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
+
+## Isolated catalogue transaction-core checkpoint — 2026-10-13
+
+The [non-adopted first-store clarification](../clients/ios/concurrent-realms-design.md#proposed-isolated-first-store-contract)
+now has executable production orchestration (`CatalogueStore`) behind explicit
+file/opaque-key seams. The [receipt](../project/evidence/ios-identity-v3-20261013/catalogue-store.md)
+records actual Linux Swift unit execution, not native encryption or durability.
+The Apple adapter is **not implemented**: its native-first tests are an unrun
+checkpoint outside the existing test target, not a passing or skipped gate.
+The base `ea93dafe` [Mac receipt](../project/evidence/ios-identity-v3-20261013/native-mac-receipts.md)
+covers the earlier codec only, not this new transaction code or adapter.
+
+| Threat | Component control / test evidence | Remaining boundary |
+| --- | --- | --- |
+| Missing state is reclassified as fresh | Separate instance-bound fresh inspection and retained load; retained missing halves, including both, refuse | Caller supplies trusted classification; Welcome/lost-install distinction is still open |
+| Uncertain commit is retried or evidence deleted | Intent and parent sync before key/candidate; exact key/readback checks; both directory syncs before success; terminal failure latch; no key/temp cleanup API | Fault doubles cover before/after-effect exceptions, not Darwin power loss or Keychain atomicity |
+| Foreign or v4 state is overwritten | All named ancestor/artifact/key inspections before effects; full installID/ownerRef/fi/ru context; strict retained decoding before replacement | Throwing native inspection, no-follow/exclusive writes, bounded reads and native v4 refusal still need their adapter tests |
+| Secret copies escape through portability seams | Generic opaque `Equatable` key, no raw-key export/deletion API; fixed-category errors | Fake keys/tokens are unit doubles, not cryptography; actual `SymmetricKey`/CryptoKit handling remains native work |
+| Recovery claims exceed the evidence | Explicit test: removal-then-throw/final-sync failure can leave a pair a new instance opens, while failed instance cannot retry | Total loss/rollback and lost acknowledgement are not universally detectable; no anti-rollback guarantee |
+
+The explicit pre-existing isolated directory and key namespaces must be owned
+exclusively by one serialized, non-reentrant caller. Multiprocess/adversarial
+concurrent mutation is unsupported. Backends are trusted to implement their
+throwing/opaque/bounded contracts; no synthetic fake is an application default.
+No allocation, owner entropy, real Keychain, app startup, install marker,
+network, migration or legacy-store changes occur. #73 provenance, independent
+review, native tests, ADR acceptance and all full MR gates remain open.
 
 ## In-memory catalogue component — 2026-10-13
 
