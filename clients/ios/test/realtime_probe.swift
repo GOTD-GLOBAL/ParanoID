@@ -180,16 +180,19 @@ private struct Probe {
                                  "limit": RealtimeTransport.responseLimit])
     }
 
-    // 4. Eight seconds everywhere, thirty on `/v2/events?…`
+    // 4. Fifteen seconds everywhere, thirty on `/v2/events?…`
+    // (`realtime-v1.md:154-156`). The silent server holds longer than the
+    // ordinary bound; the long poll answers past that bound but inside the
+    // events bound, so the two timeouts are told apart.
     //    (`RealtimeTransport.java:36`).
     func timeouts() async throws -> Scenario {
         let lane = try transport()
         let short = await attempt {
-            try await lane.call(method: "GET", path: "/v2/sleep?op=sleep&seconds=15",
+            try await lane.call(method: "GET", path: "/v2/sleep?op=sleep&seconds=20",
                                 authorization: credential("sleep"))
         }
         let poll = await attempt {
-            try await lane.call(method: "GET", path: "/v2/events?op=poll&hold=10&after=0",
+            try await lane.call(method: "GET", path: "/v2/events?op=poll&hold=18&after=0",
                                 authorization: credential("poll"))
         }
         await lane.close()

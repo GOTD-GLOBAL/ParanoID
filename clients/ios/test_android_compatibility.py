@@ -729,6 +729,15 @@ def codec_cross(java, swift, facts):
     facts['codec_cross'] = crossed
 
 
+# Android v29 (fba0a34, 2026-09-29) added `identity_login` to its public view:
+# a screen-routing flag (does the Devnet login screen apply to this install?),
+# true only for its compiled identity-v3 test realm (`SelfServiceClient.java:166`,
+# read by `MainActivity.java:964`). It is not protocol, and iOS has no
+# identity-v3 realm until RFC-0030 lands, so the comparison below leaves it out
+# and records that; once the iOS adapter shows the key, it is compared again.
+ANDROID_SCREEN_ONLY = ('identity_login',)
+
+
 def sealed_reopen(java_party, swift_party, java, swift, facts):
     """The same wrapper reopened by both adapters, which must write nothing."""
     views = {}
@@ -741,11 +750,16 @@ def sealed_reopen(java_party, swift_party, java, swift, facts):
             require(result['view']['account'] == party.account,
                     f'{pipe.label} reopened {party.name} as another identity')
             views.setdefault(party.name, []).append(result['view'])
-        require(views[party.name][0] == views[party.name][1],
+        java_view, swift_view = views[party.name]
+        android_only = {key: java_view.pop(key) for key in ANDROID_SCREEN_ONLY if key in java_view}
+        require(not any(key in swift_view for key in ANDROID_SCREEN_ONLY),
+                f'the iOS adapter now shows {sorted(ANDROID_SCREEN_ONLY)}: compare the key again')
+        require(java_view == swift_view,
                 f'the two adapters disagree about what {party.name} shows on screen')
         facts.setdefault('reopened', []).append(
             {'party': party.name, 'writes': 0, 'views_identical': True,
-             'dialogs': len(views[party.name][0]['dialogs'])})
+             'android_screen_only_excluded': sorted(android_only),
+             'dialogs': len(java_view['dialogs'])})
     # The state text itself must be untouched by a reopening: ask each party's
     # own pipe for a view and compare it with the state it already held.
     for party in (java_party, swift_party):
@@ -1272,7 +1286,7 @@ def run(args):
 
         sealed_reopen(a, b, java, swift, facts)
         checks.append('both saved wrappers reopen in both adapters without a single write, and '
-                      'the two adapters show the same public view of the same snapshot')
+                      'the two adapters show the same public view of the same snapshot, the Android-only screen flag `identity_login` left out')
 
         negatives(a, b, bodies, negative_vectors(bodies), sequence, facts)
         checks.append(f'{len(facts["negatives"])} malformed call-v2 bodies are refused by this '
