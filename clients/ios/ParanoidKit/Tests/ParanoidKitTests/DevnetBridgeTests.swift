@@ -151,10 +151,51 @@ final class DevnetBridgeTests: XCTestCase {
     }
 
     func testMalformedNativeJsonIsNativeFailureAndFreedOnce() {
-        for text in ["", "not json", "{", "{} trailing", #"{"value":}"#] {
+        for text in [
+            "", "not json", "{", "{} trailing", #"{"value":}"#,
+            #"{"value":01}"#, #"{"value":+1}"#, #"{"value":1.}"#,
+            #"{"value":.5}"#, #"{"value":NaN}"#, #"{"value":0x10}"#,
+            #"{"value":1e}"#, #"{/*comment*/"value":1}"#,
+            "{\"value\":1//comment\n}", #"{value:1}"#,
+            #"{"value":undefined}"#, "{\"value\":\"raw\nnewline\"}",
+        ] {
             let fixture = ReplyFixture(text)
             assertError(.nativeFailure, try fixture.command())
             fixture.assertReleased()
+        }
+    }
+
+    func testTrailingCommasInNativeJsonAreRefusedAndFreedOnce() {
+        for text in [
+            #"{"value":1,}"#,
+            #"{"value":[1,]}"#,
+            #"{"value":{"nested":1,}}"#,
+            #"{"value":[{"nested":[true,]},null]}"#,
+            "{\"value\":1, \r\n\t }",
+            "{\"value\":[1, \r\n\t ]}",
+            #"{"error":"invalid_request",}"#,
+        ] {
+            let fixture = ReplyFixture(text)
+            assertError(.nativeFailure, try fixture.command())
+            fixture.assertReleased()
+        }
+    }
+
+    func testValidStringPunctuationAndEscapesAreNotTrailingCommas() throws {
+        // Regression for the lexical guard: delimiters inside strings are data.
+        for text in [
+            "{}",
+            #"{",}":",]","value":"comma ,} then ,]","nested":[{},[]]}"#,
+            #"{"value":"escaped quote: \",} and backslash: \\","nested":{"x":[1,2]}}"#,
+            #"{"value":"\u002c\u005d","nested":{"x":{}}}"#,
+            "\r\n{\t\"value\": [1, {\"x\": \"é😀\"}], \"empty\": [] }\r\n",
+        ] {
+            let fixture = ReplyFixture(text)
+            let reply = try fixture.command()
+            fixture.assertReleased()
+            XCTAssertEqual(Array(reply.text.utf8), Array(text.utf8))
+            let expected = try JSONSerialization.jsonObject(with: Data(text.utf8)) as? NSDictionary
+            XCTAssertEqual(reply.object as NSDictionary, expected)
         }
     }
 

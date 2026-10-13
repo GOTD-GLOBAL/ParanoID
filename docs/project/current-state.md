@@ -12,10 +12,12 @@ last_reviewed_scope: new Swift Devnet facade component execution; full native pa
 The [Swift facade](../clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate)
 is implemented over the unchanged Rust C ABI: bounded/NUL-free input, strict
 native UTF-8/object decoding, existing error codes, copied response text and
-exact-once Devnet release. It adds 19 XCTest methods with public/native vectors
-and explicit ownership/fault fixtures. Real isolated Swift 6 component runs
-passed 19 new plus 10 existing core-adapter tests in debug and optimized Swift;
-the coordinator also repeated 29/0 with release Swift linked to release Rust.
+exact-once Devnet release. It now has 21 XCTest methods with public/native
+vectors and explicit ownership/fault fixtures. After the initial 29/0 component
+receipt, review exposed Foundation accepting trailing commas. The correction
+was observed RED (seven assertions) then GREEN, with string/escape regressions.
+Current isolated Swift 6 checks pass 21 Devnet plus 10 core tests, 31/0, in
+debug and optimized Swift linked to release Rust.
 These are component results, not full Mac/package/phone acceptance. No new
 Linux pipeline or repository package target was added.
 

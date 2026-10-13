@@ -46,7 +46,8 @@ public enum DevnetBridge {
         guard let text = String(validatingCString: raw) else {
             throw CoreError.nativeFailure
         }
-        guard let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] else {
+        guard !hasTrailingComma(in: text),
+              let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] else {
             throw CoreError.nativeFailure
         }
         if let error = object["error"] {
@@ -54,5 +55,40 @@ public enum DevnetBridge {
             throw CoreError.rejected(code)
         }
         return DevnetReply(text: text, object: object)
+    }
+
+    // Foundation permits trailing commas even without JSON5 options. Reject
+    // that extension at every nesting depth; punctuation inside quoted strings
+    // is data. Foundation still validates the remaining JSON grammar below.
+    // Scan the existing UTF-8 view without copying or rewriting secret text.
+    private static func hasTrailingComma(in text: String) -> Bool {
+        var inString = false
+        var escaped = false
+        var previous: UInt8?
+        for byte in text.utf8 {
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if byte == 0x5c {
+                    escaped = true
+                } else if byte == 0x22 {
+                    inString = false
+                    previous = byte
+                }
+                continue
+            }
+            switch byte {
+            case 0x20, 0x09, 0x0a, 0x0d:
+                continue
+            case 0x22:
+                inString = true
+            case 0x7d, 0x5d:
+                if previous == 0x2c { return true }
+            default:
+                break
+            }
+            previous = byte
+        }
+        return false
     }
 }

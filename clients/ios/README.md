@@ -171,7 +171,7 @@ the counterpart of `CoreBridge.java` plus the `nativeCall`/`apply` rules of
   over 16384 UTF-8 bytes before the call, decodes native UTF-8/JSON strictly,
   forwards string error codes through `CoreError` and releases every non-NULL
   result exactly once with `paranoid_devnet_free`. The reply carries copied
-  verbatim text and the decoded object, not a messenger snapshot. Its 19 new
+  verbatim text and the decoded object, not a messenger snapshot. Its 21 new
   XCTest methods exercise public Rust vectors and explicit native fault buffers;
   isolated component runs pass, full new-head Mac acceptance remains NOT RUN.
   No storage, RPC, login UI or owner-consent policy is added by this facade.

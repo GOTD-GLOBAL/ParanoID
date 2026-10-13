@@ -78,7 +78,10 @@ There is no new wire version: the JSON operations remain the unchanged Rust
   result is paired exactly once with `paranoid_devnet_free`, including decoding
   and error paths. Neither `free()` nor the core's release function is valid.
 - Decode native UTF-8 strictly, without replacement characters, and require a
-  JSON object. NULL, invalid UTF-8/JSON, a non-object or a non-string `error`
+  JSON object. A quote/escape-aware UTF-8 scan refuses trailing commas outside
+  strings at any nesting depth, which Foundation otherwise accepts; Foundation
+  validates the remaining grammar. Neither response bytes nor strings are repaired.
+  NULL, invalid UTF-8/JSON, a non-object or a non-string `error`
   member is `CoreError.nativeFailure`. A Rust string error is forwarded as
   `CoreError.rejected(code)`, including Rust's fixed `native_failure` code;
   no request, response or recovery material is appended to that error.
@@ -106,7 +109,7 @@ and physical-device gates; an isolated component compile is not that receipt.
 ### Swift evidence and next native check
 
 [`DevnetBridgeTests`](../../../clients/ios/ParanoidKit/Tests/ParanoidKitTests/DevnetBridgeTests.swift)
-has 19 XCTest methods. The [TDD receipt](../../../clients/ios/bridge/evidence/swift-adapter-tdd.txt)
+has 21 XCTest methods. The [TDD receipt](../../../clients/ios/bridge/evidence/swift-adapter-tdd.txt)
 records nine vertical RED/GREEN slices and labels the additional passing
 regressions as regressions, not manufactured REDs. Public 12/24-word recovery,
 owner derivation and program information use the actual Rust library. Explicit
@@ -121,6 +124,15 @@ then linked a rebuilt **release Rust staticlib** for an additional optimized
 Swift/release-Rust run: 29/0 again. Source/test-target warnings-as-errors passed.
 No repository package target, dependency, SDK pin, CI gate or Linux runner was
 added or changed. This does not run the full ParanoidKit package on Linux.
+
+The [review-correction receipt](../../../clients/ios/bridge/evidence/swift-adapter-json-review.txt)
+records Foundation accepting malformed trailing commas in the independent review.
+A new XCTest first failed with seven assertions on the old facade, then passed
+with the lexical guard. Additional valid-string/escape and malformed-grammar
+regressions preserve byte-exact data and release counts. Current component
+results are **21 Devnet plus 10 core tests, 31/0** in debug and in optimized
+Swift linked to release Rust. This is native-contract fault handling, not a
+reported vulnerability in normal Rust output. Mac validation remains separate.
 
 The receipt retains failed optional global Swift-version flag experiments in
 SwiftPM-generated Linux discovery; they are not TDD REDs or successful runs.

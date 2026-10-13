@@ -12,7 +12,8 @@ last_reviewed_scope: Swift facade bounds/decoding/ownership component evidence a
 
 The [new Swift facade contract](../clients/ios/devnet-bridge.md#implemented-swift-facade-contract-component-candidate)
 refuses embedded NUL and over-limit UTF-8 requests before the C call, strictly
-decodes native replies and delegates each non-NULL allocation to the Devnet
+decodes native replies, rejects Foundation's trailing-comma extension outside
+quoted strings, and delegates each non-NULL allocation to the Devnet
 free exactly once, including thrown error/parse paths. Its XCTest coverage uses
 real Rust public vectors for positive behavior and explicit terminated buffers
 only for native contract faults. Isolated Swift/native component runs pass;
