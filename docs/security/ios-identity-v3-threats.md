@@ -2,8 +2,8 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-10-12
-last_reviewed_scope: concurrent-server product input; new review questions, no implemented controls
+last_reviewed: 2026-10-13
+last_reviewed_scope: concurrent-realm design controls and MR threat-test mapping; implementation NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -32,9 +32,11 @@ carries real communication
 
 ```text
 Unchanged: core identity/Olm/frame2 -> pinned TLS -> server; first contact; calls
-New realms: identity-v3 servers from a compiled list, fresh installs only
-New secret at rest: nickname owner entropy -> second Keychain wrapping key
-  (WhenUnlockedThisDeviceOnly) + sealed file (protection complete) + marker
+New realms: two concurrently joined compiled identity-v3 realms, fresh scope
+New stores: install catalogue + independently wrapped realm state/intent
+Shared owner: nickname entropy -> separate Keychain wrapping key
+  (WhenUnlockedThisDeviceOnly) + sealed file (protection complete) + markers
+Shared physical boundary: one application-wide call/media/resource owner
 New signer: paranoid-devnet-client (BIP39, SLIP-0010, Ed25519) behind the C ABI
 New trusted source: the Devnet RPC, one system-trust TLS session, one host
 New observers: the Devnet RPC operator; the public Devnet registry
@@ -45,36 +47,28 @@ Not used: background owner signing, background tasks, push, faucet
 
 ## Concurrent-server expansion — 2026-10-12
 
-The owner now requests both v3 endpoints connected simultaneously in one
-installation ([RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12),
-REQ-MULTI-001). The single-snapshot controls elsewhere in this delta are the
-original baseline; they do not cover this expansion. No new mitigation is
-implemented or independently reviewed. The revised design must address:
+The owner's product request now has a
+[design candidate](../clients/ios/concurrent-realms-design.md) dated 2026-10-13.
+It replaces the original single-snapshot matrix, not the shared wire/core
+cryptography. The controls below are proposals, not implemented mitigations;
+every MR execution gate remains NOT RUN.
 
-- **Cross-realm confusion:** a delayed callback, shared cache, outbox, proof
-  or directory result could be used with the other server. Define explicit
-  realm/pin ownership and negative tests for every boundary.
-- **Persistence and recovery coupling:** adding, replacing or removing one
-  membership could overwrite the other's sealed state, intent or ratchets.
-  Specify namespacing, write/crash behavior, frozen-state isolation and
-  compatibility/rollback before choosing a storage layout.
-- **Revocation and retry coupling:** an outage, ban, replacement or exhausted
-  budget on one server could stop or mutate the other connection. Test both
-  directions, concurrent completion and cancellation, without live fault
-  injection under this documentation task.
-- **Misleading UI:** an identical nickname on two realms could make a user
-  send, publish a directory card or place a call on the wrong server. Define
-  targeting and confirmation behavior; do not silently combine identities.
-- **Correlation:** using the same public nickname/owner on both servers can
-  correlate memberships and timing. Concurrent connectivity is not an
-  anonymity improvement or federation; owner-sharing policy remains open.
+| Threat | Proposed control | Verification / residual |
+| --- | --- | --- |
+| Cross-realm proof, message, cursor or delayed callback confusion | Full RealmKey and runtime/credential target; independent core/store/session; final UI/renderer fence | MR-02/03/09; malicious/compromised app remains trusted failure |
+| State from A overwrites B, or lost allocated state appears fresh | Per-realm keys/envelopes plus authenticated catalogue with monotonic allocation; intent/fsync/readback before adoption | MR-06; ambiguous writes freeze, shared catalogue failure stops all |
+| An older build ignores new stores and creates a v2 identity | Catalogue v5 occupies old path/account; audited v4 reader refuses before runtime | MR-07 old-new-old-new binary tests; unknown historical readers are not certified |
+| Locked owner store blocks unrelated traffic, or global revoked flag stops both | Realm-local intents/terminal state; owner gate affects owner operations only | MR-04/05/06/13; common OS/disk failure can still stop both |
+| Two audio controllers or a stale call callback capture/control the wrong realm | One app-wide admission/media owner and revocable CallTarget lease; acknowledged cleanup before handoff | MR-10/11/15; a stuck teardown denies new calls, not independent text |
+| A flooded directory or unbounded waiters starve text/lifecycle safety | Bounded per-realm scheduling, cancellation/deadline removal, coalescing; lifecycle overflow stops/fences | MR-03/12; server-side availability and shared host contention remain |
+| Same nickname or short link ID causes a mistaken pair/send/share | Explicit textual realm targeting; proof plus registry check; reject ambiguous/unknown short-ID routing | MR-08/09; RPC trust/stale-card residuals remain |
+| One shared owner correlates both memberships and compromises both | Disclose correlation, scoped foreground signing, separate random transport keys | MR-14; no anonymity, seed-theft recovery or owner-key rotation claim |
 
-E2EE, saved pins, explicit admission/replacement and no automatic rekeying
-remain constraints. "Maximum rights" is not evidence that these risks are
-accepted, that the exact expanded alpha scope is approved, or that production
-changes and sensitive-data use are authorized. Risk owner remains
-`martadvix-web`; permanent evidence, design review and all two-realm execution
-are pending / NOT RUN.
+Human risk owner remains `martadvix-web`. Permanent exact-scope approval,
+independent design review, implementation tests and device evidence are separate
+gates. "Maximum rights" does not accept these residual risks or authorize
+production changes, resets, real sensitive data or release. Owner signing,
+RPC, words-screen and sponsor residuals below still apply to both realms.
 
 ## Secret at rest
 
@@ -150,8 +144,8 @@ are pending / NOT RUN.
 | Threat | Proposed control | Residual |
 | --- | --- | --- |
 | A saved v2 identity is silently moved to v3, or the reverse | Saved trust wins; the core refuses a realm change; no fallback in either direction | none |
-| A user believes v2 contacts moved with them | Moving is a clean reinstall with a new ID, stated in the app (question 9) | v2 accounts stay on a stopped server without a deletion path |
-| A replaced phone keeps retrying | `revoked` stops the realtime lanes and seals a flag that forbids re-enrolling that credential; while the phone is locked the flag is kept in memory and sealed after unlock | The owner key on that phone can still move the login back |
+| A user believes v2 contacts moved with them | No automatic migration/reset; explicitly authorized fresh transition creates independent device state for each realm (question 9) | v2 accounts stay on a stopped server without a deletion path |
+| A replaced phone keeps retrying | `revoked` stops only that realm and its media lease, records realm-local terminal state independent of the owner store; inaccessible persistence immediately fences the runtime and requires status before restart traffic | The owner key on that phone can still move the login back |
 | A v3 database reset leaves the phone in an unexplained state | `absent` leads to an explicit login, never an automatic enrollment or rekey | Untested on Android too |
 
 ## Verification status

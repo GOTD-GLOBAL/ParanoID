@@ -14,7 +14,10 @@ in one installation, not merely an either/or choice. This brings
 REQ-MULTI-001 into the iOS workstream alongside REQ-CLIENT-001 and
 REQ-ID-002/003. [RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12)
 records the exact Telegram reply, its missing permanent approval provenance
-and the required redesign of the original single-realm proposal.
+and the original single-realm gap. The
+[concurrent-realm design candidate](../clients/ios/concurrent-realms-design.md)
+now proposes its replacement and MR-01..16 acceptance; all execution remains
+NOT RUN, and technical disposition is pending.
 
 This is product input, not implemented multi-server support, an accepted
 identity/storage architecture, server federation or operational authorization.
