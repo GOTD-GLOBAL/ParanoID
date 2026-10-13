@@ -2,7 +2,8 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-10-06
+last_reviewed: 2026-10-12
+last_reviewed_scope: concurrent-server product input; new review questions, no implemented controls
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -41,6 +42,39 @@ Contacts: by nickname through the directory and the registry; the existing
   QR exchange stays only until question 18 removes it
 Not used: background owner signing, background tasks, push, faucet
 ```
+
+## Concurrent-server expansion — 2026-10-12
+
+The owner now requests both v3 endpoints connected simultaneously in one
+installation ([RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12),
+REQ-MULTI-001). The single-snapshot controls elsewhere in this delta are the
+original baseline; they do not cover this expansion. No new mitigation is
+implemented or independently reviewed. The revised design must address:
+
+- **Cross-realm confusion:** a delayed callback, shared cache, outbox, proof
+  or directory result could be used with the other server. Define explicit
+  realm/pin ownership and negative tests for every boundary.
+- **Persistence and recovery coupling:** adding, replacing or removing one
+  membership could overwrite the other's sealed state, intent or ratchets.
+  Specify namespacing, write/crash behavior, frozen-state isolation and
+  compatibility/rollback before choosing a storage layout.
+- **Revocation and retry coupling:** an outage, ban, replacement or exhausted
+  budget on one server could stop or mutate the other connection. Test both
+  directions, concurrent completion and cancellation, without live fault
+  injection under this documentation task.
+- **Misleading UI:** an identical nickname on two realms could make a user
+  send, publish a directory card or place a call on the wrong server. Define
+  targeting and confirmation behavior; do not silently combine identities.
+- **Correlation:** using the same public nickname/owner on both servers can
+  correlate memberships and timing. Concurrent connectivity is not an
+  anonymity improvement or federation; owner-sharing policy remains open.
+
+E2EE, saved pins, explicit admission/replacement and no automatic rekeying
+remain constraints. "Maximum rights" is not evidence that these risks are
+accepted, that the exact expanded alpha scope is approved, or that production
+changes and sensitive-data use are authorized. Risk owner remains
+`martadvix-web`; permanent evidence, design review and all two-realm execution
+are pending / NOT RUN.
 
 ## Secret at rest
 

@@ -3,9 +3,10 @@ status: draft
 owner: ios
 decision_owner: martadvix-web
 review_mode: closed-alpha-ai
-decision_deadline: 2026-10-15
+decision_deadline: 2026-10-12
 required_reviewers: []
-last_reviewed: 2026-10-06
+last_reviewed: 2026-10-12
+last_reviewed_scope: owner product direction and concurrent-server scope expansion; original design retained for revision
 ---
 
 # RFC-0030: The iOS client on identity v3
@@ -28,6 +29,93 @@ draft was then renumbered to RFC-0031 in PR #72. Every other RFC-0029
 mention in this document is the invite RFC, which keeps 0029.) No ADR
 number is reserved here: the ADR gets the next free
 number when it is drafted, re-checked before `proposed`.
+
+## Owner direction and scope expansion — 2026-10-12
+
+**Product direction received; technical disposition remains pending.** In
+Telegram group ParanoID, thread 3, Sergey Maltsev answered the coordinator's
+four questions about the direction, server selection, closed-alpha scope and
+decision date. Exact reply (original Russian):
+
+> 1. подтверждаю
+> 2. оба сервера, что бы еще и возможность была к обоим одновременно подключиться
+> 3. максимальные права
+> 4. решение принято уже сейчас
+
+Meaning of that reply in its question context:
+
+- Proceed with iOS identity v3: nickname recovery/creation, login, directory,
+  then the existing text and calls (REQ-CLIENT-001, REQ-ID-002/003).
+- Include both `157.180.49.125:38444` and `138.16.180.53:38444`, with the
+  ability to connect to both **simultaneously in one iOS installation**, not
+  merely choose one at onboarding (REQ-MULTI-001). No fresh network check or
+  authorization to alter either endpoint is claimed by this record.
+- The owner requested "maximum rights". Preserve that broad work instruction,
+  but do not turn it into invented authority for any particular live operation
+  or into acceptance of every technical option in this RFC.
+- The product decision is made now, on 2026-10-12, rather than waiting until
+  2026-10-15. That date is not a delivery deadline or technical ADR acceptance.
+
+**Evidence boundary.** The source is the current Telegram exchange; the named
+sender is Sergey Maltsev, the project's decision owner `martadvix-web`. The
+original Telegram message permalink, platform message ID and exact timestamp
+are not available in this tool context. This quotation is a coordinator record
+of product input, **not** independently verifiable permanent approval evidence.
+Before a protected-domain approval or delegation is relied upon, obtain the
+owner's direct GitHub confirmation or the complete independently checkable
+Telegram provenance required by the documentation policy. No bot comment or
+merge may supply that missing human evidence.
+
+### Required revision before implementation of the expanded scope
+
+The original proposal below assumed one active realm and one messaging
+snapshot per installation. It does **not** implement or specify the requested
+concurrent use. That mismatch is explicitly reported here; it is not resolved
+by changing a server selector. The design, storage matrix, increments, effort
+estimate and acceptance table below are retained as the **single-realm
+baseline to revise**, not a ready implementation contract for two servers.
+
+The next design revision must address, without choosing these answers here:
+
+- whether and how a nickname/owner identity is shared, and the distinct
+  membership, device-credential and replacement lifecycles for each realm;
+- realm/pin-scoped sealed state, keys, login intents, outboxes, contacts,
+  ratchets, delivery state, directory visibility and crash/restart recovery;
+- concurrent connections and reconnect/cancellation isolation, with no
+  credential, proof, message or contact crossing a realm boundary;
+- how the UI identifies the target server for a chat, directory action or call,
+  and what happens to the other connection when one is offline or revoked;
+- changes needed to the original one-snapshot storage/freeze rules, component
+  boundary assumptions, downgrade protection and rollback plan;
+- synthetic two-realm tests, restart and fault cases, wrong-realm negative
+  tests, and exact-head Mac and physical-device evidence. All are NOT RUN.
+
+Concurrent client connections are not server federation, cross-server message
+forwarding or approval for several active phones per server membership. Saved
+trust, E2EE, explicit replacement and the rule against silent rekeying remain
+constraints. No v2 history migration, reinstall, reset or deletion is authorized
+by the product reply.
+
+### Work authority and remaining gates
+
+Yaroslav can continue the proposal, isolated feasibility work and ordinary
+non-protected fixes within his existing delegation. The reply gives clear
+product direction; "maximum rights" does not by itself complete the exact-scope
+closed-alpha exception. Before protected implementation, record the revised
+features, devices, test data, environments, human risk owner and durable owner
+confirmation, then the applicable independent design review and RFC/ADR records.
+The original device/test-data proposal below is retained, not silently widened.
+
+Question 4 (remote admission and bounded operational authorization) remains
+open. No server/DB/firewall change, credential or Apple-account operation,
+TestFlight/public release, Mainnet action, real sensitive-data use or bypass of
+review/tests is inferred. No new merge instruction is recorded by this reply.
+A concrete operational plan must name its targets, operations, isolation,
+rollback and permitted data effects before it can use owner authorization.
+
+The next owner confirmation should distinguish the already stated product
+choice from the exact revised alpha scope and any requested operational batch;
+it must not claim that unanswered technical choices or unrun tests passed.
 
 ## Required review rationale
 
@@ -279,7 +367,10 @@ inventories the gap with evidence. In short:
    and the deviation is reported
    ([discrepancies](#discrepancies-found-while-preparing-this-rfc)). The one
    forced exception is the sponsor's blockhash (discrepancy 7).
-6. Nothing changes outside the iOS component boundary.
+6. Nothing changes outside the iOS component boundary in the original baseline.
+7. The 2026-10-12 owner direction adds concurrent use of both v3 servers in
+   one installation. The design and component-boundary feasibility for that
+   expansion are pending; goals 1 to 6 alone do not satisfy it.
 
 ### Non-goals
 
@@ -291,7 +382,9 @@ inventories the gap with evidence. In short:
   (question 18).
 - Moving an existing v2 account, its contacts or its history to v3; deleting
   v2 accounts (the v2 server has no deletion path).
-- Two identities in one install, and several active devices for one nickname.
+- Several independent user identities and several active phones for one
+  server membership. Concurrent participation on both v3 servers is now a
+  product goal; its identity/state model is unresolved, not excluded.
 - An own-SOL or faucet fallback when the sponsor refuses (question 11).
 - Any typed server address or pin (REQ-ID-008;
   `docs/clients/ios/self-service.md:232-241`).
@@ -383,8 +476,9 @@ Consequences, measured on 2026-10-06:
 ### Server profiles
 
 - The client keeps compiled server profiles as a list. Each entry holds the
-  realm, the pin and the kind (v2 or identity v3). Question 1 chooses the v3
-  entries, with their pins from Android:
+  realm, the pin and the kind (v2 or identity v3). The owner chose both v3
+  entries on 2026-10-12; these are the originally cited pins from Android,
+  not a fresh validation:
   - production `https://157.180.49.125:38444`, pin
     `536c154440a3107e1fe63f967ed39389aa1a1f4f2b3407070066b76c3a78ae0f`
     (`KeyClient.java:9-11`). It is a closed test endpoint on the owner's
@@ -396,8 +490,9 @@ Consequences, measured on 2026-10-06:
   identity exists, and is never learned from a challenge
   (`docs/protocol/identity-login-v3.md:58-59`). It is never typed
   (`docs/clients/ios/self-service.md:232-233`), and a link never joins an
-  unknown server. Question 10 decides whether the screen offers both v3
-  entries, as Android's v44 commit message describes, or confirms one.
+  unknown server. Question 10 now needs a design for managing both concurrent
+  connections, not a one-time either/or selector. The remaining bullets are
+  the original per-realm baseline.
 - The kind of a saved realm comes from the compiled list. A Debug build that
   points at a local stand declares the kind with an explicit launch flag,
   checked together with the realm and the pin. The kind is never inferred
@@ -885,7 +980,7 @@ first week, and owner sessions within a week of each request.
 | Keep iOS on v2 | The v2 service is stopped, so the client would have no server at all. |
 | Move iOS to v3 without a nickname | v3 has no self-registration: `/v2/registration/` answers `404`. It would need a server change and an admission policy that does not exist (`docs/protocol/identity-login-v3.md:40-42`). |
 | Recovery, login and the directory only, registration later | This is the first milestone of the proposed order (increments 4 to 6). Stopping there would leave an iOS user without an Android unable to obtain a nickname (REQ-ID-003, REQ-ID-004), so registration stays in scope. |
-| Two identities in one install | Two snapshots and two contact lists in one application. RFC-0021 excluded a second realm (`docs/rfcs/0021-ios-client.md:188`), and no requirement of this milestone needs it (REQ-MULTI-001 is a draft for later: `docs/product/requirements.md:50`). |
+| Two identities in one install | Originally excluded under RFC-0021. The 2026-10-12 owner direction now requires concurrent participation on both servers (REQ-MULTI-001); the identity and state-isolation design is reopened, not selected by this record. |
 | Two static libraries | Each would keep its Android lock exactly, and they linked into one executable on 2026-10-06 without duplicate-symbol errors. But both carry their own `std` and shared crates, and whether the linker keeps resolving the duplicated members depends on each future toolchain and graph. |
 | Owner operations rebuilt inside the iOS bridge over `key-protocol` | `key-protocol` already has the transcript, PDA and record checks (`key-protocol/src/identity_v3.rs`), and the server builds the registration message with `key-protocol` alone, without any `solana-*` crate (`server/src/sponsor.rs:102-149`). The lock rule would hold, but BIP39, SLIP-0010 and the transaction would get a second implementation that no Android test exercises, contrary to RFC-0026:174-175 (draft). |
 | Owner cryptography in Swift | Contrary to RFC-0026:174-175 (draft); a second implementation of key derivation and transaction building. |
@@ -1173,7 +1268,7 @@ ADR-0014 would move their "exact review revision" gate
 | --- | --- | --- |
 | RFC-0021 (proposed) `:92-100` | the existing hosted alpha; "no new key material format and no new trust anchor" | identity v3 servers; the owner entropy, further pins and one system-trust session |
 | RFC-0021 `:151-152`; ADR-0014 (proposed) `:44-47` | the identity reference is Android v15 against the same hosted alpha | Android's current client for identity v3, contracts first |
-| RFC-0021 `:188-190` | non-goals: identity recovery, a second realm, blockchain naming, server selection UX | recovery and blockchain naming added; a second compiled profile for fresh installs added; two realms in one install still excluded; server selection limited to confirming compiled profiles; multi-device still excluded |
+| RFC-0021 `:188-190` | non-goals: identity recovery, a second realm, blockchain naming, server selection UX | recovery and blockchain naming added; both compiled v3 profiles requested; the 2026-10-12 direction removes the former exclusion of two concurrent realms in one install, with that design pending; server trust remains explicit; several active phones per membership still excluded |
 | RFC-0021 `:200-203`; ADR-0014 `:86-93` | the bridge depends on the core alone and exports `paranoid_core_command` and `paranoid_core_free` | plus the Devnet crate and two Devnet exports |
 | RFC-0021 `:281-283`; ADR-0014 `:112-119,138-147`; `docs/security/ios-client-threats.md:30,77` | leaf-SPKI pinning, "not by delegating to system trust", "never on a CA chain" | unchanged for every ParanoID server; one system-trust session to the Devnet RPC |
 | RFC-0021 `:306-313`; `clients/ios/README.md:1904-1912` | "Not touched: identity derivation, key material"; one realm and pin, no second pin | iOS gains owner key material and a list of compiled profiles; saved trust still wins |
@@ -1201,21 +1296,23 @@ ADR-0014 gets a pointer to it when both are disposed.
 
 ## Open questions
 
-The decision owner is `martadvix-web` for every item. Items 1 and 2 block
-`proposed`.
+The decision owner is `martadvix-web` for every item. Product answers to
+items 1 and 2 were received on 2026-10-12 as recorded above; permanent evidence,
+the concurrent-realm design revision and the remaining review gates still block
+`proposed`. "Maximum rights" does not answer the other technical questions.
 
 | # | Question (proposed answer) | Needed by |
 | --- | --- | --- |
-| 1 | Product scope: does iOS adopt identity v3 for fresh installs, and which v3 profiles does it compile: production `157.180.49.125:38444`, the test VPS `138.16.180.53:38444`, or both? The joint test needs the server the owner's Android logs in to; in the repository that is the test VPS (`TextEngine.java:289-290`). | `proposed`; 2026-10-15 |
-| 2 | Confirm `decision_deadline` 2026-10-15, aligned with RFC-0021, or set another. | `proposed` |
-| 3 | A permanent approval of the exact closed-alpha scope above, and a separate go for each live action. | increment 2 |
+| 1 | Owner answered 2026-10-12: adopt identity v3 and both named profiles, including simultaneous connections in one install. Record permanent evidence and revise the single-realm design before implementation. | product direction received; design/evidence pending |
+| 2 | Owner answered: the product decision is made now, 2026-10-12. This is not a delivery date or architecture acceptance. | product answer received; permanent evidence pending |
+| 3 | Owner requested "maximum rights". Record the revised exact closed-alpha scope and permanent human confirmation; do not infer unlimited operational authority. | protected implementation |
 | 4 | Admission policy and bounded deployment authorization (isolation, rollback) for the chosen v3 servers: for example, open self-admission accepted for this alpha with the Sybil residual of ADR-0016:39-46, extending the REQ-ID-006 exception. | increment 3 |
 | 5 | The bridge: one static library with the restated lock rule (proposed), two libraries, or owner operations over `key-protocol`. | increment 2 |
 | 6 | The Devnet RPC through the system trust store for one host (proposed), optionally with a CA-set pin or a second provider. | increment 4 |
 | 7 | Owner signing behind a device-owner prompt (proposed) or a tap; and, on a phone without a passcode, a tap with a stated weaker guarantee or refusal. | increment 5 |
 | 8 | The owner entropy at rest as specified, readable only while unlocked (proposed). | increment 4 |
 | 9 | The words screens: the recorded rule (proposed) or the 2026-10-05 decision with a copy action, confirmed on GitHub, with RFC-0026 and the threat model aligned for Android too; and what an existing v2 install shows while v2 is stopped (clean reinstall only, proposed, or an in-app restart). | increments 4 and 8 |
-| 10 | The server screen: both v3 profiles to choose from, or one confirmation. | increment 5 |
+| 10 | Both v3 profiles, concurrently, are the owner's product choice. Design connection management and unambiguous per-realm targeting; an either/or selector is insufficient. | increment 5, revised design |
 | 11 | The sponsor only (proposed), or also the own-SOL and faucet fallback. | increment 7 |
 | 12 | Wording: say "Devnet" and confirm the canonical name before signing (RFC-0026:72, 226; proposed), or Android's wording. | increment 7 |
 | 13 | The login intent persisted as the protocol requires (proposed for iOS), and whether Android follows. | increment 5 |
@@ -1227,14 +1324,16 @@ The decision owner is `martadvix-web` for every item. Items 1 and 2 block
 
 ## Decision and follow-up
 
-- Disposition: pending.
+- Disposition: product direction received 2026-10-12; concurrent-realm design
+  revision, durable approval evidence and technical disposition pending.
 - Decision-owner approval permalink: pending.
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical authority only).
 - Required-review evidence permalinks: pending, namely the independent AI
   review of the exact revision.
-- Resulting ADR: to be drafted after question 1, with the next free number.
+- Resulting ADR: to be drafted for the revised concurrent-realm proposal, with
+  the next free number after checking published branches. No ADR is accepted.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: none.
