@@ -7,6 +7,19 @@ last_reviewed_scope: proposed concurrent-realm state, downgrade and media owners
 
 # Threat model
 
+## iOS common-owner disposition — 2026-10-13
+
+[The delegated technical owner](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+agrees to the concurrent-realm variant as the implementation basis, and selects
+common-owner correlation as a consequence of "nickname is identity", not an
+open question 19. The [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md)
+and [iOS delta](ios-identity-v3-threats.md) preserve disclosure, independent
+transport keys, compromise/replacement residuals and the absence of a
+cross-server anonymity claim. This is not product/scope approval, ADR acceptance,
+verified live topology or an implemented control. VDSina-first phone testing,
+separate Android second-realm capability, owner-confirmed Hetzner admission and
+per-action phone authorization constrain D5; MR-16 still needs both realms.
+
 ## iOS Devnet bridge component evidence — 2026-10-13
 
 The [C-ABI contract/receipt](../clients/ios/devnet-bridge.md) records a local

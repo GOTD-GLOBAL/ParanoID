@@ -3,7 +3,7 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-13
-last_reviewed_scope: C-ABI checks and exact-head Mac component receipt; new identity-v3 storage/runtime and MR gates remain NOT RUN
+last_reviewed_scope: recorded common-owner technical disposition and retained security residuals; new identity-v3 storage/runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -62,7 +62,16 @@ every MR execution gate remains NOT RUN.
 | Two audio controllers or a stale call callback capture/control the wrong realm | One app-wide owner-operation/call admission state, revocable CallTarget lease and acknowledged cleanup; realm-scoped fixed post-call drain | MR-05/10/11/12/15; late auth cannot sign during a call; a stuck teardown denies new calls, not independent text |
 | A flooded directory or unbounded waiters starve text/lifecycle safety | Bounded per-realm scheduling, cancellation/deadline removal, coalescing; lifecycle overflow stops/fences | MR-03/12; server-side availability and shared host contention remain |
 | Same nickname or short link ID causes a mistaken pair/send/share | Explicit textual realm targeting; proof plus registry check; reject ambiguous/unknown short-ID routing | MR-08/09; RPC trust/stale-card residuals remain |
-| One shared owner correlates both memberships and compromises both | Disclose correlation, scoped foreground signing, separate random transport keys | MR-14; no anonymity, seed-theft recovery or owner-key rotation claim |
+| One shared owner makes memberships linkable; its compromise affects both | Disclose the selected correlation consequence; retain scoped foreground signing and separate random transport keys | MR-14; common-owner variant selected in comment 6150510664, not an open question 19; no anonymity, seed-theft recovery or owner-key rotation claim |
+
+[Yaroslav's technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+selects a common owner and treats cross-server correlation as an accepted
+consequence of "nickname is identity", not an unresolved alternative. This
+does not erase observability or owner-compromise/replacement risks, assert
+cross-server anonymity or supply missing product/scope approval in PR #73.
+The first joint phone session is planned on VDSina; Android's second-realm
+capability and owner-confirmed Hetzner admission remain D5 dependencies.
+MR-16 is not satisfied by one realm, and each phone action needs its own go.
 
 Human risk owner remains `martadvix-web`. Permanent exact-scope approval,
 independent design review, implementation tests and device evidence are separate
@@ -161,8 +170,10 @@ The [exact-head Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#iss
 for `7a39897` adds reported native C smoke, xcframework regeneration and
 ParanoidKit 389/0. Its separately run simulator/Keychain and unsigned device
 checks exercise the unchanged old application, not owner storage/login or v3
-realm isolation. The complete wrapper failed, and the integrated PR76 head
-still needs a new Mac receipt. No mitigation is upgraded to phone assurance.
+realm isolation. A [second Mac receipt for 4aac29c](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150129691)
+now covers the integrated PR76 head: focused native and supplementary app checks
+passed, but full-wrapper gate 11 still stops and QR was 1 PASS / 3 FAIL. Neither
+receipt proves the new storage/runtime; no mitigation becomes phone assurance.
 
 The remaining controls and MR-01..16 execution remain proposed/NOT RUN. The
 older [feasibility record](../project/evidence/ios-identity-v3-20261006/feasibility-mac.md)
