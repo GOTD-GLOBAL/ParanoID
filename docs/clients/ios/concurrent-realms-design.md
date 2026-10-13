@@ -265,6 +265,68 @@ already authorized device-only traffic/status. Common disk/Keychain failure
 can still stop both. Complete loss/rollback of container and markers is not
 detectable anti-rollback; AEAD and the words do not restore message ratchets.
 
+### First implementation slice and unresolved storage details
+
+Read-only preflight against `bff84039a9098b19a3645fd4fd10b1d7d2b23e78`
+(the same package/app/bridge sources as Mac-tested `c1e9b90`) recommends a
+**catalogue-only durable bootstrap component** before owner recovery or login.
+This is a proposed implementation boundary, not delivered code or an additional
+architecture approval. The existing product/scope and review gates remain.
+
+In an explicitly fresh synthetic installation, commit a bounded v5 catalogue,
+reopen it with the same install identity and two fixed full RealmKeys, and refuse
+ambiguous continuity without deleting evidence. Owner and realm slots remain
+unallocated; no owner entropy, core identity, RPC or login is needed. Existing
+v4 installations remain unchanged. Do not integrate this component into app
+startup until the bootstrap distinction below is specified and tested.
+
+Complete these details in this storage contract and the implementation PR;
+do not silently choose them in code or treat the current design as executable:
+
+- **Exact catalogue schema:** field names/types, `minReader` interpretation,
+  installID/owner-reference encoding and the owner-allocation representation.
+  Owner allocation must be durable before entropy, just as realm allocation
+  precedes its first key/core creation. Existing duplicate-field, fixed-slot,
+  full-trust-pair and 64 KiB bounds still apply.
+- **Fresh Welcome versus lost catalogue:** `InstallMarker.swift:3-14` means the
+  container was opened, not that identity or a catalogue was committed.
+  `StorageGuard.swift:28-36` permits a marker-present, key-absent, file-absent
+  pristine Welcome restart. Define the first-catalogue creation point and how
+  a retained v5 installation is distinguished; do not reinterpret `install.v1`
+  or accidentally freeze this valid v4 case. Surviving owner/realm/temporary/
+  intent artifacts must still prevent stale-key deletion and fresh creation.
+- **Allocation versus restart:** a newly reserved slot may perform its first
+  commit only under an explicitly checked current-process creation authority.
+  The same allocated slot with missing key and file after restart is lost state,
+  not permission to generate new material. Specify the authority lifetime and
+  invalidation before implementing first writes.
+- **Locked owner versus failed commit:** the owner-key locked/read-only case
+  may retry after unlock as stated in the threat model. An uncertain write,
+  readback or sync stays a terminal failure with its evidence retained. Do not
+  collapse both into either a universal retry or the old store's broken latch.
+- **Before realm persistence:** specify complete framing and byte accounting
+  for the embedded raw Snapshot v4 and its metadata. The current 8 MiB
+  whole-plaintext codec cap does not implement the proposed enlarged realm
+  envelope; an object decode/re-encode is not verbatim preservation.
+
+Reusable framing is `SnapshotCodec`'s existing AES-GCM envelope, with the smaller
+catalogue bound enforced before sealing and a bounded file read before opening.
+`WrappingKeyStore` supports create/load/readback seams. Reuse those invariants,
+not the whole old `SnapshotStore.commit`: it creates a key before any new intent
+marker and removes its temporary file on failure (`SnapshotStore.swift:112-161`).
+The new sequence above instead syncs the intent and parent first and retains
+ambiguous artifacts. File inspection must distinguish true absence from an I/O
+or protected-data error; `FileSystem.fileExists -> Bool` alone cannot do that.
+
+First meaningful RED/GREEN cases are intent-parent-sync failure before any key
+or candidate creation; real-codec commit/reopen with final sync before success;
+failures at each commit boundary and leftover intent after restart; surviving
+artifacts before stale-key cleanup; unchanged v4 data and v4-reader refusal of
+v5; strict parser/size/context negatives. Test doubles must record full store
+paths, not just basenames, before claiming owner/fi/ru isolation. Place XCTest
+cases in the existing package target. Real CryptoKit/filesystem execution is a
+Mac gate, not a Linux source assertion or a missing-SDK compile failure.
+
 ## Per-realm login and recovery
 
 Every operation captures its full target before UI suspension or authentication.
