@@ -1,11 +1,42 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-12
-last_reviewed_scope: owner input expands RFC-0030 to concurrent servers; implementation and approval-evidence gaps explicit; older dated records retained
+last_reviewed: 2026-10-13
+last_reviewed_scope: concurrent-realm iOS design candidate and MR acceptance gates; no implementation or new live authority; older records retained
 ---
 
 # Current project state
+
+## iOS concurrent-realm design candidate — 2026-10-13
+
+At Yaroslav's request, RFC-0030 now links a
+[concrete design candidate](../clients/ios/concurrent-realms-design.md): one
+nickname owner, independent per-realm credentials/stores/lanes, a versioned
+install catalogue and one application-wide call/media arbiter. The catalogue
+at the legacy path is a proposed intact-catalogue downgrade barrier. If both
+legacy catalogue/key are lost while realm files survive, a v4-only reader
+may mistake them for a fresh install and is unsupported for rollback; the
+v5 reader must detect the surviving state and freeze. Storage crash,
+callback ownership, resource bounds, directory targeting and two-realm
+recovery are specified as proposed rules, not implemented capabilities.
+
+The old one-realm storage matrix, schedule and acceptance are replaced by the
+D0-D5 sequence and MR-01..16 test matrix. All MR runtime/device checks are
+NOT RUN. Source tracing supports an unchanged core/server/wire hypothesis,
+not an executed multi-realm result. No source code, live server or device has
+changed in this design task. Product approval provenance, exact alpha scope,
+independent design review and human technical disposition retain their gates;
+RFC-0030 remains draft and ADR-0014/0016 remain proposed. This design branch is
+based on unmerged owner-input PR #73; neither document is normative yet.
+
+The [independent design closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
+covers `71eda964b6f41986c0e85c43ed88676807f753df`: four initial documentation
+findings were corrected and re-reviewed without remaining blockers in that
+delta. Local checks and exact-design-head CI passed; this evidence-only update
+is not a new design review or runtime result. All MR gates remain NOT RUN.
+
+Next: human disposition and scoped approval evidence, then the applicable draft
+ADR/storage specifications and negative fixtures before dual-runtime networking.
 
 ## iOS owner direction: both servers concurrently — 2026-10-12
 

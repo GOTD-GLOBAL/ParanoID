@@ -5,8 +5,8 @@ decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 decision_deadline: 2026-10-12
 required_reviewers: []
-last_reviewed: 2026-10-12
-last_reviewed_scope: owner product direction and concurrent-server scope expansion; original design retained for revision
+last_reviewed: 2026-10-13
+last_reviewed_scope: concurrent-realm design candidate, storage and runtime ownership, revised increments and acceptance; implementation NOT RUN
 ---
 
 # RFC-0030: The iOS client on identity v3
@@ -66,16 +66,19 @@ owner's direct GitHub confirmation or the complete independently checkable
 Telegram provenance required by the documentation policy. No bot comment or
 merge may supply that missing human evidence.
 
-### Required revision before implementation of the expanded scope
+### Design revision for the expanded scope
 
-The original proposal below assumed one active realm and one messaging
-snapshot per installation. It does **not** implement or specify the requested
-concurrent use. That mismatch is explicitly reported here; it is not resolved
-by changing a server selector. The design, storage matrix, increments, effort
-estimate and acceptance table below are retained as the **single-realm
-baseline to revise**, not a ready implementation contract for two servers.
+The original proposal assumed one active realm and one messaging snapshot.
+On 2026-10-13, at Yaroslav's request, the
+[concurrent-realm design candidate](../clients/ios/concurrent-realms-design.md)
+revises that model: one owner, independent credentials/state and connections
+per realm, an app-level catalogue and a shared call/media arbiter. Those are
+proposed technical choices, not owner-approved architecture or implemented
+behavior. This RFC's storage, runtime, migration, sequence and acceptance
+sections now point to that candidate instead of the obsolete single-realm plan.
 
-The next design revision must address, without choosing these answers here:
+The linked draft proposes answers for the following areas; each remains
+subject to technical disposition, independent review and implementation tests:
 
 - whether and how a nickname/owner identity is shared, and the distinct
   membership, device-credential and replacement lifecycles for each realm;
@@ -126,7 +129,7 @@ This proposal touches these
 | --- | --- |
 | Identity, key derivation, recovery, and blockchain integration | BIP39 words, SLIP-0010 derivation and owner proofs on iOS; recovery from words; the Devnet registry |
 | Cryptographic algorithms and end-to-end encryption semantics | Ed25519 owner signing on iOS; E2EE unchanged |
-| Federation, protocol compatibility, persistence formats, event models, and public APIs | iOS speaks identity-login-v3 as specified; a second sealed file, a combined install matrix and the Devnet command contract on iOS; the RFC-0028 directory routes and the `paranoid.global/c/` link format on iOS |
+| Federation, protocol compatibility, persistence formats, event models, and public APIs | iOS speaks identity-login-v3 as specified; a versioned install catalogue, independent realm envelopes, a shared owner store and a scoped freeze matrix and the Devnet command contract on iOS; the RFC-0028 directory routes and the `paranoid.global/c/` link format on iOS |
 | Storage, data retention, and payment boundaries | the owner entropy kept on the phone |
 | The primary stack and foundational dependencies | `paranoid-devnet-client`, `bip39`, `ed25519-dalek-bip32`, the `solana-*` crates and `blake3` in the iOS graph |
 | Security boundaries and trust assumptions | further server pins; one system-trust RPC session; contacts bound by the directory proof and the registry read through the RPC instead of an in-person QR comparison (question 18); the phone's contact card listed to every member of its server by default |
@@ -158,7 +161,7 @@ Its evidence, item by item (`docs/governance/documentation-policy.md:155-183`):
    test into passing evidence by approving it.
 4. **Records:** this RFC and its ADR, the versioned contract
    ([identity-login-v3](../protocol/identity-login-v3.md), plus the iOS
-   Devnet command and store specifications that increments 2 and 4 add), the
+   Devnet command and store specifications that D1 and D3 add), the
    [threat delta](../security/ios-identity-v3-threats.md), the
    requirement-to-test mapping below, actual verification evidence, and every
    unmeasured item marked NOT RUN. Acceptance criteria for delivered
@@ -176,21 +179,25 @@ Its evidence, item by item (`docs/governance/documentation-policy.md:155-183`):
    communication, public release, any production, security or privacy claim,
    or expansion beyond the approved scope.
 
-Each implementation increment from 2 to 9 records items 1 to 6 again in its
-own pull request; increment 1 touches no protected domain.
+Each implementation step D1 to D5 records items 1 to 6 again in its own
+pull request. Independent non-protected cleanup can remain a separate change.
 
 Scope proposed for the owner's approval:
 
-- **Features:** increments 2 to 9 below: recovery of a nickname from 12 or 24
+- **Features:** D1 to D5 below: concurrent participation on both servers,
+  recovery of a nickname from 12 or 24
   words, v3 login with enrollment and explicit replacement, the nickname
   directory, sponsored Devnet registration from 12 new words, then the
   existing text, receipts and calls on a v3 server.
 - **Devices:** the contributor's iPhone 16 Pro Max as the only iOS device. The
   owner's Android phone is a peer only, with his explicit consent for each
   session. A spare Android, or a clean reinstall of the owner's application,
-  is needed only for an Android leg of the replacement test (question 14).
+  is not assumed available or authorized. MR-16 requires approved Android
+  peer coverage on each realm without resetting the owner's daily phone.
+  Device actions and any new App ID still require explicit authorization.
 - **Data:** synthetic accounts, nicknames and messages only.
-- **Environment:** the v3 endpoint or endpoints chosen in question 1; Solana
+- **Environment:** both named v3 endpoints, independently confirmed and scoped
+  before any live use, plus two isolated local realm/database fixtures; Solana
   Devnet through `https://api.devnet.solana.com` with program
   `C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas`; a local identity-v3 stand for
   development builds.
@@ -236,9 +243,12 @@ follows the contracts where Android does not:
   sponsor's expense;
 - then use the existing text, receipts and calls on that server, unchanged.
 
-A saved realm is never switched silently: an existing iOS install moves only
-by a clean reinstall. The directory depends on RFC-0028's own disposition;
-opening links by tap and invitations (RFC-0029) are later.
+The client proposes two independently joined realms under one owner. Both
+connections remain live while foreground delivery is permitted, regardless of
+which server's screen is visible. Existing v2 trust/state is never repointed;
+a fresh transition needs explicit authorization, and no in-place migration is
+implemented. The directory depends on RFC-0028's own disposition; opening links
+by tap and invitations (RFC-0029) are later.
 
 Nothing outside the iOS component boundary changes (`clients/ios/`, `docs/`
 and the allowlisted `.github/workflows/ios.yml`;
@@ -278,7 +288,8 @@ What it costs:
   registrations from a shared, finite budget;
 - the owner's time: the decisions below, a go for each live action, phone
   sessions, and confirming the state of the v3 servers;
-- about six to nine weeks elapsed ([increments](#implementation-increments)).
+- an expanded implementation and validation scope whose old single-realm
+  estimate is withdrawn ([increments](#implementation-increments)).
 
 ## Motivation
 
@@ -361,16 +372,17 @@ inventories the gap with evidence. In short:
 3. An iPhone and an Android user on the same server find each other by
    nickname through the directory, and after that text, receipts, voice and
    video calls work through the existing contracts.
-4. A saved realm is never switched silently; an existing install moves only
-   by a clean reinstall.
+4. Saved trust and legacy state are never switched silently. Fresh onboarding
+   and each replacement require explicit authorization; no automatic reset.
 5. Where Android deviates from a recorded contract, iOS follows the contract
    and the deviation is reported
    ([discrepancies](#discrepancies-found-while-preparing-this-rfc)). The one
    forced exception is the sponsor's blockhash (discrepancy 7).
 6. Nothing changes outside the iOS component boundary in the original baseline.
 7. The 2026-10-12 owner direction adds concurrent use of both v3 servers in
-   one installation. The design and component-boundary feasibility for that
-   expansion are pending; goals 1 to 6 alone do not satisfy it.
+   one installation. The linked design proposes independent per-realm
+   runtimes; feasibility is source-grounded, not runtime-tested. MR-01..16
+   are the added acceptance gates; goals 1 to 6 alone do not satisfy it.
 
 ### Non-goals
 
@@ -384,7 +396,8 @@ inventories the gap with evidence. In short:
   v2 accounts (the v2 server has no deletion path).
 - Several independent user identities and several active phones for one
   server membership. Concurrent participation on both v3 servers is now a
-  product goal; its identity/state model is unresolved, not excluded.
+  product goal; the linked common-owner/independent-state model is a
+  candidate for disposition, not an accepted decision.
 - An own-SOL or faucet fallback when the sponsor refuses (question 11).
 - Any typed server address or pin (REQ-ID-008;
   `docs/clients/ios/self-service.md:232-241`).
@@ -433,7 +446,7 @@ a zeroizing buffer, as the crate's JNI wrapper does (`lib.rs:387-405`). Its
 replies can carry the words or the entropy, so they are released only by
 `paranoid_devnet_free`, which overwrites the bytes first. The crate's own
 16384-byte input cap applies. The JSON contract is the one Android uses, and
-increment 2 records it as a versioned specification for iOS.
+step D3 records it as a versioned specification for iOS.
 
 Consequences, measured on 2026-10-06:
 
@@ -475,6 +488,10 @@ Consequences, measured on 2026-10-06:
 
 ### Server profiles
 
+The [concurrent design](../clients/ios/concurrent-realms-design.md#identity-and-ownership)
+defines full RealmKey ownership and independent runtimes. The following trust
+and route rules apply separately to each realm, not to one global active server.
+
 - The client keeps compiled server profiles as a list. Each entry holds the
   realm, the pin and the kind (v2 or identity v3). The owner chose both v3
   entries on 2026-10-12; these are the originally cited pins from Android,
@@ -491,12 +508,13 @@ Consequences, measured on 2026-10-06:
   (`docs/protocol/identity-login-v3.md:58-59`). It is never typed
   (`docs/clients/ios/self-service.md:232-233`), and a link never joins an
   unknown server. Question 10 now needs a design for managing both concurrent
-  connections, not a one-time either/or selector. The remaining bullets are
-  the original per-realm baseline.
+  connections, not a one-time either/or selector. The candidate server view
+  changes only UI scope, not which connection is active.
 - The kind of a saved realm comes from the compiled list. A Debug build that
   points at a local stand declares the kind with an explicit launch flag,
   checked together with the realm and the pin. The kind is never inferred
-  from `/health`, and no field is added to the snapshot wrapper.
+  from `/health`; the proposed app catalogue/realm envelope bind it explicitly.
+  The embedded core Snapshot v4 retains its current format.
 - Saved trust wins. A saved v2 realm stays v2. Nothing falls back from v3 to
   v2 or the other way (`docs/protocol/identity-login-v3.md:60`). The core
   refuses a realm change: a schema-0 state answers `identity_change_refused`
@@ -523,57 +541,33 @@ Consequences, measured on 2026-10-06:
 
 ### The Devnet secret at rest (question 8)
 
-The text identity's storage stays as it is: one Keychain item
-(`paranoid-text-state-v0`,
-`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/KeychainKey.swift:39-41`)
-wrapping one sealed snapshot, guarded by the install marker
-(`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/StorageGuard.swift:28-37`).
-The nickname owner material gets a second, independent pair, which mirrors
-Android's (`clients/android-devnet/src/org/paranoid/devnet/DevnetStore.java:12-21`):
+The former single-text-snapshot/two-pair matrix is replaced by the
+[versioned persistence candidate](../clients/ios/concurrent-realms-design.md#versioned-persistence-candidate):
+an app catalogue v5 at the legacy path, one separately wrapped owner envelope,
+and an independent realm envelope/wrapping key per joined server. Snapshot v4
+and core state remain embedded verbatim per realm. The owner store holds the
+registration-attempt ledger, not global login/revocation state.
 
-- **Keychain item.** A second generic-password item under Android's alias,
-  `paranoid.devnet.seed.v1`, holding only an AES-256 wrapping key. Its class
-  is `WhenUnlockedThisDeviceOnly`, not synchronizable. Owner operations are
-  foreground-only, and status and traffic never need the owner key, so nothing
-  needs it while the phone is locked. `errSecInteractionNotAllowed` means
-  "retry when unlocked", never "absent".
-- **Sealed file.** `devnet-state.enc` (AES-GCM), with file protection
-  `complete`, excluded from backup on its own inode before the rename.
-- **Write order** (RFC-0026:104-106; `DevnetStore.java:26-30,59-63`):
-  1. create the write-intent marker `devnet-write.pending`, sync it and its
-     directory;
-  2. write the sealed candidate with `F_FULLFSYNC`, rename it, read it back
-     byte for byte, and sync the directory;
-  3. remove the marker and sync the directory again.
-- **Contents.** The entropy, its genesis and program binding, the
-  backup-confirmed flag, the nickname, every sponsored and signed registration
-  attempt, the persisted login intent, and the "replaced" flag. The entropy is
-  never a Keychain value, because Keychain items survive deletion of the
-  application. A versioned specification of this format (version, AEAD
-  layout, schema and limits) comes with increment 4.
+Catalogue allocation prevents missing retained realm state from looking fresh.
+Each store uses durable intent, candidate write, protection/backup exclusion,
+full sync, rename, exact readback and directory sync before adoption. Missing
+allocated state, key/file XOR and incomplete commits freeze rather than reset.
+Owner lock/freeze does not stop intact device-only traffic; a realm failure
+contains to that realm only when common catalogue/sibling integrity is known;
+a catalogue/installation continuity failure stops all. No atomic Keychain/file
+transaction or cryptographic anti-rollback is claimed.
 
-The install-marker rule becomes a combined matrix with two frozen states.
-**Text-frozen** stops the whole application, as today. **Owner-frozen**
-disables the words, registration, login and replacement with a stated
-reason, while messaging and calls continue.
-
-| Marker | Files present | Result |
-| --- | --- | --- |
-| absent | any file of either pair, or `devnet-write.pending` | text-frozen before any deletion |
-| absent | none | both stale Keychain items deleted, then the marker recorded; a failed delete records nothing |
-| present | text key XOR text file | text-frozen |
-| present | Devnet key XOR Devnet file, or a leftover `devnet-write.pending` | owner-frozen |
-| present | each pair whole or absent | valid: a v2 install (text pair only), a nickname held but not logged in (Devnet pair only), or both |
-
-A stale Keychain item never recovers anything. A reinstall starts a new device
-ID. The nickname comes back only from the words, through a replacement, with
-fresh contacts and no history
-(`docs/decisions/0016-solana-server-authentication.md:55-58`).
-
-Nothing new goes into the core's state or the snapshot wrapper. Moving between
-builds therefore cannot leave an older build unable to open the snapshot.
+Question 8 now includes this multi-store layout, per-type bounds, protection,
+freeze policy and downgrade guard. All new storage/runtime behavior is NOT RUN;
+implement exact byte formats and negative fixtures before allowing networking.
 
 ### Owner signing (question 7)
+
+Owner work and call admission share the linked design's exclusive, epoch-bound
+[admission state](../clients/ios/concurrent-realms-design.md#per-realm-login-and-recovery).
+First admitted wins; there is no owner signer during a call on either realm.
+Cancellation retains dispatched intents as unknown outcomes and late auth
+callbacks cannot reacquire authority. Device-only status/traffic is separate.
 
 Owner operations run only from an explicit foreground screen and never during
 a call: registration (`sponsored_sign`), `inspect`, `enroll` and `replace`
@@ -696,6 +690,11 @@ application delegate adaptor).
 
 ### Login
 
+Each realm has its own candidate, intent and membership state. The
+[per-realm login design](../clients/ios/concurrent-realms-design.md#per-realm-login-and-recovery)
+is the revised orchestration; the unchanged cryptographic operations below
+are invoked only with the captured realm target.
+
 - **Proofs.** The device side uses core `identity_credential_v3` and
   `identity_device_proof_v3` (`clients/core/src/clean_service.rs:116-123`).
   The owner side uses Rust `identity_owner_proof_v3`
@@ -705,8 +704,8 @@ application delegate adaptor).
   server alone enforces the 60 s lifetime
   (`docs/protocol/identity-login-v3.md:163-169`).
 - **Order.**
-  1. `create_identity`, then commit the text snapshot with its readback,
-     before any `inspect`.
+  1. `create_identity`, commit the realm snapshot, run `upgrade_v2` and
+     commit schema-3 state before any identity-v3 proof or `inspect`.
   2. `status` with the device proof: `active` continues at step 6, which
      covers a lost `commit` reply; `revoked` or `banned` stops the flow.
   3. `inspect` with both proofs: `absent` leads to `enroll` at generation `0`;
@@ -717,14 +716,18 @@ application delegate adaptor).
      digest field, including the credential object and its fingerprint.
   5. `commit`; every retry reuses the sealed intent
      (`docs/protocol/identity-login-v3.md:127-128, 197-200, 226-231`).
-  6. Check that the result is `mode: active` with the account and device equal
-     to the phone's own credential, then commit `server_status_v2` into the
-     core.
-  7. Only then clear the intent.
+  6. Parse status separately: it returns only mode, generation and operation.
+     Compare with the retained candidate/intent; use an exact commit retry
+     when the full result is needed, never synthesize missing fields. A commit
+     result must match the realm's credential and retained operation. Persist
+     that result and core `server_status_v2` in one realm envelope.
+  7. Only then clear that realm's intent with another durable commit.
 
-  An intent that names a credential other than the core's current one is
-  discarded and reported, never committed. `409 generation_conflict` leads
-  only to a new, user-confirmed `inspect`.
+  An intent that disagrees with the retained core credential or realm causes
+  refusal and scoped freeze, preserving the original intent/core bytes. Never
+  discard it or start a replacement operation to bypass the inconsistency;
+  recovery requires a separately reviewed procedure. A normal, matching-intent
+  `409 generation_conflict` still requires a new user-confirmed `inspect`.
 - **Replacement confirmation.** It states:
   - the other phone is disconnected, and history and contacts are not
     transferred;
@@ -750,14 +753,15 @@ application delegate adaptor).
 
 ### A replaced phone and a peer that moved
 
-- **This phone was replaced.** A `401` or `409` from a v3 realm in ordinary
-  traffic runs the device-only status. `revoked` or `device_revoked` stops the
-  realtime lanes and seals the "replaced" flag, which forbids any later
-  enrollment of that credential. While the phone is locked the Devnet file
-  cannot be written, so the state is kept in memory and sealed after unlock;
-  a refused write is not a torn write. The screen says that this phone was
-  disconnected from the account, that a new installation and the words are
-  needed, and that the owner key still on this phone could move the login back.
+- **This realm's device was replaced.** Preserve the existing bounded
+  signed-session retry distinction before classifying an ambiguous 401.
+  Confirmed loss revokes only the matching media lease immediately; device-only
+  status classifies that realm without owner signing. `revoked` or
+  `device_revoked` stops that realm's lanes and records a realm-local terminal
+  flag, never a global flag in the locked owner store. No automatic enrollment
+  or key recreation follows; sibling state remains intact. Failed persistence
+  fences the runtime immediately and requires status reconciliation before
+  reconnect. Recovery choices and retained-owner takeover risk are disclosed.
 - **A peer that moved.** A send to a peer that replaced its phone answers
   `409 recipient_retired` (`server/src/self_service_messages.rs:72-87`). That
   envelope stops being offered, and the chat says that the contact moved to
@@ -801,11 +805,13 @@ disposed:
   lists members by default, iOS shows the switch on the last onboarding
   screen, before the first publication.
 - **A pasted link**, `https://paranoid.global/c/<server>/<nick>` or
-  `paranoid://c/<server>/<nick>`, compares `<server>` with the first 16 hex
-  digits of the phone's own pin, then runs an exact-name search and the same
-  add. A link for another server says that the phone is not connected to it
-  and that ParanoID does not join servers by links (`MainActivity.java:692-729`;
-  RFC-0028:79-86, 134-137).
+  `paranoid://c/<server>/<nick>`, uses the short ID only as a hint into the
+  compiled profile list. Zero or multiple matches refuse without a join or
+  pair; never use the short pin prefix as storage/security identity. One
+  already-joined match offers an explicit view switch, then the same scoped
+  search/add. An unjoined profile needs separate explicit onboarding; the link
+  performs none automatically. Keep the current chat/draft intact. See the
+  [routing design](../clients/ios/concurrent-realms-design.md#ui-directory-and-contact-links).
 - **What replaces the QR check.** Without QR and an in-person fingerprint
   check, a contact's binding rests on the directory proof and the registry,
   read through the trusted RPC. A dishonest RPC provider alone can pass a
@@ -814,6 +820,14 @@ disposed:
   section «Server member directory and contact links (RFC-0028)», applies.
 
 ### Registration
+
+The [owner phases](../clients/ios/concurrent-realms-design.md#versioned-persistence-candidate)
+distinguish allocated/unregistered material, a pending sponsored attempt and
+registry-confirmed binding. Commit material and pending ledger before signed
+network submission; do not require a confirmed nickname before the registration
+that creates it. Realm allocation waits until finalized binding is durably
+confirmed in both owner store and catalogue. Recovery keeps the separate rule:
+a failed/no-nickname read-only lookup writes no owner/realm state.
 
 1. Check the genesis, then the program accounts.
 2. Draw 16 random bytes (`SecRandomCopyBytes`) and pass them to
@@ -936,42 +950,32 @@ difference (`clients/ios/App/ParanoID/Screens/Identity.swift:133-158`).
 
 ### What does not change
 
-E2EE, the message and call wire formats, the server with its routes and
-limits, the key protocol, and Android. The core's state schema inside the
-existing wrapper is unchanged; only the wrapper's realm and pin are a v3 pair
-for a new install.
+E2EE, the message and call wire formats, server routes/limits, the key
+protocol and Android are intended to remain unchanged. Each realm embeds the
+existing core state and Snapshot v4. The app-level catalogue and realm-control
+envelopes are new versioned iOS formats, not a claim of unchanged storage.
+Two-realm source feasibility does not replace implementation boundary tests.
 
 ## Implementation increments
 
-Each increment is one pull request inside the iOS component boundary, with a
-Mac receipt on its exact head. Recovery, login and the directory come before
-registration: after increment 6 an iPhone can join a v3 server with a
-nickname whose words come from Android and find other members by nickname.
+The original single-realm sequence and six-to-nine-week estimate no longer
+size the requested feature. No replacement delivery estimate is asserted.
+Each increment is a separately reviewed PR with exact-head Mac evidence when
+it changes Swift/runtime behavior; the final dual-realm acceptance is not met
+by adding two profiles or by old one-realm receipts.
 
-| # | Increment | Needs | Size |
-| --- | --- | --- | --- |
-| 0 | This RFC, the gap analysis, the feasibility evidence, the threat delta, and the caption-contract fix for the six captions Android v47 and v48 removed | — | this pull request |
-| 1 | Resync with `main`: `java_deps.sh`, the caption pairs PR #69 commented out, the stale `FLAG_SECURE` statements, and a plain message for a contact or a link from another server | question 16 | S |
-| 2 | Bridge: the Devnet crate, both exports, the lock rule, `blake3/pure`, notices, CI paths, host tests with the public vectors, the Devnet command specification | questions 1, 2, 3 and 5 | M |
-| 3 | ParanoidKit: the profile list, health and paths by kind, discovery first, no automatic repeat on identity routes, realtime on v3; a local identity-v3 stand with a registry fixture; the v2 path regression-tested on the v2 stand | questions 4 and 15 | M |
-| 4 | Devnet store, RPC session, the Swift chain checks with Android's negative cases, recovery and its screens, the store specification | questions 6, 8 and 9 | L |
-| 5 | Login: status, inspect, enroll, replace, the persisted intent, the owner prompt, the server screen, the replaced and moved states | questions 7, 10 and 13 | L |
-| 6 | Directory: search by nickname, the verified add, the own contact card and visibility, a pasted `paranoid.global/c/` link resolved through the directory | RFC-0028's disposition; question 18 | M |
-| 7 | Registration: the words, the nickname, the sponsored exchange, the attempt ledger | questions 11 and 12 | M |
-| 8 | Remaining screens: «Мой ID» states with the nickname, the words shown again, the notice for an existing v2 install, captions | question 9 | M |
-| 9 | Device validation, each live action with its go | questions 14 and 17 | M |
+| Step | Deliverable | Gate |
+| --- | --- | --- |
+| D0 | This design revision, threat/test mapping and alternatives | permanent product/scope evidence, independent review, technical disposition and draft ADR before protected implementation |
+| D1 | Versioned catalogue/owner/realm stores, allocation/commit/freeze rules, downgrade guard and scoped metadata | questions 8, 9, 17; MR-06/07/14 |
+| D2 | Typed runtime/peer/call targets, independent foreground lanes, bounded queues and lifecycle fan-out; one call/media arbiter | MR-02/03/09/10/11/12 |
+| D3 | Existing Rust Devnet bridge/lock/notices; owner storage/RPC; per-realm login and recovery | original questions 5, 6, 7, 13, 15; MR-01/04/05/13 |
+| D4 | Directory/visibility, explicit per-server UI, safe pasted-link routing and one sponsored nickname registration | RFC-0028 disposition; questions 11, 12, 18; MR-08/09/13 |
+| D5 | Full two-realm Mac/stand matrix, old-v2 regressions, then separately authorized device/Android-peer evidence | original question 4 remote admission, questions 14/17 and all MR gates |
 
-**Effort.** Android's v3 client is about 1,300 lines in
-`clients/android-devnet/src` plus smaller changes across six files in
-`clients/android/src`, over the shared Rust; its directory adds the search,
-add, visibility and link code in `MainActivity.java` and `RealtimeLoop.java`.
-In this repository iOS sources run at about 4.2 times Android's line count
-(1.4 times by non-comment bytes), and iOS tests add about three quarters
-again. That suggests about 7,000 lines of Swift and 5,000 lines of tests, with
-a new stand mode and cross-tests. Increments 2 to 9 take about six to nine
-weeks elapsed, four to six of them contributor work. This assumes questions 1
-to 4 and RFC-0028's disposition by the deadline, a stand available in the
-first week, and owner sessions within a week of each request.
+The [design sequence](../clients/ios/concurrent-realms-design.md#implementation-sequence-and-decision-gates)
+explains dependencies. This does not widen the allowed component boundary or
+turn owner source-work authority into permission for hosted actions.
 
 ## Alternatives
 
@@ -979,8 +983,8 @@ first week, and owner sessions within a week of each request.
 | --- | --- |
 | Keep iOS on v2 | The v2 service is stopped, so the client would have no server at all. |
 | Move iOS to v3 without a nickname | v3 has no self-registration: `/v2/registration/` answers `404`. It would need a server change and an admission policy that does not exist (`docs/protocol/identity-login-v3.md:40-42`). |
-| Recovery, login and the directory only, registration later | This is the first milestone of the proposed order (increments 4 to 6). Stopping there would leave an iOS user without an Android unable to obtain a nickname (REQ-ID-003, REQ-ID-004), so registration stays in scope. |
-| Two identities in one install | Originally excluded under RFC-0021. The 2026-10-12 owner direction now requires concurrent participation on both servers (REQ-MULTI-001); the identity and state-isolation design is reopened, not selected by this record. |
+| Recovery, login and the directory only, registration later | This can be an intermediate milestone within D3/D4, not final delivery. Stopping there would leave an iOS user without an Android unable to obtain a nickname (REQ-ID-003, REQ-ID-004), so registration stays in scope. |
+| Independent identities for each server | Both servers are required, but two unrelated nickname owners are not. The new candidate prefers one owner and independent per-realm transport state, with correlation disclosed; still subject to disposition. |
 | Two static libraries | Each would keep its Android lock exactly, and they linked into one executable on 2026-10-06 without duplicate-symbol errors. But both carry their own `std` and shared crates, and whether the linker keeps resolving the duplicated members depends on each future toolchain and graph. |
 | Owner operations rebuilt inside the iOS bridge over `key-protocol` | `key-protocol` already has the transcript, PDA and record checks (`key-protocol/src/identity_v3.rs`), and the server builds the registration message with `key-protocol` alone, without any `solana-*` crate (`server/src/sponsor.rs:102-149`). The lock rule would hold, but BIP39, SLIP-0010 and the transaction would get a second implementation that no Android test exercises, contrary to RFC-0026:174-175 (draft). |
 | Owner cryptography in Swift | Contrary to RFC-0026:174-175 (draft); a second implementation of key derivation and transaction building. |
@@ -1032,22 +1036,23 @@ details. In short:
 
 ## Compatibility and migration
 
-- **Existing iOS installs** keep their saved v2 trust and are never switched
-  silently. With the v2 service stopped they cannot connect. The way forward
-  is a clean reinstall: delete the app, install it, onboard on v3. The phone
-  gets a new ID, and v2 contacts and history stay behind, because the pin is
-  part of the contact transcript (`docs/rfcs/0021-ios-client.md:550`). The v2
-  accounts stay on that server, which has no deletion path. Question 9 chooses
-  between this and an in-app restart, and what a v2 install shows meanwhile.
-- **Rollback.** An older build on a clean install creates a new v2 identity,
-  which is itself a live registration, against a stopped service. The v3
-  membership and the nickname remain on the server and on chain.
-- **Downgrade over an installed v3 build.** An older build reads a v3 realm,
-  refuses the health protocol and stops. Installing a v3-capable build over it
-  restores service; deleting the app loses the identity and needs the words.
-- **v2 and v3 users cannot pair** until a federation or a bridge exists.
-- **Server.** No change. A v3 database reset makes active iPhones `absent`,
-  and they log in again explicitly.
+The [failure/migration design](../clients/ios/concurrent-realms-design.md#failure-migration-and-rollback)
+replaces the old unchanged-wrapper/health-only downgrade claim. An intact
+catalogue v5 and key at the legacy location make the audited v4 reader refuse
+before runtime construction. If both legacy objects are lost while realm files
+survive, that old reader may instead see a fresh install; it is unsafe and
+unsupported for rollback. The new reader must scan and freeze in that case.
+Old-new-old-new fixture tests must distinguish those outcomes. Only a compatible
+v5-reading client or a stopped preserved installation is a supported rollback.
+
+Existing v2 state/trust is retained without automatic in-place conversion.
+Fresh onboarding or a separate development App ID needs explicit authority;
+no deletion/reinstall is performed by this RFC. Words restore owner authority,
+not either realm's message keys/history. Restoration and any replacement happen
+independently per membership; partial recovery is visible, not rolled back.
+Rollback preserves state in a compatible v5-reading client or stops it; never
+remove the guard, restore old ratchets or lower server generations. Different
+realms still cannot pair or forward messages without separate federation work.
 
 ## Operations and observability
 
@@ -1065,27 +1070,23 @@ permalink in the evidence:
 - each replacement, at most seven per membership and one per 24 hours;
 - each joint test with the owner's Android phone.
 
-Proposed budget for increment 9 (question 14):
+Proposed physical acceptance boundary (question 14; D5), not authorization:
 
-- one nickname created on the iPhone, and its enrollment;
-- one replacement from the iPhone to the iPhone itself through a clean
-  reinstall, recovering the nickname from the words;
-- a joint test with the owner's Android on the same server, each phone under
-  its own nickname: each finds the other in the directory, then text and
-  calls; each phone also publishes its directory card.
+- one explicit nickname registration, through one selected sponsor; then
+  separately confirmed enrollments of that owner on both named servers;
+- one separately approved replacement on each server if the agreed test budget
+  permits, with exact generation/cooldown effects recorded, never automatic
+  repeats or a reset of the owner's daily phone;
+- real Android peer coverage on each realm, using approved test peers or named
+  sessions; do not assume the current Android joins both concurrently;
+- the iPhone remains joined to both while text/receipts operate on each and a
+  call on one does not stop text on the other (MR-16).
 
-An Android leg of the replacement test needs a spare Android or a clean
-reinstall of the owner's application, which loses that phone's identity and
-contacts and spends one of his generations and a 24-hour cooldown. It is
-included only if the owner chooses it.
-
-Increment 9 starts with the owner confirming the state of the chosen v3
-server: its build and schema, whether the sponsor is configured, and its
-balance. The PR #67 schema initializes only an empty database
-(`server/src/identity_v3.rs:83-87`).
-
-Development builds should not replace the contributor's daily install, or
-switching between heads can freeze it (question 17).
+Before any live step, record the chosen device/app ID, endpoint/build/schema,
+synthetic accounts, operation counts, sponsor budget and rollback/stop plan.
+A spare device, new Apple App ID, reinstall, DB reset or fault injection is not
+implicitly authorized. Local two-DB fixtures cover destructive/race scenarios;
+phone acceptance and remote admission still need the owner's bounded go.
 
 Any distribution beyond the contributor's phone reopens Apple questions that
 this RFC does not answer:
@@ -1103,6 +1104,10 @@ The two App Review points are guidelines 5.1.1(v) and 3.1.5(i), to be checked
 against Apple's current text before any upload.
 
 ## Validation plan
+
+The [MR-01..16 matrix](../clients/ios/concurrent-realms-design.md#requirement-and-acceptance-mapping)
+adds the concurrent-realm acceptance gates. All remain NOT RUN; the historical
+feasibility evidence below covers neither them nor the new storage format.
 
 ### Done on 2026-10-06 (build Mac)
 
@@ -1135,7 +1140,7 @@ through `2470dca`, change only Android files. None of it is phone evidence.
     (question 15).
   - `clients/ios/local_stand.py` knows only `self-service-v2-local`
     (`:71-72`), and `clients/ios/test_android_compatibility.py` has no v3
-    operation. Increment 3 adds the identity-v3 mode and a v3 scenario.
+    operation. Step D2 adds the identity-v3 mode and a v3 scenario.
   - Every pull request that touches the profiles, health, transport or
     `ProofFlow` also runs the v2 path on the v2 stand.
   - RPC flows use an injected fake transport. Simulators never touch Devnet or
@@ -1162,20 +1167,21 @@ The statuses follow `docs/clients/ios/verification.md:110-114`.
 
 ### Acceptance criteria (proposed; the owner confirms)
 
-The setup is the contributor's iPhone and the owner's Android, each with its
-own nickname, on the same v3 server.
+The [MR-01..16 matrix](../clients/ios/concurrent-realms-design.md#requirement-and-acceptance-mapping)
+is the concurrent-realm acceptance contract proposed for confirmation, in
+addition to the existing AUTH and per-feature gates. One-server success is
+insufficient. The iPhone must remain joined to both realms, with independent
+E2EE text/receipts, directory verification, recovery and failure containment.
+Call consent/resources remain globally single-call; text on the other realm
+continues. Both directions, restart, wrong-realm callbacks, partial commits,
+revocation, UI targeting, queue limits and downgrade refusal require evidence.
 
-- The iPhone creates and registers a nickname and logs in.
-- The iPhone and the Android find each other by nickname in the directory,
-  each add passing the registry check, and they exchange text with receipts,
-  a voice call and a video call.
-- After a clean reinstall, the iPhone recovers the nickname from the words and
-  replaces its earlier device, with the disclosed consequences.
-- Every iOS gate is green, with a Mac receipt on the exact head.
-
-No two-phone exchange through a v3 server is recorded yet, even between two
-Android phones. A failure is therefore attributed to iOS only if it reproduces
-on the local stand, or if two Android phones succeed on the same server.
+A real Android peer is exercised on each realm without assuming multi-server
+Android support or silently resetting the owner's device. Exact-head Mac,
+physical iPhone/media and server/peer receipts are separate. All added MR gates
+remain NOT RUN; pre-existing one-realm receipts cannot be relabeled as coverage.
+A hosted failure must be investigated against isolated fixtures and known peer
+behavior, not automatically attributed to iOS or silently waived.
 
 ## Discrepancies found while preparing this RFC
 
@@ -1259,8 +1265,9 @@ names another. Documentation drift that does not affect iOS is in
 
 ## Amended statements
 
-None of these documents is edited in this pull request. Editing RFC-0021 or
-ADR-0014 would move their "exact review revision" gate
+The requirement and threat records are updated for traceability, not technical
+acceptance. RFC-0021 and ADR-0014 remain unchanged; editing either would move
+their "exact review revision" gate
 (`docs/rfcs/0021-ios-client.md:530-532`;
 `docs/decisions/0014-ios-client.md:23-26`).
 
@@ -1268,11 +1275,11 @@ ADR-0014 would move their "exact review revision" gate
 | --- | --- | --- |
 | RFC-0021 (proposed) `:92-100` | the existing hosted alpha; "no new key material format and no new trust anchor" | identity v3 servers; the owner entropy, further pins and one system-trust session |
 | RFC-0021 `:151-152`; ADR-0014 (proposed) `:44-47` | the identity reference is Android v15 against the same hosted alpha | Android's current client for identity v3, contracts first |
-| RFC-0021 `:188-190` | non-goals: identity recovery, a second realm, blockchain naming, server selection UX | recovery and blockchain naming added; both compiled v3 profiles requested; the 2026-10-12 direction removes the former exclusion of two concurrent realms in one install, with that design pending; server trust remains explicit; several active phones per membership still excluded |
+| RFC-0021 `:188-190` | non-goals: identity recovery, a second realm, blockchain naming, server selection UX | recovery and blockchain naming added; both compiled v3 profiles requested; the 2026-10-12 direction removes the former exclusion of two concurrent realms in one install, with a concurrent-state design candidate now linked; server trust remains explicit; several active phones per membership still excluded |
 | RFC-0021 `:200-203`; ADR-0014 `:86-93` | the bridge depends on the core alone and exports `paranoid_core_command` and `paranoid_core_free` | plus the Devnet crate and two Devnet exports |
 | RFC-0021 `:281-283`; ADR-0014 `:112-119,138-147`; `docs/security/ios-client-threats.md:30,77` | leaf-SPKI pinning, "not by delegating to system trust", "never on a CA chain" | unchanged for every ParanoID server; one system-trust session to the Devnet RPC |
 | RFC-0021 `:306-313`; `clients/ios/README.md:1904-1912` | "Not touched: identity derivation, key material"; one realm and pin, no second pin | iOS gains owner key material and a list of compiled profiles; saved trust still wins |
-| RFC-0021 `:376-377` | no migration: no previous iOS state | existing v2 installs move only by a clean reinstall |
+| RFC-0021 `:376-377` | no migration: no previous iOS state | preserve existing v2 state; explicitly authorized fresh transition, no automatic migration/reset; v5 catalogue downgrade guard requires binary tests |
 | RFC-0021 `:513-526`; ADR-0014 `:33-35,52-55` | closed-alpha scope: hosted self-registration, QR exchange in both directions, the existing hosted endpoint only; four protected domains | nickname registration, the directory add, the v3 servers and the Devnet RPC; the domains in the rationale above |
 | `docs/product/requirements.md:34` (REQ-ID-007) | add contacts through explicitly verified public QR key bindings | contacts added by nickname through the directory and the registry if question 18 is answered that way |
 | ADR-0014 `:266-269`; `clients/ios/test_app_bundle.py:10,70` | one bundle identifier, `global.paranoid.messenger` | a development-only second App ID if question 17 is taken; Release unchanged |
@@ -1298,43 +1305,51 @@ ADR-0014 gets a pointer to it when both are disposed.
 
 The decision owner is `martadvix-web` for every item. Product answers to
 items 1 and 2 were received on 2026-10-12 as recorded above; permanent evidence,
-the concurrent-realm design revision and the remaining review gates still block
+technical disposition of the concurrent-realm candidate and the remaining review gates still block
 `proposed`. "Maximum rights" does not answer the other technical questions.
 
 | # | Question (proposed answer) | Needed by |
 | --- | --- | --- |
-| 1 | Owner answered 2026-10-12: adopt identity v3 and both named profiles, including simultaneous connections in one install. Record permanent evidence and revise the single-realm design before implementation. | product direction received; design/evidence pending |
+| 1 | Owner answered 2026-10-12: adopt identity v3 and both named profiles, including simultaneous connections in one install. Record permanent evidence and dispose of the linked concurrent-realm design before implementation. | product direction received; design/evidence pending |
 | 2 | Owner answered: the product decision is made now, 2026-10-12. This is not a delivery date or architecture acceptance. | product answer received; permanent evidence pending |
 | 3 | Owner requested "maximum rights". Record the revised exact closed-alpha scope and permanent human confirmation; do not infer unlimited operational authority. | protected implementation |
-| 4 | Admission policy and bounded deployment authorization (isolation, rollback) for the chosen v3 servers: for example, open self-admission accepted for this alpha with the Sybil residual of ADR-0016:39-46, extending the REQ-ID-006 exception. | increment 3 |
-| 5 | The bridge: one static library with the restated lock rule (proposed), two libraries, or owner operations over `key-protocol`. | increment 2 |
-| 6 | The Devnet RPC through the system trust store for one host (proposed), optionally with a CA-set pin or a second provider. | increment 4 |
-| 7 | Owner signing behind a device-owner prompt (proposed) or a tap; and, on a phone without a passcode, a tap with a stated weaker guarantee or refusal. | increment 5 |
-| 8 | The owner entropy at rest as specified, readable only while unlocked (proposed). | increment 4 |
-| 9 | The words screens: the recorded rule (proposed) or the 2026-10-05 decision with a copy action, confirmed on GitHub, with RFC-0026 and the threat model aligned for Android too; and what an existing v2 install shows while v2 is stopped (clean reinstall only, proposed, or an in-app restart). | increments 4 and 8 |
-| 10 | Both v3 profiles, concurrently, are the owner's product choice. Design connection management and unambiguous per-realm targeting; an either/or selector is insufficient. | increment 5, revised design |
-| 11 | The sponsor only (proposed), or also the own-SOL and faucet fallback. | increment 7 |
-| 12 | Wording: say "Devnet" and confirm the canonical name before signing (RFC-0026:72, 226; proposed), or Android's wording. | increment 7 |
-| 13 | The login intent persisted as the protocol requires (proposed for iOS), and whether Android follows. | increment 5 |
-| 14 | The live-action budget for increment 9, whether it includes an Android leg of the replacement test, and the confirmed state of the chosen v3 server. | increment 9 |
-| 15 | The local identity-v3 stand: the server portability fix, or a Linux container on the build Mac. | increment 3 |
-| 16 | The call screen: keep covering video during capture, which is stricter than Android since 2026-10-05 (proposed), or follow Android. The iOS documents that describe Android's call window as protected are corrected either way. | increment 1 |
-| 17 | Development builds under a separate bundle identifier (proposed), which needs a new App ID in team `5RPGVC566Q` and a development exception in `clients/ios/test_app_bundle.py`, or one install with a clean reinstall at each change of realm. | increment 9 |
-| 18 | Contact exchange: by nickname through the directory only, with QR removed on both clients (proposed: the direction relayed by the contributor on 2026-10-06), or QR kept alongside; REQ-ID-007 amended to match either way. | increment 6 |
+| 4 | Admission policy and bounded deployment authorization (isolation, rollback) for the chosen v3 servers: for example, open self-admission accepted for this alpha with the Sybil residual of ADR-0016:39-46, extending the REQ-ID-006 exception. | before any remote step; D5 |
+| 5 | The bridge: one static library with the restated lock rule (proposed), two libraries, or owner operations over `key-protocol`. | step D3 |
+| 6 | The Devnet RPC through the system trust store for one host (proposed), optionally with a CA-set pin or a second provider. | step D3 |
+| 7 | Owner signing behind a device-owner prompt (proposed) or a tap; and, on a phone without a passcode, a tap with a stated weaker guarantee or refusal. | step D3 |
+| 8 | The catalogue/owner/per-realm envelope design, typed size limits, allocation/commit/freeze rules and downgrade barrier; owner entropy readable only while unlocked (proposed). | step D1 |
+| 9 | The words screens: the recorded rule (proposed) or the 2026-10-05 decision with a copy action, confirmed on GitHub, with RFC-0026 and the threat model aligned for Android too; and the retained-v2 notice/fresh-transition policy (proposed: no automatic migration or reset). | D1 transition; D3/D4 words/UI |
+| 10 | Both v3 profiles concurrently are the product choice. The linked scoped-view/independent-runtime UI is proposed for confirmation; an either/or selector is insufficient. | D2/D4 |
+| 11 | The sponsor only (proposed), or also the own-SOL and faucet fallback. | step D4 |
+| 12 | Wording: say "Devnet" and confirm the canonical name before signing (RFC-0026:72, 226; proposed), or Android's wording. | step D4 |
+| 13 | The login intent persisted as the protocol requires (proposed for iOS), and whether Android follows. | step D3 |
+| 14 | The live-action budget for step D5, whether it includes an Android leg of the replacement test, and the confirmed state of the chosen v3 server. | step D5 |
+| 15 | The local identity-v3 stand: the server portability fix, or a Linux container on the build Mac. | step D2 |
+| 16 | The call screen: keep covering video during capture, which is stricter than Android since 2026-10-05 (proposed), or follow Android. The iOS documents that describe Android's call window as protected are corrected either way. | separate UI cleanup / D2 |
+| 17 | Development builds under a separate bundle identifier (proposed), which needs a new App ID in team `5RPGVC566Q` and a development exception in `clients/ios/test_app_bundle.py`, or an explicitly authorized fresh same-bundle installation with the tested v5 downgrade barrier. Switching between joined server views requires no reinstall. | D1 compatibility; D5 devices |
+| 18 | Contact exchange: by nickname through the directory only, with QR removed on both clients (proposed: the direction relayed by the contributor on 2026-10-06), or QR kept alongside; REQ-ID-007 amended to match either way. | step D4 |
+| 19 | One common nickname owner with independent per-realm credentials/memberships (recommended candidate), accepting correlation and per-realm partial recovery, or separate owner identities. | design disposition before D1 |
+| 20 | One application-wide call/media arbiter, typed target leases, scoped UI and bounded scheduling as specified in the linked candidate (recommended), including the finite queue limits. | design disposition before D2 |
 
 ## Decision and follow-up
 
 - Disposition: product direction received 2026-10-12; concurrent-realm design
-  revision, durable approval evidence and technical disposition pending.
+  candidate drafted 2026-10-13; durable scope approval, technical disposition
+  and implementation evidence remain pending.
 - Decision-owner approval permalink: pending.
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical authority only).
-- Required-review evidence permalinks: pending, namely the independent AI
-  review of the exact revision.
+- Design-review evidence: [independent review and closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6142060431)
+  on design revision `71eda964b6f41986c0e85c43ed88676807f753df`. Two initial
+  fresh-context gpt-6-astra reviews found four P2 contradictions; another
+  fresh-context delta review closed them. Same-model blind spots remain.
+  This is scoped draft-design review, not human acceptance or implementation
+  evidence. Any changed design and every implementation still need their own
+  exact-revision review; this citation-only tail does not relabel the reviewed SHA.
 - Resulting ADR: to be drafted for the revised concurrent-realm proposal, with
   the next free number after checking published branches. No ADR is accepted.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: none.
-- Implementation issues: increments 1 to 9 above.
+- Implementation issues: D0-D5 and MR-01..16 above; no implementation is started.

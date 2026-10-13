@@ -62,8 +62,10 @@ Follow the human authority and acceptance-evidence rules in the
   the same Rust crates as Android; a saved v2 realm is never switched
   silently. On 2026-10-12 the owner requested both v3 servers concurrently
   in one installation, expanding the single-realm proposal (REQ-MULTI-001).
-  Nothing is implemented; the revised design, exact-scope permanent approval
-  evidence and independent review are pending.
+  The [concurrent-realm candidate](../clients/ios/concurrent-realms-design.md)
+  proposes independent state/lanes, a shared owner and a global call arbiter,
+  with MR-01..16 acceptance. Nothing is implemented; exact-scope permanent
+  approval evidence, technical disposition and design review remain gates.
 
 - [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
   (draft, written in Russian, decision deadline 2026-10-14): a single-use

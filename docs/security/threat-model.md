@@ -1,11 +1,22 @@
 ---
 status: draft
 owner: security
-last_reviewed: 2026-10-12
-last_reviewed_scope: concurrent-server iOS threat questions for RFC-0030; older dated records retained
+last_reviewed: 2026-10-13
+last_reviewed_scope: proposed concurrent-realm state, downgrade and media ownership controls for RFC-0030; older records retained
 ---
 
 # Threat model
+
+## iOS concurrent-realm design controls — 2026-10-13
+
+The [RFC-0030 candidate](../clients/ios/concurrent-realms-design.md) proposes
+independent realm credentials/stores/lanes under one owner, an authenticated
+install catalogue/downgrade barrier and one global call/media arbiter. The
+[iOS delta](ios-identity-v3-threats.md#concurrent-server-expansion--2026-10-12)
+maps cross-realm confusion, partial loss, old-reader reset, stale media leases,
+resource starvation and correlation to MR-01..16. All controls and execution
+remain proposed/NOT RUN; the code, accepted decisions and live authority are
+unchanged. Source feasibility is not a security audit or device evidence.
 
 ## iOS concurrent-server scope input — 2026-10-12
 
@@ -531,7 +542,7 @@ interruption. Public deployment is not authorized by local task scope.
 second client adds without changing a wire contract: Keychain and Data
 Protection with the install-marker reinstall rule, leaf-SPKI evaluation on
 `Security.framework` instead of system trust with
-[App Transport Security off](ios-client-threats.md#app-transport-security-is-off-and-why-that-removes-nothing)
+[App Transport Security off](ios-client-threats.md#app-transport-security-is-off-compensating-checks-and-limits)
 (it refused the self-signed leaf on a public IP before the pinning delegate
 ran; found on the phone against the hosted server), the digest-pinned WebRTC
 binary, foreground-only delivery that leaves boundary 8 unused, Apple as a
