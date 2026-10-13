@@ -3,10 +3,29 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-13
-last_reviewed_scope: Swift facade bounds/decoding/ownership component evidence and retained residuals; new identity-v3 storage/runtime and MR gates remain NOT RUN
+last_reviewed_scope: in-memory catalogue parser/context component and retained residuals; durable identity-v3 storage/runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
+
+## In-memory catalogue component — 2026-10-13
+
+The [bootstrap codec proposal](../clients/ios/concurrent-realms-design.md#proposed-in-memory-bootstrap-encoding)
+now has isolated executable syntax/context controls: raw 64 KiB admission before
+parser copies, strict UTF-8, nonrecursive schema-directed parsing with bounded
+strings/containers, duplicate decoded-key refusal, and expected install ID plus
+both complete realm trust tuples. Fixed error categories do not echo payloads.
+A deterministic encoder only accepts immutable validated public metadata.
+Twenty-eight native XCTest methods pass in isolated debug and release runs;
+new-head Mac/full-package execution and independent source review are separate.
+
+These controls do not authenticate caller context, prove a fresh installation,
+check owner-reference continuity beyond UUID grammar, seal data, enforce durable
+allocation or detect rollback. Only unallocated/null-binding catalogues are
+supported. There is no new cryptography, key/entropy generation, filesystem,
+Keychain, network, migration or app-startup integration. Legacy storage and
+codecs are unchanged. Formal #73 provenance, ADR/adoption and every full MR gate
+remain open; parsing success is not authority to create or replace an identity.
 
 ## Swift facade component evidence — 2026-10-13
 
@@ -16,8 +35,10 @@ decodes native replies, rejects Foundation's trailing-comma extension outside
 quoted strings, and delegates each non-NULL allocation to the Devnet
 free exactly once, including thrown error/parse paths. Its XCTest coverage uses
 real Rust public vectors for positive behavior and explicit terminated buffers
-only for native contract faults. Isolated Swift/native component runs pass;
-Mac package/app/device evidence for the new Swift source remains NOT RUN.
+only for native contract faults. Isolated Swift/native component runs pass.
+The later [exact c1e9b90 Mac receipt](../project/evidence/ios-identity-v3-20261013/native-mac-receipts.md)
+records the full package and unsigned iOS compilation for that facade, not this
+new catalogue component; application/device execution remains NOT RUN.
 
 The facade neither normalizes/signs cryptographic bytes in Swift nor performs
 network or persistence actions. Swift text/dictionary copies are not guaranteed

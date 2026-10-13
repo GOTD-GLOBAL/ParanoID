@@ -138,6 +138,33 @@ The archives keep rustc's default minimum OS versions (iOS 10.0, simulator
 is applied by the application target, which links these older-minimum static
 libraries without a warning.
 
+## In-memory catalogue bootstrap (proposal component)
+
+`IdentityCatalogue`, its nested `Realm`/`Realms` values and
+`IdentityCatalogueCodec.encode(_:)` / `decode(_:expectedInstallID:expectedRealms:)`
+implement the [proposed bootstrap encoding](../../docs/clients/ios/concurrent-realms-design.md#proposed-in-memory-bootstrap-encoding).
+This is public metadata in memory only: v5/minReader5, fixed fi/ru slots,
+all-unallocated state and a null registry binding. Allocated/bound catalogues
+are explicitly unsupported. No `CatalogueStore`, disk/Keychain adapter,
+allocation API, app-startup integration, migration, owner material or login is
+provided by this component.
+
+Decoding bounds raw input before copies, rejects invalid UTF-8, malformed JSON,
+escaped duplicate keys and unknown fields, and checks the expected installation
+and both full caller-provided trust pairs. It never repairs or discovers trust.
+The initial origin grammar is restricted to canonical ASCII DNS/IPv4; IPv6 and
+Unicode hosts are not supported. Successful parsing is not authentication,
+freshness, owner-reference continuity or permission to allocate storage.
+
+The [receipt](bridge/evidence/identity-catalogue-codec-tdd.txt) records real
+vertical RED/GREEN and 28 XCTest methods, independently repeated by the parent
+in debug and release on the existing Swift host toolchain. This is an isolated
+component, not a full ParanoidKit/Mac/Xcode or persistent-storage result.
+Independent source review and new-head native verification remain separate;
+no MR gate or formal authority record is closed by these tests. Use the existing
+package's `IdentityCatalogueTests` filter for the next native feature check,
+with normal bridge/WebRTC prerequisites and notices before unsigned Xcode.
+
 ## Swift package (`ParanoidKit/`)
 
 `ParanoidKit` is the SwiftPM library (iOS 17; macOS 14 only for the host

@@ -163,3 +163,25 @@ valid JSON. No secrets belong in these values. Synthetic fixtures only.
 Next: independent review of this exact source/schema, then normal exact-head Mac
 focused/full-target checks through the existing package prerequisites. Separately
 resolve storage/authority open points before any persistence or app adoption.
+
+Parent independent execution against implementation96a70be6a5a128bafcff8e9eac00c1a943fedfab
+------------------------------------------------------------------------------------
+Source/test symlinks resolved to the exact committed files; SHA256 values match
+those above. The parent did not change the implementation or test bytes.
+A fresh parent build path was used, separate from the implementer/reviewer:
+/home/codex/.hermes/profiles/paranoid/cache/scratch/catalogue-parent-check-z38o5flk
+Commands (package/toolchain paths as above):
+"$S" test --package-path "$P" --scratch-path "/home/codex/.hermes/profiles/paranoid/cache/scratch/catalogue-parent-check-z38o5flk/build" --configuration debug -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors --filter IdentityCatalogueTests
+"$S" test --package-path "$P" --scratch-path "/home/codex/.hermes/profiles/paranoid/cache/scratch/catalogue-parent-check-z38o5flk/build" --configuration release -Xswiftc -strict-concurrency=complete -Xswiftc -warnings-as-errors --filter IdentityCatalogueTests
+Both commands exit0; each log contains28 individually passed XCTest cases and
+'Executed 28 tests, with 0 failures (0 unexpected)'. No skip is claimed as a pass.
+Full actual logs: debug.log and release.log in that parent scratch directory.
+Direct explicitSwift6 source and test typechecks also exit0 with strict concurrency
+and warnings-as-errors (test import path is that build's debug/Modules).
+
+Additional ad-hoc check compiled the actual production source with a temporary
+main.swift (not a repository test):36 combining-mark/zero-width Unicode insertions
+at HTTPS-prefix boundaries, all refused as required by the ASCII-origin grammar,
+zero unexpected accepts, exit0. This is a small host negative probe, not fuzz
+coverage or Mac evidence. The temporary source and probe executable were removed.
+No native Apple, CryptoKit, persistent-store or phone result is inferred.
