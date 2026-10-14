@@ -5,6 +5,248 @@ import XCTest
 // REQ-ID-002/003/004/006, REQ-MULTI-001, REQ-SEC-001; isolated public fixtures.
 // File/key/AEAD doubles below are NON-CRYPTOGRAPHIC. Identity calls real Rust.
 final class OwnerStoreTests: XCTestCase {
+    @MainActor func testEveryRetainedOpenPathCallsOnlyIdentityAndLookupAndLegacyBytesStayIntact() async throws {
+        // Build every retained stage, reopen each on a fresh coordinator, and assert the Rust operation allowlist.
+        var stages: [(String, OwnerFixture)] = []
+        do { let f = try OwnerFixture(); stages.append(("bootstrap", f)) }
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator(); let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.finish(op); stages.append(("unregistered", f))
+        }
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator(); let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op)
+            _ = try c.recordOwnerSigned(op, intent: f.intent(), signer: PublicVectorSigner()); try c.finish(op); stages.append(("ownerSigned", f))
+        }
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator(); let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op)
+            let s = try c.recordOwnerSigned(op, intent: f.intent(), signer: PublicVectorSigner())
+            _ = try c.recordAssembled(op, attemptID: s.intent.attemptID, signer: SyntheticAssemblyInput())
+            _ = try c.reserveSend(op, attemptID: s.intent.attemptID); try c.finish(op); stages.append(("assembled+1send", f))
+        }
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator(); let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: SyntheticBindingVerifier()); try c.finish(op); stages.append(("confirmed+published", f))
+        }
+        for (label, f) in stages {
+            let catalogueBytes = f.io.data[f.path("text-state.enc")]; let ownerBytes = f.io.data[f.path("owner/state.enc")]
+            f.coreCalls = []
+            let c = f.coordinator()
+            let reopened = try c.loadRetained()
+            XCTAssertEqual(try c.loadRetained(), reopened, label)
+            XCTAssertEqual(Set(f.coreCalls).subtracting(["identity", "lookup"]), [], "signing/register/proof never run on open, " + label)
+            XCTAssertEqual(f.io.data[f.path("text-state.enc")], catalogueBytes, "open never rewrites, " + label)
+            XCTAssertEqual(f.io.data[f.path("owner/state.enc")], ownerBytes, label)
+            // Old bootstrap store still refuses anything beyond the exact bootstrap pair.
+            let legacy = CatalogueStore(directory: f.root, context: f.context, files: f.io, crypto: f.catalogue)
+            if label == "bootstrap" { XCTAssertEqual(try legacy.loadRetained(), f.context) }
+            else { XCTAssertThrowsError(try legacy.loadRetained(), label) { XCTAssertEqual($0 as? CatalogueStoreError, .artifactsPresent, label) } }
+            XCTAssertEqual(f.io.data[f.path("text-state.enc")], catalogueBytes, label)
+        }
+        // The documented Rust operations that must never appear on any open path.
+        let forbidden: Set<String> = ["sponsored_sign", "sponsored_assemble", "register", "identity_owner_proof_v3", "recover", "export_mnemonic"]
+        XCTAssertTrue(forbidden.isDisjoint(with: ["identity", "lookup"]))
+    }
+
+    @MainActor func testEveryOwnerReplacementAndPublicationEffectFaultFreezesWithoutCleanup() async throws {
+        // Baseline: committed unregistered owner; replacement = backup confirmation; publication = catalogue binding.
+        func committed() throws -> OwnerFixture {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.finish(op)
+            f.io.events = []; f.io.effects = []; return f
+        }
+        let b = try committed(); let bc = b.coordinator()
+        let bop = try bc.begin(deadline: .now.advanced(by: .seconds(30)))
+        try bc.confirmWordsBackup(bop)
+        let effects = b.io.effects
+        XCTAssertEqual(effects.first, "write:" + b.path("owner/write.pending"), "intent precedes every owner replacement effect")
+        XCTAssertFalse(effects.contains { $0.hasPrefix("keyCreate") || $0.hasPrefix("mkdir") }, "retained key is loaded, never created")
+        XCTAssertLessThan(effects.firstIndex(of: "sync:" + b.path("owner"))!, effects.firstIndex(of: "seal:2")!, "intent parent sync precedes key compare/seal")
+        print("OWNER_REPLACEMENT_FAULT_MATRIX effects=\(effects.count) beforeAndAfterCases=\(effects.count * 2)")
+        for after in [false, true] {
+            for step in effects.indices {
+                let label = "step \(step) \(effects[step]) after=\(after)"
+                let f = try committed(); let c = f.coordinator(); _ = try c.loadRetained()
+                let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+                f.io.faultAt = step; f.io.faultAfter = after
+                XCTAssertThrowsError(try c.confirmWordsBackup(op), label) { XCTAssertEqual($0 as? OwnerStoreError, .backendFailure, label) }
+                XCTAssertTrue(c.isBroken, label)
+                XCTAssertEqual(f.io.effects, Array(effects.prefix(step + (after ? 1 : 0))), label)
+                let data = f.io.data; let keys = [f.catalogue.key, f.owner.key]
+                XCTAssertThrowsError(try c.confirmWordsBackup(op), label) { XCTAssertEqual($0 as? OwnerStoreError, .broken) }
+                XCTAssertThrowsError(try c.loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, .broken) }
+                XCTAssertEqual(f.io.data, data, label); XCTAssertEqual([f.catalogue.key, f.owner.key], keys, label)
+                f.io.faultAt = nil
+                let pending = ["owner/write.pending", "owner/state.enc.tmp"].contains { f.io.data[f.path($0)] != nil }
+                if pending { XCTAssertThrowsError(try f.coordinator().loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, .artifactsPresent, label) } }
+                else { XCTAssertNotNil(try f.coordinator().loadRetained().owner, label) }
+                XCTAssertEqual(f.io.data, data, label)
+            }
+        }
+        // Readback must be byte-exact: a torn destination after rename breaks the writer and adopts nothing.
+        do {
+            let f = try committed(); let c = f.coordinator(); _ = try c.loadRetained()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            f.io.onEffect = { if $0 == "rename:" + f.path("owner/state.enc.tmp") { f.io.data[f.path("owner/state.enc")]?.append(0) } }
+            XCTAssertThrowsError(try c.confirmWordsBackup(op)) { XCTAssertEqual($0 as? OwnerStoreError, .readbackMismatch) }
+            XCTAssertTrue(c.isBroken); XCTAssertNotNil(f.io.data[f.path("owner/write.pending")])
+            XCTAssertFalse(f.io.effects.contains("remove:" + f.path("owner/write.pending")))
+        }
+        // A semantic refusal after the write began (oversized seal) is terminal, not a clean refusal.
+        do {
+            let f = try committed(); let c = f.coordinator(); _ = try c.loadRetained()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            f.owner.oversizedSeal = true
+            XCTAssertThrowsError(try c.confirmWordsBackup(op)) { XCTAssertEqual($0 as? OwnerStoreError, .limitExceeded) }
+            XCTAssertTrue(c.isBroken); XCTAssertNil(f.io.data[f.path("owner/state.enc.tmp")]); XCTAssertNotNil(f.io.data[f.path("owner/write.pending")])
+            XCTAssertThrowsError(try c.confirmWordsBackup(op)) { XCTAssertEqual($0 as? OwnerStoreError, .broken) }
+        }
+        // Key continuity: a swapped owner key after the intent refuses before sealing; catalogue key likewise during publication.
+        do {
+            let f = try committed(); let c = f.coordinator(); _ = try c.loadRetained()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            f.io.onEvent = { if $0 == "keyLoad:2", f.io.data[f.path("owner/write.pending")] != nil { f.owner.key = 7 } }
+            XCTAssertThrowsError(try c.confirmWordsBackup(op)) { XCTAssertEqual($0 as? OwnerStoreError, .keyMismatch) }
+            XCTAssertFalse(f.io.events.contains("seal:2")); XCTAssertNotNil(f.io.data[f.path("owner/write.pending")]); XCTAssertTrue(c.isBroken)
+        }
+        // Publication faults: owner stays confirmed, catalogue binding stays null, coordinator broken, new instance reopens the intermediate.
+        let p = try OwnerFixture(); let pc = p.coordinator()
+        var pop = try pc.begin(deadline: .now.advanced(by: .seconds(30)))
+        _ = try await pc.recoverVerified(pop, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: SyntheticBindingVerifier())
+        try pc.finish(pop)
+        let publishEffects = p.io.effects.suffix(from: p.io.effects.lastIndex(of: "write:" + p.path("catalogue.write.pending"))!)
+        for after in [false, true] {
+            for (offset, effect) in publishEffects.enumerated() {
+                let label = "publish step \(offset) \(effect) after=\(after)"
+                let g = try OwnerFixture(); let gc = g.coordinator()
+                pop = try gc.begin(deadline: .now.advanced(by: .seconds(30)))
+                let gateIndex = publishEffects.startIndex + offset
+                g.io.faultAt = gateIndex; g.io.faultAfter = after
+                await assertThrows(.backendFailure) { try await gc.recoverVerified(pop, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: SyntheticBindingVerifier()) }
+                XCTAssertTrue(gc.isBroken, label)
+                XCTAssertEqual(g.io.effects, Array(p.io.effects.prefix(gateIndex + (after ? 1 : 0))), label)
+                g.io.faultAt = nil
+                let data = g.io.data
+                let pendingCatalogue = ["catalogue.write.pending", "text-state.enc.tmp"].contains { g.io.data[g.path($0)] != nil }
+                if pendingCatalogue {
+                    XCTAssertThrowsError(try g.coordinator().loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, .artifactsPresent, label) }
+                } else {
+                    let reopened = try g.coordinator().loadRetained()
+                    XCTAssertEqual(reopened.owner?.phase, "registryConfirmed", label)
+                    XCTAssertEqual(reopened.catalogue.binding == nil || reopened.catalogue.binding == reopened.owner?.binding, true, label)
+                }
+                XCTAssertEqual(g.io.data, data, "reopen performs no repair, " + label)
+            }
+        }
+    }
+
+    @MainActor func testOwnerAndAllocatedCatalogueByteBoundariesRefuseWithoutSigning() async throws {
+        let f = try OwnerFixture()
+        var calls: [String] = []
+        let core = OwnerMaterialCore(observed: { calls.append($0) })
+        let base = try core.identity(entropy: "AAAAAAAAAAAAAAAAAAAAAA==", context: f.context)
+        let canonical = try OwnerEnvelopeCodec.encode(base, core: core)
+        let text = String(decoding: canonical, as: UTF8.self)
+        func decode(_ s: String) throws -> OwnerEnvelopeV1 { try OwnerEnvelopeCodec.decode(Data(s.utf8), context: f.context, core: core) }
+        func refuse(_ s: String, _ e: OwnerStoreError, _ label: String = "", line: UInt = #line) {
+            XCTAssertThrowsError(try decode(s), label, line: line) { XCTAssertEqual($0 as? OwnerStoreError, e, label + ": " + s.prefix(80), line: line) }
+        }
+        XCTAssertEqual(try decode(text), base)
+        XCTAssertEqual(Array(text.utf8).prefix(1), [123]); XCTAssertFalse(text.contains("\n"))
+        // Raw cap precedes UTF-8 and parsing; framed cap precedes opening.
+        XCTAssertThrowsError(try OwnerEnvelopeCodec.decode(Data(repeating: 0xff, count: 65_537), context: f.context, core: core)) { XCTAssertEqual($0 as? OwnerStoreError, .limitExceeded) }
+        XCTAssertThrowsError(try OwnerEnvelopeCodec.decode(Data(repeating: 0xff, count: 65_536), context: f.context, core: core)) { XCTAssertEqual($0 as? OwnerStoreError, .invalidFormat) }
+        XCTAssertThrowsError(try OwnerEnvelopeCodec.decode(Data(), context: f.context, core: core)) { XCTAssertEqual($0 as? OwnerStoreError, .invalidFormat) }
+        refuse("\u{FEFF}" + text, .invalidFormat, "BOM")
+        XCTAssertEqual(try decode(" \t\r\n" + text + " \n"), base, "the four JSON whitespace bytes")
+        refuse(text + "\u{0B}", .invalidFormat, "vertical tab is not JSON whitespace")
+        // Version tokens: integer literal only; other versions unsupported, coercions malformed.
+        refuse(text.replacingOccurrences(of: #""version":1,"#, with: #""version":2,"#), .unsupportedVersion)
+        refuse(text.replacingOccurrences(of: #""version":1,"#, with: #""version":0,"#), .unsupportedVersion)
+        for token in ["1.0", "01", "\"1\"", "true", "1e0", "+1", "-1", " 1 ", "18446744073709551616", "1 "] {
+            let variant = text.replacingOccurrences(of: #""version":1,"#, with: #""version":\#(token),"#)
+            if token == " 1 " || token == "1 " { XCTAssertEqual(try decode(variant), base, token) }
+            else { refuse(variant, .invalidFormat, "version token \(token)") }
+        }
+        // Duplicate decoded keys at every depth, unknown/missing fields, wrong types, null where forbidden.
+        refuse(text.replacingOccurrences(of: #""kind":"owner","#, with: #""kind":"owner","kind":"owner","#), .invalidFormat, "dup")
+        refuse(text.replacingOccurrences(of: #""kind":"owner","#, with: #""k\u0069nd":"owner","kind":"owner","#), .invalidFormat, "escaped dup")
+        refuse(text.replacingOccurrences(of: #""kind":"owner","#, with: #""kind":"owner","extra":1,"#), .invalidFormat, "unknown")
+        refuse(text.replacingOccurrences(of: #""kind":"owner","#, with: ""), .invalidFormat, "missing")
+        refuse(text.replacingOccurrences(of: #""wordsBackupConfirmed":false"#, with: #""wordsBackupConfirmed":null"#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""wordsBackupConfirmed":false"#, with: #""wordsBackupConfirmed":0"#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":{}"#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[[]]"#), .invalidFormat, "unexpected container not traversed")
+        refuse(text.replacingOccurrences(of: #""binding":null"#, with: #""binding":{}"#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""binding":null"#, with: #""binding":"null""#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""attempts":[]}"#, with: #""attempts":[],}"#), .invalidFormat, "trailing comma")
+        refuse(text + "x", .invalidFormat, "trailing data")
+        refuse(text.replacingOccurrences(of: #""phase":"unregistered""#, with: #""phase":"Unregistered""#), .invalidFormat)
+        refuse(text.replacingOccurrences(of: #""phase":"unregistered""#, with: #""phase":"registrationPending""#), .invalidFormat, "pending requires attempts")
+        refuse(text.replacingOccurrences(of: #""phase":"unregistered""#, with: #""phase":"registryConfirmed""#), .invalidFormat, "confirmed requires binding")
+        // Entropy/Base64 vs Base58 confusion and material consistency.
+        refuse(text.replacingOccurrences(of: "AAAAAAAAAAAAAAAAAAAAAA==", with: "AAAAAAAAAAAAAAAAAAAAAA"), .invalidFormat, "unpadded")
+        refuse(text.replacingOccurrences(of: "AAAAAAAAAAAAAAAAAAAAAA==", with: "AAAAAAAAAAAAAAAAAAAAAB=="), .invalidFormat, "noncanonical")
+        refuse(text.replacingOccurrences(of: "AAAAAAAAAAAAAAAAAAAAAA==", with: String(repeating: "A", count: 32) + "===="), .invalidFormat, "24 bytes")
+        refuse(text.replacingOccurrences(of: "AAAAAAAAAAAAAAAAAAAAAA==", with: base.owner), .invalidFormat, "base58 in entropy")
+        refuse(text.replacingOccurrences(of: #""owner":"\#(base.owner)""#, with: #""owner":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=""#), .invalidFormat, "base64 in owner")
+        refuse(text.replacingOccurrences(of: #""owner":"\#(base.owner)""#, with: #""owner":"\#(base.identity)""#), .bindingMismatch, "owner/identity swapped")
+        refuse(text.replacingOccurrences(of: #""program":"\#(base.program)""#, with: #""program":"\#(base.genesis)""#), .bindingMismatch)
+        refuse(text.replacingOccurrences(of: #""owner":"\#(base.owner)""#, with: #""owner":"0\#(base.owner.dropFirst())""#), .invalidFormat, "non-alphabet 0")
+        refuse(text.replacingOccurrences(of: #""owner":"\#(base.owner)""#, with: #""owner":"1\#(base.owner)""#), .limitExceeded, "45 characters exceed the B58-32 bound")
+        refuse(text.replacingOccurrences(of: #""owner":"\#(base.owner)""#, with: #""owner":"\#(String(repeating: "z", count: 44))""#), .invalidFormat, "44 characters decoding to 33 bytes")
+        // Control characters, malformed UTF-8 and escapes.
+        refuse(text.replacingOccurrences(of: #""kind":"owner""#, with: "\"kind\":\"own\u{01}er\""), .invalidFormat)
+        XCTAssertThrowsError(try OwnerEnvelopeCodec.decode(Data(text.utf8).dropLast() + Data([0xff, 125]), context: f.context, core: core)) { XCTAssertEqual($0 as? OwnerStoreError, .invalidFormat) }
+        refuse(text.replacingOccurrences(of: #""kind":"owner""#, with: #""kind":"\udc00owner""#), .invalidFormat, "lone surrogate")
+        refuse(text.replacingOccurrences(of: #""kind":"owner""#, with: #""kind":"\u00f6wner""#), .invalidFormat, "non-ASCII escape")
+        XCTAssertEqual(try decode(text.replacingOccurrences(of: #""kind":"owner""#, with: #""kind":"\u006fwner""#)), base, "ASCII escape")
+        // Context equality.
+        refuse(text.replacingOccurrences(of: f.context.ownerRef, with: "00000000-0000-0000-0000-0000000000ff"), .contextMismatch)
+        refuse(text.replacingOccurrences(of: #""installID":"\#(f.context.installID)""#, with: #""installID":"\#(f.context.installID.dropLast() + "a")""#), .contextMismatch)
+        refuse(text.replacingOccurrences(of: #""installID":"\#(f.context.installID)""#, with: #""installID":"\#(f.context.installID.dropLast() + "A")""#), .invalidFormat, "uppercase hex is not UUID grammar")
+        // Maximum ledger: eight entries decode, nine refuse at the limit without reading further.
+        func attempt(_ n: Int, resolution: String = "expiredAbsent", height: String = "200") -> String {
+            #"{"attemptID":"00000000-0000-0000-0000-\#(String(format: "%012d", n))","stage":"ownerSigned","name":"alice_fixture","sponsorRealmKey":{"origin":"\#(f.context.realms.fi.origin)","pin":"\#(f.context.realms.fi.pin)","protocol":"identity-v3"},"payer":"\#(String(repeating: "1", count: 32))","blockhash":"\#(String(repeating: "1", count: 32))","last_valid_height":100,"message":"AQ==","owner_signature":"\#(String(repeating: "1", count: 64))","transaction":null,"signature":null,"sends":0,"resolution":"\#(resolution)","finalized_height":\#(height)}"#
+        }
+        let pending = text.replacingOccurrences(of: #""phase":"unregistered""#, with: #""phase":"registrationPending""#).replacingOccurrences(of: #""wordsBackupConfirmed":false"#, with: #""wordsBackupConfirmed":true"#)
+        let eight = pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#((1...7).map { attempt($0) }.joined(separator: ",")),\#(attempt(8, resolution: "unresolved", height: "null"))]"#)
+        XCTAssertEqual(try decode(eight).attempts.count, 8)
+        XCTAssertEqual(try OwnerEnvelopeCodec.encode(decode(eight), core: core), Data(eight.utf8), "deterministic re-encoding of the maximal ledger")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#((1...8).map { attempt($0) }.joined(separator: ",")),\#(attempt(9, resolution: "unresolved", height: "null"))]"#), .limitExceeded, "nine")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1)),\#(attempt(1, resolution: "unresolved", height: "null"))]"#), .invalidFormat, "duplicate attempt id")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null")),\#(attempt(2, resolution: "unresolved", height: "null"))]"#), .invalidFormat, "two unresolved")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, height: "100"))]"#), .invalidFormat, "finalized not strictly above expiry")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "ownerBound"))]"#), .invalidFormat, "ownerBound outside confirmed")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""sends":0"#, with: #""sends":4"#))]"#), .invalidFormat, "fourth send")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""sends":0"#, with: #""sends":-1"#))]"#), .invalidFormat, "negative")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""last_valid_height":100"#, with: #""last_valid_height":18446744073709551616"#))]"#), .invalidFormat, "u64 overflow")
+        XCTAssertEqual(try decode(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""last_valid_height":100"#, with: #""last_valid_height":18446744073709551615"#))]"#)).attempts.first?.intent.lastValidHeight, UInt64.max)
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""message":"AQ==""#, with: #""message":"""#))]"#), .invalidFormat, "empty wire")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""message":"AQ==""#, with: #""message":"\#(Data(repeating: 1, count: 1_233).base64EncodedString())""#))]"#), .invalidFormat, "1233 bytes")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""name":"alice_fixture""#, with: #""name":"Alice""#))]"#), .invalidFormat, "name grammar")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: #""payer":"\#(String(repeating: "1", count: 32))""#, with: #""payer":"\#(base.owner)""#))]"#), .invalidFormat, "payer equals owner")
+        refuse(pending.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null").replacingOccurrences(of: f.context.realms.fi.pin, with: String(repeating: "c", count: 64)))]"#), .invalidFormat, "foreign sponsor realm")
+        refuse(text.replacingOccurrences(of: #""attempts":[]"#, with: #""attempts":[\#(attempt(1, resolution: "unresolved", height: "null"))]"#), .invalidFormat, "ledger without backup confirmation")
+        // Allocated catalogue: allocation/binding grammar, realm allocated unsupported, binding without allocation.
+        let bootstrap = String(decoding: IdentityCatalogueCodec.encode(f.context), as: UTF8.self)
+        func catalogue(_ s: String) throws -> AllocatedCatalogueState { try AllocatedCatalogueCodec.decode(Data(s.utf8), context: f.context) }
+        XCTAssertEqual(try catalogue(bootstrap), .init(context: f.context, allocated: false))
+        XCTAssertEqual(AllocatedCatalogueCodec.encode(.init(context: f.context, allocated: false)), IdentityCatalogueCodec.encode(f.context), "unallocated bytes are the bootstrap bytes")
+        let bindingJSON = #"{"genesis":"\#(base.genesis)","program":"\#(base.program)","identity":"\#(base.identity)","owner":"\#(base.owner)","name":"alice_fixture"}"#
+        XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""binding":null"#, with: #""binding":\#(bindingJSON)"#))) { XCTAssertEqual($0 as? OwnerStoreError, .invalidFormat) }
+        XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""slot":"fi","origin":"\#(f.context.realms.fi.origin)","pin":"\#(f.context.realms.fi.pin)","protocol":"identity-v3","allocation":"unallocated""#, with: #""slot":"fi","origin":"\#(f.context.realms.fi.origin)","pin":"\#(f.context.realms.fi.pin)","protocol":"identity-v3","allocation":"allocated""#))) { XCTAssertEqual($0 as? OwnerStoreError, .invalidTransition) }
+        XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""version":5,"minReader":5"#, with: #""version":6,"minReader":6"#))) { XCTAssertEqual($0 as? OwnerStoreError, .unsupportedVersion) }
+        let allocated = bootstrap.replacingOccurrences(of: #""allocation":"unallocated","binding":null"#, with: #""allocation":"allocated","binding":\#(bindingJSON)"#)
+        XCTAssertEqual(try catalogue(allocated).binding?.name, "alice_fixture")
+        XCTAssertEqual(AllocatedCatalogueCodec.encode(try catalogue(allocated)), Data(allocated.utf8))
+        // Old bootstrap reader/store still refuse the allocated form; nothing was rewritten.
+        XCTAssertThrowsError(try IdentityCatalogueCodec.decode(Data(allocated.utf8), expectedInstallID: f.context.installID, expectedRealms: f.context.realms)) { XCTAssertEqual($0 as? IdentityCatalogueError, .unsupportedState) }
+        XCTAssertEqual(calls.filter { !["identity", "lookup"].contains($0) }, [])
+    }
+
     @MainActor func testAwaitedVerifierKeepsSoleOperationAndLateResultsHaveNoEffect() async throws {
         // Reentry while the verifier is awaited is busy and does not cancel the active operation.
         do {
@@ -464,6 +706,8 @@ final class OwnerFixtureIO: OwnerFileIO {
     var events: [String] = []
     var failBefore: String?
     var lockedPaths: Set<String> = []
+    var onEvent: ((String) -> Void)?
+    var onEffect: ((String) -> Void)?
     var faultAt: Int?
     var faultAfter = false
     var effects: [String] = []
@@ -473,7 +717,7 @@ final class OwnerFixtureIO: OwnerFileIO {
         if e == failBefore { throw OwnerStoreError.backendFailure }
         let index = effects.count
         if faultAt == index, !faultAfter { throw OwnerStoreError.backendFailure }
-        try apply(); effects.append(e)
+        try apply(); effects.append(e); onEffect?(e)
         if faultAt == index, faultAfter { throw OwnerStoreError.backendFailure }
     }
     private func record(_ e: String) throws { events.append(e); if e == failBefore { throw OwnerStoreError.backendFailure } }
@@ -493,12 +737,13 @@ final class OwnerFixtureCrypto: OwnerCryptography {
     let io: OwnerFixtureIO
     var foreign: (CatalogueForeignStore) -> Bool = { _ in false }
     var locked = false
+    var oversizedSeal = false
     init(_ id: Int, _ io: OwnerFixtureIO) { self.id = id; self.io = io }
     var framingOverhead: Int { 29 }
-    func loadKey() throws -> Int? { io.events.append("keyLoad:\(id)"); if locked { throw OwnerBackendLock.locked }; return key }
+    func loadKey() throws -> Int? { io.events.append("keyLoad:\(id)"); io.onEvent?("keyLoad:\(id)"); if locked { throw OwnerBackendLock.locked }; return key }
     func createKey() throws -> Int { try io.effect("keyCreate:\(id)") { guard key == nil else { throw OwnerStoreError.keyMismatch }; key = id }; return id }
     func foreignKeyExists(_ slot: CatalogueForeignStore) throws -> Bool { io.events.append("foreign:\(slot.rawValue)"); return foreign(slot) }
-    func seal(_ plaintext: Data, with key: Int) throws -> Data { try io.effect("seal:\(id)") {}; return Data(repeating: UInt8(key), count: 29) + plaintext }
+    func seal(_ plaintext: Data, with key: Int) throws -> Data { try io.effect("seal:\(id)") {}; return Data(repeating: UInt8(key), count: oversizedSeal ? 65_566 : 29) + plaintext }
     func open(_ sealed: Data, with key: Int) throws -> Data { io.events.append("open:\(id)"); guard sealed.count >= 29, sealed.prefix(29).allSatisfy({ $0 == UInt8(key) }) else { throw OwnerStoreError.authenticationFailed }; return sealed.dropFirst(29) }
 }
 @MainActor final class OwnerFixture {

@@ -196,8 +196,10 @@ enum OwnerEnvelopeCodec {
             }
         }
         try p.end()
-        guard values["kind"] == "owner", ["unregistered", "registrationPending", "registryConfirmed"].contains(values["phase"] ?? "") else { throw OwnerStoreError.invalidFormat }
+        guard values["kind"] == "owner", ["unregistered", "registrationPending", "registryConfirmed"].contains(values["phase"] ?? ""),
+              OwnerScalars.uuid(values["installID"] ?? ""), OwnerScalars.uuid(values["ownerRef"] ?? "") else { throw OwnerStoreError.invalidFormat }
         guard values["installID"] == context.installID, values["ownerRef"] == context.ownerRef else { throw OwnerStoreError.contextMismatch }
+        for field in ["owner", "identity", "genesis", "program"] { _ = try OwnerScalars.base58(values[field] ?? "", count: 32) }
         var result = try core.identity(entropy: values["entropy"] ?? "", context: context)
         guard values["owner"] == result.owner, values["identity"] == result.identity,
               values["genesis"] == result.genesis, values["program"] == result.program else { throw OwnerStoreError.bindingMismatch }
