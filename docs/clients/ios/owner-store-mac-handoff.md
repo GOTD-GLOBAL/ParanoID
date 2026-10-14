@@ -7,9 +7,13 @@ last_reviewed: 2026-10-14
 
 # Owner-store Apple adapter: implementation handoff
 
-> Status (2026-10-14): initial adapter implementation delivered; two native P2
-> findings remain open. The current correction task is below; the original
-> implementation task is retained afterwards as historical scope.
+> Status (2026-10-14): initial adapter implementation delivered; the two
+> native P2 findings (open-only lock classification, owner-policy backend
+> admission) and a descriptor double close found on the way are corrected on
+> code head `17d8d88` over the combined PR #86 source — see the
+> [owner adapter receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+> The correction task is below; the original implementation task is retained
+> afterwards as historical scope.
 
 ## Review correction handoff
 
