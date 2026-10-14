@@ -1,0 +1,75 @@
+ParanoID iOS owner-store core: raw portable TDD receipt (Linux, scratch-only)
+Head: 2b564f6f6c47b45ac2f0b7d94e24976b427ae17c
+Base: 7848016147ce338bc5f3cc156c15017174c627ca (docs(ios): propose durable owner-store allocation contract)
+Toolchain: Swift 6.3.3 x86_64-unknown-linux-gnu; cargo 1.97.1 (offline, --locked) for clients/ios/bridge
+Scratch root: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-store-1cbdbed1-94f8-41a7-bb48-be19aa99a171
+Public fixtures only: entropy AAAAAAAAAAAAAAAAAAAAAA== / AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= (bridge/tests/devnet.rs), payer/blockhash 32x"1".
+Doubles: in-memory file/key/AEAD fixtures are NON-CRYPTOGRAPHIC; identity/lookup/sponsored_sign run in real Rust via DevnetBridge.
+Allowlist on every retained open: {identity, lookup} (asserted; mutant "sponsored_sign on open" killed).
+
+SHA-256 of committed owned sources at head:
+5bc6abbe1d4e125b6b393ccac93796c4e29f93474c7b99f8e34bab1640c78e7e  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAllocationCoordinator.swift
+d38369b3cf1f7d04d62b4647d10b9ba9ccc4dec1d0a3e0500d8d644a025a95ef  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAttempt.swift
+ca4fb789775ae6ed7df088d9dfffad73f440a5073a9852017e50100920d2c8ae  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerNamespaceLease.swift
+288aa852175802371d2cc67aed813e5aa47c4b7c4e918001cfdb5a71923a8e1d  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerScalars.swift
+8fdbf14ea5409494192925cca8b9f0d4de88c54c567ad9d5d313f78a935edcb4  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerStoreCodec.swift
+71eab23d9d256bd68b1994a9786b20e8bdd9e6799f436d1ca3403468fea2bc06  clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerVerifiedInput.swift
+509b71f00edfc0e5577040bf8ff07d2df882e2b5eda0744562b9d7a7735a7737  clients/ios/ParanoidKit/Tests/ParanoidKitTests/OwnerStoreTests.swift
+Staged NOT RUN native file:
+617b38f90d5022c72ccf723efc08a81d286c4cc1f3f52c7cb51fd0f1bbc9d739  clients/ios/ParanoidKit/Tests/NativeFirstTests/OwnerNativeAdapterTests.swift
+
+Stage | exit | filter | last "Executed" line
+01-all-green | 0 | (all) | Executed 73 tests, with 0 failures (0 unexpected) in 0.973 (0.973) seconds
+01-green | 0 | --filter OwnerStoreTests | Executed 1 test, with 0 failures (0 unexpected) in 0.143 (0.143) seconds
+01-red | 1 | --filter OwnerStoreTests | compile error / no tests
+01b-red | 1 | --filter OwnerStoreTests | Executed 1 test, with 1 failure (1 unexpected) in 0.001 (0.001) seconds
+02-green | 0 | --filter OwnerStoreTests | Executed 2 tests, with 0 failures (0 unexpected) in 0.29 (0.29) seconds
+02-red | 1 | --filter OwnerStoreTests.testVerifiedSyntheticRecovery | Executed 1 test, with 1 failure (1 unexpected) in 0.002 (0.002) seconds
+03-green | 0 | (all) | Executed 75 tests, with 0 failures (0 unexpected) in 1.448 (1.448) seconds
+03-red | 1 | --filter OwnerStoreTests.testExplicitBackup | Executed 1 test, with 1 failure (1 unexpected) in 0.072 (0.072) seconds
+04-green | 0 | (all) | Executed 76 tests, with 0 failures (0 unexpected) in 1.644 (1.644) seconds
+04-red | 1 | --filter OwnerStoreTests.testOwnerSignedEvidence | Executed 1 test, with 1 failure (1 unexpected) in 0.141 (0.141) seconds
+05-green | 0 | (all) | Executed 77 tests, with 0 failures (0 unexpected) in 1.705 (1.705) seconds
+05-red | 1 | --filter OwnerStoreTests.testAssembly | Executed 1 test, with 1 failure (1 unexpected) in 0.227 (0.227) seconds
+06-green | 1 | (all) | Executed 78 tests, with 1 failure (1 unexpected) in 2.092 (2.092) seconds
+06-red | 1 | --filter OwnerStoreTests.testSendReservation | Executed 1 test, with 1 failure (1 unexpected) in 0.302 (0.302) seconds
+06b-green | 0 | (all) | Executed 78 tests, with 0 failures (0 unexpected) in 2.361 (2.361) seconds
+07-green | 1 | (all) | Executed 79 tests, with 2 failures (1 unexpected) in 2.919 (2.919) seconds
+07-red | 1 | --filter OwnerStoreTests.testExpiryResolution | Executed 1 test, with 2 failures (1 unexpected) in 0.262 (0.262) seconds
+07b-green | 1 | (all) | Executed 79 tests, with 1 failure (1 unexpected) in 2.681 (2.681) seconds
+07c-green | 1 | (all) | Executed 79 tests, with 1 failure (0 unexpected) in 3.631 (3.631) seconds
+07d-green | 0 | (all) | Executed 79 tests, with 0 failures (0 unexpected) in 3.204 (3.204) seconds
+08-green | 0 | (all) | Executed 80 tests, with 0 failures (0 unexpected) in 4.614 (4.614) seconds
+08-red | 1 | --filter OwnerStoreTests.testRegistryConfirmation | Executed 1 test, with 7 failures (1 unexpected) in 0.699 (0.699) seconds
+09-green | 1 | (all) | Executed 81 tests, with 1 failure (0 unexpected) in 4.528 (4.528) seconds
+09-red | 1 | --filter OwnerStoreTests.testLeaseHandoff | Executed 1 test, with 1 failure (1 unexpected) in 0.001 (0.001) seconds
+09b-green | 0 | (all) | Executed 81 tests, with 0 failures (0 unexpected) in 4.846 (4.846) seconds
+10-green | 1 | --filter OwnerStoreTests.testEveryCreationEffect | Executed 1 test, with 1 failure (0 unexpected) in 2.616 (2.616) seconds
+10-red | 1 | --filter OwnerStoreTests.testEveryCreationEffect | Executed 1 test, with 47 failures (0 unexpected) in 2.553 (2.553) seconds
+10b-green | 0 | (all) | Executed 82 tests, with 0 failures (0 unexpected) in 6.816 (6.816) seconds
+11-green | 0 | (all) | Executed 83 tests, with 0 failures (0 unexpected) in 8.739 (8.739) seconds
+11-red | 1 | --filter OwnerStoreTests.testConsistencyMatrix | Executed 1 test, with 13 failures (2 unexpected) in 1.588 (1.588) seconds
+12-green | 1 | (all) | Executed 84 tests, with 1 failure (0 unexpected) in 8.91 (8.91) seconds
+12-red | 1 | --filter OwnerStoreTests.testAwaitedVerifier | compile error / no tests
+12b-green | 1 | (all) | Executed 84 tests, with 1 failure (0 unexpected) in 8.807 (8.807) seconds
+12b-red | 1 | --filter OwnerStoreTests.testAwaitedVerifier | Executed 1 test, with 2 failures (1 unexpected) in 0.038 (0.038) seconds
+12c-green | 0 | (all) | Executed 84 tests, with 0 failures (0 unexpected) in 8.667 (8.667) seconds
+13-green | 0 | (all) | Executed 85 tests, with 0 failures (0 unexpected) in 10.075 (10.075) seconds
+13-red | 1 | --filter OwnerStoreTests.testOwnerAndAllocated | Executed 1 test, with 5 failures (0 unexpected) in 1.017 (1.017) seconds
+13b-red | 1 | --filter OwnerStoreTests.testOwnerAndAllocated | Executed 1 test, with 1 failure (0 unexpected) in 0.958 (0.958) seconds
+14-red | 0 | --filter OwnerStoreTests.testEveryOwnerReplacement | Executed 1 test, with 0 failures (0 unexpected) in 7.463 (7.463) seconds
+14b | 0 | --filter OwnerStoreTests.testEveryOwnerReplacement | Executed 1 test, with 0 failures (0 unexpected) in 7.73 (7.73) seconds
+15 | 0 | --filter OwnerStoreTests.testEveryRetainedOpenPath | Executed 1 test, with 0 failures (0 unexpected) in 1.077 (1.077) seconds
+16-refactor | 0 | (all) | Executed 87 tests, with 0 failures (0 unexpected) in 19.218 (19.218) seconds
+final-debug | 0 | (all) | Executed 87 tests, with 0 failures (0 unexpected) in 19.118 (19.118) seconds
+final-release | 0 | -c release | Executed 87 tests, with 0 failures (0 unexpected) in 18.795 (18.795) seconds
+head-debug | 0 | (all) | Executed 87 tests, with 0 failures (0 unexpected)
+head-release | 0 | (all) -c release | Executed 87 tests, with 0 failures (0 unexpected)
+Mutation probes (scratch copies, never committed source):
+14-mutant-no-latch (writing latch removed): SURVIVED against 14-red, KILLED after torn-readback/oversized-seal cases (14b) -> 2 failures
+14-mutant-no-readback (byte-exact readback removed): SURVIVED against 14-red, KILLED after 14b -> 4 failures
+14-mutant-key-compare (post-intent key readback removed): KILLED -> 4 failures
+15-mutant-sign-on-open (extra sponsored_sign observed on open): KILLED -> 4 failures
+Fault matrices printed by the suite: CATALOGUE 35/70 + 36/72 (unchanged), OWNER_CREATION 29 effects/58 cases, OWNER_REPLACEMENT 12 effects/24 cases.
+Rust: cargo test --offline --locked clients/ios/bridge -> lib 2, abi 6, devnet 6, devnet_memory 1 passed, 0 failed.
+NOT RUN: native Apple owner adapter (not implemented), real Keychain/Data Protection, full package, xcodebuild, device, power loss.
