@@ -70,13 +70,17 @@ import XCTest
         XCTAssertEqual(f.ownerKey.deletions, 0)
     }
 
-    /// Required future real-policy evidence. This case remains an executable
-    /// skip until actual Keychain insertion/readback exists; constants cannot pass it.
+    /// Real-policy evidence needs a Keychain, which an unsigned host test binary
+    /// does not have: `SecItemAdd` fails with `errSecMissingEntitlement` before
+    /// any policy is reached. The executable case is
+    /// `KeychainStoreTests.testTheOwnerItemIsWhenUnlockedThisDeviceOnlyAndNotSynchronizable`
+    /// in the application test bundle, run ad-hoc signed on the simulator the way
+    /// `build.sh` runs the other Keychain cases; it inserts an `OwnerKeychainKey`
+    /// item under a fresh test account and reads the accessibility and
+    /// synchronizable attributes back. This host case records the skip, never
+    /// a pass on memory-key constants.
     func testOwnerKeyPolicyIsWhenUnlockedThisDeviceOnlyAndNotSynchronizable() throws {
-        // Requires a real Keychain-backed owner store seam (simulator/device), NOT
-        // NativeOwnerMemoryKey: the host run must record this case as skipped
-        // with reason when no Keychain is available, never as passed.
-        throw XCTSkip("NOT IMPLEMENTED: real owner Keychain insertion plus accessibility/synchronizable readback on a signed simulator/device; memory-key policy descriptors are not evidence")
+        throw XCTSkip("real owner Keychain insertion/readback runs ad-hoc signed on the simulator (KeychainStoreTests.testTheOwnerItemIsWhenUnlockedThisDeviceOnlyAndNotSynchronizable); the unsigned host has no Keychain, and memory-key policy descriptors are not evidence")
     }
 
     /// Create-only, no-follow owner directory: an existing inode (link or

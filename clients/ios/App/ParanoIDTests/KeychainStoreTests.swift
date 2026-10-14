@@ -76,6 +76,78 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertEqual(try fileSystem.read(at: prior.fileURL, maximumBytes: SnapshotStore.maximumStoredBytes), before)
     }
 
+    /// The owner policy, read back from the real Keychain: an `OwnerKeychainKey`
+    /// under a fresh test account is `WhenUnlockedThisDeviceOnly` and not
+    /// synchronizable, is created once, never regenerated and never deleted by
+    /// the store. The test removes only its own item afterwards.
+    func testTheOwnerItemIsWhenUnlockedThisDeviceOnlyAndNotSynchronizable() throws {
+        let owner = OwnerKeychainKey(account: "paranoid-test-owner-\(UUID().uuidString)")
+        defer {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrAccount as String: owner.account,
+                kSecUseDataProtectionKeychain as String: true,
+            ]
+            SecItemDelete(query as CFDictionary) // this test's own item only
+        }
+        XCTAssertNotEqual(owner.account, KeychainKey.account)
+        XCTAssertFalse(try owner.exists())
+        XCTAssertNil(try owner.storedPolicy())
+        let created = try owner.create()
+        XCTAssertTrue(try owner.exists())
+        XCTAssertEqual(try owner.storedPolicy(), .whenUnlockedThisDeviceOnly)
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccount as String: owner.account,
+            kSecUseDataProtectionKeychain as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecReturnAttributes as String: true,
+            kSecReturnData as String: true,
+        ]
+        var item: CFTypeRef?
+        XCTAssertEqual(SecItemCopyMatching(query as CFDictionary, &item), errSecSuccess)
+        let attributes = try XCTUnwrap(item as? [String: Any])
+        XCTAssertEqual(attributes[kSecAttrAccessible as String] as? String,
+                       kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
+        XCTAssertEqual(attributes[kSecAttrSynchronizable as String] as? Bool, false)
+        XCTAssertEqual((attributes[kSecValueData as String] as? Data)?.count, OwnerKeychainKey.keyBytes)
+        XCTAssertEqual(try owner.load(), created)
+        XCTAssertThrowsError(try owner.create()) { error in
+            XCTAssertEqual(error as? StorageError, .keychain(errSecDuplicateItem))
+        }
+        XCTAssertThrowsError(try owner.deleteRetained(), "the owner store never deletes a retained key")
+        XCTAssertTrue(try owner.exists())
+        // The messaging item keeps its own, different policy.
+        _ = try key.create()
+        XCTAssertNotEqual(try key.load(), created)
+    }
+
+    /// A real Keychain-backed owner key drives the shipped framing the owner
+    /// adapter seals with (`SnapshotCodec.seal`): round trip under the loaded
+    /// key, tampering refused. The adapter types themselves are internal to the
+    /// package and are exercised by its own test target on the host.
+    func testARealKeychainOwnerKeySealsAndOpensTheShippedFraming() throws {
+        let owner = OwnerKeychainKey(account: "paranoid-test-owner-\(UUID().uuidString)")
+        defer {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrAccount as String: owner.account,
+                kSecUseDataProtectionKeychain as String: true,
+            ]
+            SecItemDelete(query as CFDictionary) // this test's own item only
+        }
+        XCTAssertNil(try owner.load())
+        let created = try owner.create()
+        let loaded = try XCTUnwrap(owner.load())
+        XCTAssertEqual(loaded, created)
+        let sealed = try SnapshotCodec.seal(key: created, value: "[TEST ONLY] owner framing")
+        XCTAssertEqual(sealed.first, SnapshotCodec.version)
+        XCTAssertEqual(try SnapshotCodec.open(key: loaded, value: sealed), "[TEST ONLY] owner framing")
+        var tampered = sealed
+        tampered[tampered.index(before: tampered.endIndex)] ^= 0x01
+        XCTAssertThrowsError(try SnapshotCodec.open(key: loaded, value: tampered))
+    }
+
     func testTheItemIsAfterFirstUnlockThisDeviceOnlyAndNotSynchronizable() throws {
         _ = try key.create()
         let query: [String: Any] = [
