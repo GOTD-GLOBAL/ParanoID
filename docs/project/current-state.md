@@ -7,6 +7,30 @@ last_reviewed_scope: Apple owner adapters implemented and natively tested on the
 
 # Current project state
 
+## Owner-adapter review blockers and combined test candidate — 2026-10-14
+
+PR #86 now combines native checkpoint `98f58b040fc7005250f89fccfb8132b2a439891d`
+with the independently reviewed test-only fix
+`4b041ac3f10b1220296c02a73b05df973031c935`, preserving ordinary history.
+The combination's code checkpoint is `fbdd5fb10920296ad4eb2888cccb73dfbb38751e`.
+At that code checkpoint only the regression test and its receipt differ from
+the native checkpoint;
+production deadlines and both native adapter blobs are unchanged. Parent ran
+109 portable tests with zero failures in each of debug and release on this
+combined source (optimized Swift with cached debug Rust, not Apple execution).
+
+**PR #85 is still blocked.** The first `fstat` in `openRegular` remains inside
+its lock-classification catch; `EPERM` there can still become retryable lock.
+Separately, the owner crypto initializer accepts any messaging wrapping-key
+backend and the owner key accepts a noncanonical policy parameter. The positive
+simulator policy cases do not close those admission paths. The native records
+below describe tested cases, not complete closure of these two P2 findings.
+
+The [correction handoff](../clients/ios/owner-store-mac-handoff.md#review-correction-handoff)
+requires native RED/GREEN, policy-admission negatives, repeated timer tests and
+full package/build/Keychain evidence on the final combined source. No native
+post-fix result, integration into #84/main, app adoption or live action is claimed.
+
 ## Apple owner adapters on the build Mac — 2026-10-14
 
 The owner backends the portable checkpoint below left open are implemented on

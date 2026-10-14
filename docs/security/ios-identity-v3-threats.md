@@ -8,6 +8,19 @@ last_reviewed_scope: Apple owner adapters natively tested on the build Mac and t
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## Open native review findings — 2026-10-14
+
+The controls below are not fully enforced at native checkpoint `98f58b0`.
+The first `fstat` inside `openRegular` can still be classified as retryable lock
+on `EPERM` plus unavailable protected data, contrary to the intended open-only
+rule. `OwnerAppleCryptography` also accepts a messaging-policy `WrappingKeyStore`,
+and `OwnerKeychainKey(policy:)` does not reject noncanonical owner policy.
+These are two open P2 findings, not proven application exploits. No app wiring
+or live action is introduced. The [native correction handoff](../clients/ios/owner-store-mac-handoff.md#review-correction-handoff)
+requires fault-stage and policy-admission negatives before claiming closure.
+The combined test-watchdog correction changes neither native control nor the
+production deadline, and its Linux evidence is not native security evidence.
+
 ## Apple owner adapter — 2026-10-14
 
 The native owner backends the delta below left unimplemented are exercised on
