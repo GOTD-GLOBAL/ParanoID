@@ -1,13 +1,11 @@
-// NATIVE-FIRST CHECKPOINT, NOT COMPILED OR RUN on Linux. Excluded from the
-// active target on purpose: `OwnerAppleFileIO` and `OwnerAppleCryptography`
-// are PROPOSED adapter names, NOT shipped implementations. Move this file into
-// Tests/ParanoidKitTests on the Mac implementation branch, observe runtime RED
-// against minimal stub adapters, then implement one behavior at a time.
-// Existing CatalogueAppleFileIO / KeychainKey are NOT owner adapters: they
-// hardcode messaging protection (completeUntilFirstUserAuthentication /
-// AfterFirstUnlockThisDeviceOnly); changing a path or account does not select
-// the owner policy. See docs/clients/ios/owner-store-format.md §5 and the
-// receipt docs/project/evidence/ios-identity-v3-20261013/owner-store-core.md.
+// Native-first acceptance of the Apple owner-store adapters (RFC-0030 / draft
+// ADR-0017; REQ-ID-002/003/004/006 prerequisites). Real temporary roots, real
+// CryptoKit, injected in-memory SymmetricKey backends; never the application
+// container or a live Keychain account. Activated on the Mac implementation
+// branch from the checkpoint staged in PR #84 (2ed901dd). Existing
+// CatalogueAppleFileIO / KeychainKey are NOT owner adapters: they hardcode
+// messaging protection; the owner adapters below select the owner policy. See
+// docs/clients/ios/owner-store-format.md §5 and the owner-store receipts.
 import CryptoKit
 import Foundation
 import XCTest
