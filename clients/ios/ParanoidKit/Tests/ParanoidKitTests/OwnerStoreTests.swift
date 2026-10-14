@@ -5,6 +5,93 @@ import XCTest
 // REQ-ID-002/003/004/006, REQ-MULTI-001, REQ-SEC-001; isolated public fixtures.
 // File/key/AEAD doubles below are NON-CRYPTOGRAPHIC. Identity calls real Rust.
 final class OwnerStoreTests: XCTestCase {
+    @MainActor func testEveryCreationEffectFaultPreservesEvidenceAndNeverRecreatesPermit() async throws {
+        let baseline = try OwnerFixture(); let b = baseline.coordinator()
+        let op0 = try b.begin(deadline: .now.advanced(by: .seconds(30)))
+        _ = try b.initializeNew(b.reserveNewOwner(op0), operation: op0)
+        let effects = baseline.io.effects
+        // Contract §5 ordering: allocation final sync -> owner dir/protect/sync/root sync -> intent -> key create once.
+        let ix = { (name: String) in effects.firstIndex(of: name)! }
+        XCTAssertLessThan(effects.lastIndex(of: "remove:" + baseline.path("catalogue.write.pending"))!, ix("mkdir:" + baseline.path("owner")))
+        XCTAssertLessThan(ix("mkdir:" + baseline.path("owner")), ix("protectOwner:" + baseline.path("owner")))
+        XCTAssertLessThan(ix("protectOwner:" + baseline.path("owner")), ix("sync:" + baseline.path("owner")))
+        XCTAssertLessThan(ix("sync:" + baseline.path("owner")), ix("write:" + baseline.path("owner/write.pending")))
+        XCTAssertLessThan(ix("write:" + baseline.path("owner/write.pending")), ix("keyCreate:2"))
+        XCTAssertEqual(effects.filter { $0 == "keyCreate:2" }.count, 1)
+        XCTAssertLessThan(ix("keyCreate:2"), ix("seal:2"))
+        print("OWNER_CREATION_FAULT_MATRIX effects=\(effects.count) beforeAndAfterCases=\(effects.count * 2)")
+        for after in [false, true] {
+            for step in effects.indices {
+                let label = "step \(step) \(effects[step]) after=\(after)"
+                let f = try OwnerFixture(); let c = f.coordinator()
+                let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+                f.io.faultAt = step; f.io.faultAfter = after
+                var permit: OwnerCreationPermit?
+                do { permit = try c.reserveNewOwner(op); _ = try c.initializeNew(permit!, operation: op); XCTFail(label) }
+                catch { XCTAssertEqual(error as? OwnerStoreError, .backendFailure, label) }
+                XCTAssertTrue(c.isBroken, label)
+                XCTAssertEqual(f.io.effects, Array(effects.prefix(step + (after ? 1 : 0))), "no later effects or compensation, " + label)
+                let reservationEnd = ix("mkdir:" + f.path("owner")) - 1
+                // A reported failure of the final sync still yields no permit: entropy only after durable success.
+                XCTAssertEqual(f.entropyCalls, step > reservationEnd ? 1 : 0, "entropy only after durable reservation, " + label)
+                let evidence = f.io.data; let kinds = f.io.kinds; let keys = [f.catalogue.key, f.owner.key]
+                XCTAssertThrowsError(try c.reserveNewOwner(op), label) { XCTAssertEqual($0 as? OwnerStoreError, .broken) }
+                if let permit { XCTAssertThrowsError(try c.initializeNew(permit, operation: op), label) { XCTAssertEqual($0 as? OwnerStoreError, .broken) } }
+                XCTAssertThrowsError(try c.begin(deadline: .now.advanced(by: .seconds(1))), label) { XCTAssertEqual($0 as? OwnerStoreError, .broken) }
+                f.io.faultAt = nil
+                let allocated = f.io.data[f.path("text-state.enc")].map { String(decoding: $0.dropFirst(29), as: UTF8.self).contains(#""allocation":"allocated""#) } ?? false
+                let ownerIntact = f.io.data[f.path("owner/state.enc")] != nil && f.owner.key != nil
+                let pending = ["catalogue.write.pending", "text-state.enc.tmp", "owner/write.pending", "owner/state.enc.tmp"].contains { f.io.data[f.path($0)] != nil }
+                let reopened = f.coordinator()
+                if pending {
+                    XCTAssertThrowsError(try reopened.loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, .artifactsPresent, label) }
+                } else if allocated && !ownerIntact {
+                    // Allocated owner loss (directory alone, or missing key/file): never fresh, never cleaned.
+                    XCTAssertThrowsError(try reopened.loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, .continuity, label) }
+                    XCTAssertTrue(reopened.isBroken, label)
+                } else if allocated {
+                    XCTAssertEqual(try reopened.loadRetained().owner?.phase, "unregistered", label)
+                } else {
+                    XCTAssertFalse(try reopened.loadRetained().catalogue.allocated, label)
+                    XCTAssertEqual(f.owner.key, nil, label)
+                }
+                XCTAssertEqual(f.io.data, evidence, label); XCTAssertEqual(f.io.kinds, kinds, label)
+                XCTAssertEqual([f.catalogue.key, f.owner.key], keys, label)
+            }
+        }
+    }
+
+    @MainActor func testLeaseHandoffRetiresOldBootstrapHandlesBeforeNewWriter() async throws {
+        let f = try OwnerFixture()
+        let lease = OwnerNamespaceLease(root: f.root)
+        let oldHolder = try lease.acquire()
+        let old = CatalogueStore(directory: f.root, context: f.context,
+                                 files: LeasedFileIO(f.io, lease: lease, holder: oldHolder),
+                                 crypto: LeasedCryptography(f.catalogue, lease: lease, holder: oldHolder))
+        XCTAssertEqual(try old.loadRetained(), f.context)
+        XCTAssertThrowsError(try lease.acquire()) { XCTAssertEqual($0 as? OwnerStoreError, .busy) }
+        lease.retire(oldHolder)
+        f.io.events = []
+        XCTAssertThrowsError(try old.commit(f.context)) { XCTAssertEqual($0 as? CatalogueStoreError, .backendFailure) }
+        XCTAssertEqual(f.io.events, [], "stale handle fails before I/O")
+        XCTAssertTrue(old.isBroken)
+        let newHolder = try lease.acquire()
+        let c = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+                                           files: LeasedFileIO(f.io, lease: lease, holder: newHolder),
+                                           catalogueCrypto: LeasedCryptography(f.catalogue, lease: lease, holder: newHolder),
+                                           ownerCrypto: LeasedCryptography(f.owner, lease: lease, holder: newHolder),
+                                           entropy: { Data(repeating: 0, count: 16) })
+        XCTAssertFalse(try c.loadRetained().catalogue.allocated)
+        let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        _ = try c.initializeNew(c.reserveNewOwner(op), operation: op)
+        try c.finish(op)
+        lease.retire(newHolder)
+        f.io.events = []
+        XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .backendFailure) }
+        XCTAssertEqual(f.io.events, [])
+        XCTAssertTrue(c.isBroken)
+    }
+
     @MainActor func testRegistryConfirmationBindsUnresolvedOnlyAndPublicationFailurePreservesIntermediate() async throws {
         let f = try OwnerFixture(); let c = f.coordinator()
         var op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
@@ -223,16 +310,28 @@ final class OwnerFixtureIO: OwnerFileIO {
     var kinds: [String: CataloguePathKind] = [:]
     var events: [String] = []
     var failBefore: String?
+    var faultAt: Int?
+    var faultAfter = false
+    var effects: [String] = []
+    /// Fault seam: throw before or after exactly the N-th effect; never undo it.
+    func effect(_ e: String, _ apply: () throws -> Void) throws {
+        events.append(e)
+        if e == failBefore { throw OwnerStoreError.backendFailure }
+        let index = effects.count
+        if faultAt == index, !faultAfter { throw OwnerStoreError.backendFailure }
+        try apply(); effects.append(e)
+        if faultAt == index, faultAfter { throw OwnerStoreError.backendFailure }
+    }
     private func record(_ e: String) throws { events.append(e); if e == failBefore { throw OwnerStoreError.backendFailure } }
     func inspect(_ u: URL) throws -> CataloguePathKind { events.append("inspect:" + u.path); return kinds[u.path] ?? (data[u.path] == nil ? .absent : .regularFile) }
-    func writeExclusive(_ bytes: Data, to u: URL) throws { try record("write:" + u.path); guard data[u.path] == nil, kinds[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; data[u.path] = bytes }
-    func protectAndExclude(_ u: URL) throws { events.append("protectCatalogue:" + u.path) }
-    func protectOwnerAndExclude(_ u: URL, policy: OwnerProtection) throws { events.append("protectOwner:" + u.path) }
-    func createOwnerDirectory(_ u: URL) throws { events.append("mkdir:" + u.path); guard kinds[u.path] == nil, data[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; kinds[u.path] = .directory }
-    func fullSync(_ u: URL, directory: Bool) throws { events.append("sync:" + u.path) }
-    func rename(_ u: URL, to d: URL) throws { events.append("rename:" + u.path); data[d.path] = data.removeValue(forKey: u.path) }
+    func writeExclusive(_ bytes: Data, to u: URL) throws { try effect("write:" + u.path) { guard data[u.path] == nil, kinds[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; data[u.path] = bytes } }
+    func protectAndExclude(_ u: URL) throws { try effect("protectCatalogue:" + u.path) {} }
+    func protectOwnerAndExclude(_ u: URL, policy: OwnerProtection) throws { try effect("protectOwner:" + u.path) {} }
+    func createOwnerDirectory(_ u: URL) throws { try effect("mkdir:" + u.path) { guard kinds[u.path] == nil, data[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; kinds[u.path] = .directory } }
+    func fullSync(_ u: URL, directory: Bool) throws { try effect("sync:" + u.path) {} }
+    func rename(_ u: URL, to d: URL) throws { try effect("rename:" + u.path) { data[d.path] = data.removeValue(forKey: u.path) } }
     func read(_ u: URL, maximumBytes: Int) throws -> Data { events.append("read:" + u.path); guard let bytes = data[u.path] else { throw OwnerStoreError.continuity }; guard bytes.count <= maximumBytes else { throw OwnerStoreError.limitExceeded }; return bytes }
-    func removeIntent(_ u: URL) throws { events.append("remove:" + u.path); data.removeValue(forKey: u.path) }
+    func removeIntent(_ u: URL) throws { try effect("remove:" + u.path) { data.removeValue(forKey: u.path) } }
 }
 final class OwnerFixtureCrypto: OwnerCryptography {
     let id: Int
@@ -242,9 +341,9 @@ final class OwnerFixtureCrypto: OwnerCryptography {
     init(_ id: Int, _ io: OwnerFixtureIO) { self.id = id; self.io = io }
     var framingOverhead: Int { 29 }
     func loadKey() throws -> Int? { io.events.append("keyLoad:\(id)"); return key }
-    func createKey() throws -> Int { io.events.append("keyCreate:\(id)"); guard key == nil else { throw OwnerStoreError.keyMismatch }; key = id; return id }
+    func createKey() throws -> Int { try io.effect("keyCreate:\(id)") { guard key == nil else { throw OwnerStoreError.keyMismatch }; key = id }; return id }
     func foreignKeyExists(_ slot: CatalogueForeignStore) throws -> Bool { io.events.append("foreign:\(slot.rawValue)"); return foreign(slot) }
-    func seal(_ plaintext: Data, with key: Int) throws -> Data { io.events.append("seal:\(id)"); return Data(repeating: UInt8(key), count: 29) + plaintext }
+    func seal(_ plaintext: Data, with key: Int) throws -> Data { try io.effect("seal:\(id)") {}; return Data(repeating: UInt8(key), count: 29) + plaintext }
     func open(_ sealed: Data, with key: Int) throws -> Data { io.events.append("open:\(id)"); guard sealed.count >= 29, sealed.prefix(29).allSatisfy({ $0 == UInt8(key) }) else { throw OwnerStoreError.authenticationFailed }; return sealed.dropFirst(29) }
 }
 @MainActor final class OwnerFixture {
@@ -265,7 +364,7 @@ final class OwnerFixtureCrypto: OwnerCryptography {
         io.kinds[root.path] = .directory
         catalogue.key = 1
         io.data[root.appendingPathComponent("text-state.enc").path] = try catalogue.seal(IdentityCatalogueCodec.encode(context), with: 1)
-        io.events = []
+        io.events = []; io.effects = []
     }
     func path(_ s: String) -> String { root.appendingPathComponent(s).path }
     func intent(_ number: Int = 1, height: UInt64 = 100, name: String = "alice_fixture") -> OwnerAttemptIntent {
