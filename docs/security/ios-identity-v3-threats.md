@@ -3,7 +3,7 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: native correction receipt and scoped source closure on 17d8d88 / 09eac34; on-device protection, runtime and MR gates remain NOT RUN
+last_reviewed_scope: reported realm-store D87 namespace/parser/read-only choices and source qualifications; no implementation, native measurement or ADR acceptance
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -29,6 +29,19 @@ credential projection is not complete state validation; a signing call is not
 a silently acceptable storage guard. Tightening a shared verifier or adding a
 pure validation API needs explicit scope, compatibility analysis and review;
 this draft implements neither. The closed #85 findings are not reopened by it.
+
+Reported D87 dispositions narrow the draft, not the accepted safety gates:
+namespace identity must be checked separately from key policy, using a proposed
+typed realm backend and actual Keychain attributes linked to the loaded item.
+Pre-create namespace/absence checks and post-create readback are distinct; mismatch
+never permits cleanup. Exact default/missing-attribute semantics still need an
+Apple-backed contract. New realm metadata forbids escapes, but opaque core and
+existing owner/catalogue/legacy grammars remain unchanged; retained bytes are not
+normalized. Verified B is explicitly local read-only admission, not live server
+membership. Owner-locked writes, including bookkeeping/cleanup, are excluded from
+this slice; general schema-3 reads remain blocked on the full non-signing validator.
+A successful simulator xcodebuild run or net memory delta cannot substitute for a measured
+peak across the actual native path. No new native measurement has been performed.
 
 No app startup, network verifier, secret operation, legacy-state migration or
 live action is introduced. #73 authenticated scope, draft ADR-0017, private-data

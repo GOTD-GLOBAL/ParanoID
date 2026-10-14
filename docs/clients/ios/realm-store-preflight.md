@@ -47,6 +47,23 @@ independent exact-revision review under accepted
 [approval policy](../../governance/documentation-policy.md#durable-approval-and-delegation-records).
 No approval is inferred from urgency, CI, prior component review or a merge.
 
+### Reported D87 technical choices — not formal acceptance
+
+The [D87-01–07 request](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6171078411)
+received a substantive response in this Telegram thread under Yaroslav's name.
+The [source verification and qualifications](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#pullrequestreview-5520287987)
+record it as reported input, not authenticated human approval evidence. The
+response chooses the successor writer, typed realm backend, stricter new-format
+metadata, preserved login evidence, owner-locked read-only scope, and direction A
+for both shared-core questions. The draft below incorporates those choices with
+explicit boundaries; it does not report them as implemented or accepted ADRs.
+A directly verifiable disposition record is still required before protected work.
+
+D87-06/07 select directions for separately scoped **RFC → ADR** work. Changes to
+`key-protocol`, `clean_service` or the shared JSON command contract wait for that
+process and required approvals. Neither this appendix nor an RFC draft alone
+unblocks arbitrary schema-3 reopen. Existing #85 closure is unchanged.
+
 ## 2. Existing facts versus inherited proposals
 
 Line ranges/symbols refer to the frozen baseline; linked design/protocol
@@ -91,6 +108,36 @@ owner-authentication policy or automatic login is included.
 - Existing local names, call logs, drafts, install marker and legacy v2 bytes
   are untouched. This slice creates no metadata migration or global membership
   flag. Retained metadata must later be scoped before any app factory adoption.
+
+### State refusal and typed namespace contract
+
+D87-01 means an old reader refuses a valid but unsupported successor **state**
+without changing its bytes; refusal/freeze does not prove file corruption.
+It does not assert a uniform existing error API. The bootstrap codec returns
+`unsupportedState`; `AllocatedCatalogueCodec` returns `invalidTransition` for
+allocated realms; `CatalogueStore.readCatalogue` maps unsupported codec errors
+into `invalidCatalogue`; artifact checks can refuse before decoding. The owner
+coordinator freezes retained non-lock failures. Preserve these APIs/tests here.
+Changing every old API/UI to a new typed refusal is a separate behavior change,
+not implicitly authorized by a docs-only compatibility statement.
+
+D87-02 proposes a typed `RealmKeyBackend`, analogous to the owner-policy type
+boundary but **not an implemented API**. Existing `OwnerKeyBackend.storedPolicy`
+reads accessibility/synchronizable, not a complete namespace identity. Require
+messaging-policy enforcement and actual Keychain readback; Swift object identity
+and different accessibility policies do not prove separate items.
+
+Before mutation, define four explicit, non-overlapping namespace/query identities
+for catalogue/owner/fi/ru: class/account/service/accessGroup and sync/domain
+selection, separately from accessibility policy. For retained items, bind the
+returned identity/policy attributes to the actual loaded key. Exact handling of
+missing/default attributes, class/domain query evidence and ambiguous matches
+must be specified and verified on Apple; do not invent returned attributes or
+accept an arbitrary first match. This remains a pre-code contract detail.
+For an absent item there can be no pre-create stored-attribute readback: verify
+intended namespace and absence first, then permit/journal/create, then read back
+identity/policy/key before use/adoption. Mismatch freezes with key/intent retained;
+no deletion, repair or re-creation. Fixture descriptors are not native proof.
 
 ### Single-lease handoff, not two writers
 
@@ -151,33 +198,47 @@ and [Credential / verify / fingerprint](../../../key-protocol/src/lib.rs).
 **Canonical discrepancy — stop for disposition:** protocol §Encodings says all
 UUIDs are UUIDv4, but `Credential::verify` checks only canonical UUID text for
 `device`; `Identity::create` generates v4 and `ChallengeRequestV3::validate`
-enforces v4 on **operation**, not device. No choice to tighten or broaden device
-admission is accepted here. Resolve that exact contract/source difference before
-implementing its validator; do not normalize IDs or silently alter shared Rust.
+enforces v4 on **operation**, not device. D87-06 selects direction A for a
+separate RFC: retain the v3 requirement, define boundary-specific validation and
+an explicit retained-credential compatibility policy, not a global change to
+`Credential::verify`. Both client creation paths call shared `Identity::create`,
+which generates v4; that does not inventory all retained/external credentials.
+The shared verifier also checks messaging contacts. No enforcement/compatibility
+change is accepted or implemented here; do not normalize signed IDs or silently
+invalidate, regenerate or delete retained credentials.
 
 ### Parser admission and opaque core boundary
 
 **PROPOSED local bounds**, to bound hostile metadata without restricting the
 versioned core grammar: core span ≤8,388,608 bytes; **all other plaintext bytes**,
-including Snapshot wrapper, whitespace/escapes and outer syntax, ≤131,072;
+including Snapshot wrapper, whitespace and outer syntax, ≤131,072;
 total ≤8,519,680; sealed frame ≤8,519,709. The core limit is sourced from
 [`clients/core::command`](../../../clients/core/src/lib.rs); the additive
 metadata allowance is a proposal, not additional core capacity.
 
 | Admission surface | Required bound / refusal before effects |
 | --- | --- |
-| Envelope, wrapper and typed metadata | Strict UTF-8, no BOM, only JSON whitespace; valid escapes, no malformed surrogates/control bytes/trailing commas/data. Reject duplicate **decoded** keys, unknown/missing fields, wrong/null types; no permissive dictionary preprocessing. Arrays are never metadata. Exact object field counts: envelope/Intent 10, RealmKey 3, Binding/Snapshot 5, Credential 8, CommitResult 7. |
-| Metadata parser | **PROPOSED** nonrecursive schema-directed depth ≤3, root counted as 1 (`envelope → Intent → Credential`); reject unexpected containers without walking them. Decoded keys ≤32 bytes; each value has its table cap. Before allocation, raw string token including quotes ≤`6 × decoded cap + 2` (JSON ASCII escape expansion); versions use `0` or `[1-9][0-9]{0,19}`, checked ≤`18446744073709551615`, then require literal `1`/`4`; no sign/fraction/exponent, leading zero or Bool/Double/string coercion. |
+| Envelope, wrapper and typed metadata | Strict UTF-8, no BOM, only JSON whitespace. For the **new realm format only**, metadata keys/string contents are literal ASCII under the field grammars: no backslash or JSON escape sequence, embedded quote/control byte, non-ASCII, trailing comma/data. Reject duplicate literal keys, unknown/missing fields and wrong/null types; no permissive dictionary preprocessing. Arrays are never metadata. Exact object field counts: envelope/Intent 10, RealmKey 3, Binding/Snapshot 5, Credential 8, CommitResult 7. |
+| Metadata parser | **PROPOSED** nonrecursive schema-directed depth ≤3, root counted as 1 (`envelope → Intent → Credential`); reject unexpected containers without walking them. Literal ASCII keys ≤32 bytes; each value has its table cap. Before allocation, raw string token including quotes ≤`field cap + 2`; reject backslash directly rather than decoding an escaped spelling; versions use `0` or `[1-9][0-9]{0,19}`, checked ≤`18446744073709551615`, then require literal `1`/`4`; no sign/fraction/exponent, leading zero or Bool/Double/string coercion. |
 | `coreSpan` at `snapshot.state` | Locate by offsets, with iterative string/escape-aware delimiter matching; count its raw bytes from `{` through matching `}`. No metadata depth/field/key/string/array rule inside it. Scanner auxiliary delimiter stack ≤one byte per consumed core byte (thus ≤8,388,608), no recursive Swift calls or arbitrary core tree. Existing Rust JSON/versioned semantic validation remains authoritative, including its own rejection limits. A span match alone is not JSON/core validity. |
 | Byte accounting and memory | Bound frame before read/decrypt (reject growth); use checked offset/add/subtract arithmetic. Require `plaintextBytes - coreSpanBytes ≤131072` as well as both other caps, on read and candidate write. **PROPOSED** parser uses one bounded decrypted buffer plus offsets, one bounded core transfer copy and bounded metadata/stack; no whole-envelope Foundation tree or escaping/re-encoding core. CryptoKit/C-ABI/Rust replies and `CoreBridge`/`JsonSpan` make copies: this is not a zero-copy or total-process-memory proof; exact-head peak-allocation evidence remains required. |
 
+D87-03 intentionally narrows the previously proposed **new-format reader**
+grammar; decoded ASCII does not imply escape-free source bytes. Existing
+catalogue/owner/legacy codecs still accept their supported escaped spellings.
+No migration or tightening of those readers is authorized. Opaque core is exempt:
+its scanner must still handle escaped quotes, backslashes and Unicode correctly.
+
 Canonical output rules apply only to newly serialized metadata: compact UTF-8,
-no BOM/newline, fields in table order and strings literally under these ASCII
-grammars. Readers accept object order and valid escapes without normalizing
-values. On bookkeeping-only commits, the retained Snapshot span, including
-wrapper field order, whitespace and escapes, is copied verbatim and exempt from
-canonical output rules. Preserve its core span as well; only an explicit Rust
-candidate transition replaces core bytes. The old `Snapshot.open` uses a Foundation tree;
+no BOM/newline, fields in table order and literal ASCII strings. Build each new
+Snapshot wrapper directly in that grammar. The new reader accepts permitted
+object order and JSON whitespace, not metadata escapes. On bookkeeping-only
+commits, copy the entire already admitted Snapshot span verbatim, including
+wrapper order/whitespace and every opaque-core escape. No `Snapshot.open(...).text`
+round-trip or normalization. Import of an escaped legacy wrapper is excluded,
+not silently repaired; any future import needs a separately reviewed contract.
+Only an explicit Rust candidate transition replaces core bytes. The old
+`Snapshot.open` uses a Foundation tree;
 [`JsonSpan.value/Scanner.scanValue`](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/JsonSpan.swift)
 copies input and only matches nested delimiters, not full nested grammar. Neither
 is the new strict admission parser. Never prune retained state to fit.
@@ -214,8 +275,15 @@ non-signing validator for arbitrary schema-3 state. `clean_service::validate`
 and `reply` can call `local_contact` → [ContactV2::create](../../../clients/core/src/contact_v2.rs),
 which signs with device auth. `identity_credential_v3` bypasses full `validate`.
 Do not implement the table by calling either and claiming both guarantees;
-disposition of a non-signing full-state validation path is still required.
-No Swift core reinterpretation, new bridge API or signing exception is authorized.
+D87-07 chooses a separate RFC for pure full-state validation/nonsecret projection.
+`ContactV2.fingerprint` excludes its signature and `intro_v2::channel` uses that
+fingerprint, so a non-signing path is feasible without changing the transcript.
+That does not prove a trivial patch: preserve peer signature verification and
+all state checks; avoid signing in both validation and reply/projection, with
+no-sign/no-mutation tests. Exact JSON contract, approved RFC/ADR and actual
+implementation remain dependencies. Until then general schema-3 reopen stays
+blocked; `identity_credential_v3` is not a substitute. No Swift core
+reinterpretation, new bridge API or signing exception is authorized here.
 
 Wire control requests are capped at 16,384 bytes by
 [`self_service_http::routes`](../../../server/src/self_service_http.rs); this is
@@ -248,6 +316,13 @@ full context, known artifact/key continuity and no existing selected-slot state.
 Unregistered/pending/unpublished/locked owner grants no new allocation. Commit
 only the selected allocation bit, retaining owner metadata and the sibling.
 
+D87-01 requires allocation flag, known paths/artifacts and key continuity to be
+checked before each mutating transition; read-only inspection is necessary, not
+forbidden. This check is phase-aware: after durable allocation, the current
+one-use permit can authorize the expected key/file creation intermediate.
+Persisted `allocated` alone never authorizes it, and a new instance cannot
+reconstruct the permit from missing halves. Keep failures read-only/preserving.
+
 After final sync and permit consumption: create-only/no-follow `realms/` if
 absent, then the selected slot directory; protect/exclude and sync new directories
 and parents. An existing `realms/` must be a verified directory, never recreated.
@@ -266,9 +341,42 @@ No network is dispatched by this component. No key/temp cleanup on failure.
 | Failure/cancellation after allocation or any write begins | Allocation never reverses; writer terminally broken, no further backend effects or false success. Before/after-effect exceptions are both covered. |
 | Clean schema-0 intermediate | Retain the same identity; explicit local continuation may upgrade and durably commit, never regenerate. |
 | Realm A fails, common catalogue and B integrity verified | Fence A; allow only verified B storage operations. No claim of running lanes in this slice. |
-| Owner read-only lock/freeze with valid retained catalogue/B envelope | Block owner work/new allocation; proposed retained device-only B access does not require owner signing. Binding disagreement, when observed, is not a benign lock. |
+| Owner read-only lock/freeze with verified B | Block owner work, new allocation and **all realm writes** in this slice; only the bounded read admission below is proposed. Binding disagreement, when observed, is not a benign lock. |
 | Catalogue/installation continuity or common storage failure | Global freeze; preserve owner, both realms, keys and metadata. Inaccessible is not absent. |
 | Final acknowledgement lost after all bytes/markers settled | Failed writer stays broken; a new reader may open the clean result. No universal crash detection, atomic Keychain/filesystem transaction or anti-rollback claim. |
+
+### Verified B means local read-only admission
+
+D87-05 uses **verified B** only for a local storage read in the current context,
+not proof of live membership, finalized registry or transport/UI authority.
+All of the following must hold before returning the read result:
+
+1. The exclusive lease/holder/incarnation remain valid for the trusted isolated
+   root; namespace identities are explicit and non-overlapping, not object IDs.
+2. Catalogue/install key-file continuity, bounded AEAD open and full-state schema
+   are valid; exact expected installID/ownerRef and both full realm tuples match.
+   Owner and B are allocated with confirmed non-null binding, no common pending
+   artifact or installation uncertainty. This does not solve app fresh/lost setup.
+3. No-follow inspection of known parents/files, B key/file halves and actual
+   namespace/policy checks succeed, with no B temp/intent or known retained-key
+   substitution. Inaccessible is not absent. A's failure must be provably local.
+4. B's authenticated frame/envelope obeys all caps/schema/context checks; binding
+   matches the catalogue and any available validated owner binding. An inaccessible
+   owner is not claimed freshly validated, and observed contradiction is not lock.
+5. Full non-signing Rust validation succeeds; credential, trust and fingerprint
+   match wrapper/slot; intent/result/enrollment/terminal obey §4. Status never
+   invents a missing full result. D87-07 still blocks general schema-3 admission.
+6. The operation performs no creation, signing, network, candidate adoption,
+   cleanup or durable reconciliation. Missing evidence causes refusal, not a
+   weakened definition of verified.
+
+When owner is classified locked/frozen at write admission, refuse **all realm
+writes before the first mutating effect**, including bookkeeping, intent/result/
+terminal changes and journal cleanup. This is a deliberate narrowing of this
+slice, not removal of the later device-only design. Only precisely classified
+read-only lock qualifies; arbitrary I/O errors do not. A lock discovered after
+writing begins never makes the failed writer retryable and grants no cleanup;
+no OS-atomic observation/fencing across Keychain and filesystem is claimed.
 
 Follow [MR-06/07](concurrent-realms-design.md#requirement-and-acceptance-mapping):
 v4 data stays byte-exact; intact v5 catalogue/key causes old-reader refusal.
@@ -323,10 +431,10 @@ Keep pre-fix/fixed SHAs, logs and TDD history; no test weakening.
 | R04 `siblingAndOwnerPreserved` | Missing second-slot support fails → distinct A/B credentials/keys, own full trust and byte-identical retained owner/ledger/A/metadata while B commits; reverse direction too. | REQ-MULTI-001, MR-01/02 |
 | R05 `faultEveryEffect` | Deliberate missing fence/order is detected → before/after directory, intent-parent-sync, key, temp, rename, readback, removal/final-sync faults retain evidence and stop further effects; no premature candidate/proof release. | MR-06 |
 | R06 `retainedLossNeverCreates` | Missing classification is caught → allocated both-missing/XOR/temp/intent, wrong inode/key/context and authenticated malformed bytes refuse read-only; fresh coordinator gets no permit. | MR-06/07 |
-| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; each field/escaped-token cap and metadata depth boundary checked, deep core delegated to Rust; raw Snapshot/core spans unchanged, measured parser allocations; no signing on open. | REQ-SEC-001, MR-02/14 |
+| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; literal field/token caps and metadata depth checked, escaped ASCII metadata refused while escaped core spans remain valid; existing owner/catalogue grammar unchanged, deep core delegated to Rust; raw Snapshot/core spans unchanged, simulator-measured peak memory; no signing on open. | REQ-SEC-001, MR-02/14 |
 | R08 `unknownOutcomeRetainsIntent` | Missing bookkeeping fails → restart/cancel/lost reply preserve operation, generation, credential and exact intent; status has only its three fields, absent remains unknown without a retained result; no synthesized membership or cleared unrelated intent. | AUTH-03/04, MR-05 |
 | R09 `resultThenIntentClear` | Missing two-commit ordering fails → fault between result/core commit and clear reopens reconcilable state; schema-0 dry-run never adopts; schema-3 full validation (non-signing seam unresolved), credential/result/enrollment mapping and generation + 1 checked; mismatch/terminal A preserves B and never auto-replaces. | AUTH-04, MR-04/05 |
-| R10 `freezeScopeAndCompatibility` | Missing scope guard is caught → owner lock permits intact device-only reopen; A fault contains only with verified common/B state; catalogue loss freezes all; old refusal tests and v4 bytes remain unchanged. | MR-06/07 |
+| R10 `freezeScopeAndCompatibility` | Missing scope guard is caught → owner lock permits only verified-B read admission after the full-validator dependency; every locked-owner realm write refuses before mutation; missing any verification item refuses; A fault contains only with verified common/B state; catalogue loss freezes all; old refusal APIs/tests and v4 bytes unchanged. | MR-06/07 |
 | R11 `nativeEncryptedReopen` | Runtime RED against inert native adapter → real filesystem/CryptoKit commit/reopen, tamper/wrong-key/AAD/sliced-Data/upper-cap negatives and fault preservation pass. Memory keys explicitly labelled. | MR-06 component only |
 | R12 `typeAndNoAdoptionBoundary` | Negative constructor/authority probes are wrongly admitted before fix → expected compiler rejection with positive controls; unchanged app/legacy/Rust/pins/dependencies; no default network/verifier factory. | REQ-CLIENT-001, MR-02/14 |
 
@@ -357,16 +465,32 @@ workflow, preserving all existing accounts. Host memory fixtures cannot pass
 that gate. Receipt: full SHA/source hashes, commands/exit codes, actual discovered
 counts/skips, raw RED/GREEN, fixture-versus-native attribution, clean-source
 before/after and independent final review with blocking findings closed.
+
+D87-03 memory evidence uses **`xcodebuild test` on an iOS simulator**, with an
+explicit simulator-test target/filter for the new measurement and exact build configuration.
+The proposed package tests above and a passing build are not memory measurements;
+no suitable memory harness was found in the frozen tree. Record the measured process,
+interval spanning decrypt/parser/transfer/bridge/Rust/reply, simulator/runtime,
+boundary success/refusal fixtures, actual numeric peak results and limitations.
+[Apple's XCTMemoryMetric documentation](https://developer.apple.com/documentation/xctest/xctmemorymetric)
+describes a before/after difference; do not relabel net change as transient peak.
+Name and justify the actual peak metric/instrumentation in the receipt. No Linux
+measurement substitutes for this selected acceptance; simulator measurements do
+not prove physical-device memory or lock behavior. Memory acceptance is NOT RUN.
+
 Missing native capability is NOT RUN; the known full-wrapper server-build limit
 is neither repaired nor waived. No minimum count substitutes for named coverage.
 
 ## 9. Decisions still required and rollout boundary
 
-- **Before implementation:** authenticated #73 scope; Cooldom66671 disposition
-  and independent review of the successor writer/version strategy, complete
-  field/parser bounds, the device-UUID discrepancy and non-signing full-state
-  validation blocker in §4, key-namespace identity checks, creation authority
-  and owner-locked retained-read classification. The schema/caps above are proposals.
+- **Before implementation:** authenticated #73 scope and a verifiable record of
+  the reported technical choices/qualifications, with independent exact-revision
+  review. Complete the namespace/query/readback contract, including Apple default/
+  missing-attribute rules; do not claim `OwnerKeyBackend` already provides it.
+  D87-06/07 are RFC directions: separately scope and approve their RFC → ADR
+  changes and compatibility before modifying shared code. General schema-3
+  reopen requires the resulting real non-signing validator, not just a draft RFC.
+  The schema/caps/read-only narrowing remain proposed and every new test NOT RUN.
 - **Before app adoption:** fresh-install versus lost-catalogue classification,
   compatible owner mutations, scoped local metadata, app-enforced single lease,
   final callback fences, prompt/no-passcode/call policy, production RPC verifier
@@ -384,5 +508,5 @@ correlation residuals. Words restore owner authority, not history or safety afte
 seed theft. No secret/snapshot/proof/raw-query logging; synthetic fixtures only.
 
 Local documentation checks only; no existing phone/container, Keychain, server,
-DB, network endpoint, Apple account or production data touched. No new Mac/native/
+DB, live application endpoint, Apple account or production data touched. No new Mac/native/
 device, live login or rollout-readiness claim follows.

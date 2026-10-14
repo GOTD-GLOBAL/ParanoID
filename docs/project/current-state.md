@@ -27,6 +27,16 @@ signing. These are future integration questions, not newly demonstrated owner-
 adapter or live-app defects. No shared Rust rule/API or signing exception has
 been changed; disposition and scoped review are required for any such change.
 
+The reported D87-01–07 technical response and source verification now guide the
+appendix: preserve existing refusal APIs, add a proposed typed realm namespace
+contract, restrict escapes only in new realm metadata (never opaque core or old
+formats), define verified-B local reads and exclude owner-locked realm writes.
+Both shared-core questions select separately scoped RFC → ADR directions, not
+source permission. Actual Keychain identity/default-attribute rules and the
+non-signing full validator are still dependencies; xcodebuild-driven simulator
+peak-memory evidence has no implemented harness or result. This is reported
+input, not authenticated ADR acceptance; #73 and every new NOT RUN gate remain.
+
 D1-D3 remain an application gap: legacy startup still constructs one snapshot
 store/runtime; production registry verification, realm-targeted v3 transport and
 durable login orchestration are not delivered by owner-component tests.
