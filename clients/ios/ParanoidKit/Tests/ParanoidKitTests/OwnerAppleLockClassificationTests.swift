@@ -126,6 +126,51 @@ import XCTest
         reopened.close()
     }
 
+    // Negative (review follow-up): EPERM from the FIRST fstat, right after a
+    // successful open of owner/state.enc, is not the open syscall and must be a
+    // failure even while protected data is reported unavailable.
+    func testEPERMAtTheFirstFstatAfterOpenIsAFailureNotALock() throws {
+        let f = try LockFixture()
+        defer { f.cleanup() }
+        try f.commitOwner()
+        f.fault.failFstat(nth: 1, errno: EPERM)
+        f.availability.set(false)
+        XCTAssertThrowsError(try f.files.read(f.ownerFile, maximumBytes: f.cap)) {
+            XCTAssertFalse($0 is OwnerBackendLock, "the first fstat is not the open syscall: \($0)")
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EPERM))
+        }
+        f.fault.failFstat(nth: 1, errno: EPERM)
+        let c = f.coordinator()
+        XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .backendFailure) }
+        XCTAssertTrue(c.isBroken, "an fstat failure freezes the store")
+        c.close()
+    }
+
+    // Negative: EPERM from the later fstat (size check before the descriptor read) is a failure too.
+    func testEPERMAtTheLaterFstatIsAFailureNotALock() throws {
+        let f = try LockFixture()
+        defer { f.cleanup() }
+        try f.commitOwner()
+        f.fault.failFstat(nth: 2, errno: EPERM)
+        f.availability.set(false)
+        XCTAssertThrowsError(try f.files.read(f.ownerFile, maximumBytes: f.cap)) {
+            XCTAssertFalse($0 is OwnerBackendLock)
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EPERM))
+        }
+    }
+
+    // Negative (admission): a backend whose retained item reads back a weaker
+    // policy is never used as the owner key. FIXTURE-ONLY descriptor; the real
+    // refusal of a legacy AfterFirstUnlock item runs on the signed simulator.
+    func testABackendReportingAWeakerStoredPolicyIsRefusedBeforeUse() throws {
+        let weak = WeakPolicyMemoryKey()
+        _ = try weak.create()
+        let crypto = OwnerAppleCryptography(owner: weak)
+        XCTAssertThrowsError(try crypto.loadKey(), "a weaker retained policy is a refusal, not a key")
+        XCTAssertTrue(try weak.exists(), "nothing is deleted or migrated")
+        XCTAssertEqual(weak.deletions, 0)
+    }
+
     // Without a protected-data signal (the plain initializer) nothing is ever a lock.
     func testWithoutAProtectedDataSignalEPERMIsAlwaysAFailure() throws {
         let f = try LockFixture()
@@ -149,10 +194,20 @@ private final class SyscallFault: @unchecked Sendable {
     private var openSuffix: String?; private var openCreate = false; private var openErrno: Int32 = 0
     private var readErrno: Int32?
     private var lstatSuffix: String?; private var lstatErrno: Int32 = 0
+    private var fstatNth = 0; private var fstatErrno: Int32 = 0; private var fstatCalls = 0
     func failOpen(ofSuffix suffix: String, create: Bool, errno code: Int32) { lock.lock(); openSuffix = suffix; openCreate = create; openErrno = code; lock.unlock() }
     func failRead(errno code: Int32) { lock.lock(); readErrno = code; lock.unlock() }
     func failLstat(ofSuffix suffix: String, errno code: Int32) { lock.lock(); lstatSuffix = suffix; lstatErrno = code; lock.unlock() }
-    func clear() { lock.lock(); openSuffix = nil; readErrno = nil; lstatSuffix = nil; lock.unlock() }
+    func clear() { lock.lock(); openSuffix = nil; readErrno = nil; lstatSuffix = nil; fstatNth = 0; fstatCalls = 0; lock.unlock() }
+    /// Fail the n-th fstat of the next read (1 = the validation right after open, 2 = the size check before reading).
+    func failFstat(nth: Int, errno code: Int32) { lock.lock(); fstatNth = nth; fstatErrno = code; fstatCalls = 0; lock.unlock() }
+    var fstatHook: @Sendable (Int32, UnsafeMutablePointer<stat>) -> Int32 {
+        { descriptor, information in
+            self.lock.lock(); self.fstatCalls += 1; let hit = self.fstatNth != 0 && self.fstatCalls == self.fstatNth; let code = self.fstatErrno; self.lock.unlock()
+            if hit { errno = code; return -1 }
+            return Darwin.fstat(descriptor, information)
+        }
+    }
     var openHook: @Sendable (UnsafePointer<CChar>, Int32, mode_t) -> Int32 {
         { path, flags, mode in
             self.lock.lock(); let suffix = self.openSuffix; let create = self.openCreate; let code = self.openErrno; self.lock.unlock()
@@ -220,7 +275,7 @@ private final class Availability: @unchecked Sendable {
     /// The adapter under test: real file system, FIXTURE-ONLY seam and signal.
     var files: OwnerAppleFileIO {
         var seams = CatalogueAppleSyscalls.darwin
-        seams.open = fault.openHook; seams.read = fault.readHook; seams.lstat = fault.lstatHook
+        seams.open = fault.openHook; seams.read = fault.readHook; seams.lstat = fault.lstatHook; seams.fstat = fault.fstatHook
         return OwnerAppleFileIO(fileSystem: disk, syscalls: seams, protectedDataAvailable: availability.read)
     }
     var catalogueCrypto: CatalogueAppleCryptography {
@@ -247,7 +302,10 @@ private final class Availability: @unchecked Sendable {
     }
 }
 
-private final class LockMemoryKey: WrappingKeyStore {
+private final class LockMemoryKey: OwnerKeyBackend {
+    /// FIXTURE-ONLY descriptor: a memory key cannot enforce a Keychain policy;
+    /// it only reports the canonical one so the adapter admits it on the host.
+    func storedPolicy() throws -> OwnerKeyPolicy? { try load() == nil ? nil : .whenUnlockedThisDeviceOnly }
     private let byte: UInt8
     private var value: SymmetricKey?
     private(set) var creations = 0
@@ -260,4 +318,19 @@ private final class LockMemoryKey: WrappingKeyStore {
         let key = SymmetricKey(data: Data(repeating: byte, count: 32)); value = key; creations += 1; return key
     }
     func deleteRetained() throws { deletions += 1; XCTFail("owner store must never delete retained keys"); throw OwnerStoreError.backendFailure }
+}
+
+/// FIXTURE-ONLY: a memory key whose retained item reports the messaging policy,
+/// standing in for a legacy AfterFirstUnlock item under the owner account.
+private final class WeakPolicyMemoryKey: OwnerKeyBackend {
+    private var value: SymmetricKey?
+    private(set) var deletions = 0
+    func exists() throws -> Bool { value != nil }
+    func load() throws -> SymmetricKey? { value }
+    func create() throws -> SymmetricKey {
+        guard value == nil else { throw OwnerStoreError.continuity }
+        let key = SymmetricKey(data: Data(repeating: 0x77, count: 32)); value = key; return key
+    }
+    func deleteRetained() throws { deletions += 1; XCTFail("owner store must never delete retained keys"); throw OwnerStoreError.backendFailure }
+    func storedPolicy() throws -> OwnerKeyPolicy? { value == nil ? nil : .fixtureWeakMessagingPolicy }
 }

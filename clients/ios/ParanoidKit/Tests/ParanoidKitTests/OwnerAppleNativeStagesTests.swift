@@ -396,7 +396,10 @@ extension OwnerAllocationCoordinator: OwnerStageClosable {}
 /// boxes, NOT a Keychain and NOT the owner accessibility policy. `locked`
 /// reports the precise read-only lock; `lockAfterCreate` locks the key the
 /// moment it is created, i.e. after the owner write began.
-private final class StageMemoryKey: WrappingKeyStore {
+private final class StageMemoryKey: OwnerKeyBackend {
+    /// FIXTURE-ONLY descriptor: a memory key cannot enforce a Keychain policy;
+    /// it only reports the canonical one so the adapter admits it on the host.
+    func storedPolicy() throws -> OwnerKeyPolicy? { try load() == nil ? nil : .whenUnlockedThisDeviceOnly }
     private let byte: UInt8
     private var value: SymmetricKey?
     var locked = false

@@ -178,7 +178,10 @@ private final class NativeOwnerFixture {
 
 /// In-memory opaque key double: real `SymmetricKey` values for real CryptoKit
 /// boxes, but NOT a Keychain and NOT the owner accessibility policy.
-private final class NativeOwnerMemoryKey: WrappingKeyStore {
+private final class NativeOwnerMemoryKey: OwnerKeyBackend {
+    /// FIXTURE-ONLY descriptor: a memory key cannot enforce a Keychain policy;
+    /// it only reports the canonical one so the adapter admits it on the host.
+    func storedPolicy() throws -> OwnerKeyPolicy? { try load() == nil ? nil : .whenUnlockedThisDeviceOnly }
     private let byte: UInt8
     private var value: SymmetricKey?
     private(set) var creations = 0

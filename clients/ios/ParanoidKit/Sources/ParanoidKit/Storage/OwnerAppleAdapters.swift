@@ -13,6 +13,23 @@ public struct OwnerKeyPolicy: Equatable, Sendable {
     /// The only policy the owner store accepts.
     public static let whenUnlockedThisDeviceOnly = OwnerKeyPolicy(
         accessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String, synchronizable: false)
+
+    /// FIXTURE-ONLY: the messaging policy a legacy `KeychainKey` item carries,
+    /// for host tests that prove a weaker retained item is refused. Not a
+    /// policy the owner store ever writes.
+    static let fixtureWeakMessagingPolicy = OwnerKeyPolicy(
+        accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String, synchronizable: false)
+}
+
+/// A key backend that enforces the canonical owner policy on the items it
+/// creates and reads back their stored policy. `OwnerKeychainKey` conforms; the
+/// messaging `KeychainKey` does not and must not: adopting `WrappingKeyStore`
+/// alone never qualifies a backend for the owner store. Host memory fixtures
+/// may conform behind a deliberately labelled FIXTURE-ONLY seam; they report a
+/// descriptor, not enforcement.
+public protocol OwnerKeyBackend: WrappingKeyStore {
+    /// The policy attributes of the retained item, or nil when there is none.
+    func storedPolicy() throws -> OwnerKeyPolicy?
 }
 
 /// The owner wrapping key in the Keychain, under its own account and the owner
@@ -27,7 +44,7 @@ public struct OwnerKeyPolicy: Equatable, Sendable {
 ///   back; a duplicate (`errSecDuplicateItem`) is refused, never replaced.
 /// - `deleteRetained()` refuses: the owner store never deletes a retained key.
 ///   Test teardown removes its own unique test account directly.
-public struct OwnerKeychainKey: WrappingKeyStore, Sendable {
+public struct OwnerKeychainKey: OwnerKeyBackend, Sendable {
     public static let keyBytes = 32
     public let account: String
     public let policy: OwnerKeyPolicy
