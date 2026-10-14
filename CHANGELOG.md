@@ -8,6 +8,13 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Realm key namespace/readback contract (documentation)
+
+- Specify a draft typed realm-key boundary, real query disjointness and bound
+  Keychain readback, with staged create-only authority and preservation on failure.
+- Keep native attribute/default/cardinality probes and acceptance NOT RUN; this
+  is not an implemented backend, a changed old owner API or live authorization.
+
 ### iOS source-scope and realm disposition records (documentation)
 
 - Record the [human bounded source/local-test confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) and

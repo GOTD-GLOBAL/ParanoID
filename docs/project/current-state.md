@@ -7,6 +7,20 @@ last_reviewed_scope: verified bounded source-scope and D87 disposition records; 
 
 # Current project state
 
+## Realm key namespace/readback contract draft — 2026-10-14
+
+The [namespace contract](../clients/ios/realm-key-namespace-contract.md) proposes
+an explicit typed realm backend, pairwise-disjoint actual query selectors,
+combined key/attribute readback and phase-bound create-only authority. Nine native
+probes and seven acceptance gates remain NOT RUN; defaults, result shapes and
+platform matching require actual Apple evidence. No backend or app is implemented.
+
+The first slice permits only verified local B reads when owner is locked and
+refuses all realm writes, including bookkeeping/cleanup. General schema-3 reads
+still require D87-07's actual approved non-signing validator. D87-06's future v3
+compatibility/enforcement and separately authorized inventory are not prerequisites
+for this namespace work under the agreed canonical retained-device rule.
+
 ## Verified source scope and realm disposition — 2026-10-14
 
 Human `martadvix-web` [confirmed the bounded source/local-test scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)

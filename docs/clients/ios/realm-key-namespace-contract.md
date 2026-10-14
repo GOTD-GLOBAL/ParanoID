@@ -33,7 +33,8 @@ current-state corrections belongs to the parent documentation change.
 That scope is private, non-sensitive alpha source/local-test work. It does not
 approve these new details as a permanent architecture or grant live RPC,
 server/DB/user/phone operations, Apple-account actions, deployment or main merge.
-This task writes this document only. No Keychain call, native test or fixture
+Initial authoring wrote this document only; publication adds explicit documentation
+pointers. No Keychain call, Apple-native test or fixture
 cleanup is performed. Accepted [ADR-0001](../../decisions/0001-documentation-as-code.md),
 [ADR-0003](../../decisions/0003-closed-alpha-review-policy.md) and the
 [protected-domain review policy](../../governance/documentation-policy.md#protected-decision-domains)
@@ -293,7 +294,10 @@ unique.[8], [9] In particular, **do not use `kSecMatchLimitAll` with password
 `kSecReturnData`**: Apple disallows that combination.[9] The bounded
 attributes-only `2` recipe and its CF result shapes still require native
 verification; do not quietly substitute two independent `matchLimitOne`
-queries if a supported target rejects it.
+queries if a supported target rejects it. A two-record limit bounds cardinality,
+not the byte size of OS-allocated attribute dictionaries or returned material.
+Post-return field/type/length checks do not prove a pre-allocation memory bound;
+trusted OS/backend assumptions and real native peak evidence remain necessary.
 
 The combined result binds attributes to the actual loaded key in one API
 result. It is **not** an atomic snapshot spanning the preliminary/final guard,
@@ -586,9 +590,14 @@ proof does not pass K07. Keep known wrapper limitations visible, not waived.
   of broad legacy selectors, and availability cost when legacy attributes are
   unprovable. No implicit key move, policy migration or alternate query fallback.
 - **Critical dependencies:** actual approved/implemented RFC-0032 full-schema-3
-  non-signing validation; separate D87-06 compatibility disposition; successor
-  full-state coordinator and phase-bound authority; independent exact-revision
-  review. This contract alone cannot reopen arbitrary schema-3 or run login.
+  non-signing validation; successor full-state coordinator and phase-bound
+  authority; independent exact-revision review. This contract alone cannot reopen
+  arbitrary schema-3 or run login. Current retained `device` admission follows the
+  verified interim canonical-UUID rule, not new v4 enforcement.
+- **Separate future v3 change:** D87-06 enforcement/compatibility disposition and
+  any separately authorized server inventory are **not prerequisites** for this
+  namespace slice, its drafting/local tests or RFC-0032. They become relevant to
+  changing v3 validation, not to the already selected retained-read grammar.
 - **Later adoption:** production factory/lease enforcement, retained root/fresh
   classification, full native memory evidence, physical protection/backup checks,
   owner operations and application/runtime/transport acceptance. None follows
