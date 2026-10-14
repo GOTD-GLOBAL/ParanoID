@@ -12,14 +12,19 @@ login or a phone result.** The Apple backends the
 exist in `clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAppleAdapters.swift`
 and are exercised by the four staged native cases (moved into the active
 `ParanoidKitTests` target: three pass on the host, the real-Keychain policy
-case is a host skip), eight owner native-stage cases, eight lock-classification
-cases, five follow-up cases on the catalogue adapter, and — separately, on an
-ad-hoc signed simulator — two real-Keychain cases in the application test
-bundle. `OwnerAllocationCoordinator`, the owner/catalogue codecs, the
+case is a host skip), eight owner native-stage cases, eleven classification/
+policy cases, five follow-up cases on the catalogue adapter, and — separately,
+on an ad-hoc signed simulator — three added owner-related Keychain cases in the
+application test bundle (14 suite tests total). The earlier `98f58b0` receipt
+had eight classification cases and two added Keychain cases; the correction
+round below adds the first/later-fstat and weaker-policy cases and the legacy-item
+negative. `OwnerAllocationCoordinator`, the owner/catalogue codecs, the
 lease, `CatalogueStore`, the legacy stores, `KeychainKey`, `Package.swift`,
-pins, the application sources, the Rust bridge and every other component are
-unchanged. The catalogue adapter received only the two follow-ups the earlier
-receipt recorded (read-budget arithmetic/allocation; shared framing helper).
+pins, the application sources and the Rust bridge are unchanged. The portable
+cancellation regression test changed through PR #86 without changing production
+deadlines. The catalogue adapter received the two initial follow-ups (read-budget
+arithmetic/allocation; shared framing helper) and the later open-stage and
+descriptor-ownership correction.
 
 Base: `2ed901ddf5fd5441578392aa7a6a2380c5130108` (PR #84 head); branch
 `feat/ios-owner-apple-adapter-20261014`, worktree
@@ -29,6 +34,24 @@ simulators or keys. Host: macOS (Darwin 27.0.0), Xcode 26.6 (17F113), iOS SDK
 cached archive. Author/model provenance: Yaroslav's Mac agent (Claude Fable 5.1
 through Claude Code), per the execution split recorded in the handoff. This is
 not a human audit.
+
+## Current source-review disposition
+
+Code `17d8d88871e48e6323438c98c1ae5556bea6c5ce` was reviewed at receipt head
+`09eac341a3823edd67fcb652f63de04067709408`; the intervening tail is documentation
+only. [Two independent AI reviews with parent trace verification](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127)
+closed both P2 findings and the double-close defect without new P1/P2 in the
+isolated trusted-backend scope. The acceptance table below is **contributor-
+reported Mac execution**, not a repeat by the Linux reviewers. Source hashes and
+source/test identity were checked, not the unsigned binary or raw Mac logs.
+A direct weak-policy `createKey()` fixture negative remains a nonblocking test
+follow-up; the implementation already applies the canonical guard there.
+
+PR #86 was merged by `2694d3e48efec93579ee8363df01abbcb9ee9795` into
+`feat/ios-owner-apple-adapter-20261014`, not main. Final-head CI and integration
+into the owner-store feature remain separate. Documentation-only reconciliation
+with unchanged source/tests does not require a new Mac run. Earlier failures
+and first-run/regression distinctions below are preserved as historical evidence.
 
 ## What the adapters do
 
@@ -75,9 +98,11 @@ type from the messaging `KeychainKey`, whose `AfterFirstUnlockThisDeviceOnly`
 default is untouched. No default account and **no policy parameter**: the
 canonical policy (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`,
 `kSecAttrSynchronizable = false`) is a static constant and `OwnerKeyPolicy`'s
-initializer is file-private, so a weaker value cannot be constructed anywhere
-(review follow-up). `create()` writes that policy, reads the stored attributes
-back and refuses a mismatch; a duplicate is `errSecDuplicateItem`, never
+initializer is file-private: callers cannot freely construct another policy
+or pass one to owner-key creation (review follow-up). Stored-policy readback and
+the internal negative fixture can still describe a weaker existing policy.
+`create()` writes the canonical policy, reads the stored attributes back and
+refuses a mismatch; a duplicate is `errSecDuplicateItem`, never
 replaced. `load()` refuses a retained item whose stored policy is not canonical
 (`StorageError.keychain(errSecDecode)`: not absence, not a lock, nothing
 deleted or migrated). `load()`/`exists()` map `errSecInteractionNotAllowed` to
@@ -229,7 +254,8 @@ worktree fails the bundle copy phase without it; first attempt recorded as such)
 - `testARealKeychainOwnerKeySealsAndOpensTheShippedFraming`: the Keychain-backed
   owner key seals and opens the shipped framing (`SnapshotCodec`), tampering
   refused. **passed**.
-- Suite: **13 tests, 0 failures** (11 existing + 2 new); `** TEST SUCCEEDED **`.
+- Initial suite on `b9854d4`: **13 tests, 0 failures** (11 existing + 2 new);
+  `** TEST SUCCEEDED **`.
   Each test removes only its own unique account afterwards. No existing account,
   key or simulator was touched. The package-level host case stays an explicit
   `XCTSkip` that names this simulator case; the adapter types are internal to
@@ -253,9 +279,14 @@ power loss remain separate physical checks.
 
 ## Final acceptance sequence on the returned head
 
+**Historical first delivery (`b9854d4` / `1d53a84`), not the corrected head.**
+The current source-specific acceptance is the `17d8d88` table above. This section
+preserves the original failed runs and does not label them retrospectively green.
+
 Code head `b9854d4bd179051f2a54a2e74aa3dc44af3e03d8` (the documentation commit
-that follows changes no Swift source or test; `git diff --stat b9854d4 --
-clients/ios/ParanoidKit clients/ios/App` is empty). Commands as published in
+that followed was `1d53a84` and changed no Swift source or test;
+`git diff --stat b9854d4..1d53a84 -- clients/ios/ParanoidKit clients/ios/App`
+was empty). Commands as published in
 the handoff, each step logged separately under the worktree's ignored
 `clients/ios/out/logs/final*/`. During these runs the only uncommitted paths
 were this receipt (untracked) and, from the second run on, the documentation
@@ -273,6 +304,12 @@ edits of the next commit; no Swift source or test changed.
 | 8 | `xcodebuild … -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath clients/ios/out/derived-data CODE_SIGNING_ALLOWED=NO build` | rc 0: `** BUILD SUCCEEDED **`, 0 error lines; unsigned `ParanoID.app` binary SHA-256 `2a9b840a3430f0de…`; no signing/team flags, no device, no installation |
 
 ### Core finding, reported not repaired: a timing test of the portable core flakes on this Mac
+
+**Historical at `b9854d4`.** The text below records the original symptom, not
+current status. The later PR #86 watchdog fix is included in `17d8d88`, whose
+Mac receipt records ten passing repetitions and a zero-failure full package.
+It removes the tight scheduling-margin assumption without changing the production
+deadline; the old failures below remain evidence, not waived results.
 
 `OwnerStoreRegressionTests.testExternalWaitIsBoundedAndCancellationDoesNotDependOnVerifierCooperation`
 (`OwnerStoreRegressionTests.swift:306`, PR #84 core, unchanged here) fails
@@ -301,7 +338,8 @@ other package test passed in every run.
   no anti-rollback claim. The eight-entry ledger cap stays a component proposal.
 - `fullSync` reuses the shipped `open(O_RDONLY)` without `O_NOFOLLOW` on paths
   the transaction itself just inspected or created (existing contract).
-- Independent review of this adapter, integration into
-  `feat/ios-owner-store-20261014`, #73 authenticated scope evidence, ADR
-  acceptance, MR gates and every live action remain separate. Nothing was
-  merged, installed or deployed.
+- Scoped source review is closed as linked above; final-head CI, integration
+  into `feat/ios-owner-store-20261014`, #73 authenticated scope evidence, ADR
+  acceptance, MR gates and every live action remain separate. Only PR #86 was
+  merged into this adapter branch; no #84/main merge, installation or deployment
+  is implied.

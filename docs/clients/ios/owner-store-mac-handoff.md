@@ -7,15 +7,22 @@ last_reviewed: 2026-10-14
 
 # Owner-store Apple adapter: implementation handoff
 
-> Status (2026-10-14): initial adapter implementation delivered; the two
-> native P2 findings (open-only lock classification, owner-policy backend
-> admission) and a descriptor double close found on the way are corrected on
-> code head `17d8d88` over the combined PR #86 source — see the
-> [owner adapter receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
-> The correction task is below; the original implementation task is retained
-> afterwards as historical scope.
+> Status (2026-10-14): the implementation and correction tasks below are
+> completed for code `17d8d88871e48e6323438c98c1ae5556bea6c5ce`, with receipt
+> head `09eac341a3823edd67fcb652f63de04067709408`. The two P2 findings and double
+> close are [closed by scoped source review](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127); native results are in
+> the [Mac receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+> The instructions below are preserved historical task input, **not a request
+> to restart from #86 or rerun unchanged code**. Final-head CI and separately
+> scoped feature integration remain; no app/device/live/ADR gate is closed.
 
 ## Review correction handoff
+
+**Historical task issued for `af82b9c`; implemented and reviewed as noted above.**
+The imperative text through the return instructions records the original scope,
+not a new execution order. Preserve newer work; never reset a branch to this
+old input. Documentation-only changes with byte-identical source/tests need no
+new Mac run.
 
 Continue the isolated component on the Mac; do not wire it into app startup.
 Use the exact full PR #86 head supplied by the coordinator (including this
@@ -93,6 +100,10 @@ in PR #85 for coordinator re-review. No #84/main integration, install, account
 change, phone/server operation or TestFlight follows from this task.
 
 ## Objective and exact source
+
+**Historical initial implementation handoff from `2ed901dd`.** The statements
+about absent adapters and NOT RUN staged tests below apply only to that base,
+not to the corrected native component and receipt linked at the top.
 
 Implement and actually exercise the Apple backends for the isolated owner-store
 component. This is **implementation plus native RED/GREEN**, not merely another

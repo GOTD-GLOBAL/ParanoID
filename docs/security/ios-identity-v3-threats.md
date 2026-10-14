@@ -3,31 +3,39 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: Apple owner adapters natively tested on the build Mac and the owner Keychain policy read back on an ad-hoc signed simulator; on-device protection, runtime and MR gates remain NOT RUN
+last_reviewed_scope: native correction receipt and scoped source closure on 17d8d88 / 09eac34; on-device protection, runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
 
 ## Open native review findings — 2026-10-14
 
-The controls below are not fully enforced at native checkpoint `98f58b0`.
-The first `fstat` inside `openRegular` can still be classified as retryable lock
-on `EPERM` plus unavailable protected data, contrary to the intended open-only
-rule. `OwnerAppleCryptography` also accepts a messaging-policy `WrappingKeyStore`,
-and `OwnerKeychainKey(policy:)` does not reject noncanonical owner policy.
-These are two open P2 findings, not proven application exploits. No app wiring
-or live action is introduced. The [native correction handoff](../clients/ios/owner-store-mac-handoff.md#review-correction-handoff)
-requires fault-stage and policy-admission negatives before claiming closure.
-The combined test-watchdog correction changes neither native control nor the
-production deadline, and its Linux evidence is not native security evidence.
+**Historical at `98f58b0`; corrected and source-reviewed on `17d8d88` / `09eac34`.**
+The first `fstat` in `openRegular` could be classified as retryable lock on
+`EPERM` plus unavailable protected data; the crypto initializer admitted a
+messaging-policy `WrappingKeyStore`, and the key allowed noncanonical policy.
+These were two component-boundary P2 findings, not demonstrated app exploits.
+The [correction receipt](../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)
+and [scoped source closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127) record their resolution and the
+additional exact-once descriptor cleanup fix. No new P1/P2 was found in those
+corrections under the trusted-backend/exclusive-lease contract.
+
+Native RED/GREEN, compiler admission probes and signed-simulator results are
+contributor-reported Mac evidence. Linux review verified source and provenance,
+not native execution, on-device `.complete`, physical lock lifecycle or power
+loss. The watchdog changes no production deadline. App adoption, #73, ADR and
+MR gates remain separate. A direct weak-policy `createKey()` fixture regression
+is a nonblocking test follow-up; the canonical guard is already in that path.
 
 ## Apple owner adapter — 2026-10-14
 
 The native owner backends the delta below left unimplemented are exercised on
 the build Mac ([receipt](../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)):
-the four staged cases plus eight native-stage cases against the real file
-system and real CryptoKit, with labelled fixture-only fault injections, and two
-ad-hoc signed simulator cases that read the owner Keychain attributes back.
+the four staged cases (three host passes and one real-Keychain host skip),
+eight native-stage cases and eleven classification/policy cases against the
+real file system and CryptoKit, with labelled fixture-only fault injections.
+The signed-simulator suite includes the two original owner cases and the later
+legacy-policy refusal/preservation case; its final total is 14/0.
 These rows update the "required check / residual" cells below; they do not
 close #73, ADR, MR or application gates.
 
@@ -42,11 +50,11 @@ close #73, ADR, MR or application gates.
 
 ## PROPOSED allocation-aware owner-store delta — 2026-10-14
 
-The [byte/transaction appendix](../clients/ios/owner-store-format.md) is a
-non-adopted component proposal. The portable controls now have the scoped
-execution evidence below; native owner protection/durability and application
-controls remain **NOT RUN**. Nothing extends the prior catalogue/Mac receipts
-or closes #73/ADR/MR gates.
+The [byte/transaction appendix](../clients/ios/owner-store-format.md) remains a
+non-adopted component proposal. This section preserves the earlier portable
+checkpoint, when native owner protection/durability had not been run. The
+subsequent native component receipt is recorded above; application controls
+remain **NOT RUN**. Neither checkpoint closes #73/ADR/MR gates.
 
 The initial source at `697bd68` failed additional authority/retained-integrity
 reviews despite its passing baseline. Corrected source `1df9462` is independently
