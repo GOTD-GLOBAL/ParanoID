@@ -124,28 +124,99 @@ is strict UTF-8 JSON with required fields in this writer order:
  membership:null|CommitResult, terminal:"none"|"revoked"|"banned"|"absent"}
 ```
 
-`Binding` and full realm grammar reuse [owner format §2](owner-store-format.md#2-byte-admission-and-scalar-types).
-`SnapshotV4` is the existing raw wrapper, including its **verbatim core state**;
-no JSON string escaping, dictionary reserialization or foreign-snapshot cloning.
-New candidates have an empty legacy token; schema 0 is a durable intermediate,
-schema 3 is required before v3 credential/proof use. Validate wrapper/core trust
-and public credential against the envelope; parse success is not authority.
+### Field and encoding table
 
-`Intent` has the exact protocol challenge-request fields (enroll/replace only),
-plus the core-returned fingerprint: complete credential, operation UUIDv4,
-chain/owner/name and decimal-string expected generation, not arbitrary JSON.
-`CommitResult` has exactly operation, membership, generation, account, device,
-credential_fingerprint and active mode. Compare every result/context field;
-status's `{mode,generation,operation}` cannot manufacture missing membership data.
-Terminal state is realm-local, outside the owner secret. No challenges, sessions,
-proof signatures, owner entropy, words or UI authentication grants belong here.
+Every listed envelope/wrapper/metadata field is required; only `loginIntent`
+and `membership` permit `null` (not a rule for core internals). Limits below
+count decoded ASCII bytes unless called **raw**. Reuse
+[owner format §2](owner-store-format.md#2-byte-admission-and-scalar-types)
+`UUID`, `B58-32`, `Name`, `RealmKey`, `Binding`; these are inherited local
+proposals, not wire-wide restrictions. `Hex32` is 64 lowercase hex bytes;
+`UUIDv4` is 36 lowercase bytes with version 4/RFC4122 variant. Wire facts come
+from [ChallengeRequestV3 / parse_generation](../../../key-protocol/src/identity_v3.rs)
+and [Credential / verify / fingerprint](../../../key-protocol/src/lib.rs).
 
-Proposed bounds: core span ≤8,388,608 bytes; **all other plaintext bytes**, including
-Snapshot wrapper and outer JSON syntax, ≤131,072; total ≤8,519,680; sealed frame
-≤8,519,709. Strict duplicate-decoded-key, unknown/missing field, type, version,
-UTF-8, trailing-data and overflow refusal precedes effects; field limits follow
-the cited formats. Check limits before copying/decoding; bound parser depth and
-span handling with fixtures before approval. Never prune retained state to fit.
+| Object / fields in proposed writer order | Exact type, encoding and admission |
+| --- | --- |
+| Envelope `version,kind,installID,ownerRef` | Literal JSON integer `1`, string `"realm"`, two owner-format UUID strings (36 bytes, no version/variant inference); exact retained installation/owner reference. |
+| `realm:{origin,pin,protocol}` | Origin ≤300 bytes under `IdentityCatalogue.Realm`'s [existing grammar](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/IdentityCatalogue.swift): exact HTTPS ASCII DNS/IPv4, canonical non-default optional port, no path/query/userinfo/normalization; `pin:Hex32`, literal `"identity-v3"` (11 bytes). Exact full selected catalogue tuple; not wire's broader 512-byte credential realm allowance. |
+| `binding:{genesis,program,identity,owner,name}` | Four canonical `B58-32` strings (≤44 bytes, exactly 32 decoded bytes, decode/re-encode equal), `Name` = `[a-z][a-z0-9_]{2,23}` (3..24). Non-null; exact confirmed catalogue binding and available validated owner binding, including compiled chain/program; not a name-only lookup. |
+| `snapshot:{version,realm,tls_pin,token,state}` | Existing [Snapshot v4](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Service/Snapshot.swift) shape (`Snapshot.text/open`), **PROPOSED strict wrapper admission**: literal integer `4`; `realm`/`tls_pin` equal outer origin/pin; token `""` or `Hex32` as in v4 (new candidates always `""`); `state` is one raw core JSON object, **not a string**. No v4 migration/adoption permission. |
+| `loginIntent: null` or `Intent` | Exactly `purpose,operation,genesis,program,identity,owner,name,credential_object,expected_generation,credential_fingerprint`. Purpose `"enroll"` or `"replace"` (≤7); operation `UUIDv4`; five binding fields identical to outer binding; nested credential below. Final field is a **PROPOSED local** `Hex32` copy of Rust reply `fingerprint`, not a tenth challenge-request field. |
+| Intent `expected_generation` | JSON string `"0"` or `[1-9][0-9]{0,18}`, checked ≤`9223372036854775807`; enroll exactly `"0"`, replace `1..9223372036854775806`. No sign, whitespace, leading zero, fraction, exponent, JSON number or coercion. Server's eight-generation admission policy is not this scalar's parser range. |
+| `credential_object:{root,account,device,auth,realm,pin,olm,signature}` | Existing eight-field `Credential`: root/auth canonical unpadded STANDARD Base64, exactly 32 decoded bytes / 43 encoded; signature exactly 64 / 86; decode/re-encode equal, no URL alphabet/padding/whitespace. Account/pin/olm `Hex32`; realm equals outer origin; device canonical lowercase UUID (36), **v4 discrepancy below unresolved**. Every field equals the existing Rust public credential; decoded root/auth/owner keys must be distinct as in `ChallengeRequestV3::validate`. Account derivation/signature/key consistency remain Rust's, not Swift hashing/signing. |
+| `membership: null` or `CommitResult` | Exactly `operation,membership,generation,account,device,credential_fingerprint,mode`: operation/membership `UUIDv4`; generation same decimal-string grammar but `1..9223372036854775807`; account/fingerprint `Hex32`, device as credential above; mode exactly `"active"` (6). Account/device/fingerprint equal the retained core credential/result; membership UUID comes only from a full result, never status. |
+| `terminal` | Exactly one of `"none"`, `"revoked"`, `"banned"`, `"absent"` (≤7); realm-local observation, not owner authority or a replacement for retained result. |
+
+**Canonical discrepancy — stop for disposition:** protocol §Encodings says all
+UUIDs are UUIDv4, but `Credential::verify` checks only canonical UUID text for
+`device`; `Identity::create` generates v4 and `ChallengeRequestV3::validate`
+enforces v4 on **operation**, not device. No choice to tighten or broaden device
+admission is accepted here. Resolve that exact contract/source difference before
+implementing its validator; do not normalize IDs or silently alter shared Rust.
+
+### Parser admission and opaque core boundary
+
+**PROPOSED local bounds**, to bound hostile metadata without restricting the
+versioned core grammar: core span ≤8,388,608 bytes; **all other plaintext bytes**,
+including Snapshot wrapper, whitespace/escapes and outer syntax, ≤131,072;
+total ≤8,519,680; sealed frame ≤8,519,709. The core limit is sourced from
+[`clients/core::command`](../../../clients/core/src/lib.rs); the additive
+metadata allowance is a proposal, not additional core capacity.
+
+| Admission surface | Required bound / refusal before effects |
+| --- | --- |
+| Envelope, wrapper and typed metadata | Strict UTF-8, no BOM, only JSON whitespace; valid escapes, no malformed surrogates/control bytes/trailing commas/data. Reject duplicate **decoded** keys, unknown/missing fields, wrong/null types; no permissive dictionary preprocessing. Arrays are never metadata. Exact object field counts: envelope/Intent 10, RealmKey 3, Binding/Snapshot 5, Credential 8, CommitResult 7. |
+| Metadata parser | **PROPOSED** nonrecursive schema-directed depth ≤3, root counted as 1 (`envelope → Intent → Credential`); reject unexpected containers without walking them. Decoded keys ≤32 bytes; each value has its table cap. Before allocation, raw string token including quotes ≤`6 × decoded cap + 2` (JSON ASCII escape expansion); versions use `0` or `[1-9][0-9]{0,19}`, checked ≤`18446744073709551615`, then require literal `1`/`4`; no sign/fraction/exponent, leading zero or Bool/Double/string coercion. |
+| `coreSpan` at `snapshot.state` | Locate by offsets, with iterative string/escape-aware delimiter matching; count its raw bytes from `{` through matching `}`. No metadata depth/field/key/string/array rule inside it. Scanner auxiliary delimiter stack ≤one byte per consumed core byte (thus ≤8,388,608), no recursive Swift calls or arbitrary core tree. Existing Rust JSON/versioned semantic validation remains authoritative, including its own rejection limits. A span match alone is not JSON/core validity. |
+| Byte accounting and memory | Bound frame before read/decrypt (reject growth); use checked offset/add/subtract arithmetic. Require `plaintextBytes - coreSpanBytes ≤131072` as well as both other caps, on read and candidate write. **PROPOSED** parser uses one bounded decrypted buffer plus offsets, one bounded core transfer copy and bounded metadata/stack; no whole-envelope Foundation tree or escaping/re-encoding core. CryptoKit/C-ABI/Rust replies and `CoreBridge`/`JsonSpan` make copies: this is not a zero-copy or total-process-memory proof; exact-head peak-allocation evidence remains required. |
+
+Writers emit compact UTF-8/no BOM or newline, metadata fields in table order,
+strings literally under these ASCII grammars; readers accept object order and
+valid escapes without normalizing values. Keep retained Snapshot/core spans
+verbatim on open and bookkeeping-only commits; only an explicit Rust candidate
+transition replaces core bytes. The old `Snapshot.open` uses a Foundation tree;
+[`JsonSpan.value/Scanner.scanValue`](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/JsonSpan.swift)
+copies input and only matches nested delimiters, not full nested grammar. Neither
+is the new strict admission parser. Never prune retained state to fit.
+
+### Structural coherence, not proof authority
+
+Use existing Rust through the unchanged [CoreBridge.command](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/CoreBridge.swift),
+not Swift core-field validation. [clean_service](../../../clients/core/src/clean_service.rs)
+`command/validate/Status/ServerStatusV2` and server
+[`status/commit`](../../../server/src/identity_v3.rs) establish the following mapping;
+these **local coherence rules are PROPOSED**, not a server verifier. In every
+schema-3 case, even with null intent/result, require the Rust public credential's
+realm/pin to equal wrapper/outer trust; bind its fingerprint to the selected slot.
+
+| Retained state | Admission / transition |
+| --- | --- |
+| Core schema 0 | Intent/membership null, terminal none. Validate with a discarded `upgrade_v2` dry-run, require schema 3 and matching trust/credential, preserve original bytes. Explicit continuation commits that upgrade with the same identity; v3 login/proof use waits for durable schema 3. No creation/signing/network on reopen. Other core versions refuse; no reset. |
+| Schema 3, membership null | Requires full Rust semantic validation and enrollment null; **non-signing validation blocker below**. Intent may be null or the exact retained mutation intent. `identity_credential_v3` alone validates legacy identity, not the whole schema-3 state; its separate `{credential,fingerprint}` result supplies comparisons, not full-state admission. |
+| Schema 3, membership present | Rust enrollment must exactly equal `{mode:"active",account:result.account,device:result.device,credential:result.credential_fingerprint}`. This is the `server_status_v2.status` mapping: **credential**, not `credential_fingerprint`; operation/membership/generation do not enter that core object. Non-null intent must match result operation/account/device/fingerprint and checked `result.generation = expected_generation + 1`; both may coexist until the second durable clear. |
+| Terminal / unknown outcome | Schema 3 may retain either membership form above with none/revoked/banned/absent; a terminal flag preserves any intent/result and does not rewrite historical core enrollment to a mode Rust rejects. Terminal blocks activation/mutation release even if enrollment is active, not read-only reconciliation; no automatic clearing/re-enroll. Status is separately exactly `{mode,generation,operation}`: absent requires `"0"`/`""`; active/revoked/banned require positive generation/UUIDv4 matching retained result or pending operation and expected generation + 1. Absent with pending intent/no result preserves unknown outcome for exact retry; `terminal:"absent"` requires a retained result and records loss, not fresh admission. Disagreement freezes without erasure. |
+
+**Source blocker — no signing on reopen remains required:** `view` is not a
+non-signing validator for arbitrary schema-3 state. `clean_service::validate`
+and `reply` can call `local_contact` → [ContactV2::create](../../../clients/core/src/contact_v2.rs),
+which signs with device auth. `identity_credential_v3` bypasses full `validate`.
+Do not implement the table by calling either and claiming both guarantees;
+disposition of a non-signing full-state validation path is still required.
+No Swift core reinterpretation, new bridge API or signing exception is authorized.
+
+Wire control requests are capped at 16,384 bytes by
+[`self_service_http::routes`](../../../server/src/self_service_http.rs); this is
+not a response/storage cap. Core requests cap at 65,536. Login proof signatures
+are canonical unpadded Base64 of 64 bytes (86 characters), not owner-ledger
+Base58 signatures; they are deliberately absent from these stored objects.
+
+No status field supplies a missing full result or proves membership UUID. Shape,
+AEAD, a terminal flag and Rust credential validation cannot establish server
+observation, finalized registry, fresh proof or UI authority; use only labelled
+observations in this slice. No challenges, sessions, login proof signatures,
+owner entropy, words or UI grants belong in metadata. Never invoke a signing
+API merely to validate storage. Production proof/result authority stays gated.
 
 Reuse standard AES-256-GCM framing `0x01 | nonce[12] | ciphertext | tag[16]`,
 AAD `[0x01]`, distinct per-realm keys and fresh nonces. **Do not enlarge legacy
@@ -240,9 +311,9 @@ Keep pre-fix/fixed SHAs, logs and TDD history; no test weakening.
 | R04 `siblingAndOwnerPreserved` | Missing second-slot support fails → distinct A/B credentials/keys, own full trust and byte-identical retained owner/ledger/A/metadata while B commits; reverse direction too. | REQ-MULTI-001, MR-01/02 |
 | R05 `faultEveryEffect` | Deliberate missing fence/order is detected → before/after directory, intent-parent-sync, key, temp, rename, readback, removal/final-sync faults retain evidence and stop further effects; no premature candidate/proof release. | MR-06 |
 | R06 `retainedLossNeverCreates` | Missing classification is caught → allocated both-missing/XOR/temp/intent, wrong inode/key/context and authenticated malformed bytes refuse read-only; fresh coordinator gets no permit. | MR-06/07 |
-| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; raw Snapshot/core span unchanged; no signing on open. | REQ-SEC-001, MR-02/14 |
-| R08 `unknownOutcomeRetainsIntent` | Missing bookkeeping fails → restart/cancel/lost reply preserve operation, generation, credential and exact intent; status cannot synthesize full result or clear unrelated intent. | AUTH-03/04, MR-05 |
-| R09 `resultThenIntentClear` | Missing two-commit ordering fails → fault between result/core commit and clear reopens reconcilable state; mismatch/terminal A preserves B and never auto-replaces. | AUTH-04, MR-04/05 |
+| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; each field/escaped-token cap and metadata depth boundary checked, deep core delegated to Rust; raw Snapshot/core spans unchanged, measured parser allocations; no signing on open. | REQ-SEC-001, MR-02/14 |
+| R08 `unknownOutcomeRetainsIntent` | Missing bookkeeping fails → restart/cancel/lost reply preserve operation, generation, credential and exact intent; status has only its three fields, absent remains unknown without a retained result; no synthesized membership or cleared unrelated intent. | AUTH-03/04, MR-05 |
+| R09 `resultThenIntentClear` | Missing two-commit ordering fails → fault between result/core commit and clear reopens reconcilable state; schema-0 dry-run never adopts; schema-3 full validation (non-signing seam unresolved), credential/result/enrollment mapping and generation + 1 checked; mismatch/terminal A preserves B and never auto-replaces. | AUTH-04, MR-04/05 |
 | R10 `freezeScopeAndCompatibility` | Missing scope guard is caught → owner lock permits intact device-only reopen; A fault contains only with verified common/B state; catalogue loss freezes all; old refusal tests and v4 bytes remain unchanged. | MR-06/07 |
 | R11 `nativeEncryptedReopen` | Runtime RED against inert native adapter → real filesystem/CryptoKit commit/reopen, tamper/wrong-key/AAD/sliced-Data/upper-cap negatives and fault preservation pass. Memory keys explicitly labelled. | MR-06 component only |
 | R12 `typeAndNoAdoptionBoundary` | Negative constructor/authority probes are wrongly admitted before fix → expected compiler rejection with positive controls; unchanged app/legacy/Rust/pins/dependencies; no default network/verifier factory. | REQ-CLIENT-001, MR-02/14 |
@@ -281,8 +352,9 @@ is neither repaired nor waived. No minimum count substitutes for named coverage.
 
 - **Before implementation:** authenticated #73 scope; Cooldom66671 disposition
   and independent review of the successor writer/version strategy, complete
-  field/parser bounds, key-namespace identity checks, creation authority and
-  owner-locked retained-read classification. The schema/caps above are proposals.
+  field/parser bounds, the device-UUID discrepancy and non-signing full-state
+  validation blocker in §4, key-namespace identity checks, creation authority
+  and owner-locked retained-read classification. The schema/caps above are proposals.
 - **Before app adoption:** fresh-install versus lost-catalogue classification,
   compatible owner mutations, scoped local metadata, app-enforced single lease,
   final callback fences, prompt/no-passcode/call policy, production RPC verifier
