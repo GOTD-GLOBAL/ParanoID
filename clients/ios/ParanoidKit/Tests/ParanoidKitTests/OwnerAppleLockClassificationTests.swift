@@ -139,6 +139,7 @@ import XCTest
             XCTAssertFalse($0 is OwnerBackendLock, "the first fstat is not the open syscall: \($0)")
             XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EPERM))
         }
+        XCTAssertEqual(f.fault.closesOfObserved, 1, "the descriptor is closed exactly once on the fstat failure, never twice")
         f.fault.failFstat(nth: 1, afterOpening: "/owner/state.enc", errno: EPERM)
         let c = f.coordinator()
         XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .backendFailure) }
@@ -157,6 +158,10 @@ import XCTest
             XCTAssertFalse($0 is OwnerBackendLock)
             XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EPERM))
         }
+        XCTAssertEqual(f.fault.closesOfObserved, 1, "exactly one close on the later fstat failure")
+        f.fault.clear(); f.fault.failFstat(nth: 99, afterOpening: "/owner/state.enc", errno: 0) // observe only
+        XCTAssertEqual(try f.files.read(f.ownerFile, maximumBytes: f.cap).count > 0, true)
+        XCTAssertEqual(f.fault.closesOfObserved, 1, "exactly one close on success")
     }
 
     // Negative (admission): a backend whose retained item reads back a weaker
@@ -196,6 +201,7 @@ private final class SyscallFault: @unchecked Sendable {
     private var lstatSuffix: String?; private var lstatErrno: Int32 = 0
     private var fstatNth = 0; private var fstatErrno: Int32 = 0; private var fstatCalls = 0
     private var fstatSuffix: String?; private var armedDescriptor: Int32?
+    private var observedDescriptor: Int32?; private(set) var closesOfObserved = 0
     func failOpen(ofSuffix suffix: String, create: Bool, errno code: Int32) { lock.lock(); openSuffix = suffix; openCreate = create; openErrno = code; lock.unlock() }
     func failRead(errno code: Int32) { lock.lock(); readErrno = code; lock.unlock() }
     func failLstat(ofSuffix suffix: String, errno code: Int32) { lock.lock(); lstatSuffix = suffix; lstatErrno = code; lock.unlock() }
@@ -226,7 +232,10 @@ private final class SyscallFault: @unchecked Sendable {
             if let suffix, name.hasSuffix(suffix), (flags & O_CREAT != 0) == create { errno = code; return -1 }
             let descriptor = Darwin.open(path, flags, mode)
             if descriptor >= 0, let armSuffix, name.hasSuffix(armSuffix), flags & O_CREAT == 0 {
-                self.lock.lock(); if self.armedDescriptor == nil { self.armedDescriptor = descriptor }; self.lock.unlock()
+                self.lock.lock()
+                if self.armedDescriptor == nil { self.armedDescriptor = descriptor }
+                self.observedDescriptor = descriptor; self.closesOfObserved = 0
+                self.lock.unlock()
             }
             return descriptor
         }
@@ -236,6 +245,14 @@ private final class SyscallFault: @unchecked Sendable {
             self.lock.lock(); let code = self.readErrno; self.lock.unlock()
             if let code { errno = code; return -1 }
             return Darwin.read(descriptor, buffer, capacity)
+        }
+    }
+    /// Counts `close(2)` calls on the descriptor opened for the armed suffix:
+    /// exactly one is correct; two is a double close.
+    var closeHook: @Sendable (Int32) -> Int32 {
+        { descriptor in
+            self.lock.lock(); if self.observedDescriptor == descriptor { self.closesOfObserved += 1 }; self.lock.unlock()
+            return Darwin.close(descriptor)
         }
     }
     var lstatHook: @Sendable (UnsafePointer<CChar>, UnsafeMutablePointer<stat>) -> Int32 {
@@ -291,7 +308,7 @@ private final class Availability: @unchecked Sendable {
     /// The adapter under test: real file system, FIXTURE-ONLY seam and signal.
     var files: OwnerAppleFileIO {
         var seams = CatalogueAppleSyscalls.darwin
-        seams.open = fault.openHook; seams.read = fault.readHook; seams.lstat = fault.lstatHook; seams.fstat = fault.fstatHook
+        seams.open = fault.openHook; seams.read = fault.readHook; seams.lstat = fault.lstatHook; seams.fstat = fault.fstatHook; seams.close = fault.closeHook
         return OwnerAppleFileIO(fileSystem: disk, syscalls: seams, protectedDataAvailable: availability.read)
     }
     var catalogueCrypto: CatalogueAppleCryptography {
