@@ -8,6 +8,20 @@ last_reviewed_scope: Apple catalogue adapter native tests on the build Mac added
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## PROPOSED allocation-aware owner-store delta — 2026-10-14
+
+The [byte/transaction appendix](../clients/ios/owner-store-format.md) is a
+non-adopted component proposal. These controls and tests are **NOT RUN**; they
+do not extend the prior catalogue/Mac receipts or close #73/ADR/MR gates.
+
+| Threat | Proposed control | Required check / residual |
+| --- | --- | --- |
+| Old/new writers race, or allocated loss is treated as fresh | Exclusive namespace-lease handoff, serialized non-reentrant coordinator; creation permit only after allocation final sync, consumed before owner effects | Stale handles/reentry/cancel/restart faults; no permit reconstructed on reopen, no cleanup; hostile co-writers outside scope |
+| Creation of the owner directory/key escapes journaling or uses messaging protection | Create-only/no-follow directory, owner policy plus parent sync, then intent and parent sync before key; explicit WhenUnlockedThisDeviceOnly/complete seams | Directory/key/sync fault ordering; host doubles do not prove Keychain or device protection, legacy defaults unchanged |
+| Sponsor can land a forgotten signature, or reopening silently signs | Retain exact ownerSigned and assembled stages, full sponsor target, immutable bytes and pre-send counter; bounded append-only evidence | Both stages survive reopen with zero signing calls; eight-entry cap refuses new attempts, never prunes; parsing/framing is not signature or live-chain verification |
+| Caller labels recovery verified, or crash publishes a tentative identity | Private operation/context-bound capabilities from explicitly trusted external verifier seam; owner-confirmed commit precedes matching catalogue publication | Failed/no-name/cancelled pre-allocation verification writes nothing; intermediate preserved without auto-publication; Rust verify alone is not live RPC/program/finality authentication |
+| Owner secret or hostile input escapes bounds | Separate opaque owner key, strict 64 KiB raw admission, exact fields/encodings, bounded ledger, fixed errors, no payload logs | Parser/limit/swapped-store negatives; Swift copies are not guaranteed zeroized, no anti-rollback or runtime-global revoke claim |
+
 ## Apple catalogue adapter — 2026-10-14
 
 The native adapter the checkpoint below left unimplemented is now exercised on

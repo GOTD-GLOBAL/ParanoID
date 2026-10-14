@@ -402,6 +402,17 @@ valid pair that another instance opens; the failing instance still cannot
 adopt/retry. This is not a promise that every ambiguous failure is detectable
 across restart or that marker durability gives anti-rollback.
 
+### PROPOSED allocation-aware owner slice
+
+The [owner-store format appendix](owner-store-format.md) specifies the next
+isolated catalogue-allocation → encrypted owner commit → matching binding
+publication → retained reopening contract, including non-empty pending ledgers,
+byte limits and process-local authority. It uses separately named full-state
+types and an exclusive writer handoff; the bootstrap codec/store and their
+refusals above remain unchanged. Both realms stay unallocated. This is a new
+non-adopted proposal, not an extension of the earlier native receipt or app,
+registry, login, scope-approval or ADR acceptance evidence.
+
 ### Commit and crash rules
 
 Only that store's serial owner may write it. Catalogue/owner I/O runs on its
