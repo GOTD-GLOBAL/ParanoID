@@ -138,16 +138,30 @@ struct OwnerAppleFileIO: OwnerFileIO {
     private let fileSystem: any FileSystem
     private let inner: CatalogueAppleFileIO
     private let syscalls: CatalogueAppleSyscalls
+    private let protectedDataAvailable: @Sendable () -> Bool
 
-    /// No default argument: the caller names the backend, as it names the root.
+    /// No default argument for the backend: the caller names it, as it names
+    /// the root. Without a protected-data signal nothing is ever classified as
+    /// a lock: every permission error is a failure the store freezes on.
     init(fileSystem: any FileSystem) {
-        self.init(fileSystem: fileSystem, syscalls: .darwin)
+        self.init(fileSystem: fileSystem, syscalls: .darwin, protectedDataAvailable: { true })
     }
 
-    init(fileSystem: any FileSystem, syscalls: CatalogueAppleSyscalls) {
+    /// `protectedDataAvailable` is the platform's own statement whether
+    /// protected files can be opened right now (the application passes
+    /// `UIApplication.shared.isProtectedDataAvailable`, read on the main thread
+    /// at the moment of the failure). It is the only evidence that turns an
+    /// `EPERM` into a retryable lock; a test may inject it and must label that.
+    init(fileSystem: any FileSystem, protectedDataAvailable: @escaping @Sendable () -> Bool) {
+        self.init(fileSystem: fileSystem, syscalls: .darwin, protectedDataAvailable: protectedDataAvailable)
+    }
+
+    init(fileSystem: any FileSystem, syscalls: CatalogueAppleSyscalls,
+         protectedDataAvailable: @escaping @Sendable () -> Bool = { true }) {
         self.fileSystem = fileSystem
         self.inner = CatalogueAppleFileIO(fileSystem: fileSystem, syscalls: syscalls)
         self.syscalls = syscalls
+        self.protectedDataAvailable = protectedDataAvailable
     }
 
     func inspect(_ url: URL) throws -> CataloguePathKind { try inner.inspect(url) }
