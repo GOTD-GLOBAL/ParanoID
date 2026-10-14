@@ -11,9 +11,11 @@ login or a phone result.** The Apple backends the
 [portable owner-store checkpoint](owner-store-core.md) left unimplemented now
 exist in `clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAppleAdapters.swift`
 and are exercised by the four staged native cases (moved into the active
-`ParanoidKitTests` target), eight owner native-stage cases, five follow-up
-cases on the catalogue adapter and two real-Keychain cases in the application
-test bundle. `OwnerAllocationCoordinator`, the owner/catalogue codecs, the
+`ParanoidKitTests` target: three pass on the host, the real-Keychain policy
+case is a host skip), eight owner native-stage cases, eight lock-classification
+cases, five follow-up cases on the catalogue adapter, and — separately, on an
+ad-hoc signed simulator — two real-Keychain cases in the application test
+bundle. `OwnerAllocationCoordinator`, the owner/catalogue codecs, the
 lease, `CatalogueStore`, the legacy stores, `KeychainKey`, `Package.swift`,
 pins, the application sources, the Rust bridge and every other component are
 unchanged. The catalogue adapter received only the two follow-ups the earlier
@@ -36,15 +38,23 @@ not a human audit.
 - `createOwnerDirectory`: `mkdir(2)` with mode `0700`. The final path component
   is never followed, so an existing link, file or directory is `EEXIST` and left
   untouched; then `open(O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC)`, `fstat`
-  (must be a directory) and `fchmod(0700)` if the umask widened the mode.
+  (must be a directory) and `fchmod(0700)` if the created mode differs (a
+  umask only ever removes bits; the check is defensive, not a widening).
 - `protectOwnerAndExclude(_, policy: .ownerComplete)`: no-follow inspection
   first (a link or foreign inode is refused with `EFTYPE`, absence with
   `ENOENT`); Data Protection `.complete` set and read back (iOS only — the host
   has no such attribute), then backup exclusion set and read back on the inode.
-- `read`: the catalogue adapter's bounded read; on iOS only, `EPERM` from
-  `open(2)` of a protected file while the device is locked is reported as
-  `OwnerBackendLock.locked`. `EACCES` and every other error stay failures; the
-  host maps nothing (tested).
+- `read`: the catalogue adapter's bounded read, now in three internal stages
+  (no-follow inspection, `open(O_NOFOLLOW)` with inode confirmation, bounded
+  descriptor read). Exactly one classified exception: `EPERM` **at the open
+  stage**, **of `owner/state.enc`**, **while the platform reports protected data
+  unavailable** (`protectedDataAvailable()` is `false`, sampled after the
+  failure) is `OwnerBackendLock.locked`. `EACCES`, any other stage, the
+  catalogue or any other path, and `EPERM` with protected data available or
+  with no signal at all are failures the store freezes on. The plain
+  `init(fileSystem:)` has no signal, so it never classifies a lock; the
+  application supplies `UIApplication.shared.isProtectedDataAvailable` through
+  `init(fileSystem:protectedDataAvailable:)` when it integrates.
 
 `OwnerAppleCryptography(owner:)` — `OwnerCryptography` over one explicit opaque
 owner key backend: 29-byte shipped framing, `seal` through
@@ -108,6 +118,41 @@ growth within the budget is still refused; `open` on a `Data` slice with a
 nonzero start index; a box sealed under foreign associated data refused; the
 upper framing limit (8 MiB + 29) accepted and one byte more refused.
 
+## Review correction (PR #85, P2): lock classification
+
+The first native head `b9854d4` turned any `EPERM` labelled `.read` into
+`OwnerBackendLock.locked` on iOS, without evidence that protected data was
+unavailable, without distinguishing the `lstat`/`open`/`read` stages, and for
+the catalogue as well as the owner file — so an ordinary permission error
+could bypass the store's freeze. Corrected on `3c8cbab` through actual
+RED/GREEN, with the platform state injected and labelled FIXTURE-ONLY:
+
+| Step | Snapshot (`OwnerAppleAdapters.swift`) | Result |
+| --- | --- | --- |
+| RED | `d2cc5f83…` — old classifier, only the `protectedDataAvailable` seam added so the new tests compile | `OwnerAppleLockClassificationTests` **8 tests, 4 failures**, all in the positive case `testConfirmedUnavailabilityAtOpenOfTheOwnerFileIsARetryableLock` (the old code classified nothing on the host); the seven negative/terminal cases already held |
+| GREEN | `011eba8b…` (owner) / `f39f8a99…` (catalogue read split into `inspectRegular` → `openRegular` → `readBounded`) | **8 tests, 0 failures** |
+
+Cases: positive — confirmed unavailability at open of `owner/state.enc` →
+`locked`, coordinator `loadRetained` is `.locked` and not latched, retry after
+the signal returns succeeds; negative — same `EPERM` with protected data
+available → failure and the coordinator freezes; `EACCES` with the signal
+unavailable → failure; `EPERM` at the descriptor-read stage → failure; `EPERM`
+at the inspection stage → failure; `EPERM` opening the catalogue
+(`text-state.enc`) → failure and freeze, never an owner lock; the plain
+initializer (no signal) → failure; and the confirmed lock surfacing in the
+readback of an owner write is terminal (writer latched, renamed candidate,
+intent and key kept, reopen refuses with `artifactsPresent`).
+
+Verification on code head `3c8cbab` (RED commit `584adad` rebuilt byte-exact
+from the tested snapshot `d2cc5f83…`; GREEN commit `3c8cbab`), each step
+separate: the nine focused suites **138 tests, 1 skipped, 0 failures**; the
+complete package **548 tests, 1 skipped, 0 failures** — the core timing case
+below happened to pass in this run, which does not change its intermittent
+record; `notices.py --offline` 146 crates + WebRTC; `test_notices.py` 32 PASS;
+`xcodebuild … -sdk iphoneos … CODE_SIGNING_ALLOWED=NO build` `** BUILD
+SUCCEEDED **` (unsigned binary SHA-256 `e290981337601918…`); simulator
+`KeychainStoreTests` rerun on this head: see the section below.
+
 ## Real Keychain policy — ad-hoc signed simulator
 
 `KeychainStoreTests` in the application test bundle, run ad-hoc signed on the
@@ -134,6 +179,9 @@ worktree fails the bundle copy phase without it; first attempt recorded as such)
   `XCTSkip` that names this simulator case; the adapter types are internal to
   the package, so the bundle exercises the public `OwnerKeychainKey` and the
   shipped codec, while `OwnerAppleCryptography` itself runs in the package tests.
+
+Rerun on the corrected code head `3c8cbab`: `KeychainStoreTests` **13 tests,
+0 failures**, `** TEST SUCCEEDED **` (the owner-policy case included).
 
 A simulator Keychain is not a device: on-device `.complete`/lock behaviour and
 power loss remain separate physical checks.

@@ -19,8 +19,10 @@ the Mac after a genuine runtime RED against stub adapters; eight owner
 native-stage cases (verified recovery → publication → reopen, ownerSigned /
 assembled / send / confirmed reopen with exact bytes, interrupted publication,
 foreign key/context, leftover and missing artifacts, read-only lock retry,
-fixture-only sync faults) and five catalogue follow-up cases pass; two mutation
-probes failed exactly their cases and were reverted. The real owner Keychain
+fixture-only sync faults), eight lock-classification cases (review P2: only a
+confirmed `EPERM` at `open` of the owner file is a retryable lock) and five
+catalogue follow-up cases pass; two mutation probes failed exactly their cases
+and were reverted. The real owner Keychain
 policy (`WhenUnlockedThisDeviceOnly`, non-synchronizable) is read back from
 the Keychain by two ad-hoc signed simulator cases. The
 [adapter receipt](evidence/ios-identity-v3-20261013/owner-apple-adapter.md)

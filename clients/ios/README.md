@@ -70,8 +70,9 @@ The [Mac implementation task](../../docs/clients/ios/owner-store-mac-handoff.md)
 is delivered on the branch `feat/ios-owner-apple-adapter-20261014`:
 `OwnerAppleFileIO(fileSystem:)` (create-only, no-follow `owner/` with mode
 `0700`; owner protection and backup exclusion read back on the inode; the
-catalogue adapter's bounded reads, with iOS `EPERM`-while-locked reported as
-`OwnerBackendLock.locked`), `OwnerAppleCryptography(owner:)` (shipped framing,
+catalogue adapter's bounded reads, where only an `EPERM` at the `open` stage
+of `owner/state.enc` with the platform reporting protected data unavailable
+is `OwnerBackendLock.locked`; everything else freezes), `OwnerAppleCryptography(owner:)` (shipped framing,
 raw AES-GCM opening, one opaque owner key, no foreign namespaces) and
 `OwnerKeychainKey(account:policy:)` (owner Keychain item, `WhenUnlockedThisDeviceOnly`,
 non-synchronizable, attributes read back after insertion, no deletion). The
