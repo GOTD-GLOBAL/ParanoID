@@ -987,6 +987,14 @@ Two-realm source feasibility does not replace implementation boundary tests.
 
 ## Implementation increments
 
+The [realm-store preflight appendix](../clients/ios/realm-store-preflight.md)
+proposes the next isolated storage/bookkeeping slice after the reviewed owner
+component. It records existing reader incompatibilities, a proposed successor
+writer/envelope and twelve unrun acceptance rows. It is **draft**, not format
+adoption, new implementation authority or evidence that D1-D3/MR gates passed.
+The authenticated #73 scope record and disposition/review of new details remain
+required before protected implementation.
+
 The original single-realm sequence and six-to-nine-week estimate no longer
 size the requested feature. No replacement delivery estimate is asserted.
 Each increment is a separately reviewed PR with exact-head Mac evidence when

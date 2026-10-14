@@ -8,6 +8,21 @@ last_reviewed_scope: native correction receipt and scoped source closure on 17d8
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## Realm-store preflight proposal — 2026-10-14
+
+The [new preflight appendix](../clients/ios/realm-store-preflight.md) maps the next
+isolated slice to proposed R01-R12 tests: allocation before key/core creation,
+exclusive writer/lease handoff, full-context/sibling isolation, bounded raw
+snapshot admission, immutable login intent/result bookkeeping and scoped/global
+freeze with preservation. These are proposed checks, **all NOT RUN**, not new
+implemented controls or closed MR gates. Its successor catalogue reader, exact
+parser limits and owner-locked retained-read classification need disposition
+and independent review; existing owner/bootstrap refusal tests stay intact.
+
+No app startup, network verifier, secret operation, legacy-state migration or
+live action is introduced. #73 authenticated scope, draft ADR-0017, private-data
+limits and the independent-human-review exit gate retain their existing status.
+
 ## Open native review findings — 2026-10-14
 
 **Historical at `98f58b0`; corrected and source-reviewed on `17d8d88` / `09eac34`.**

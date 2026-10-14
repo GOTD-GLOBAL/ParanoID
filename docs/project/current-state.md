@@ -2,10 +2,29 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: PR85 integrated into the owner-store feature with unchanged reviewed source; new realm/login implementation and product-scope provenance remain gated
+last_reviewed_scope: draft realm-store preflight after reviewed owner-component integration; no new implementation, scope approval or application acceptance
 ---
 
 # Current project state
+
+## Realm-store preflight proposal — 2026-10-14
+
+The [realm-store appendix](../clients/ios/realm-store-preflight.md), supporting
+RFC-0030, is now drafted against the integrated owner feature `79d6c8d`.
+It separates source facts from proposed successor-writer/schema/byte limits,
+lease handoff, allocation/freeze rules and twelve **NOT RUN** acceptance rows.
+The old owner codec/writer intentionally rejects allocated realms/artifacts;
+the existing shared Apple box is limited to 8 MiB whole plaintext. Neither is
+silently weakened by this document, and no realm runtime code is added.
+
+D1-D3 remain an application gap: legacy startup still constructs one snapshot
+store/runtime; production registry verification, realm-targeted v3 transport and
+durable login orchestration are not delivered by owner-component tests.
+The next implementation slice would be isolated realm allocation/commit/reopen,
+followed by separately reviewed adoption, runtime/transport, recovery and login.
+Implementation is conditional on the still-open authenticated scope record in
+PR #73 and technical disposition/independent review of the new details. This
+proposal does not close that record, accept an ADR or authorize any live action.
 
 ## Owner adapter integrated into the owner-store feature — 2026-10-14
 
