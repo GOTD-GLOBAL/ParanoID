@@ -8,6 +8,21 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS owner Apple adapters (component proposal)
+
+- Add `OwnerAppleFileIO`, `OwnerAppleCryptography` and the owner-policy
+  Keychain backend `OwnerKeychainKey`: create-only/no-follow owner directory,
+  owner protection and backup exclusion read back, raw AES-GCM over the shipped
+  framing, a non-configurable `WhenUnlockedThisDeviceOnly` non-synchronizable
+  key with attribute readback and refusal of weaker retained items, typed
+  owner-backend admission, lock classification limited to the `open(2)`
+  syscall of the owner file with protected data unavailable, and a single
+  descriptor close. Messaging defaults are untouched.
+- Move the staged owner native cases into the active test target and add
+  owner native-stage, catalogue follow-up and ad-hoc signed simulator Keychain
+  cases; all pass on the build Mac after a genuine runtime RED. No application
+  wiring, recovery, login, migration or live behaviour changes.
+
 ### iOS owner allocation/store core (isolated component proposal)
 
 - Add separate allocation-aware catalogue and owner codecs/coordinator with

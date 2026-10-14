@@ -7,7 +7,103 @@ last_reviewed: 2026-10-14
 
 # Owner-store Apple adapter: implementation handoff
 
+> Status (2026-10-14): the implementation and correction tasks below are
+> completed for code `17d8d88871e48e6323438c98c1ae5556bea6c5ce`, with receipt
+> head `09eac341a3823edd67fcb652f63de04067709408`. The two P2 findings and double
+> close are [closed by scoped source review](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127); native results are in
+> the [Mac receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+> The instructions below are preserved historical task input, **not a request
+> to restart from #86 or rerun unchanged code**. Final-head CI and separately
+> scoped feature integration remain; no app/device/live/ADR gate is closed.
+
+## Review correction handoff
+
+**Historical task issued for `af82b9c`; implemented and reviewed as noted above.**
+The imperative text through the return instructions records the original scope,
+not a new execution order. Preserve newer work; never reset a branch to this
+old input. Documentation-only changes with byte-identical source/tests need no
+new Mac run.
+
+Continue the isolated component on the Mac; do not wire it into app startup.
+Use the exact full PR #86 head supplied by the coordinator (including this
+handoff), not an older main or a reset of the contributor's branch. Its code
+checkpoint `fbdd5fb10920296ad4eb2888cccb73dfbb38751e` combines native
+`98f58b040fc7005250f89fccfb8132b2a439891d` and reviewed watchdog fix
+`4b041ac3f10b1220296c02a73b05df973031c935` with an ordinary merge. The native
+adapter blobs are identical to `98f58b0`; no native finding is repaired yet.
+Parent's combined-source portable tests passed 109/0 in debug and release;
+release used optimized Swift with cached debug Rust, not a native build.
+
+Preserve newer local work. If the native branch has advanced, bring this small
+follow-up in with ordinary history and report the resulting SHA; never replace
+newer native fixes with the older combined tree. Keep the final candidate in a
+draft PR against the existing owner-adapter branch, or on that branch under the
+contributor's existing scope, not in #84/main. Do not squash/rebase the TDD history.
+
+### Two native corrections, one RED/GREEN loop at a time
+
+1. **Open-only lock classification.** First add a syscall-injected `EPERM`
+   negative for the first `fstat` after successful open of `owner/state.enc`
+   while protected data is reported unavailable. Observe the current wrong lock
+   result as runtime RED. Also cover the later `fstat`/read boundary. Narrow the
+   classified failure to the actual open syscall, not the helper containing
+   descriptor validation; preserve no-follow/inode checks and descriptor cleanup.
+   Expect ordinary adapter/backend failure and a frozen coordinator for `fstat`,
+   while the true open/unavailable case remains retryable before effects.
+   Keep all eight existing cases and the terminal-after-write preservation case.
+2. **Owner backend/policy admission.** Make the normal owner-crypto constructor
+   accept only an owner-policy-enforcing backend (a concrete owner key or a
+   genuinely constrained owner interface); an ordinary messaging `KeychainKey`
+   must not qualify merely by adopting `WrappingKeyStore`. Retain an explicitly
+   labelled fixture-only seam for host memory backends. Remove configurable
+   weakening of `OwnerKeychainKey` or reject noncanonical policy before randomness
+   or any Keychain write. Never change legacy messaging defaults, migrate,
+   delete, repair or replace retained keys. Verify on the native compiler that
+   the previously admitted messaging constructor is rejected for the expected
+   reason, with a positive canonical constructor control. Prove weakened-policy
+   construction is unavailable or fails before effects. Rerun actual canonical
+   item creation/attribute readback and framing on the signed simulator in fresh
+   test namespaces; memory fixtures cannot stand in for policy enforcement.
+
+These corrections must close existing proposed-contract defects; they do not
+accept RFC-0030, draft ADR-0017, the eight-entry cap, new application policy or
+live authority.
+The precise findings are recorded in PR #85 review discussions
+`4269428919` (first `fstat`) and `4269212954` (backend/policy admission).
+
+### Combined-head verification and return
+
+Commit the final source before the acceptance run and record its full SHA.
+Run the existing prerequisites and final commands under
+[Reproducible final Mac verification](#reproducible-final-mac-verification),
+adding `OwnerAppleLockClassificationTests|OwnerAppleNativeStagesTests` and any
+new policy suite to the focused filter. Before the full package, repeat the
+repaired timing test ten times without modifying source:
+
+```sh
+set -euo pipefail
+for attempt in {1..10}; do
+  bash clients/ios/toolchain.sh swift test \
+    --package-path clients/ios/ParanoidKit --scratch-path clients/ios/out/spm \
+    --filter 'OwnerStoreRegressionTests.testExternalWaitIsBoundedAndCancellationDoesNotDependOnVerifierCooperation'
+done
+```
+
+Then run the full package, notices, unsigned iOS build and the documented
+ad-hoc signed-simulator Keychain suite. The native adapters change in this task,
+so the previous build/Keychain receipt cannot cover the new runtime. Record
+actual counts, skips, each exit code, raw RED/GREEN evidence, source hashes and
+clean-tree checks; preserve earlier intermittent failures as historical evidence.
+Do not call the five-second test watchdog a universal hard timeout or change
+production deadlines to make the test pass. Return the new code and receipt SHAs
+in PR #85 for coordinator re-review. No #84/main integration, install, account
+change, phone/server operation or TestFlight follows from this task.
+
 ## Objective and exact source
+
+**Historical initial implementation handoff from `2ed901dd`.** The statements
+about absent adapters and NOT RUN staged tests below apply only to that base,
+not to the corrected native component and receipt linked at the top.
 
 Implement and actually exercise the Apple backends for the isolated owner-store
 component. This is **implementation plus native RED/GREEN**, not merely another

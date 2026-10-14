@@ -66,13 +66,27 @@ Storage backends there are explicit non-cryptographic fixtures, with real Rust
 public-vector material checks; release is optimized Swift plus debug Rust.
 
 Both independent exact-head component reviews closed without remaining P1/P2.
-The [next Mac implementation task](../../docs/clients/ios/owner-store-mac-handoff.md)
-covers actual owner backends and native commit/reopen. Owner Apple adapters are not yet
-implemented, staged native checks are excluded/NOT RUN, and no owner persistence,
-recovery, login or new startup path is wired into the application. Do not count
-this as native encrypted storage or extend earlier Mac receipts to this source.
-The new eight-entry lifetime ledger cap remains a component proposal, not an
-accepted product decision. No existing user state is migrated or reset.
+The [Mac implementation task](../../docs/clients/ios/owner-store-mac-handoff.md)
+is delivered on the branch `feat/ios-owner-apple-adapter-20261014`:
+`OwnerAppleFileIO(fileSystem:)` (create-only, no-follow `owner/` with mode
+`0700`; owner protection and backup exclusion read back on the inode; the
+catalogue adapter's bounded reads, where only an `EPERM` at the `open` stage
+of `owner/state.enc` with the platform reporting protected data unavailable
+is `OwnerBackendLock.locked`; everything else freezes), `OwnerAppleCryptography(owner:)` (shipped framing,
+raw AES-GCM opening, one owner-policy key backend, no foreign namespaces) and
+`OwnerKeychainKey(account:)` (owner Keychain item, canonical
+`WhenUnlockedThisDeviceOnly` non-synchronizable policy that cannot be
+configured, attributes read back after insertion, a weaker retained item
+refused, no deletion). `OwnerAppleCryptography` admits only an `OwnerKeyBackend`;
+the messaging `KeychainKey` does not type check there. The
+four staged native cases and eight native-stage cases run in `ParanoidKitTests`
+on the build Mac; the real Keychain policy is proven by two ad-hoc signed
+simulator cases in `KeychainStoreTests`. See the
+[adapter receipt](../../docs/project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+Still not wired or claimed: owner persistence in the application, recovery,
+login, a new startup path, on-device `.complete` behaviour, restart or power
+loss. The new eight-entry lifetime ledger cap remains a component proposal, not
+an accepted product decision. No existing user state is migrated or reset.
 
 ## Bridge crate (`bridge/`)
 

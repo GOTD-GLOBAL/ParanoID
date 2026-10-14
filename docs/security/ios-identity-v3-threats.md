@@ -3,18 +3,58 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: corrected owner-core portable controls replayed and independently reviewed; native owner protection, runtime, live Keychain and MR gates remain NOT RUN
+last_reviewed_scope: native correction receipt and scoped source closure on 17d8d88 / 09eac34; on-device protection, runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## Open native review findings — 2026-10-14
+
+**Historical at `98f58b0`; corrected and source-reviewed on `17d8d88` / `09eac34`.**
+The first `fstat` in `openRegular` could be classified as retryable lock on
+`EPERM` plus unavailable protected data; the crypto initializer admitted a
+messaging-policy `WrappingKeyStore`, and the key allowed noncanonical policy.
+These were two component-boundary P2 findings, not demonstrated app exploits.
+The [correction receipt](../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)
+and [scoped source closure](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127) record their resolution and the
+additional exact-once descriptor cleanup fix. No new P1/P2 was found in those
+corrections under the trusted-backend/exclusive-lease contract.
+
+Native RED/GREEN, compiler admission probes and signed-simulator results are
+contributor-reported Mac evidence. Linux review verified source and provenance,
+not native execution, on-device `.complete`, physical lock lifecycle or power
+loss. The watchdog changes no production deadline. App adoption, #73, ADR and
+MR gates remain separate. A direct weak-policy `createKey()` fixture regression
+is a nonblocking test follow-up; the canonical guard is already in that path.
+
+## Apple owner adapter — 2026-10-14
+
+The native owner backends the delta below left unimplemented are exercised on
+the build Mac ([receipt](../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)):
+the four staged cases (three host passes and one real-Keychain host skip),
+eight native-stage cases and eleven classification/policy cases against the
+real file system and CryptoKit, with labelled fixture-only fault injections.
+The signed-simulator suite includes the two original owner cases and the later
+legacy-policy refusal/preservation case; its final total is 14/0.
+These rows update the "required check / residual" cells below; they do not
+close #73, ADR, MR or application gates.
+
+| Threat | Native control now tested | Remaining boundary |
+| --- | --- | --- |
+| `owner/` is created through a link or over an existing inode | `mkdir(2)` never follows the final component; any existing inode is `EEXIST` and untouched; `O_DIRECTORY` and `O_NOFOLLOW` open then `fchmod(0700)` | Same-process caller trusted; hostile co-writers out of scope |
+| Owner files carry messaging protection or are protected through a link | No-follow inspection before protection; `.complete` set and read back (iOS), backup exclusion set and read back on the inode; a link or foreign inode is `EFTYPE` | `.complete` is compiled for iOS and read back there; host runs prove invocation order and the backup flag only |
+| The owner key lands under the messaging policy or is replaced/deleted | Separate `OwnerKeychainKey(account:)` with a non-configurable canonical policy (`OwnerKeyPolicy` cannot be constructed outside its file); attributes read back after `SecItemAdd` and refused on mismatch; a retained item with a weaker policy refused on `load()`, never deleted or migrated; duplicate refused; deletion refused; `OwnerAppleCryptography` admits only an `OwnerKeyBackend`, so the messaging `KeychainKey` is rejected by the compiler (native compile probe) and its defaults are untouched (simulator cases incl. a legacy item under an owner account) | Simulator Keychain, not a device; lock/unlock lifecycle and power loss not reproduced |
+| A locked key or file is taken for absence or for failure | `errSecInteractionNotAllowed` maps to `OwnerBackendLock.locked`; for files only `EPERM` from the `open(2)` syscall itself on `owner/state.enc` while the platform reports protected data unavailable does — the `fstat` after the open, the inode confirmation, the descriptor read, other paths including the catalogue, `EACCES`, an available or absent signal are all failures the store freezes on (eleven classification cases); read-only lock before effects is retryable without latching; a lock after the write began is terminal with intent and key kept | The protected-data signal is injected on the host (FIXTURE-ONLY); the application supplies the platform's own at integration |
+| Reopening repairs, republishes or rewrites | Every reopen compares exact saved bytes; interrupted publication before the intent leaves a clean intermediate that only explicit publication completes; after the intent the leftover marker freezes the catalogue with all bytes kept; foreign key/context, leftover temp/intent and missing halves refuse without modification | Lost final acknowledgement remains undetectable to a later instance (unchanged) |
+| Pre-sponsor evidence or send counters drift across restarts | ownerSigned (real Rust `sponsored_sign` on the public vector), assembled and one send reservation each reopen byte-exact; confirmation marks `ownerBound` and publishes once | Synthetic assembly/verification are trusted input, not signature or live-chain verification |
+
 ## PROPOSED allocation-aware owner-store delta — 2026-10-14
 
-The [byte/transaction appendix](../clients/ios/owner-store-format.md) is a
-non-adopted component proposal. The portable controls now have the scoped
-execution evidence below; native owner protection/durability and application
-controls remain **NOT RUN**. Nothing extends the prior catalogue/Mac receipts
-or closes #73/ADR/MR gates.
+The [byte/transaction appendix](../clients/ios/owner-store-format.md) remains a
+non-adopted component proposal. This section preserves the earlier portable
+checkpoint, when native owner protection/durability had not been run. The
+subsequent native component receipt is recorded above; application controls
+remain **NOT RUN**. Neither checkpoint closes #73/ADR/MR gates.
 
 The initial source at `697bd68` failed additional authority/retained-integrity
 reviews despite its passing baseline. Corrected source `1df9462` is independently

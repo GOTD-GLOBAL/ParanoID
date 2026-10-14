@@ -6,6 +6,11 @@ last_reviewed: 2026-10-14
 
 # Isolated owner-store core: portable execution checkpoint
 
+> Continuation (2026-10-14): the Apple owner adapters this checkpoint handed
+> off are delivered and natively tested in the
+> [owner adapter receipt](owner-apple-adapter.md). The historical results and
+> NOT RUN rows below are preserved unchanged.
+
 **Portable component delivery, not a native durable owner store, app
 capability, #73 closure, ADR acceptance or live result.** The production
 allocation/commit/reopen/ledger/authority orchestration proposed in the
