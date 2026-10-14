@@ -3,7 +3,7 @@ status: draft
 owner: ios
 decision_owner: martadvix-web
 review_mode: closed-alpha-ai
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-14
 ---
 
 # iOS concurrent realms: RFC-0030 design candidate
@@ -386,10 +386,15 @@ the context, continuity and preservation checks; no full MR gate passes here.
 
 The [transaction-core receipt](../../project/evidence/ios-identity-v3-20261013/catalogue-store.md)
 records executable `CatalogueStore` orchestration with faultable unit backends.
-The Apple file/crypto adapter is **not implemented** in that checkpoint; its
-native-first XCTest source is staged outside the package test target. No real
-AES-GCM/disk/Keychain result follows from those doubles. The earlier preflight
-and remaining app-level questions below are preserved, not declared resolved.
+The Apple file/crypto adapter was not part of that checkpoint; it is now
+implemented as `CatalogueAppleFileIO` / `CatalogueAppleCryptography` and
+exercised on the build Mac by the four native cases (moved into the package
+test target) plus twenty-one native-seam cases — see the
+[adapter receipt](../../project/evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md).
+Real AES-GCM and real temporary-directory I/O are covered there; a live
+Keychain, iOS Data Protection execution, restart and power loss are not. The
+earlier preflight and remaining app-level questions below are preserved, not
+declared resolved.
 
 Complete loss/rollback of all evidence is still not detectable. In particular,
 a failure after intent removal (or lost final sync acknowledgement) can leave a

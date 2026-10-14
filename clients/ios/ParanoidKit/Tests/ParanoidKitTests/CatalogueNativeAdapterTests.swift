@@ -1,7 +1,8 @@
-// NATIVE-FIRST CHECKPOINT, NOT COMPILED OR RUN.
-// Move into Tests/ParanoidKitTests only on the Mac implementation branch.
-// CatalogueAppleFileIO and CatalogueAppleCryptography are proposed adapter
-// names, NOT shipped implementations. See catalogue-store.md evidence receipt.
+// Native-first acceptance of the Apple catalogue adapters (RFC-0030 / draft
+// ADR-0017; MR-02/06/07/14 prerequisites). Real temporary directory, real
+// AES-GCM, injected in-memory SymmetricKey backends; never the application
+// container or a live Keychain account. Activated on the Mac implementation
+// branch from the checkpoint staged in PR #82 (a19a980).
 import CryptoKit
 import Foundation
 import XCTest

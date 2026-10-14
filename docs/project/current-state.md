@@ -1,11 +1,39 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-13
-last_reviewed_scope: exercised catalogue transaction core and verified base Mac receipt; Apple adapter implementation/native checks and owner/realm login remain separate
+last_reviewed: 2026-10-14
+last_reviewed_scope: Apple catalogue adapter implemented and natively tested on the build Mac (component proposal); durable store adoption, owner/realm login and phone acceptance remain separate
 ---
 
 # Current project state
+
+## Apple catalogue adapter on the build Mac — 2026-10-14
+
+The adapter the transaction-core checkpoint left open is implemented on the
+branch `feat/ios-catalogue-apple-adapter-20261013` from `a19a980`:
+`CatalogueAppleFileIO` and `CatalogueAppleCryptography` in
+`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/CatalogueAppleAdapters.swift`.
+The four staged native cases moved into the active test target and passed on
+the Mac after a genuine runtime RED against stub adapters; twenty-one further
+native-seam cases (real temporary roots, real CryptoKit, five labelled
+fixture-only POSIX fault injections) pass, and two mutation probes confirmed
+they fail when the `EINTR` retry or the growth guard is removed. The
+[adapter receipt](evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md)
+records commands, snapshot hashes, the full-package count, notices and the
+unsigned iOS build. `CatalogueStore`, the codec, the legacy stores, the package
+manifest, pins, app, Rust bridge and all other components are unchanged.
+[Two focused source reviews and coordinator verification](https://github.com/GOTD-GLOBAL/ParanoID/pull/83#pullrequestreview-5513516075)
+found no P1/P2 blocker in the documented isolated-store scope. PR #83 is
+incorporated into the catalogue-store feature candidate with an ordinary merge
+preserving its history; source/tests remain those of Mac-tested `943c4a8`.
+The integration corrects evidence wording only, not storage algorithms.
+
+This remains a component proposal: no real Keychain, on-device Data Protection,
+process restart/power loss, owner/realm store, recovery, login or app startup is
+validated. No main merge, installation or live action follows. Nonblocking
+follow-ups before general adapter reuse are checked dynamic read-budget bounds
+and direct new-crypto.open regression cases for sliced Data, foreign AAD and
+the upper framing limit; inspection is not substituted for those tests.
 
 ## Catalogue transaction-core checkpoint — 2026-10-13
 
@@ -21,8 +49,9 @@ Four native-first tests are staged outside the active target and are NOT RUN,
 not included in the 51-test count. Yaroslav selected his Mac agent to implement
 that narrow adapter through native RED/GREEN, with coordinator review and
 feature-branch integration. This changes only task execution responsibilities,
-not decision authority or server/phone/merge permissions. Independent review
-of the transaction core is in progress; no full storage or login result exists.
+not decision authority or server/phone/merge permissions. Its
+[subsequent core source review](https://github.com/GOTD-GLOBAL/ParanoID/pull/82#pullrequestreview-5510361947)
+closed without blockers; no full storage or login result follows.
 No existing app startup, legacy storage, install marker, Keychain or live state
 changed. Fresh-Welcome classification and actual persistent-format/runtime
 adoption remain separate from this explicitly isolated candidate.

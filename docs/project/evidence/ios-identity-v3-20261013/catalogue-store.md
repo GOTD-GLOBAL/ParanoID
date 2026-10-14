@@ -6,6 +6,11 @@ last_reviewed: 2026-10-13
 
 # Isolated catalogue transaction-core execution checkpoint
 
+> Continuation (2026-10-14): the Apple adapter this checkpoint left unimplemented
+> is delivered and natively tested in the
+> [adapter receipt](catalogue-apple-adapter.md). The historical results below
+> are preserved unchanged.
+
 **Partial component delivery, not a native durable-store delivery.**
 The real production `CatalogueStore` orchestration is implemented and executed.
 The narrow Apple crypto/filesystem adapter is **not implemented or tested**.
@@ -121,8 +126,10 @@ Both final receipts bind these exact files:
 
 ## Concrete native-first checkpoint — still NOT RUN
 
-[Four native XCTest cases](../../../../clients/ios/ParanoidKit/Tests/NativeFirstTests/CatalogueNativeAdapterTests.swift)
-are staged **outside** `Tests/ParanoidKitTests` deliberately. They reference the
+[Four native XCTest cases](../../../../clients/ios/ParanoidKit/Tests/ParanoidKitTests/CatalogueNativeAdapterTests.swift)
+were staged **outside** `Tests/ParanoidKitTests` deliberately at this
+checkpoint (under `Tests/NativeFirstTests/`); the adapter branch moved them
+into the active target, see the [adapter receipt](catalogue-apple-adapter.md). They reference the
 proposed `CatalogueAppleFileIO` and `CatalogueAppleCryptography` adapter names,
 which do not exist yet. They are neither discovered nor counted in the 51 tests,
 and must not be presented as compiled, skipped or passed.
