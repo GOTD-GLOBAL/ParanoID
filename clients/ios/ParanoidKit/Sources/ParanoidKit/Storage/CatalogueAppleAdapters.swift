@@ -53,6 +53,8 @@ struct CatalogueAppleSyscalls: Sendable {
     var write: @Sendable (Int32, UnsafeRawPointer, Int) -> Int
     var close: @Sendable (Int32) -> Int32
     var unlink: @Sendable (UnsafePointer<CChar>) -> Int32
+    var mkdir: @Sendable (UnsafePointer<CChar>, mode_t) -> Int32
+    var fchmod: @Sendable (Int32, mode_t) -> Int32
 
     static let darwin = CatalogueAppleSyscalls(
         lstat: { Darwin.lstat($0, $1) },
@@ -61,7 +63,9 @@ struct CatalogueAppleSyscalls: Sendable {
         read: { Darwin.read($0, $1, $2) },
         write: { Darwin.write($0, $1, $2) },
         close: { Darwin.close($0) },
-        unlink: { Darwin.unlink($0) })
+        unlink: { Darwin.unlink($0) },
+        mkdir: { Darwin.mkdir($0, $1) },
+        fchmod: { Darwin.fchmod($0, $1) })
 }
 
 /// `CatalogueFileIO` over the real Apple file system. Proposed, non-adopted
@@ -191,8 +195,11 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
     /// that is larger, or that grows past the limit while being read, is
     /// refused; nothing is decoded on the way.
     public func read(_ url: URL, maximumBytes: Int) throws -> Data {
-        guard maximumBytes >= 0 else {
-            throw CatalogueAppleAdapterError(.read, url, code: Int(EINVAL), reason: "negative read limit")
+        // The buffer below needs room for one byte past the limit, so the
+        // limit itself must leave that room (follow-up of the first receipt:
+        // an unchecked `maximumBytes + 1` trapped on `Int.max`).
+        guard maximumBytes >= 0, maximumBytes < Int.max else {
+            throw CatalogueAppleAdapterError(.read, url, code: Int(EINVAL), reason: "read limit out of range")
         }
         var inspected = stat()
         let (result, code) = withPath(url) { path in (syscalls.lstat(path, &inspected), errno) }
@@ -210,10 +217,14 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
               opened.st_dev == inspected.st_dev, opened.st_ino == inspected.st_ino else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
         }
-        guard opened.st_size <= maximumBytes else {
+        guard opened.st_size >= 0, opened.st_size <= Int64(maximumBytes) else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "stored bytes above the read limit")
         }
-        let capacity = maximumBytes + 1
+        // Allocate for the inspected size plus one byte, never for the whole
+        // budget: a 1 KiB file under a 9 MiB limit costs 1 KiB + 1. Filling the
+        // buffer means the inode held more than it reported, which is refused
+        // below whether or not the total still fits the limit.
+        let capacity = Int(opened.st_size) + 1
         var buffer = Data(count: capacity)
         var total = 0
         try buffer.withUnsafeMutableBytes { raw in
@@ -229,8 +240,8 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
                 total += received
             }
         }
-        guard total <= maximumBytes else {
-            throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "file grew past the read limit")
+        guard total < capacity else {
+            throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "file grew while being read")
         }
         return buffer.prefix(total)
     }
@@ -310,10 +321,24 @@ public struct CatalogueAppleCryptography: CatalogueCryptography {
     }
 
     /// Seals through `SnapshotCodec.seal`, so the bytes are the shipped
-    /// `[0x01][nonce][ciphertext‖tag]` layout the old reader also parses. The
-    /// codec seals text; the catalogue plaintext is its own JSON, so exact
-    /// UTF-8 is required and checked by re-encoding — never repaired.
+    /// `[0x01][nonce][ciphertext‖tag]` layout the old reader also parses.
     public func seal(_ plaintext: Data, with key: SymmetricKey) throws -> Data {
+        try AppleFramedBox.seal(plaintext, with: key)
+    }
+
+    /// Authenticates the shipped framing and returns the raw plaintext bytes.
+    public func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
+        try AppleFramedBox.open(sealed, with: key)
+    }
+}
+
+/// The one sealing/opening routine both Apple adapters share, over the shipped
+/// version-1 framing. Not a new format: `SnapshotCodec.seal` writes the box
+/// and the old reader still parses it.
+enum AppleFramedBox {
+    /// The codec seals text; the store plaintexts are their own JSON, so exact
+    /// UTF-8 is required and checked by re-encoding — never repaired.
+    static func seal(_ plaintext: Data, with key: SymmetricKey) throws -> Data {
         let text = String(decoding: plaintext, as: UTF8.self)
         guard Data(text.utf8) == plaintext else {
             throw CatalogueAppleAdapterError(.seal, nil, code: Int(EILSEQ), reason: "plaintext is not exact UTF-8")
@@ -322,11 +347,11 @@ public struct CatalogueAppleCryptography: CatalogueCryptography {
         catch { throw CatalogueAppleAdapterError(.seal, nil, underlying: error) }
     }
 
-    /// Authenticates the shipped framing and returns the raw plaintext bytes.
-    /// This deliberately does not go through `SnapshotCodec.open`, whose
-    /// String result repairs malformed UTF-8; the strict catalogue codec must
-    /// see the bytes as stored.
-    public func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
+    /// Raw authenticated opening. This deliberately does not go through
+    /// `SnapshotCodec.open`, whose String result repairs malformed UTF-8; the
+    /// strict store codecs must see the bytes as stored. Works on any `Data`
+    /// slice: every bound is taken from the value's own indices.
+    static func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
         guard sealed.count >= SnapshotCodec.minimumSnapshotBytes,
               sealed.count <= SnapshotCodec.maximumSnapshotBytes,
               sealed.first == SnapshotCodec.version else {
