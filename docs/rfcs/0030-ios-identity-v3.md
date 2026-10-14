@@ -580,6 +580,12 @@ contains to that realm only when common catalogue/sibling integrity is known;
 a catalogue/installation continuity failure stops all. No atomic Keychain/file
 transaction or cryptographic anti-rollback is claimed.
 
+The [PROPOSED owner-store format appendix](../clients/ios/owner-store-format.md)
+fixes byte schemas, bounded pre-sponsor/assembled evidence, exclusive writer
+handoff and allocation/verification authority for the next isolated owner slice.
+It leaves fi/ru unallocated and the old bootstrap APIs/refusals intact; neither
+the format nor the vertical slice is adopted or claimed implemented.
+
 Question 8 now includes this multi-store layout, per-type bounds, protection,
 freeze policy and downgrade guard. All new storage/runtime behavior is NOT RUN;
 implement exact byte formats and negative fixtures before allowing networking.

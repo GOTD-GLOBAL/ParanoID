@@ -54,6 +54,40 @@ does not, the reference is wrong and not the base. A directory or
 script named in this README exists only once its pull-request step has landed;
 the name alone is not a claim that the code exists or works.
 
+## Isolated owner-store component checkpoint
+
+The [proposed owner format](../../docs/clients/ios/owner-store-format.md) now has
+an allocation-aware catalogue/owner coordinator, strict codecs, retained pending
+ledger and process-local authority tests. The old bootstrap codec/store stay
+unchanged and still refuse allocated owner artifacts. Corrected source
+`1df946251b4338fef6de8edbc0b22dd56cc97858` passes the parent's isolated Linux
+**109/0 debug and release** replay; see the [full evidence and review status](../../docs/project/evidence/ios-identity-v3-20261013/owner-store-core.md).
+Storage backends there are explicit non-cryptographic fixtures, with real Rust
+public-vector material checks; release is optimized Swift plus debug Rust.
+
+Both independent exact-head component reviews closed without remaining P1/P2.
+The [Mac implementation task](../../docs/clients/ios/owner-store-mac-handoff.md)
+is delivered on the branch `feat/ios-owner-apple-adapter-20261014`:
+`OwnerAppleFileIO(fileSystem:)` (create-only, no-follow `owner/` with mode
+`0700`; owner protection and backup exclusion read back on the inode; the
+catalogue adapter's bounded reads, where only an `EPERM` at the `open` stage
+of `owner/state.enc` with the platform reporting protected data unavailable
+is `OwnerBackendLock.locked`; everything else freezes), `OwnerAppleCryptography(owner:)` (shipped framing,
+raw AES-GCM opening, one owner-policy key backend, no foreign namespaces) and
+`OwnerKeychainKey(account:)` (owner Keychain item, canonical
+`WhenUnlockedThisDeviceOnly` non-synchronizable policy that cannot be
+configured, attributes read back after insertion, a weaker retained item
+refused, no deletion). `OwnerAppleCryptography` admits only an `OwnerKeyBackend`;
+the messaging `KeychainKey` does not type check there. The
+four staged native cases and eight native-stage cases run in `ParanoidKitTests`
+on the build Mac; the real Keychain policy is proven by two ad-hoc signed
+simulator cases in `KeychainStoreTests`. See the
+[adapter receipt](../../docs/project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+Still not wired or claimed: owner persistence in the application, recovery,
+login, a new startup path, on-device `.complete` behaviour, restart or power
+loss. The new eight-entry lifetime ledger cap remains a component proposal, not
+an accepted product decision. No existing user state is migrated or reset.
+
 ## Bridge crate (`bridge/`)
 
 `paranoid-ios-bridge` exports four C symbols, declared in

@@ -1,0 +1,263 @@
+OWNER STORE REVIEW CORRECTIONS — RAW PORTABLE RECEIPT
+Isolated component proposal; not acceptance, publication or merge authority.
+REQ-ID-002/003/004/006, REQ-CLIENT-001, REQ-MULTI-001, REQ-SEC-001; RFC-0030 / ADR-0017 remain draft.
+Base reviewed source: 697bd68520d1ba764dd306d267b40d0c776c5e1f
+Corrected source commit: 985b30b20bdf896813410262fecbeb68ec256b4b
+Mutable worktree: /home/codex/projects/paranoid-worktrees/ios-owner-store-20261014
+Scratch runner: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/run.py
+Every stage below is a fresh byte-for-byte source/test snapshot from the mutable feature worktree, not the frozen reviewer tree.
+Test receipts recorded pre-commit HEAD plus dirty paths; hashes below were independently compared to the committed source. Parent-owned Markdown was not staged in the correction commit.
+Swift 6.3.3; Swift 6 language mode; strict-concurrency=complete; warnings-as-errors.
+Both debug and release link the pre-existing cached DEBUG Rust static library. Release optimizes Swift ONLY. Rust was not rebuilt by this correction worker.
+Rust path: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-store-1cbdbed1-94f8-41a7-bb48-be19aa99a171/rust/debug/libparanoid_ios_bridge.a
+Rust SHA256: fb9f94b04990a6587c247921fc2e4937d4048ce7c4a3e4ede133309b95e64021
+
+SCOPE / FIXES
+- Live MainActor ticket authorization: exact issuer, operation, lease, revision, phase and saved attempt; weak issuer reference; lost release still consumes the durable send count.
+- Mandatory concrete leased handles; exact root/lease/holder consistency; one coordinator incarnation per holder; no optional no-op lease callback; explicit close and revocable bootstrap handoff.
+- Explicit cancel/close, task cancellation and finite external deadline resume a wait independently of verifier cooperation; late callback cannot revoke/revive a successor.
+- Authority checked immediately before signer/assembler/entropy, around each write backend boundary and after final sync; uncertainty after any started effect freezes without compensation.
+- Retained parse/version/frame/material failures freeze by read origin; a malformed new candidate before effects remains a nonfreezing refusal.
+- Full eight-entry history may reconcile and confirm; resolveExpired returns optional append authority, nil at capacity; ninth signing remains forbidden, no pruning/cap change.
+- Throwing catalogue writer validates bindings and refuses unallocated+binding without normalization; bootstrap bytes/both unallocated realms preserved. Owner writer validates bounded fields before interpolation.
+- Additional self-audit runtime RED: backend busy after effect must freeze; contradictory proposed-name/nameTaken evidence must not rewrite ledger or mint append authority.
+
+TEST FIXTURE ADAPTATIONS (NO ASSERTIONS REMOVED TO HIDE A FAILURE)
+- OwnerFixture closes/retires the prior coordinator before each reopen; send loop uses that fresh coordinator, not the retired original.
+- Foreign creation permit is obtained before the fixture hands off to the second coordinator; rejection/zero entropy assertions retained.
+- Entropy ordering checks the last EFFECT (allocation final sync), allowing the newly required read-only continuity check before entropy.
+- Old 20ms verifier test could expire during real Rust preparation and never enter its gate. Deadline is now one second with explicit sleep-until-after-deadline; entry readiness has a five-second failure watchdog. Production still uses the caller supplied finite deadline.
+
+EXECUTION BOUNDARIES / HONEST FAILURES
+- Own unchanged baseline debug: 87/0. Parent independently supplied unchanged frozen debug/release 87/0; the parent release result is not represented as an extra local baseline run here.
+- Genuine local parent-six RED: 6 methods / 11 assertion failures / zero unexpected.
+- Both final modes: 109 methods / 0 failures / 0 skips = 23 CatalogueStore + 28 IdentityCatalogue + 21 DevnetBridge + 15 existing OwnerStore + 22 regression methods.
+- Existing creation and owner-replacement fault matrices remain 29 effects/58 before-after cases and 12 effects/24 cases. Existing publication matrix remains executed. New cancellation/close matrix covers each of the 29 creation effects for both revocations; deadline matrix covers intent/key-or-seal/final-sync across allocation, creation and send.
+- Initial ticket-lease test harness used the wrong explicit generic return type (compile failure); corrected before runtime RED. An onEffect XCTest autoclosure initially inferred throwing (compile failure), corrected with explicit do/catch.
+- interim-full-debug timed out at 300s; focused diagnose-old-await timed out at 30s. Root cause was fixture waiting forever for a verifier already rejected during preparation; no passing receipt claimed for either run. Streaming logs/watchdog added in own runner/fixture only.
+- interim-full-debug-2 exposed an unclaimed-holder fixture handoff crash; close now retires its own unclaimed holder. Subsequent run exposed stale coordinator reuse and event-vs-effect assertion ordering; both corrected as described above, all substantive assertions retained.
+- First compile-negative command incorrectly used swift rather than swiftc and failed before checking source. policy-compile-negative-verified.log is the actual expected type rejection; not included in XCTest counts.
+- Parent/reviewer preserved RED for signing after readonly refresh expiry and for coordinator destruction/confirmation ticket lifetimes; repository regression methods cover these and assembly/close. Those additional lifetime controls initially passed after the shared authority fix; no backfilled RED claim.
+
+NATIVE GAP
+OwnerAppleFileIO / OwnerAppleCryptography remain unimplemented. Staged NativeFirstTests file remains excluded and NOT RUN: not typechecked or executed on Apple.
+Keychain-policy checkpoint now explicitly XCTSkip until real signed-simulator/device insertion/readback exists; no memory-backed policy PASS. Retained-native blueprint is honestly named for unregistered+backup/tampered-tag only; remaining ownerSigned/assembled/sends/confirmed/foreign-key cases are still needed.
+No full Apple package, actual Keychain, on-device complete protection, restart/power loss, UI authority, live verifier, app/login, phone or MR acceptance test was run. No app/main/Rust/server/Android change, network, Apple secrets, deployment, push, PR or merge.
+
+FINAL SNAPSHOT SHA256 (relative to clients/ios/ParanoidKit)
+7211e2da21e29f03df8c90991a584b79627564b98c5b83aa33c5120520a49777  Sources/ParanoidKit/Core/CoreBridge.swift
+db1ce74eeb7d62151710eaee7d30be1748ed56ff19d86074fabe5e96d093e6a2  Sources/ParanoidKit/Core/DevnetBridge.swift
+27612da7aa8d160961b79c0bf57f057eed8e9e151087db8adfb17d0c6a32c1a2  Sources/ParanoidKit/Core/JsonSpan.swift
+4a5abcb975244dd346a483d646952919e76a9e89040e2b70e40e6b73a4013adb  Sources/ParanoidKit/Storage/CatalogueStore.swift
+b07cfc66b50041ce083fae47c26383aa615db57b0417dcb87e99897cbaceb30e  Sources/ParanoidKit/Storage/IdentityCatalogue.swift
+e7d87d274632247881b058f14e7b441f14098cb873fb67dd8bfa8f22cf18e87c  Sources/ParanoidKit/Storage/OwnerAllocationCoordinator.swift
+d38369b3cf1f7d04d62b4647d10b9ba9ccc4dec1d0a3e0500d8d644a025a95ef  Sources/ParanoidKit/Storage/OwnerAttempt.swift
+29433c88f9c67592c8e66ec2398cc264b3491fd9d66b242695d3450ef577a707  Sources/ParanoidKit/Storage/OwnerNamespaceLease.swift
+f847e39fd0b85a501d59ce843a5c9f35c239da7268cdd888efd52d63e96a4100  Sources/ParanoidKit/Storage/OwnerScalars.swift
+21ea3dec0b3d8455cbf5b146618efc98f190594cb030d679827cca52a31d08ea  Sources/ParanoidKit/Storage/OwnerStoreCodec.swift
+71eab23d9d256bd68b1994a9786b20e8bdd9e6799f436d1ca3403468fea2bc06  Sources/ParanoidKit/Storage/OwnerVerifiedInput.swift
+9226d7fb066beb6c78cf0d287826b0dfc66ed9a60ec9b72fd60e9f3692b00a5a  Tests/ParanoidKitTests/CatalogueStoreTests.swift
+8c99893efa7b30a314a4833730a69d3a90abd22c66c63b56978313fc912d970f  Tests/ParanoidKitTests/DevnetBridgeTests.swift
+059b8d02c4d801bc59feb08d7924850a3aea60c522c30a2b4e5caa90674f4421  Tests/ParanoidKitTests/IdentityCatalogueTests.swift
+3c77ae65b4d846164208871971d362646481af70997830be818a9b9e8cff7419  Tests/ParanoidKitTests/OwnerStoreRegressionTests.swift
+51e18e5bd078401b027f55a4beee88baa4483feb7c2a5e99a8ad3d7ee15d7afd  Tests/ParanoidKitTests/OwnerStoreTests.swift
+
+STAGED NATIVE BLUEPRINT SHA256 (NOT RUN)
+053105a89c2bd29e26aeb085e2234de1ad2b87f116462e23c1765a1063f8e08e  clients/ios/ParanoidKit/Tests/NativeFirstTests/OwnerNativeAdapterTests.swift
+
+RUNTIME STAGE RECEIPTS
+
+baseline-debug
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/baseline-debug --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/baseline-debug/execution.log
+log SHA256: 18501c58ce6be1734b4766e5e2c8fbbbe289566883406b55c7470ec2969ad7f2
+Executed 23 tests, with 0 failures (0 unexpected)
+Executed 21 tests, with 0 failures (0 unexpected)
+Executed 28 tests, with 0 failures (0 unexpected)
+Executed 15 tests, with 0 failures (0 unexpected)
+Executed 87 tests, with 0 failures (0 unexpected)
+
+parent-six-local-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/parent-six-local-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/parent-six-local-red/execution.log
+log SHA256: f3a83d43a162be441ff0d8c854934ef1169e4b397d421a736ddec6849a5ffb84
+Executed 6 tests, with 11 failures (0 unexpected)
+
+policy-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/policy-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testMessagingWrapperDoesNotAcquireOwnerPolicyConformance
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/policy-green/execution.log
+log SHA256: a27eecb5828a09f56de382eb0620c510c3c49411e0ec1a1dcec7aad191fa4d73
+Executed 1 test, with 0 failures (0 unexpected)
+
+stale-entropy-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-entropy-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testRetiredLeaseRefusesBeforeEntropyGeneration
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-entropy-green/execution.log
+log SHA256: b89eccec2af18637cb28c9945fe34378b59fc977419b7b62fe3a70792b8cf0d4
+Executed 1 test, with 0 failures (0 unexpected)
+
+catalogue-writer-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/catalogue-writer-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testAllocatedCatalogueWriterRejectsInvalidBindingWithoutMutation
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/catalogue-writer-red/execution.log
+log SHA256: c1e2dc1a61b5311e5a8419b1b053421b480a331c7059bbac04ea029f66dc8f88
+Executed 1 test, with 4 failures (0 unexpected)
+
+catalogue-writer-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/catalogue-writer-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testAllocatedCatalogueWriter|testInvalidCatalogue)'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/catalogue-writer-green/execution.log
+log SHA256: 80c10bb1cda3fb8889bcda1beaf8a85c252e9870f9139f1a855b93e90df07e1b
+Executed 2 tests, with 0 failures (0 unexpected)
+
+ticket-lease-runtime-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/ticket-lease-runtime-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testTicketRevocation|testExclusiveLease)'
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/ticket-lease-runtime-red/execution.log
+log SHA256: 8035836b86f3d2f8297eb1e21231b692b6fef07610ec9c2e525d0551a51c37be
+Executed 2 tests, with 8 failures (0 unexpected)
+
+ticket-lease-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/ticket-lease-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testTicketRevocation|testExclusiveLease|testDispatchTicket|testRetiredLease)'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/ticket-lease-green/execution.log
+log SHA256: 9fe93ce3ead847f3bf25cba587024f2e971b4864edb9322f0ba1012ce02da4ec
+Executed 4 tests, with 0 failures (0 unexpected)
+
+wait-all-paths-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/wait-all-paths-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testExternalWaitIsBounded
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/wait-all-paths-red/execution.log
+log SHA256: 84ff5098e34e4e0e9e3d633401458ed7d334ca58bf6364265a578d7e667157ef
+Executed 1 test, with 9 failures (0 unexpected)
+
+wait-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/wait-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testExternalWaitIsBounded|testExplicitCancellation)'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/wait-green/execution.log
+log SHA256: c7a429059a25ee56418afe38cbdbb62069dda79333ee68843b1c22230c53a931
+Executed 2 tests, with 0 failures (0 unexpected)
+
+effect-expiry-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/effect-expiry-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testExpiryAtWriteBoundaries
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/effect-expiry-red/execution.log
+log SHA256: d08610a37120bad409ae6d7fbec1109d92d6d0ac655a7975fde02f1b38ff376a
+Executed 1 test, with 33 failures (0 unexpected)
+
+effect-expiry-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/effect-expiry-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testExpiryAtWriteBoundaries|testExpiryDuringAllocation)'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/effect-expiry-green/execution.log
+log SHA256: 004c192891261d195e83330f342b7d5ac2dd424d55856762637d830e9cfad1ae
+Executed 2 tests, with 0 failures (0 unexpected)
+
+retained-freeze-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/retained-freeze-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testInvalidRetainedDocuments
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/retained-freeze-red/execution.log
+log SHA256: 3d59042b2da19749a9daea312df9a33b100ce6e402af8343aa508c0ec3521ef2
+Executed 1 test, with 35 failures (0 unexpected)
+
+retained-freeze-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/retained-freeze-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testInvalidRetainedDocuments
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/retained-freeze-green/execution.log
+log SHA256: 728bb03eed66dbee2b07b5d791cf4838597353d88bbb97f624f2a5b19ff7d686
+Executed 1 test, with 0 failures (0 unexpected)
+
+full-ledger-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/full-ledger-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testFullLedgerReconciles
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/full-ledger-red/execution.log
+log SHA256: 1bbfb92a5946481068a72e5c30b90ed9869a0834b288c175001306473db8229a
+Executed 1 test, with 1 failure (0 unexpected)
+
+full-ledger-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/full-ledger-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testFullLedgerReconciles
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/full-ledger-green/execution.log
+log SHA256: 74530e026fd39d34354f546da1e6853243374977137de49869da537f63fc60bb
+Executed 1 test, with 0 failures (0 unexpected)
+
+stale-ticket-successor-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-ticket-successor-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testRejectedOldTicket
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-ticket-successor-red/execution.log
+log SHA256: 20f823a1afaf37f8a035cb5b9773ff453b4462b690aa67110cb47539baea9eee
+Executed 1 test, with 1 failure (0 unexpected)
+
+stale-ticket-successor-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-ticket-successor-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testRejectedOldTicket
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/stale-ticket-successor-green/execution.log
+log SHA256: f3b66f4acddc807a68436f65dd5490d18305224905ba8145436c2003f3522b0f
+Executed 1 test, with 0 failures (0 unexpected)
+
+owner-writer-preflight-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/owner-writer-preflight-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter OwnerStoreRegressionTests/testOwnerWriterBounds
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/owner-writer-preflight-red/execution.log
+log SHA256: 796a5f3314b9f848b7bce2125bd31228ae89dc7b358ac2e028ecbb3d95ade8bd
+Executed 1 test, with 1 failure (0 unexpected)
+
+owner-writer-preflight-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/owner-writer-preflight-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/testOwnerWriterBounds|OwnerStoreTests/testOwnerAndAllocatedCatalogueByteBoundaries'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/owner-writer-preflight-green/execution.log
+log SHA256: 3971b49e7e8232a2d209235a4f18d1f875f7b1061101802ace3567d35f8f9a8e
+Executed 1 test, with 0 failures (0 unexpected)
+Executed 2 tests, with 0 failures (0 unexpected)
+
+final-audit-red
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/final-audit-red --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testContradictory|testBusyBackend)'
+exit: 1
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/final-audit-red/execution.log
+log SHA256: 15d0e4303e2273a3b734d604656b291f7d799eecf6b614b9bca54e72121f68e8
+Executed 2 tests, with 5 failures (0 unexpected)
+
+final-audit-green
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/final-audit-green --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build --filter 'OwnerStoreRegressionTests/(testContradictory|testBusyBackend)'
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/final-audit-green/execution.log
+log SHA256: 311de54812693f672a53665bdd6323fc49e0cbf47313c87db3006f60c1c781f6
+Executed 2 tests, with 0 failures (0 unexpected)
+
+verified-debug
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/verified-debug --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/verified-debug/execution.log
+log SHA256: e6c343e8a0eeb2d269fbbfe1472a9f2879f6822f9f24eb9124cdc84375bba388
+Executed 23 tests, with 0 failures (0 unexpected)
+Executed 21 tests, with 0 failures (0 unexpected)
+Executed 28 tests, with 0 failures (0 unexpected)
+Executed 22 tests, with 0 failures (0 unexpected)
+Executed 15 tests, with 0 failures (0 unexpected)
+Executed 109 tests, with 0 failures (0 unexpected)
+
+verified-release
+command: /home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift test --package-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/verified-release --scratch-path /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build -c release
+exit: 0
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/verified-release/execution.log
+log SHA256: 53629562441571c6279919fc8cae088e8f17bf80de24380373e9f21412b8c823
+Executed 23 tests, with 0 failures (0 unexpected)
+Executed 21 tests, with 0 failures (0 unexpected)
+Executed 28 tests, with 0 failures (0 unexpected)
+Executed 22 tests, with 0 failures (0 unexpected)
+Executed 15 tests, with 0 failures (0 unexpected)
+Executed 109 tests, with 0 failures (0 unexpected)
+
+COMPILE-NEGATIVE POLICY CHECK (EXPECTED FAILURE)
+/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swiftc -typecheck -swift-version 6 -strict-concurrency=complete -warnings-as-errors -I /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/build/x86_64-unknown-linux-gnu/debug/Modules -I /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/verified-debug/Sources/ParanoidCoreFFI /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/OwnerPolicyCompileNegative.swift
+exit: 1; expected diagnostic: needsOwner requires CatalogueOnly conform to OwnerCryptography; conditional conformance points to Inner: OwnerCryptography.
+log: /home/codex/.hermes/profiles/paranoid/cache/scratch/owner-review-fixes-7865d485-0986-4551-ad42-f71b20b37d2b/policy-compile-negative-verified.log
+
+SCOPE VERIFICATION
+git diff --check: exit 0.
+Byte-identical relative to reviewed base: old bootstrap codec/store and tests, Devnet tests, old Apple adapters, package manifest, app, Rust/core/server/Android. All correction code paths/tests listed in the source commit; no repository Linux harness/new dependencies.
+Frozen reviewer worktree: clean at 697bd68520d1ba764dd306d267b40d0c776c5e1f.
+Added-line static scan: no hardcoded API/password assignment, shell injection/eval/pickle matches; synthetic public zero-entropy fixtures retained.
+Independent re-review of corrected exact SHA and parent rerun remain required; old-source reviewer closure does not approve these fixes.

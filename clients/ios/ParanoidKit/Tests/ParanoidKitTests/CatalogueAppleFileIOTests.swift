@@ -209,6 +209,89 @@ final class CatalogueAppleFileIOTests: XCTestCase {
         XCTAssertEqual(try files.read(f.path("interrupted"), maximumBytes: 3), Data([5, 6, 7]))
     }
 
+    // MARK: Read budget arithmetic and allocation (follow-ups of the first receipt)
+
+    func testReadLimitAtIntMaxIsRefusedInsteadOfTrapping() throws {
+        let f = try AdapterFixture()
+        defer { f.cleanup() }
+        try f.disk.write(Data([1, 2, 3]), to: f.path("small"))
+        XCTAssertThrowsError(try f.files.read(f.path("small"), maximumBytes: Int.max)) {
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EINVAL))
+        }
+        XCTAssertEqual(try f.files.read(f.path("small"), maximumBytes: Int.max - 1), Data([1, 2, 3]),
+                       "a huge budget still reads a small file; the buffer follows the file, not the budget")
+        XCTAssertThrowsError(try f.files.read(f.path("small"), maximumBytes: -1)) {
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EINVAL))
+        }
+    }
+
+    // FIXTURE-ONLY: the inode reports 8 bytes and the budget allows 64, yet one
+    // more byte arrives under the reader. Growth is refused even inside the
+    // budget: a prefix of a changing file is never returned.
+    func testFileGrowingWithinTheBudgetIsStillRefused() throws {
+        let f = try AdapterFixture()
+        defer { f.cleanup() }
+        try f.disk.write(Data(repeating: 7, count: 8), to: f.path("growing-small"))
+        let grown = CallCounter()
+        var seams = CatalogueAppleSyscalls.darwin
+        seams.read = { descriptor, buffer, capacity in
+            let received = Darwin.read(descriptor, buffer, capacity)
+            if received == 0, grown.next() == 1, capacity > 0 {
+                buffer.storeBytes(of: UInt8(9), as: UInt8.self)
+                return 1
+            }
+            return received
+        }
+        let files = CatalogueAppleFileIO(fileSystem: f.disk, syscalls: seams)
+        XCTAssertThrowsError(try files.read(f.path("growing-small"), maximumBytes: 64)) {
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EFBIG))
+        }
+    }
+
+    // MARK: Raw opening on slices, foreign associated data and the framing limits
+
+    func testOpenWorksOnADataSliceWithANonzeroStartIndex() throws {
+        let f = try AdapterFixture()
+        defer { f.cleanup() }
+        let key = try f.keys.create()
+        let plaintext = Data("{\"slice\":true}".utf8)
+        let sealed = try f.crypto.seal(plaintext, with: key)
+        let framed = Data([0xAA, 0xBB, 0xCC]) + sealed
+        let slice = framed[3...]
+        XCTAssertNotEqual(slice.startIndex, 0)
+        XCTAssertEqual(try f.crypto.open(slice, with: key), plaintext)
+        XCTAssertEqual(try f.crypto.open(Data(slice), with: key), plaintext)
+    }
+
+    func testOpenRefusesABoxSealedUnderForeignAssociatedData() throws {
+        let f = try AdapterFixture()
+        defer { f.cleanup() }
+        let key = try f.keys.create()
+        let box = try AES.GCM.seal(Data("aad".utf8), using: key, nonce: AES.GCM.Nonce(),
+                                   authenticating: Data([0x02]))
+        var framed = Data([SnapshotCodec.version])
+        framed.append(contentsOf: box.nonce)
+        framed.append(box.ciphertext)
+        framed.append(box.tag)
+        XCTAssertThrowsError(try f.crypto.open(framed, with: key)) {
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EBADMSG))
+        }
+    }
+
+    func testOpenAcceptsTheUpperFramingLimitAndRefusesOneByteMore() throws {
+        let f = try AdapterFixture()
+        defer { f.cleanup() }
+        let key = try f.keys.create()
+        let largest = Data(repeating: 0x20, count: SnapshotCodec.maximumPlaintextBytes) // spaces: exact UTF-8
+        let sealed = try f.crypto.seal(largest, with: key)
+        XCTAssertEqual(sealed.count, SnapshotCodec.maximumSnapshotBytes)
+        XCTAssertEqual(try f.crypto.open(sealed, with: key).count, largest.count)
+        XCTAssertThrowsError(try f.crypto.open(sealed + Data([0]), with: key)) {
+            XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EBADMSG))
+        }
+        XCTAssertThrowsError(try f.crypto.seal(largest + Data([0x20]), with: key), "the codec's plaintext cap holds")
+    }
+
     // MARK: Intent removal, protection, sync
 
     func testRemoveIntentOnlyRemovesARegularFile() throws {

@@ -6,7 +6,7 @@ import Foundation
 /// never file contents or key material.
 public struct CatalogueAppleAdapterError: Error, Equatable, Sendable, CustomStringConvertible {
     public enum Operation: String, Equatable, Sendable {
-        case inspect, create, write, protect, sync, rename, read, remove, seal, open
+        case inspect, create, write, protect, sync, rename, read, remove, seal, open, key
     }
     public let operation: Operation
     public let name: String
@@ -53,6 +53,8 @@ struct CatalogueAppleSyscalls: Sendable {
     var write: @Sendable (Int32, UnsafeRawPointer, Int) -> Int
     var close: @Sendable (Int32) -> Int32
     var unlink: @Sendable (UnsafePointer<CChar>) -> Int32
+    var mkdir: @Sendable (UnsafePointer<CChar>, mode_t) -> Int32
+    var fchmod: @Sendable (Int32, mode_t) -> Int32
 
     static let darwin = CatalogueAppleSyscalls(
         lstat: { Darwin.lstat($0, $1) },
@@ -61,7 +63,9 @@ struct CatalogueAppleSyscalls: Sendable {
         read: { Darwin.read($0, $1, $2) },
         write: { Darwin.write($0, $1, $2) },
         close: { Darwin.close($0) },
-        unlink: { Darwin.unlink($0) })
+        unlink: { Darwin.unlink($0) },
+        mkdir: { Darwin.mkdir($0, $1) },
+        fchmod: { Darwin.fchmod($0, $1) })
 }
 
 /// `CatalogueFileIO` over the real Apple file system. Proposed, non-adopted
@@ -187,12 +191,25 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
 
     /// Inspect without following, require a regular file, open `O_NOFOLLOW`,
     /// confirm the opened inode is the inspected one, then read through the
-    /// descriptor into a buffer of at most `maximumBytes + 1` bytes. A file
-    /// that is larger, or that grows past the limit while being read, is
-    /// refused; nothing is decoded on the way.
+    /// descriptor into a buffer of the inspected size plus one byte. A file
+    /// that is larger, or that grows while being read, is refused; nothing is
+    /// decoded on the way. The three stages are separate internal steps so the
+    /// owner adapter can classify a failure by the exact stage it came from.
     public func read(_ url: URL, maximumBytes: Int) throws -> Data {
-        guard maximumBytes >= 0 else {
-            throw CatalogueAppleAdapterError(.read, url, code: Int(EINVAL), reason: "negative read limit")
+        let inspected = try inspectRegular(url, maximumBytes: maximumBytes)
+        let descriptor = try openRegular(url, inspected: inspected)
+        defer { _ = syscalls.close(descriptor) }
+        return try readBounded(descriptor, url: url, inspected: inspected, maximumBytes: maximumBytes)
+    }
+
+    /// Stage 1: no-follow inspection. The limit is validated first because the
+    /// buffer below needs room for one byte past it (follow-up of the first
+    /// receipt: an unchecked `maximumBytes + 1` trapped on `Int.max`). Only a
+    /// regular file may be read; a FIFO is refused here, before any `open(2)`
+    /// could block on it.
+    func inspectRegular(_ url: URL, maximumBytes: Int) throws -> stat {
+        guard maximumBytes >= 0, maximumBytes < Int.max else {
+            throw CatalogueAppleAdapterError(.read, url, code: Int(EINVAL), reason: "read limit out of range")
         }
         var inspected = stat()
         let (result, code) = withPath(url) { path in (syscalls.lstat(path, &inspected), errno) }
@@ -200,8 +217,23 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
         guard Self.kind(of: inspected) == .regularFile else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "not a regular file")
         }
-        let descriptor = try openDescriptor(url, flags: O_RDONLY | O_NOFOLLOW | O_CLOEXEC, mode: 0, operation: .read)
-        defer { _ = syscalls.close(descriptor) }
+        return inspected
+    }
+
+    /// Stage 2: the `open(2)` syscall alone, `O_RDONLY|O_NOFOLLOW|O_CLOEXEC`.
+    /// The error of a refused open carries the `errno` of that one call and
+    /// nothing else — no `fstat`, no validation — so a caller can classify it
+    /// without catching a later stage by accident. The descriptor is returned
+    /// open and belongs to the caller.
+    func openOnly(_ url: URL) throws -> Int32 {
+        try openDescriptor(url, flags: O_RDONLY | O_NOFOLLOW | O_CLOEXEC, mode: 0, operation: .read)
+    }
+
+    /// Stage 2b: the opened descriptor must be a regular file and the very
+    /// inode that was inspected. The descriptor stays the caller's: this
+    /// function never closes it, so a caller that already deferred its close
+    /// closes exactly once.
+    func confirmOpened(_ descriptor: Int32, url: URL, inspected: stat) throws {
         var opened = stat()
         guard syscalls.fstat(descriptor, &opened) == 0 else {
             throw CatalogueAppleAdapterError(.read, url, errno: errno)
@@ -210,10 +242,31 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
               opened.st_dev == inspected.st_dev, opened.st_ino == inspected.st_ino else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
         }
-        guard opened.st_size <= maximumBytes else {
+    }
+
+    /// Stages 2 and 2b together, for callers that need no stage distinction.
+    /// Returns the descriptor only on success; on a failed confirmation it is
+    /// closed here, once.
+    func openRegular(_ url: URL, inspected: stat) throws -> Int32 {
+        let descriptor = try openOnly(url)
+        do { try confirmOpened(descriptor, url: url, inspected: inspected) }
+        catch { _ = syscalls.close(descriptor); throw error }
+        return descriptor
+    }
+
+    /// Stage 3: bounded descriptor read. Allocate for the inspected size plus
+    /// one byte, never for the whole budget: a 1 KiB file under a 9 MiB limit
+    /// costs 1 KiB + 1. Filling the buffer means the inode held more than it
+    /// reported, which is refused whether or not the total still fits the limit.
+    func readBounded(_ descriptor: Int32, url: URL, inspected: stat, maximumBytes: Int) throws -> Data {
+        var opened = stat()
+        guard syscalls.fstat(descriptor, &opened) == 0 else {
+            throw CatalogueAppleAdapterError(.read, url, errno: errno)
+        }
+        guard opened.st_size >= 0, opened.st_size <= Int64(maximumBytes) else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "stored bytes above the read limit")
         }
-        let capacity = maximumBytes + 1
+        let capacity = Int(opened.st_size) + 1
         var buffer = Data(count: capacity)
         var total = 0
         try buffer.withUnsafeMutableBytes { raw in
@@ -229,8 +282,8 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
                 total += received
             }
         }
-        guard total <= maximumBytes else {
-            throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "file grew past the read limit")
+        guard total < capacity else {
+            throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "file grew while being read")
         }
         return buffer.prefix(total)
     }
@@ -310,10 +363,24 @@ public struct CatalogueAppleCryptography: CatalogueCryptography {
     }
 
     /// Seals through `SnapshotCodec.seal`, so the bytes are the shipped
-    /// `[0x01][nonce][ciphertext‖tag]` layout the old reader also parses. The
-    /// codec seals text; the catalogue plaintext is its own JSON, so exact
-    /// UTF-8 is required and checked by re-encoding — never repaired.
+    /// `[0x01][nonce][ciphertext‖tag]` layout the old reader also parses.
     public func seal(_ plaintext: Data, with key: SymmetricKey) throws -> Data {
+        try AppleFramedBox.seal(plaintext, with: key)
+    }
+
+    /// Authenticates the shipped framing and returns the raw plaintext bytes.
+    public func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
+        try AppleFramedBox.open(sealed, with: key)
+    }
+}
+
+/// The one sealing/opening routine both Apple adapters share, over the shipped
+/// version-1 framing. Not a new format: `SnapshotCodec.seal` writes the box
+/// and the old reader still parses it.
+enum AppleFramedBox {
+    /// The codec seals text; the store plaintexts are their own JSON, so exact
+    /// UTF-8 is required and checked by re-encoding — never repaired.
+    static func seal(_ plaintext: Data, with key: SymmetricKey) throws -> Data {
         let text = String(decoding: plaintext, as: UTF8.self)
         guard Data(text.utf8) == plaintext else {
             throw CatalogueAppleAdapterError(.seal, nil, code: Int(EILSEQ), reason: "plaintext is not exact UTF-8")
@@ -322,11 +389,11 @@ public struct CatalogueAppleCryptography: CatalogueCryptography {
         catch { throw CatalogueAppleAdapterError(.seal, nil, underlying: error) }
     }
 
-    /// Authenticates the shipped framing and returns the raw plaintext bytes.
-    /// This deliberately does not go through `SnapshotCodec.open`, whose
-    /// String result repairs malformed UTF-8; the strict catalogue codec must
-    /// see the bytes as stored.
-    public func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
+    /// Raw authenticated opening. This deliberately does not go through
+    /// `SnapshotCodec.open`, whose String result repairs malformed UTF-8; the
+    /// strict store codecs must see the bytes as stored. Works on any `Data`
+    /// slice: every bound is taken from the value's own indices.
+    static func open(_ sealed: Data, with key: SymmetricKey) throws -> Data {
         guard sealed.count >= SnapshotCodec.minimumSnapshotBytes,
               sealed.count <= SnapshotCodec.maximumSnapshotBytes,
               sealed.first == SnapshotCodec.version else {

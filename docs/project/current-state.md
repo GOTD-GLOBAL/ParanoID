@@ -2,10 +2,181 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: Apple catalogue adapter implemented and natively tested on the build Mac (component proposal); durable store adoption, owner/realm login and phone acceptance remain separate
+last_reviewed_scope: PR85 integrated into the owner-store feature with unchanged reviewed source; new realm/login implementation and product-scope provenance remain gated
 ---
 
 # Current project state
+
+## Owner adapter integrated into the owner-store feature — 2026-10-14
+
+[PR #85](https://github.com/GOTD-GLOBAL/ParanoID/pull/85) is merged into
+`feat/ios-owner-store-20261014` (PR #84), not main, by ordinary merge
+`051018254660ff86f44a7e6db7cb53a7c3a6dafb`. Its parents are the preserved
+`2ed901ddf5fd5441578392aa7a6a2380c5130108` and reviewed
+`2f786afc707c7a8159ba1d3620db55f4c416623d`; the merge tree is byte-identical to
+the reviewed head. [Scoped approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517936391)
+follows closed source/documentation review and [six successful primary checks](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#issuecomment-6168082917).
+The informational Legacy job retains its exact archived fourteen failures.
+The source-matching Mac receipt remains applicable; no new native run is implied.
+
+This is consolidation of the reviewed isolated component, not runtime adoption.
+Both realm slots remain unallocated; realm storage, production RPC verification,
+app login/recovery and retained-login-after-restart are not delivered. The next
+work is a source-grounded realm/store preflight proposal under RFC-0030, not an
+accepted new format. [PR #73's authenticated product/scope record](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153858611)
+remains open; new protected persistence/login implementation and adoption keep
+that gate. PR #84 remains open against its catalogue feature parent and has its
+own new-head CI. No main merge, deployment, phone operation, ADR acceptance or
+full MR/application acceptance follows from this integration.
+
+## Owner-adapter corrections and source review closed — 2026-10-14
+
+**Source-review checkpoint before feature integration recorded above.** Its
+then-pending integration/CI statements describe that earlier checkpoint.
+
+Code `17d8d88871e48e6323438c98c1ae5556bea6c5ce`, with receipt head
+`09eac341a3823edd67fcb652f63de04067709408`, closes the two native P2 findings
+and the intervening double-close defect. [Two independent AI source reviews
+and parent verification](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517351127) found no new P1/P2 in the isolated
+trusted-backend component scope. The catch now covers only `open(2)`; descriptor
+confirmation/reading are outside it and cleanup has one owner. Normal crypto
+admission requires `OwnerKeyBackend`; the owner key has canonical-only policy
+and refuses weaker retained items without deletion, repair or migration.
+
+The [contributor's exact-code Mac receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#issuecomment-6167357692) records timer **10/10**,
+focused **141 / 1 skipped / 0 failures**, package **551 / 1 skipped / 0 failures**,
+unsigned iOS build and signed-simulator Keychain **14/0**. This is Mac-reported
+execution, not an Apple rerun by the Linux reviewers. The reviewed source/tests
+match the tested code; documentation-only reconciliation does not require
+another unchanged Mac run. A direct `createKey()` weak-policy fixture negative
+remains a nonblocking test follow-up, not an unclosed P2.
+
+PR #86 was merged into `feat/ios-owner-apple-adapter-20261014` by
+`2694d3e48efec93579ee8363df01abbcb9ee9795`, preserving the watchdog fix and TDD
+history; **not into main**. Final-head CI and feature integration remain separate
+checks. No #84/main merge, app adoption, physical-device acceptance, live action,
+PR #73 scope closure or ADR-0017 acceptance is claimed here.
+
+## Owner-adapter review blockers and combined test candidate — 2026-10-14
+
+**Historical checkpoint at `af82b9c`, before the correction round above.**
+PR #86 combined native checkpoint `98f58b040fc7005250f89fccfb8132b2a439891d`
+with the independently reviewed test-only fix
+`4b041ac3f10b1220296c02a73b05df973031c935`, preserving ordinary history.
+The combination's code checkpoint is `fbdd5fb10920296ad4eb2888cccb73dfbb38751e`.
+At that code checkpoint only the regression test and its receipt differ from
+the native checkpoint;
+production deadlines and both native adapter blobs are unchanged. Parent ran
+109 portable tests with zero failures in each of debug and release on this
+combined source (optimized Swift with cached debug Rust, not Apple execution).
+
+**PR #85 was blocked at that checkpoint.** The first `fstat` in `openRegular`
+was inside the lock-classification catch; `EPERM` could become retryable lock.
+The owner crypto initializer admitted messaging wrapping-key backends and the
+owner key accepted a noncanonical policy parameter. Positive simulator policy
+cases did not close those admission paths.
+
+The [preserved correction handoff](../clients/ios/owner-store-mac-handoff.md#review-correction-handoff)
+requested native RED/GREEN, policy-admission negatives, repeated timer tests and
+full package/build/Keychain evidence. Those results and source closure are now
+recorded above; no post-fix native result existed at this historical checkpoint.
+
+## Apple owner adapters on the build Mac — 2026-10-14
+
+The owner backends the portable checkpoint below left open are implemented on
+the branch `feat/ios-owner-apple-adapter-20261014` from `2ed901dd`:
+`OwnerAppleFileIO`, `OwnerAppleCryptography` and the owner-policy Keychain
+backend `OwnerKeychainKey` in
+`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAppleAdapters.swift`.
+The four staged native cases moved into the active test target: three pass on
+the Mac and the real-Keychain host case is skipped. The first case followed a
+genuine runtime RED against stub adapters; eight owner native-stage cases (verified recovery → publication → reopen, ownerSigned /
+assembled / send / confirmed reopen with exact bytes, interrupted publication,
+foreign key/context, leftover and missing artifacts, read-only lock retry,
+fixture-only sync faults), eleven lock-classification cases (review P2 and its
+follow-up: only an `EPERM` from the `open(2)` syscall itself on the owner file
+with protected data unavailable is a retryable lock; the first `fstat` after
+the open is not) and five catalogue follow-up cases pass; the owner crypto
+admits only an `OwnerKeyBackend` and `OwnerKeychainKey` has a non-configurable
+canonical policy (native compile probes and a simulator legacy-item case); two
+mutation probes failed exactly their cases and were reverted. The real owner Keychain
+policy (`WhenUnlockedThisDeviceOnly`, non-synchronizable) is read back from
+the Keychain by the original two ad-hoc signed simulator cases; the correction
+round adds a third case for refusal and preservation of a legacy-policy item. The
+[adapter receipt](evidence/ios-identity-v3-20261013/owner-apple-adapter.md)
+records commands, snapshot hashes, counts, the full package, notices and the
+unsigned iOS build. The coordinator, codecs, lease, catalogue store, legacy
+stores, `KeychainKey`, package manifest, pins, app sources and Rust bridge are
+unchanged; the catalogue adapter received its recorded read-budget/framing
+follow-ups and the open-stage/descriptor-ownership correction. Source review is
+closed as recorded above; this remains a component proposal, not app startup,
+recovery, login, on-device `.complete`, restart, #84/main integration, installation
+or live acceptance.
+
+## Owner-store core review closed; native implementation next — 2026-10-14
+
+**Historical core-only checkpoint.** Its then-next native task is completed by
+the adapter correction and source-review record above; the original evidence
+and limitations below describe that earlier source.
+
+Corrected source `985b30b20bdf896813410262fecbeb68ec256b4b`, with receipt-only
+head `1df946251b4338fef6de8edbc0b22dd56cc97858`, adds the authority, retained-error,
+ledger-capacity and encoder corrections to the initial checkpoint below. Parent
+read the source/test delta and independently ran **109/0 in both debug and release**:
+23 catalogue-store, 28 catalogue-codec, 21 Devnet, 15 owner-store and 22 regression
+methods. Release optimizes Swift and links the same cached debug Rust library;
+this is not a new optimized Rust or Apple run. Snapshot hashes match Git objects.
+
+The catalogue-only wrapper compile probe succeeds against the old source and
+fails with the expected owner-conformance diagnostic against this source.
+Existing bootstrap source/tests, old Apple adapters, package/app and shared
+Rust/server/Android code remain unchanged. Source boundary: 16 committed paths,
+zero violations versus `59ad783`; UI29 and bootstrap5 checks pass. The
+[correction receipt](../../clients/ios/bridge/evidence/owner-store-review-fixes.txt)
+and [checkpoint](evidence/ios-identity-v3-20261013/owner-store-core.md) separate
+old RED evidence, new passing execution and limits.
+
+**Both independent exact-head source reviews closed without remaining P1/P2
+in the isolated component scope.** The parent also repeated the reviewers'
+five integrity and six authority probes, all passing. The [next Mac task](../clients/ios/owner-store-mac-handoff.md)
+is native owner-backend implementation, not another unchanged-app build. The four staged native
+cases remain outside the active target; real-Keychain policy now has an explicit
+future skip instead of a memory-backed policy claim. The other native blueprint
+no longer claims untested pending/confirmed/foreign-key coverage. Owner Apple
+adapters, native encrypted commit/reopen, full Apple package, app/login and phone
+milestones remain unimplemented or NOT RUN. No main merge or live operation,
+PR #73 closure, accepted ADR or approved eight-entry product policy is implied.
+
+## Initial owner-store checkpoint: historical review findings — 2026-10-14
+
+The isolated allocation/owner component at `697bd68520d1ba764dd306d267b40d0c776c5e1f`
+adds executable owner allocation, commit/reopen, registry-publication and ledger
+orchestration under the [proposed format](../clients/ios/owner-store-format.md).
+Parent independently repeated its existing suite: **87/0 in debug and release**
+(optimized Swift linked to the existing debug Rust bridge), using explicit
+non-cryptographic storage doubles and real Rust public-vector operations.
+This is not native encryption or a working app/recovery/login result.
+
+**The checkpoint is not ready:** six additional parent contract regression tests
+produced eleven assertion failures. A dispatch ticket survives finish/cancel;
+explicit cancellation during verifier wait returns busy and late evidence can
+write state; expiry during allocation can still mint a permit; a retired lease
+is checked after entropy generation; a generic crypto wrapper incorrectly
+acquires owner-policy conformance; and encoding invalid unallocated/bound state
+silently discards the binding. The [receipt](evidence/ios-identity-v3-20261013/owner-store-core.md)
+records actual baseline and failing checks separately. Independent codec review
+also found retained integrity failures not freezing the same writer and a full
+ledger incorrectly blocking reconciliation; parent reproduced both. Encoder
+normalization is confirmed API hardening, not a demonstrated runtime exploit.
+These findings describe the initial SHA, not a verdict on the corrected source
+above; its exact-head review is separate. No green baseline substitutes for closure.
+
+The proposed-format review found no blocker for this isolated synthetic scope,
+not for its implementation or product adoption. Eight lifetime ledger entries
+remain a new proposal, not accepted product policy. The Apple owner adapter is
+unimplemented and its staged native tests are NOT RUN and need review corrections.
+No main merge, server/phone action, real Keychain, app startup or #73/ADR gate
+closure occurred. The following catalogue checkpoints remain historical evidence.
 
 ## Apple catalogue adapter on the build Mac — 2026-10-14
 
