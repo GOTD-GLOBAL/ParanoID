@@ -138,6 +138,35 @@ The archives keep rustc's default minimum OS versions (iOS 10.0, simulator
 is applied by the application target, which links these older-minimum static
 libraries without a warning.
 
+## Catalogue transaction core and Apple adapter (proposal component)
+
+`CatalogueStore<Crypto>` implements the proposed commit/reopen ordering behind
+explicit `CatalogueFileIO` and opaque-key `CatalogueCryptography` interfaces.
+It requires a caller-owned isolated root and trusted complete catalogue context;
+there is no default app directory, standard Keychain, migration or startup hook.
+Fresh inspection and retained opening are separate; intent and parent sync
+precede key creation, and readback plus both directory syncs precede success.
+Failures break the instance without deleting keys or ambiguous artifacts.
+
+The transaction core's 23 store tests plus 28 codec tests run against explicit
+non-cryptographic doubles (142 before/after-effect fault cases; see the
+[checkpoint receipt](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-store.md)).
+The narrow Apple adapters now exist as well: `CatalogueAppleFileIO(fileSystem:)`
+(no-follow `lstat` inspection where only `ENOENT` is absence, `O_EXCL|O_NOFOLLOW`
+create-only writes with short/`EINTR` handling and no compensating unlink,
+Data Protection set on iOS plus backup exclusion set and read back on the inode, the shipped
+`F_FULLFSYNC`/`rename(2)` steps, bounded descriptor reads that refuse
+non-regular inodes and growth, intent `unlink` only for a regular file) and
+`CatalogueAppleCryptography(catalogue:owner:fi:ru:)` (29-byte shipped framing,
+`SnapshotCodec.seal` after an exact-UTF-8 check, raw AES-GCM opening that never
+passes through the lossy String decoder, opaque keys without export or
+deletion). The four native acceptance cases live in `ParanoidKitTests` and
+twenty-one native-seam cases join them; the
+[adapter receipt](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md)
+records the RED/GREEN runs on the build Mac. Still not claimed: iOS Data
+Protection execution (host only), a live Keychain, restart/power loss, owner or
+realm stores, recovery, login, app startup or phone acceptance.
+
 ## In-memory catalogue bootstrap (proposal component)
 
 `IdentityCatalogue`, its nested `Realm`/`Realms` values and
@@ -160,10 +189,13 @@ The [receipt](bridge/evidence/identity-catalogue-codec-tdd.txt) records real
 vertical RED/GREEN and 28 XCTest methods, independently repeated by the parent
 in debug and release on the existing Swift host toolchain. This is an isolated
 component, not a full ParanoidKit/Mac/Xcode or persistent-storage result.
-Independent source review and new-head native verification remain separate;
-no MR gate or formal authority record is closed by these tests. Use the existing
-package's `IdentityCatalogueTests` filter for the next native feature check,
-with normal bridge/WebRTC prerequisites and notices before unsigned Xcode.
+Independent source review closed without blockers. The later
+[exact ea93daf Mac receipt](../../docs/project/evidence/ios-identity-v3-20261013/native-mac-receipts.md#catalogue-codec-ea93daf)
+reports 28/0 catalogue tests, 438/0 full package, notices 32 PASS and unsigned
+iOS BUILD SUCCEEDED with clean source. No repeat of that unchanged head is
+requested. These results do not cover later CatalogueStore code or complete
+an MR/phone gate or formal authority record. Future changed-head native checks
+retain bridge/WebRTC prerequisites and notices before unsigned Xcode.
 
 ## Swift package (`ParanoidKit/`)
 

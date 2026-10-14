@@ -4,7 +4,7 @@ owner: ios
 last_reviewed: 2026-10-13
 ---
 
-# Native Mac receipts: Devnet facade and separate QR fixture
+# Native Mac receipts: Devnet facade, catalogue codec and QR fixture
 
 These are reports published by Yaroslav / `Cooldom66671`, retrieved from their
 exact GitHub comments by the Linux coordinator. The coordinator did not execute
@@ -38,6 +38,28 @@ server login, owner replacement or recovery/login/restart phone acceptance was
 performed by this receipt. The facade is not a working identity-v3 application.
 The full wrapper still has the separate gate 11 blocker.
 
+## Catalogue codec: ea93daf
+
+- Exact source: `ea93dafe3834ddb57986c55a11fc50294a5b18f4`, PR #81.
+- [Original human receipt](https://github.com/GOTD-GLOBAL/ParanoID/pull/81#issuecomment-6155112817),
+  published by `Cooldom66671` at 2026-10-13T21:01:11Z.
+- Dedicated detached worktree, exact HEAD and clean status before and after;
+  unchanged pins. All seven published steps returned **exit 0**.
+- Fresh Rust bridge: three arm64 slices; pinned WebRTC: two verified slices.
+- IdentityCatalogueTests: **28 tests / 0 failures**.
+- Full ParanoidKit: **438 tests / 0 failures / 0 skipped**, no compiler warnings
+  reported in the log.
+- Notices: **146 crates plus WebRTC 150.7871.01**; rules **32 tests PASS**.
+- Unsigned Release iOS build: **BUILD SUCCEEDED**, no error lines reported.
+  Notices generation was included before Xcode; no prerequisite repair needed.
+
+Source review was already closed without blockers. The requested native
+codec/package/unsigned-compile gate is now satisfied at this exact source; no
+repeat is requested. This is not a CatalogueStore/durable-storage result and
+cannot cover later store commits. Full wrapper/gate 11, simulator/device,
+installation, hosted RPC/registration, recovery/login/restart and full MR
+acceptance remain separate. No existing phone or server data was changed.
+
 ## QR-only fixture: 7029d80
 
 - Exact source: `7029d805315441ecfcd923cd38b268f3786a259b`, separate PR #79.
@@ -61,7 +83,7 @@ the old fixture in those trees, and do not request another unchanged QR run.
 
 [Draft ADR-0017](../../../decisions/0017-ios-concurrent-identity-v3.md) records
 Yaroslav's technical basis agreement and the still-pending product/alpha-scope
-record in #73. Neither receipt supplies that approval, accepts an ADR or permits
+record in #73. These receipts do not supply that approval, accept an ADR or permit
 merge, deployment or live phone actions. Owner/realm persistence, login/runtime
 implementation, its new tests and first authorized VDSina phone acceptance remain
 separate work. No ready-to-login iOS build is claimed.
