@@ -3,7 +3,7 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: reported realm-store D87 namespace/parser/read-only choices and source qualifications; no implementation, native measurement or ADR acceptance
+last_reviewed_scope: verified bounded source/D87 records and unchanged trust boundaries; no implementation, native measurement or ADR acceptance
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -30,7 +30,7 @@ a silently acceptable storage guard. Tightening a shared verifier or adding a
 pure validation API needs explicit scope, compatibility analysis and review;
 this draft implements neither. The closed #85 findings are not reopened by it.
 
-Reported D87 dispositions narrow the draft, not the accepted safety gates:
+Verified D87 technical dispositions narrow the draft, not the accepted safety gates:
 namespace identity must be checked separately from key policy, using a proposed
 typed realm backend and actual Keychain attributes linked to the loaded item.
 Pre-create namespace/absence checks and post-create readback are distinct; mismatch
@@ -44,8 +44,13 @@ A successful simulator xcodebuild run or net memory delta cannot substitute for 
 peak across the actual native path. No new native measurement has been performed.
 
 No app startup, network verifier, secret operation, legacy-state migration or
-live action is introduced. #73 authenticated scope, draft ADR-0017, private-data
-limits and the independent-human-review exit gate retain their existing status.
+live action is introduced. The [human #73 source-scope record](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) and
+[human D87 disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187) now exist; they do not accept ADR-0017, widen
+private-data limits or remove independent review and exact tests. Shared-core
+changes wait for their own RFC → ADR and required owner approval. D87-07's pure
+validator is a critical-path dependency, not a permission to use a partial or
+signing validator meanwhile. A future server UUID inventory requires separately
+authorized live access; no DB/network application probe follows from source scope.
 
 ## Open native review findings — 2026-10-14
 

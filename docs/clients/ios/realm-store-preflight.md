@@ -5,13 +5,15 @@ decision_owner: Cooldom66671
 product_decision_owner: martadvix-web
 created: 2026-10-14
 last_reviewed: 2026-10-14
+technical_disposition_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187
+source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046
 ---
 
 # Realm-store implementation preflight and acceptance contract
 
 Supporting appendix to [RFC-0030](../../rfcs/0030-ios-identity-v3.md), not a new
-RFC/ADR or rollout receipt. **All new choices are proposed, not approved or
-implemented.** Next: isolated retained-owner → realm allocation → encrypted
+RFC/ADR or rollout receipt. **The bounded technical disposition is verified;
+this draft is not an accepted ADR or implemented contract.** Next: isolated retained-owner → realm allocation → encrypted
 candidate/login-bookkeeping commit → reopen, a prerequisite for the still-unmet
 recover-test-nickname/login/restart application milestone.
 
@@ -34,35 +36,48 @@ and scoped source-review closure. These are existing owner-component results,
 not this document's execution or realm/login/phone evidence. Historical
 “next/unimplemented” owner headings do not override those later source facts.
 
-**#73 remains OPEN as an authenticated scope-evidence gate.** Telegram
-confirmation was relayed, but authenticated sender provenance was not retained;
-see the [recorded limitation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153858611).
-[Yaroslav's technical-basis agreement](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
-is not product approval, formal [ADR-0017](../../decisions/0017-ios-concurrent-identity-v3.md)
-acceptance or live authority. Before protected implementation: obtain Sergey's
-durable exact-scope confirmation, technical disposition of the new choices and
-independent exact-revision review under accepted
+**The missing #73 source-scope evidence is now recorded.** Human `martadvix-web`
+[confirmed on 2026-10-14](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) with the exact text “Подтверждаю”, in the context
+of the [bounded source/local-test request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785). The earlier Telegram
+[provenance limitation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153858611)
+is historical; it is not a remaining request to repeat the product decision.
+This covers private non-sensitive test-data source/local component/native work,
+preserving identity/history, E2EE and review. It authorizes no main merge,
+release, server/config/schema/DB operation, live RPC/login/registration/replacement,
+phone/Apple/TestFlight action or sensitive-data use. PR #73 itself is still open;
+closing its evidence gap is not merging that PR or accepting an ADR.
+
+[Yaroslav's earlier technical-basis agreement](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
+and the D87 record below remain distinct from formal
+[ADR-0017](../../decisions/0017-ios-concurrent-identity-v3.md) acceptance. Exact
+contracts, independent revision review and actual tests still apply under
 [ADR-0001](../../decisions/0001-documentation-as-code.md),
 [ADR-0003](../../decisions/0003-closed-alpha-review-policy.md) and the
 [approval policy](../../governance/documentation-policy.md#durable-approval-and-delegation-records).
-No approval is inferred from urgency, CI, prior component review or a merge.
+No further approval is inferred from urgency, CI or a merge.
 
-### Reported D87 technical choices — not formal acceptance
+### Verified D87 technical disposition — not ADR acceptance
 
-The [D87-01–07 request](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6171078411)
-received a substantive response in this Telegram thread under Yaroslav's name.
-The [source verification and qualifications](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#pullrequestreview-5520287987)
-record it as reported input, not authenticated human approval evidence. The
-response chooses the successor writer, typed realm backend, stricter new-format
-metadata, preserved login evidence, owner-locked read-only scope, and direction A
-for both shared-core questions. The draft below incorporates those choices with
-explicit boundaries; it does not report them as implemented or accepted ADRs.
-A directly verifiable disposition record is still required before protected work.
+Human `Cooldom66671` [posted the direct D87-01–07 disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187) on
+2026-10-14 against `c66fcbc9961a29245bbbfbcd33ac1292a4338fae`, accepting the
+[source-review qualifications](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#pullrequestreview-5520287987).
+His [technical delegation](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919)
+is recorded separately by `martadvix-web`. This is verifiable technical evidence,
+not merely the preceding Telegram relay. It chooses the successor writer, typed
+realm backend, stricter new-format metadata, preserved login evidence, owner-
+locked read-only first slice, and direction A for both shared-core questions.
+The verified-B six-item definition and the staged absent-key readback order are
+agreed. Do not reopen these direction questions or call the core refactor trivial.
+No implementation, formal ADR acceptance, live authority or test result follows.
 
 D87-06/07 select directions for separately scoped **RFC → ADR** work. Changes to
-`key-protocol`, `clean_service` or the shared JSON command contract wait for that
-process and required approvals. Neither this appendix nor an RFC draft alone
-unblocks arbitrary schema-3 reopen. Existing #85 closure is unchanged.
+`key-protocol`, `clients/core` (including `clean_service`) or the shared JSON
+command contract wait for that process and required owner approvals. Neither
+this appendix nor an RFC draft alone unblocks arbitrary schema-3 reopen.
+D87-07 is a critical-path dependency of verified-B admission and the restart-
+keeps-login milestone, not an optional later cleanup; its RFC drafting runs in
+parallel with the namespace/readback contract. Neither alone delivers the app.
+Existing #85 closure is unchanged.
 
 ## 2. Existing facts versus inherited proposals
 
@@ -191,11 +206,11 @@ and [Credential / verify / fingerprint](../../../key-protocol/src/lib.rs).
 | `snapshot:{version,realm,tls_pin,token,state}` | Existing [Snapshot v4](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Service/Snapshot.swift) shape (`Snapshot.text/open`), **PROPOSED strict wrapper admission**: literal integer `4`; `realm`/`tls_pin` equal outer origin/pin; token `""` or `Hex32` as in v4 (new candidates always `""`); `state` is one raw core JSON object, **not a string**. No v4 migration/adoption permission. |
 | `loginIntent: null` or `Intent` | Exactly `purpose,operation,genesis,program,identity,owner,name,credential_object,expected_generation,credential_fingerprint`. Purpose `"enroll"` or `"replace"` (≤7); operation `UUIDv4`; five binding fields identical to outer binding; nested credential below. Final field is a **PROPOSED local** `Hex32` copy of Rust reply `fingerprint`, not a tenth challenge-request field. |
 | Intent `expected_generation` | JSON string `"0"` or `[1-9][0-9]{0,18}`, checked ≤`9223372036854775807`; enroll exactly `"0"`, replace `1..9223372036854775806`. No sign, whitespace, leading zero, fraction, exponent, JSON number or coercion. Server's eight-generation admission policy is not this scalar's parser range. |
-| `credential_object:{root,account,device,auth,realm,pin,olm,signature}` | Existing eight-field `Credential`: root/auth canonical unpadded STANDARD Base64, exactly 32 decoded bytes / 43 encoded; signature exactly 64 / 86; decode/re-encode equal, no URL alphabet/padding/whitespace. Account/pin/olm `Hex32`; realm equals outer origin; device canonical lowercase UUID (36), **v4 discrepancy below unresolved**. Every field equals the existing Rust public credential; decoded root/auth/owner keys must be distinct as in `ChallengeRequestV3::validate`. Account derivation/signature/key consistency remain Rust's, not Swift hashing/signing. |
+| `credential_object:{root,account,device,auth,realm,pin,olm,signature}` | Existing eight-field `Credential`: root/auth canonical unpadded STANDARD Base64, exactly 32 decoded bytes / 43 encoded; signature exactly 64 / 86; decode/re-encode equal, no URL alphabet/padding/whitespace. Account/pin/olm `Hex32`; realm equals outer origin; device canonical lowercase UUID (36) under the D87-06 retained-read choice below; no local version tightening. Every field equals the existing Rust public credential; decoded root/auth/owner keys must be distinct as in `ChallengeRequestV3::validate`. Account derivation/signature/key consistency remain Rust's, not Swift hashing/signing. |
 | `membership: null` or `CommitResult` | Exactly `operation,membership,generation,account,device,credential_fingerprint,mode`: operation/membership `UUIDv4`; generation same decimal-string grammar but `1..9223372036854775807`; account/fingerprint `Hex32`, device as credential above; mode exactly `"active"` (6). Account/device/fingerprint equal the retained core credential/result; membership UUID comes only from a full result, never status. |
 | `terminal` | Exactly one of `"none"`, `"revoked"`, `"banned"`, `"absent"` (≤7); realm-local observation, not owner authority or a replacement for retained result. |
 
-**Canonical discrepancy — stop for disposition:** protocol §Encodings says all
+**Wire discrepancy and scoped retained-read decision:** protocol §Encodings says all
 UUIDs are UUIDv4, but `Credential::verify` checks only canonical UUID text for
 `device`; `Identity::create` generates v4 and `ChallengeRequestV3::validate`
 enforces v4 on **operation**, not device. D87-06 selects direction A for a
@@ -205,7 +220,13 @@ an explicit retained-credential compatibility policy, not a global change to
 which generates v4; that does not inventory all retained/external credentials.
 The shared verifier also checks messaging contacts. No enforcement/compatibility
 change is accepted or implemented here; do not normalize signed IDs or silently
-invalidate, regenerate or delete retained credentials.
+invalidate, regenerate or delete retained credentials. The verified D87-06
+record explicitly selects canonical UUID admission matching Rust for retained
+local `device`, with a labelled R07 regression that the existing generator emits
+v4. This is not a claim that v3 wire admission already enforces v4. A read-only
+non-v4 inventory on both servers belongs to the later v3 compatibility RFC and
+requires Sergey's separate live authorization; it is not authorized here and
+is not a prerequisite to drafting D87-07 or the namespace contract.
 
 ### Parser admission and opaque core boundary
 
@@ -431,7 +452,7 @@ Keep pre-fix/fixed SHAs, logs and TDD history; no test weakening.
 | R04 `siblingAndOwnerPreserved` | Missing second-slot support fails → distinct A/B credentials/keys, own full trust and byte-identical retained owner/ledger/A/metadata while B commits; reverse direction too. | REQ-MULTI-001, MR-01/02 |
 | R05 `faultEveryEffect` | Deliberate missing fence/order is detected → before/after directory, intent-parent-sync, key, temp, rename, readback, removal/final-sync faults retain evidence and stop further effects; no premature candidate/proof release. | MR-06 |
 | R06 `retainedLossNeverCreates` | Missing classification is caught → allocated both-missing/XOR/temp/intent, wrong inode/key/context and authenticated malformed bytes refuse read-only; fresh coordinator gets no permit. | MR-06/07 |
-| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; literal field/token caps and metadata depth checked, escaped ASCII metadata refused while escaped core spans remain valid; existing owner/catalogue grammar unchanged, deep core delegated to Rust; raw Snapshot/core spans unchanged, simulator-measured peak memory; no signing on open. | REQ-SEC-001, MR-02/14 |
+| R07 `strictBytesAndCaps` | New codec absent or guard mutation fails → exact limits pass, +1/overflow/duplicates/unknowns/trailing data fail; literal field/token caps and metadata depth checked, escaped ASCII metadata refused while escaped core spans remain valid; existing owner/catalogue grammar unchanged, deep core delegated to Rust; raw Snapshot/core spans unchanged; retained device grammar mirrors Rust canonical UUID and a labelled generator-v4 regression; simulator-measured peak memory; no signing on open. | REQ-SEC-001, MR-02/14 |
 | R08 `unknownOutcomeRetainsIntent` | Missing bookkeeping fails → restart/cancel/lost reply preserve operation, generation, credential and exact intent; status has only its three fields, absent remains unknown without a retained result; no synthesized membership or cleared unrelated intent. | AUTH-03/04, MR-05 |
 | R09 `resultThenIntentClear` | Missing two-commit ordering fails → fault between result/core commit and clear reopens reconcilable state; schema-0 dry-run never adopts; schema-3 full validation (non-signing seam unresolved), credential/result/enrollment mapping and generation + 1 checked; mismatch/terminal A preserves B and never auto-replaces. | AUTH-04, MR-04/05 |
 | R10 `freezeScopeAndCompatibility` | Missing scope guard is caught → owner lock permits only verified-B read admission after the full-validator dependency; every locked-owner realm write refuses before mutation; missing any verification item refuses; A fault contains only with verified common/B state; catalogue loss freezes all; old refusal APIs/tests and v4 bytes unchanged. | MR-06/07 |
@@ -466,8 +487,8 @@ that gate. Receipt: full SHA/source hashes, commands/exit codes, actual discover
 counts/skips, raw RED/GREEN, fixture-versus-native attribution, clean-source
 before/after and independent final review with blocking findings closed.
 
-D87-03 memory evidence uses **`xcodebuild test` on an iOS simulator**, with an
-explicit simulator-test target/filter for the new measurement and exact build configuration.
+D87-03 memory evidence uses **`xcodebuild test` on an iOS simulator** with
+`XCTMemoryMetric`, an explicit test target/filter and exact build configuration.
 The proposed package tests above and a passing build are not memory measurements;
 no suitable memory harness was found in the frozen tree. Record the measured process,
 interval spanning decrypt/parser/transfer/bridge/Rust/reply, simulator/runtime,
@@ -483,14 +504,16 @@ is neither repaired nor waived. No minimum count substitutes for named coverage.
 
 ## 9. Decisions still required and rollout boundary
 
-- **Before implementation:** authenticated #73 scope and a verifiable record of
-  the reported technical choices/qualifications, with independent exact-revision
-  review. Complete the namespace/query/readback contract, including Apple default/
-  missing-attribute rules; do not claim `OwnerKeyBackend` already provides it.
+- **Before implementation:** the bounded #73 source scope and D87 direction
+  records in §1 are verified, not still awaiting repetition. Remaining gates:
+  complete the namespace/query/readback contract, including Apple default/missing-
+  attribute rules, independent exact-revision review and actual required evidence;
+  do not claim `OwnerKeyBackend` already provides the new contract.
   D87-06/07 are RFC directions: separately scope and approve their RFC → ADR
   changes and compatibility before modifying shared code. General schema-3
   reopen requires the resulting real non-signing validator, not just a draft RFC.
-  The schema/caps/read-only narrowing remain proposed and every new test NOT RUN.
+  The bounded directions are technically agreed; the appendix remains draft,
+  unimplemented and every new test NOT RUN.
 - **Before app adoption:** fresh-install versus lost-catalogue classification,
   compatible owner mutations, scoped local metadata, app-enforced single lease,
   final callback fences, prompt/no-passcode/call policy, production RPC verifier

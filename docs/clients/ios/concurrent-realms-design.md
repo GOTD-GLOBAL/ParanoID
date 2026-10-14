@@ -12,8 +12,10 @@ This is part of [RFC-0030](../../rfcs/0030-ios-identity-v3.md), not a new
 accepted contract. Yaroslav requested the next design step on 2026-10-13,
 following Sergey's product direction recorded in PR #73: both named v3
 servers, simultaneously in one installation. The owner chose the outcome,
-**not the technical choices below**. Permanent product/scope evidence,
-implementation authorization and formal acceptance retain the RFC's gates.
+**not every technical choice below**. The [bounded source/local-test scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+is now confirmed directly by the owner; exact contracts/review and formal
+acceptance retain their separate gates. The [D87 direction record](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187)
+agrees with the preflight at c66fcbc, not a delivered concurrent application.
 Yaroslav's [technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664)
 agrees with this design at `efafe798` as the implementation basis with four
 remarks; it is not product/scope approval, ADR acceptance or live permission.
@@ -233,8 +235,9 @@ no pruning of history, intents or unresolved registration evidence to make room.
 This narrow RFC-0030/ADR-0017 proposal specifies an executable **in-memory
 prerequisite**, not adoption of a persistence format or delivery of the durable
 bootstrap slice below. It grants no allocation, registry, login or app-startup
-authority. Permanent authenticated scope provenance remains incomplete in #73;
-no ADR or protected-domain gate becomes accepted through this component.
+authority. At this prerequisite's original checkpoint #73 provenance was missing;
+the later direct owner record above closes only that source-scope evidence gap.
+No ADR or unchosen protected contract is accepted through this component.
 
 The bootstrap JSON object has exactly this shape (synthetic public metadata):
 
@@ -797,10 +800,10 @@ VDSina run is a reason to weaken it.
 
 ## Implementation sequence and decision gates
 
-1. **Design closure:** technical basis disposition and draft ADR-0017 are
-   recorded; permanent product evidence, exact bounded alpha scope and the
-   remaining reviews/implementation evidence retain their gates. No automatic
-   ADR acceptance follows from basis agreement.
+1. **Design closure:** technical basis, bounded source/local-test scope and D87
+   records are verified; draft ADR-0017, remaining exact-contract decisions,
+   reviews and implementation evidence retain their gates. No automatic ADR
+   acceptance follows from basis agreement or source-scope confirmation.
 2. **Storage first:** versioned codec/catalogue/store specifications and negative
    fixtures, commit/freeze matrix, tested downgrade barrier, scoped metadata.
 3. **Dual runtime:** typed targets, independent lanes, bounded scheduling,
@@ -815,8 +818,8 @@ VDSina run is a reason to weaken it.
    runtime acceptance. No published delivery estimate until this scope is sized.
 
 The common-owner/correlation, independent-store/freeze and shared-call variant
-has technical basis agreement. Before protected implementation, record the
-remaining exact product/alpha scope and resolve any unchosen format,
+has technical basis agreement and bounded source scope. Before each protected
+implementation, resolve its remaining exact contract and any unchosen format,
 owner-auth/RPC/words-screen or legacy-transition options; remote admission
 retains its own gate. Product direction belongs to Sergey; technical disposition
 uses the recorded human delegation only within its bounds. This design neither

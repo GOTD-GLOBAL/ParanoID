@@ -7,7 +7,9 @@ review_mode: closed-alpha-ai
 required_reviewers: []
 technical_disposition_date: 2026-10-13
 technical_disposition_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664
-last_reviewed: 2026-10-13
+last_reviewed: 2026-10-14
+source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046
+realm_appendix_disposition_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187
 ---
 
 # ADR-0017: iOS identity v3 with independent concurrent realms
@@ -29,13 +31,16 @@ agrees with design `efafe798f89b5bef7b411b8aeb9af661f52a39e0` and this draft
 at `4aac29c0ecb90c1cca1d49fc934403018779f3f9` as the basis for implementation,
 with four non-blocking remarks recorded below. His [cross-reference in PR #74](https://github.com/GOTD-GLOBAL/ParanoID/pull/74#issuecomment-6150515450)
 points to the same single source. This is not product/scope approval, ADR
-acceptance or live authorization. Product/scope evidence remains pending in
-owner-input PR #73; the earlier reported three-remark comment is not relied on.
+acceptance or live authorization. The separate [direct source-scope confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+by `martadvix-web` now records the [bounded request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785) in PR #73.
+The earlier reported three-remark comment is not relied on. The later
+[direct D87-01–07 disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187) by `Cooldom66671` agrees with the realm
+appendix at c66fcbc, not this ADR's acceptance or new shared-core source changes.
 
-The current Telegram task requests urgent progress toward a working iOS test
-version. Work starts with locally exercised implementation prerequisites rather
+The original Telegram task requested urgent progress toward a working iOS test
+version. Work started with locally exercised implementation prerequisites rather
 than another request to repeat the same product direction. The initial slice
-is bounded to the iOS C ABI over the existing Devnet/core crates, with local
+was bounded to the iOS C ABI over the existing Devnet/core crates, with local
 synthetic/public-fixture unit checks. The owner clarified that application
 acceptance must use the existing configured identity-v3 instances and existing
 Android clients on the same realm. The separately proposed local-stand
@@ -50,9 +55,12 @@ Xcode/native build and tests. No reachable Mac or self-hosted GitHub macOS runne
 was found here, and no paid runner is provisioned. This is a task-specific
 build handoff, not a permanent hosting or staffing policy.
 
-Technical basis agreement is recorded; permanent exact alpha-scope approval,
-implementation and the full acceptance record remain pending. This draft is not a blanket approval
-or an instruction to bypass protected-domain gates. Merge/release, changes to
+Technical basis and bounded private source/local-test scope are recorded;
+implementation and the full acceptance record remain pending. That scope keeps
+preservation, E2EE, tests and independent review and authorizes no live actions.
+D87-06/07 require separate RFC → ADR and owner approvals for shared-core changes;
+the pure validator is a prerequisite of verified-B/restart admission, not an
+optional later cleanup. This draft is not blanket protected-domain approval. Merge/release, changes to
 either hosted server, phone installation/replacement, Apple account and
 TestFlight remain separately scoped; none is performed by drafting this ADR.
 
@@ -119,7 +127,7 @@ One owner simplifies nickname recovery and correlates memberships. In remark 4,
 Yaroslav selects the recommended answer to RFC-0030 question 19 and accepts this
 correlation as a consequence of the product model "nickname is identity", not
 an unresolved choice between shared and unrelated owners. This technical
-disposition does not supply the missing product/scope approval in PR #73.
+disposition is distinct from the separately recorded product/source scope in PR #73.
 Correlation remains observable and must be disclosed; cross-server anonymity
 is not promised. A compromised owner can still compete for replacement on
 either server; that security risk is not eliminated by choosing correlation.
@@ -182,13 +190,16 @@ server DB reset, reinstall or data deletion is authorized by this document.
 
 ## Disposition and acceptance evidence
 
-- Technical disposition: agreed as an implementation basis, with four remarks,
-  in the linked human comment; status remains `draft` until scope confirmation
-  in PR #73 and implementation, with formal acceptance still a separate gate.
+- Technical disposition: agreed as an implementation basis, with four remarks;
+  the later D87 record accepts bounded realm directions/qualifications. Source
+  scope is confirmed separately; ADR status remains `draft`, not automatically
+  accepted by either record or by a future implementation.
 - Technical decision owner: Cooldom66671, within the linked delegation only.
 - Product/risk owner: martadvix-web.
 - Permanent technical-basis evidence: comment 6150510664 above, not ADR acceptance.
-- Permanent exact-scope product approval evidence: pending in PR #73.
+- Permanent bounded source-scope evidence: <https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046>,
+  confirming the request <https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785>.
+- Realm-appendix direction/qualification evidence: <https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187>.
 - Independent design evidence: PR #74 closure above; code review is separate.
 - Resulting implementation evidence: to be recorded per exact-head PR.
 - No accepted ADR is superseded by this draft.

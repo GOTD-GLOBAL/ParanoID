@@ -5,8 +5,10 @@ decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 decision_deadline: 2026-10-12
 required_reviewers: []
-last_reviewed: 2026-10-13
-last_reviewed_scope: delegated technical-basis disposition, four remarks and D5 ordering; scope approval and application acceptance remain pending
+last_reviewed: 2026-10-14
+last_reviewed_scope: verified bounded source-scope and D87 records; separate shared-core RFC dependencies; no application acceptance
+source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046
+realm_appendix_disposition_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187
 ---
 
 # RFC-0030: The iOS client on identity v3
@@ -58,7 +60,7 @@ Meaning of that reply in its question context:
 - The product decision is made now, on 2026-10-12, rather than waiting until
   2026-10-15. That date is not a delivery deadline or technical ADR acceptance.
 
-**Evidence boundary.** The source is the current Telegram exchange; the named
+**Historical evidence boundary for the 2026-10-12 reply.** The source was the Telegram exchange; the named
 sender is Sergey Maltsev, the project's decision owner `martadvix-web`. The
 original Telegram message permalink, platform message ID and exact timestamp
 are not available in this tool context. This quotation is a coordinator record
@@ -66,7 +68,32 @@ of product input, **not** independently verifiable permanent approval evidence.
 Before a protected-domain approval or delegation is relied upon, obtain the
 owner's direct GitHub confirmation or the complete independently checkable
 Telegram provenance required by the documentation policy. No bot comment or
-merge may supply that missing human evidence.
+merge may supply that missing human evidence. The later direct human records
+below now close the source-scope provenance gap without reconstructing missing
+Telegram metadata or changing the meaning of this historical quotation.
+
+### Verified bounded source scope and D87 record — 2026-10-14
+
+Human `martadvix-web` [replied “Подтверждаю”](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) on 2026-10-14 to the
+[bounded source/local-test request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785) in PR #73. That request covers
+one owner and both existing v3 realms, owner/realm encrypted persistence, synthetic
+nickname recovery, durable login intent/orchestration, and local component/native
+checks under the private non-sensitive alpha rules. Identity/history preservation,
+E2EE, threat analysis, exact tests and independent review remain mandatory.
+
+The record authorizes no merge, deployment, live RPC/registration/replacement/login,
+server/config/schema/DB operation, phone installation/data change, Apple account,
+signing/export/TestFlight/release or sensitive-data use. It closes the missing
+scope evidence, not PR #73 itself or an ADR acceptance transition. Do not ask the
+same source-scope confirmation again or infer authority from “maximum rights”.
+
+Human `Cooldom66671` [recorded D87-01–07 against c66fcbc](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187), including its
+qualifications. The source scope and technical disposition are separate records.
+D87-07's full non-signing core validator is a critical-path dependency of verified-B
+admission and the restart-keeps-login milestone; its RFC drafting runs in parallel
+with the namespace/readback contract. Shared `clients/core`, `key-protocol` and
+JSON-command changes still need their own scoped RFC → ADR and owner approvals
+before code changes. No implementation or new runtime evidence is claimed.
 
 ### Design revision for the expanded scope
 
@@ -122,13 +149,13 @@ claim of implementation. See [D5 order](#d5-order-and-external-dependencies).
 
 ### Work authority and remaining gates
 
-Yaroslav can continue the proposal, isolated feasibility work and ordinary
-non-protected fixes within his existing delegation. The reply gives clear
-product direction; "maximum rights" does not by itself complete the exact-scope
-closed-alpha exception. Before protected implementation, record the revised
-features, devices, test data, environments, human risk owner and durable owner
-confirmation, then the applicable independent design review and RFC/ADR records.
-The original device/test-data proposal below is retained, not silently widened.
+The direct owner confirmation above supplies the bounded source/local-test
+scope; Yaroslav's technical authority stays within the recorded delegation.
+“Maximum rights” is not its evidence and never waives exact-feature contracts,
+private test-data limits, independent review or RFC/ADR gates. Each implementation
+PR still records its features, environment/data, human risk owner, review and
+actual results; unchosen or newly discovered shared-core contracts need their
+own disposition. The original proposal below is retained, not silently widened.
 
 Question 4 (remote admission and bounded operational authorization) remains
 open. No server/DB/firewall change, credential or Apple-account operation,
@@ -137,9 +164,9 @@ review/tests is inferred. No new merge instruction is recorded by this reply.
 A concrete operational plan must name its targets, operations, isolation,
 rollback and permitted data effects before it can use owner authorization.
 
-The next owner confirmation should distinguish the already stated product
-choice from the exact revised alpha scope and any requested operational batch;
-it must not claim that unanswered technical choices or unrun tests passed.
+Any later request for a live operational batch must be separate from the now-
+confirmed source/local-test scope. The existing confirmation does not answer
+unchosen technical questions or turn unrun tests into passed evidence.
 
 ## Required review rationale
 
@@ -992,8 +1019,9 @@ proposes the next isolated storage/bookkeeping slice after the reviewed owner
 component. It records existing reader incompatibilities, a proposed successor
 writer/envelope and twelve unrun acceptance rows. It is **draft**, not format
 adoption, new implementation authority or evidence that D1-D3/MR gates passed.
-The authenticated #73 scope record and disposition/review of new details remain
-required before protected implementation.
+The authenticated #73 source-scope and D87 direction records now exist. Remaining
+exact contracts/review and the separately scoped shared-core RFC/ADR dependencies
+still apply; general schema-3 reopen cannot use a partial or signing validator.
 
 The original single-realm sequence and six-to-nine-week estimate no longer
 size the requested feature. No replacement delivery estimate is asserted.
@@ -1003,7 +1031,7 @@ by adding two profiles or by old one-realm receipts.
 
 | Step | Deliverable | Gate |
 | --- | --- | --- |
-| D0 | This design revision, threat/test mapping and alternatives | technical basis agreement and draft ADR recorded; permanent product/scope evidence and remaining review/acceptance gates still apply |
+| D0 | This design revision, threat/test mapping and alternatives | technical basis, bounded source scope and D87 records verified; draft ADR, exact-contract review and implementation/acceptance gates remain |
 | D1 | Versioned catalogue/owner/realm stores, allocation/commit/freeze rules, downgrade guard and scoped metadata | questions 8, 9, 17; MR-06/07/14 |
 | D2 | Typed runtime/peer/call targets, independent foreground lanes, bounded queues and lifecycle fan-out; one call/media arbiter | MR-02/03/09/10/11/12 |
 | D3 | Existing Rust Devnet bridge/lock/notices; owner storage/RPC; per-realm login and recovery | original questions 5, 6, 7, 13, 15; MR-01/04/05/13 |
@@ -1374,16 +1402,16 @@ ADR-0014 gets a pointer to it when both are disposed.
 Product/scope decisions remain with `martadvix-web`; delegated technical
 disposition belongs to `Cooldom66671` within the recorded private-alpha bounds.
 Product answers to items 1 and 2 were received on 2026-10-12; the concurrent
-technical basis and question 19 have the human disposition above. Permanent
-product/scope approval, any unchosen options and remaining review/implementation
-gates are not supplied by that disposition. "Maximum rights" is not a blanket
+technical basis and question 19 have the human disposition above. The separate
+2026-10-14 source-scope confirmation and D87 record are now verified; unchosen
+options and remaining review/implementation gates are not supplied by those records. "Maximum rights" is not a blanket
 answer to technical questions or permission for live operations.
 
 | # | Question (proposed answer) | Needed by |
 | --- | --- | --- |
-| 1 | Owner answered 2026-10-12: adopt identity v3 and both named profiles, including simultaneous connections in one install. Record permanent evidence and dispose of the linked concurrent-realm design before implementation. | product direction received; design/evidence pending |
-| 2 | Owner answered: the product decision is made now, 2026-10-12. This is not a delivery date or architecture acceptance. | product answer received; permanent evidence pending |
-| 3 | Owner requested "maximum rights". Record the revised exact closed-alpha scope and permanent human confirmation; do not infer unlimited operational authority. | protected implementation |
+| 1 | Owner answered 2026-10-12: adopt identity v3 and both named profiles, including simultaneous connections in one install; direct bounded-scope evidence recorded 2026-10-14. Remaining contracts/review are separate. | product/source scope recorded; remaining design gates |
+| 2 | Owner answered: the product decision is made now, 2026-10-12. This is not a delivery date or architecture acceptance; direct bounded-scope evidence recorded 2026-10-14. | product/source evidence recorded |
+| 3 | Owner requested "maximum rights"; the later explicit bounded source/local-test scope is confirmed in #73, not unlimited operational authority. | exact contracts/review remain; live actions separate |
 | 4 | Admission policy and bounded deployment authorization (isolation, rollback) for the chosen v3 servers: for example, open self-admission accepted for this alpha with the Sybil residual of ADR-0016:39-46, extending the REQ-ID-006 exception. | before any remote step; D5 |
 | 5 | The bridge: one static library with the restated lock rule (proposed), two libraries, or owner operations over `key-protocol`. | step D3 |
 | 6 | The Devnet RPC through the system trust store for one host (proposed), optionally with a CA-set pin or a second provider. | step D3 |
@@ -1406,10 +1434,12 @@ answer to technical questions or permission for live operations.
 
 - Disposition: product direction received 2026-10-12; concurrent-realm design
   candidate drafted 2026-10-13; delegated technical basis agreed with four
-  remarks. Durable product/scope approval, implementation and formal acceptance
-  remain pending; this RFC remains `draft`.
+  remarks; bounded source/local-test scope and D87 choices directly confirmed
+  2026-10-14. Implementation and formal acceptance remain pending; RFC stays `draft`.
 - Technical disposition permalink: <https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150510664>.
-- Product/scope approval permalink: pending in PR #73.
+- Product/source-scope approval permalink: <https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046>
+  in the context of <https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785>.
+- Realm-appendix technical disposition: <https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187> on c66fcbc.
 - Delegation evidence permalink:
   <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
   (technical authority only).
@@ -1422,7 +1452,7 @@ answer to technical questions or permission for live operations.
   exact-revision review; this citation-only tail does not relabel the reviewed SHA.
 - Resulting ADR: [draft ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md),
   allocated after checking published branches. This records the candidate,
-  not acceptance; exact product/scope approval and implementation evidence remain gates.
+  not acceptance; remaining exact-contract approval and implementation evidence remain gates.
 - Closure rationale for `completed`, `rejected`, `withdrawn`, or `superseded`:
   none yet.
 - Replacement RFC for `superseded`: none.
