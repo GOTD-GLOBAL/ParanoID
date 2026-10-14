@@ -171,11 +171,13 @@ metadata allowance is a proposal, not additional core capacity.
 | `coreSpan` at `snapshot.state` | Locate by offsets, with iterative string/escape-aware delimiter matching; count its raw bytes from `{` through matching `}`. No metadata depth/field/key/string/array rule inside it. Scanner auxiliary delimiter stack ≤one byte per consumed core byte (thus ≤8,388,608), no recursive Swift calls or arbitrary core tree. Existing Rust JSON/versioned semantic validation remains authoritative, including its own rejection limits. A span match alone is not JSON/core validity. |
 | Byte accounting and memory | Bound frame before read/decrypt (reject growth); use checked offset/add/subtract arithmetic. Require `plaintextBytes - coreSpanBytes ≤131072` as well as both other caps, on read and candidate write. **PROPOSED** parser uses one bounded decrypted buffer plus offsets, one bounded core transfer copy and bounded metadata/stack; no whole-envelope Foundation tree or escaping/re-encoding core. CryptoKit/C-ABI/Rust replies and `CoreBridge`/`JsonSpan` make copies: this is not a zero-copy or total-process-memory proof; exact-head peak-allocation evidence remains required. |
 
-Writers emit compact UTF-8/no BOM or newline, metadata fields in table order,
-strings literally under these ASCII grammars; readers accept object order and
-valid escapes without normalizing values. Keep retained Snapshot/core spans
-verbatim on open and bookkeeping-only commits; only an explicit Rust candidate
-transition replaces core bytes. The old `Snapshot.open` uses a Foundation tree;
+Canonical output rules apply only to newly serialized metadata: compact UTF-8,
+no BOM/newline, fields in table order and strings literally under these ASCII
+grammars. Readers accept object order and valid escapes without normalizing
+values. On bookkeeping-only commits, the retained Snapshot span, including
+wrapper field order, whitespace and escapes, is copied verbatim and exempt from
+canonical output rules. Preserve its core span as well; only an explicit Rust
+candidate transition replaces core bytes. The old `Snapshot.open` uses a Foundation tree;
 [`JsonSpan.value/Scanner.scanValue`](../../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/JsonSpan.swift)
 copies input and only matches nested delimiters, not full nested grammar. Neither
 is the new strict admission parser. Never prune retained state to fit.
@@ -196,6 +198,16 @@ realm/pin to equal wrapper/outer trust; bind its fingerprint to the selected slo
 | Schema 3, membership null | Requires full Rust semantic validation and enrollment null; **non-signing validation blocker below**. Intent may be null or the exact retained mutation intent. `identity_credential_v3` alone validates legacy identity, not the whole schema-3 state; its separate `{credential,fingerprint}` result supplies comparisons, not full-state admission. |
 | Schema 3, membership present | Rust enrollment must exactly equal `{mode:"active",account:result.account,device:result.device,credential:result.credential_fingerprint}`. This is the `server_status_v2.status` mapping: **credential**, not `credential_fingerprint`; operation/membership/generation do not enter that core object. Non-null intent must match result operation/account/device/fingerprint and checked `result.generation = expected_generation + 1`; both may coexist until the second durable clear. |
 | Terminal / unknown outcome | Schema 3 may retain either membership form above with none/revoked/banned/absent; a terminal flag preserves any intent/result and does not rewrite historical core enrollment to a mode Rust rejects. Terminal blocks activation/mutation release even if enrollment is active, not read-only reconciliation; no automatic clearing/re-enroll. Status is separately exactly `{mode,generation,operation}`: absent requires `"0"`/`""`; active/revoked/banned require positive generation/UUIDv4 matching retained result or pending operation and expected generation + 1. Absent with pending intent/no result preserves unknown outcome for exact retry; `terminal:"absent"` requires a retained result and records loss, not fresh admission. Disagreement freezes without erasure. |
+
+The first-slice mutation starts on a fresh candidate with `membership:null`.
+After a full result, only its matching retained intent may coexist until the
+separate durable clear. A new mutation over a retained result is outside this
+slice: refuse before changing core, intent or result; do not erase old evidence
+to make a new operation fit. A genuine replacement needs a new credential and a
+separately reviewed transition; the server rejects reusing an existing binding
+for a new operation (`evaluate`, `binding_used` / `device_revoked`). The schema-0
+dry-run above applies only to the clean intermediate, not arbitrary legacy
+migration or the general schema-3 validation path.
 
 **Source blocker — no signing on reopen remains required:** `view` is not a
 non-signing validator for arbitrary schema-3 state. `clean_service::validate`

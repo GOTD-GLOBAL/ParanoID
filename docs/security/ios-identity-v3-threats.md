@@ -19,6 +19,17 @@ implemented controls or closed MR gates. Its successor catalogue reader, exact
 parser limits and owner-locked retained-read classification need disposition
 and independent review; existing owner/bootstrap refusal tests stay intact.
 
+Exact-bound refinement keeps duplicate/type/length checks outside the opaque
+core grammar, and prioritizes verbatim retained Snapshot preservation over
+canonical reserialization. It exposes two unresolved guarantees: device UUIDv4
+in the v3 document versus canonical-UUID admission in the shared credential
+verifier, and full schema-3 state validation versus possible device-auth contact
+signing in `view`. Neither implies a proof/registry/admission bypass. A public
+credential projection is not complete state validation; a signing call is not
+a silently acceptable storage guard. Tightening a shared verifier or adding a
+pure validation API needs explicit scope, compatibility analysis and review;
+this draft implements neither. The closed #85 findings are not reopened by it.
+
 No app startup, network verifier, secret operation, legacy-state migration or
 live action is introduced. #73 authenticated scope, draft ADR-0017, private-data
 limits and the independent-human-review exit gate retain their existing status.

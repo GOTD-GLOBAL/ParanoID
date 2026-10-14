@@ -17,6 +17,16 @@ The old owner codec/writer intentionally rejects allocated realms/artifacts;
 the existing shared Apple box is limited to 8 MiB whole plaintext. Neither is
 silently weakened by this document, and no realm runtime code is added.
 
+The refinement specifies typed metadata/encoding/depth/byte bounds while keeping
+core bytes opaque and retained Snapshot spans verbatim. Fresh review found no
+blocking contradiction in the bounded draft. It confirmed two open contract
+questions before implementation: the v3 text requires device UUIDv4 while the
+shared credential verifier checks canonical UUID text, and existing core calls
+do not provide full arbitrary schema-3 validation without possible device-contact
+signing. These are future integration questions, not newly demonstrated owner-
+adapter or live-app defects. No shared Rust rule/API or signing exception has
+been changed; disposition and scoped review are required for any such change.
+
 D1-D3 remain an application gap: legacy startup still constructs one snapshot
 store/runtime; production registry verification, realm-targeted v3 transport and
 durable login orchestration are not delivered by owner-component tests.
