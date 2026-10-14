@@ -288,9 +288,11 @@ final class OwnerStoreRegressionTests: XCTestCase {
             let f = try OwnerFixture(); let c = f.coordinator()
             let deadline = ContinuousClock.now.advanced(by: reason == "deadline" ? .seconds(1) : .seconds(30))
             let op = try c.begin(deadline: deadline)
-            let gate = GateVerifier(); var finished = false
+            let gate = GateVerifier()
+            defer { gate.release(.evidence) }
+            let finished = XCTestExpectation(description: "caller finished: " + reason)
             let task = Task { @MainActor in
-                defer { finished = true }
+                defer { finished.fulfill() }
                 return try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: gate)
             }
             await gate.entered()
@@ -300,10 +302,11 @@ final class OwnerStoreRegressionTests: XCTestCase {
             case "close": c.close()
             default: break
             }
-            // Always release the deliberately uncooperative continuation, even on RED.
-            if reason == "deadline" { try await Task.sleep(until: deadline.advanced(by: .milliseconds(50)), clock: .continuous) }
-            else { try await Task.sleep(for: .milliseconds(250)) }
-            XCTAssertTrue(finished, "caller must finish without waiting for verifier: " + reason)
+            // Test-only watchdog, not a production deadline or scheduler-latency
+            // assertion. Keep the verifier held until the caller completes or fails
+            // this finite wait; even on RED, release it before awaiting task.value.
+            let completion = await XCTWaiter.fulfillment(of: [finished], timeout: 5)
+            XCTAssertEqual(completion, .completed, "caller must finish without waiting for verifier: " + reason)
             let before = f.io.events
             gate.release(.evidence)
             do { _ = try await task.value; XCTFail("late success: " + reason) } catch { }
