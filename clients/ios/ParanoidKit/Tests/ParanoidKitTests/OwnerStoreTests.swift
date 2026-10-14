@@ -5,6 +5,76 @@ import XCTest
 // REQ-ID-002/003/004/006, REQ-MULTI-001, REQ-SEC-001; isolated public fixtures.
 // File/key/AEAD doubles below are NON-CRYPTOGRAPHIC. Identity calls real Rust.
 final class OwnerStoreTests: XCTestCase {
+    @MainActor func testRegistryConfirmationBindsUnresolvedOnlyAndPublicationFailurePreservesIntermediate() async throws {
+        let f = try OwnerFixture(); let c = f.coordinator()
+        var op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op)
+        _ = try c.recordOwnerSigned(op, intent: f.intent(1, height: 100, name: "bob_fixture"), signer: PublicVectorSigner())
+        var verifier = SyntheticBindingVerifier(); verifier.height = 101
+        let permit = try await c.resolveExpired(op, proposedName: "alice_fixture", verifier: verifier)
+        let second = try c.recordOwnerSigned(op, intent: f.intent(2, height: 150), signer: PublicVectorSigner(), append: permit)
+        _ = try c.recordAssembled(op, attemptID: second.intent.attemptID, signer: SyntheticAssemblyInput())
+        _ = try c.reserveSend(op, attemptID: second.intent.attemptID)
+        f.io.failBefore = "write:" + f.path("catalogue.write.pending")
+        await assertThrows(.backendFailure) { try await c.confirmRegistry(op, verifier: verifier) }
+        XCTAssertTrue(c.isBroken)
+        f.io.failBefore = nil
+        let intermediate = try f.coordinator().loadRetained()
+        XCTAssertEqual(intermediate.owner?.phase, "registryConfirmed")
+        XCTAssertNil(intermediate.catalogue.binding)
+        XCTAssertEqual(intermediate.owner?.attempts.map(\.resolution), ["expiredAbsent", "ownerBound"])
+        XCTAssertEqual(intermediate.owner?.attempts.map(\.finalizedHeight), [101, 101])
+        XCTAssertEqual(intermediate.owner?.attempts.last?.sends, 1)
+        let c2 = f.coordinator(); _ = try c2.loadRetained()
+        op = try c2.begin(deadline: .now.advanced(by: .seconds(30)))
+        XCTAssertThrowsError(try c2.reserveSend(op, attemptID: second.intent.attemptID)) { XCTAssertEqual($0 as? OwnerStoreError, .invalidTransition) }
+        op = try c2.begin(deadline: .now.advanced(by: .seconds(30)))
+        let published = try c2.publishConfirmedBinding(op)
+        XCTAssertEqual(published.catalogue.binding, intermediate.owner?.binding)
+        XCTAssertEqual(try c2.publishConfirmedBinding(op), published)
+        try c2.finish(op)
+        XCTAssertEqual(try f.coordinator().loadRetained(), published)
+        XCTAssertEqual(f.coreCalls.filter { !["identity", "lookup"].contains($0) }, [])
+    }
+
+    @MainActor func testExpiryResolutionIsTerminalAndPermitsExactlyOneSuccessorAppend() async throws {
+        let f = try OwnerFixture(); let c = f.coordinator()
+        var op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op)
+        let first = try c.recordOwnerSigned(op, intent: f.intent(1, height: 100), signer: PublicVectorSigner())
+        let before = f.io.data
+        var verifier = SyntheticBindingVerifier(); verifier.height = 100 // not strictly above
+        await assertThrows(.invalidTransition) { try await c.resolveExpired(op, proposedName: "bob_fixture", verifier: verifier) }
+        XCTAssertEqual(f.io.data, before)
+        // A semantic refusal ends the operation; a fresh one must be begun.
+        XCTAssertThrowsError(try c.loadRetainedWhileActive(op)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+        op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        XCTAssertThrowsError(try c.recordOwnerSigned(op, intent: f.intent(2), signer: PublicVectorSigner())) { XCTAssertEqual($0 as? OwnerStoreError, .invalidTransition) }
+        op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        verifier.height = 101
+        let permit = try await c.resolveExpired(op, proposedName: "bob_fixture", verifier: verifier)
+        let resolved = try XCTUnwrap(try c.loadRetainedWhileActive(op).owner?.attempts.first)
+        XCTAssertEqual(resolved.resolution, "expiredAbsent"); XCTAssertEqual(resolved.finalizedHeight, 101)
+        XCTAssertEqual(resolved.message, first.message)
+        let second = try c.recordOwnerSigned(op, intent: f.intent(2, height: 150, name: "bob_fixture"), signer: PublicVectorSigner(), append: permit)
+        // The consumed permit cannot append while the new candidate is unresolved.
+        XCTAssertThrowsError(try c.recordOwnerSigned(op, intent: f.intent(3, name: "bob_fixture"), signer: PublicVectorSigner(), append: permit)) { XCTAssertEqual($0 as? OwnerStoreError, .invalidTransition) }
+        op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        verifier.height = 200; verifier.disposition = .nameTaken
+        let wrongName = try await c.resolveExpired(op, proposedName: "dave_fixture", verifier: verifier)
+        XCTAssertThrowsError(try c.recordOwnerSigned(op, intent: f.intent(3, name: "carol_fixture"), signer: PublicVectorSigner(), append: wrongName)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+        op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        // Refusal invalidated the permit even for its own name; the taken name is never re-proposed.
+        XCTAssertThrowsError(try c.recordOwnerSigned(op, intent: f.intent(3, name: "dave_fixture"), signer: PublicVectorSigner(), append: wrongName)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+        op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+        verifier.height = 300
+        await assertThrows(.invalidTransition) { try await c.resolveExpired(op, proposedName: "bob_fixture", verifier: verifier) }
+        let reopened = try f.coordinator().loadRetained()
+        XCTAssertEqual(reopened.owner?.attempts.map(\.intent.attemptID), [first.intent.attemptID, second.intent.attemptID])
+        XCTAssertEqual(reopened.owner?.attempts.map(\.resolution), ["expiredAbsent", "nameTaken"])
+        XCTAssertEqual(reopened.owner?.phase, "registrationPending")
+    }
+
     @MainActor func testSendReservationIsDurableBeforeTicketAndFourthReleaseRefuses() async throws {
         let f = try OwnerFixture(); let c = f.coordinator()
         var op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
@@ -131,10 +201,20 @@ final class OwnerStoreTests: XCTestCase {
     }
 }
 
+@MainActor func assertThrows<T>(_ expected: OwnerStoreError, _ body: () async throws -> T, file: StaticString = #filePath, line: UInt = #line) async {
+    do { _ = try await body(); XCTFail("expected \(expected)", file: file, line: line) }
+    catch { XCTAssertEqual(error as? OwnerStoreError, expected, file: file, line: line) }
+}
+
 @MainActor struct SyntheticBindingVerifier: IsolatedTrustedOwnerVerifier {
     func binding(for request: OwnerBindingRequest) async throws -> OwnerBindingEvidence? {
         let v = request.material
         return .init(request: request, binding: .init(genesis: v.genesis, program: v.program, identity: v.identity, owner: v.owner, name: "alice_fixture"), finalizedHeight: 101)
+    }
+    var height: UInt64 = 101
+    var disposition = OwnerTerminalDisposition.expiredAbsent
+    func expiry(for request: OwnerExpiryRequest) async throws -> OwnerExpiryEvidence? {
+        .init(request: request, finalizedHeight: height, dispositions: request.material.attempts.filter { $0.resolution == "unresolved" }.map { ($0.intent.attemptID, disposition) })
     }
 }
 
@@ -142,8 +222,10 @@ final class OwnerFixtureIO: OwnerFileIO {
     var data: [String: Data] = [:]
     var kinds: [String: CataloguePathKind] = [:]
     var events: [String] = []
+    var failBefore: String?
+    private func record(_ e: String) throws { events.append(e); if e == failBefore { throw OwnerStoreError.backendFailure } }
     func inspect(_ u: URL) throws -> CataloguePathKind { events.append("inspect:" + u.path); return kinds[u.path] ?? (data[u.path] == nil ? .absent : .regularFile) }
-    func writeExclusive(_ bytes: Data, to u: URL) throws { events.append("write:" + u.path); guard data[u.path] == nil, kinds[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; data[u.path] = bytes }
+    func writeExclusive(_ bytes: Data, to u: URL) throws { try record("write:" + u.path); guard data[u.path] == nil, kinds[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; data[u.path] = bytes }
     func protectAndExclude(_ u: URL) throws { events.append("protectCatalogue:" + u.path) }
     func protectOwnerAndExclude(_ u: URL, policy: OwnerProtection) throws { events.append("protectOwner:" + u.path) }
     func createOwnerDirectory(_ u: URL) throws { events.append("mkdir:" + u.path); guard kinds[u.path] == nil, data[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; kinds[u.path] = .directory }

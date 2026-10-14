@@ -61,6 +61,7 @@ final class OwnerCreationPermit {
         do { return try body() }
         catch {
             let e = (error as? OwnerStoreError) ?? .backendFailure
+            if e == .busy { throw e }
             if writing || [.continuity, .contextMismatch, .artifactsPresent, .keyMismatch,
                            .authenticationFailed, .readbackMismatch, .backendFailure, .invalidDirectory].contains(e) { isBroken = true }
             active = nil
@@ -82,6 +83,61 @@ final class OwnerCreationPermit {
         guard let key = ownerKey else { throw OwnerStoreError.continuity }
         ownerKey = try replace(OwnerEnvelopeCodec.encode(next, core: core), owner: true, crypto: ownerCrypto, key: key)
         current = .init(catalogue: catalogue, owner: next)
+    }
+    func confirmRegistry(_ operation: OwnerOperation, verifier: any IsolatedTrustedOwnerVerifier) async throws -> OwnerRetained {
+        let request = try checked {
+            try require(operation)
+            let old = try refresh(); current = old
+            guard let owner = old.owner, owner.phase != "registryConfirmed" else { throw OwnerStoreError.invalidTransition }
+            return OwnerBindingRequest(correlation: UUID(), material: owner)
+        }
+        let evidence: OwnerBindingEvidence?
+        do { evidence = try await verifier.binding(for: request) }
+        catch { active = nil; throw OwnerStoreError.backendFailure }
+        try checked {
+            try require(operation)
+            guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }
+            let old = try refresh()
+            guard var next = old.owner, next == request.material else { throw OwnerStoreError.continuity }
+            try core.validate(evidence.binding, material: next)
+            next.phase = "registryConfirmed"; next.binding = evidence.binding
+            for index in next.attempts.indices where next.attempts[index].resolution == "unresolved" {
+                next.attempts[index].resolution = "ownerBound"
+                next.attempts[index].finalizedHeight = evidence.finalizedHeight
+            }
+            try commitOwner(next, catalogue: old.catalogue)
+        }
+        return try publishConfirmedBinding(operation)
+    }
+    func resolveExpired(_ operation: OwnerOperation, proposedName: String, verifier: any IsolatedTrustedOwnerVerifier) async throws -> OwnerAppendPermit {
+        let request = try checked {
+            try require(operation)
+            let old = try refresh(); current = old
+            guard let owner = old.owner, owner.phase == "registrationPending", OwnerScalars.name(proposedName) else { throw OwnerStoreError.invalidTransition }
+            guard owner.attempts.count < 8 else { throw OwnerStoreError.limitExceeded }
+            return OwnerExpiryRequest(correlation: UUID(), material: owner, proposedName: proposedName)
+        }
+        let evidence: OwnerExpiryEvidence?
+        do { evidence = try await verifier.expiry(for: request) }
+        catch { active = nil; throw OwnerStoreError.backendFailure }
+        return try checked {
+            try require(operation)
+            guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }
+            let old = try refresh()
+            guard var next = old.owner, next == request.material else { throw OwnerStoreError.continuity }
+            let unresolved = Set(next.attempts.filter { $0.resolution == "unresolved" }.map(\.intent.attemptID))
+            guard evidence.dispositions.count <= 8, Set(evidence.dispositions.map(\.attemptID)) == unresolved,
+                  evidence.dispositions.count == unresolved.count else { throw OwnerStoreError.authorityRequired }
+            guard next.attempts.allSatisfy({ evidence.finalizedHeight > $0.intent.lastValidHeight }) else { throw OwnerStoreError.invalidTransition }
+            guard !next.attempts.contains(where: { $0.intent.name == proposedName && $0.resolution == "nameTaken" }) else { throw OwnerStoreError.invalidTransition }
+            for d in evidence.dispositions {
+                let index = next.attempts.firstIndex { $0.intent.attemptID == d.attemptID }!
+                next.attempts[index].resolution = d.disposition.rawValue
+                next.attempts[index].finalizedHeight = evidence.finalizedHeight
+            }
+            if next != old.owner { try commitOwner(next, catalogue: old.catalogue) }
+            return OwnerAppendPermit.mint(operation: operation, name: proposedName, revision: revision)
+        }
     }
     func reserveSend(_ operation: OwnerOperation, attemptID: String) throws -> OwnerDispatchTicket {
         try checked {
@@ -115,12 +171,21 @@ final class OwnerCreationPermit {
             return next.attempts[index]
         }
     }
-    func recordOwnerSigned(_ operation: OwnerOperation, intent: OwnerAttemptIntent, signer: any IsolatedTrustedOwnerSigner) throws -> OwnerAttempt {
+    func recordOwnerSigned(_ operation: OwnerOperation, intent: OwnerAttemptIntent, signer: any IsolatedTrustedOwnerSigner, append: OwnerAppendPermit? = nil) throws -> OwnerAttempt {
         try checked {
             try require(operation)
             let old = try refresh()
-            guard var next = old.owner, next.phase == "unregistered", next.wordsBackupConfirmed, next.attempts.isEmpty else { throw OwnerStoreError.invalidTransition }
+            guard var next = old.owner, next.wordsBackupConfirmed, next.phase != "registryConfirmed" else { throw OwnerStoreError.invalidTransition }
+            guard next.attempts.count < 8 else { throw OwnerStoreError.limitExceeded }
+            guard next.attempts.allSatisfy({ $0.resolution != "unresolved" }) else { throw OwnerStoreError.invalidTransition }
             try intent.validate(context: context, owner: next.owner)
+            guard !next.attempts.contains(where: { $0.intent.attemptID == intent.attemptID }) else { throw OwnerStoreError.invalidFormat }
+            if next.attempts.isEmpty {
+                guard append == nil else { throw OwnerStoreError.authorityRequired }
+            } else {
+                guard let append, append.operation === operation, !append.consumed, append.revision == revision, append.name == intent.name else { throw OwnerStoreError.authorityRequired }
+                append.consumed = true
+            }
             let request = OwnerSigningRequest(correlation: UUID(), material: next, intent: intent)
             let evidence = try signer.ownerSigned(for: request)
             try require(operation)
@@ -185,6 +250,10 @@ final class OwnerCreationPermit {
         let snapshot = try OwnerRetained(catalogue: catalogue, owner: readOwner(catalogue, permitMissing: permitMissing))
         if let current, current != snapshot { throw OwnerStoreError.continuity }
         return snapshot
+    }
+    /// Read-only classification inside the active operation; grants nothing.
+    func loadRetainedWhileActive(_ operation: OwnerOperation) throws -> OwnerRetained {
+        try checked { try require(operation); let value = try refresh(); current = value; return value }
     }
     func loadRetained() throws -> OwnerRetained {
         try checked {

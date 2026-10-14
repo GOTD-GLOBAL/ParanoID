@@ -210,11 +210,21 @@ enum OwnerEnvelopeCodec {
         guard attempts.isEmpty || backup else { throw OwnerStoreError.invalidFormat }
         guard result.phase != "unregistered" || attempts.isEmpty,
               result.phase != "registrationPending" || !attempts.isEmpty else { throw OwnerStoreError.invalidFormat }
-        var ids = Set<String>()
-        for attempt in attempts {
+        var ids = Set<String>(); var expiryMaximum: UInt64 = 0
+        for (index, attempt) in attempts.enumerated() {
             try attempt.intent.validate(context: context, owner: result.owner)
-            guard ids.insert(attempt.intent.attemptID).inserted, attempt.sends <= 3,
-                  attempt.resolution == "unresolved", attempt.finalizedHeight == nil else { throw OwnerStoreError.invalidFormat }
+            guard ids.insert(attempt.intent.attemptID).inserted, attempt.sends <= 3 else { throw OwnerStoreError.invalidFormat }
+            expiryMaximum = max(expiryMaximum, attempt.intent.lastValidHeight)
+            switch attempt.resolution {
+            case "unresolved":
+                // Only the last entry may be unresolved, and never once confirmed.
+                guard attempt.finalizedHeight == nil, index == attempts.count - 1, result.phase != "registryConfirmed" else { throw OwnerStoreError.invalidFormat }
+            case "expiredAbsent", "nameTaken":
+                guard let height = attempt.finalizedHeight, height > expiryMaximum else { throw OwnerStoreError.invalidFormat }
+            case "ownerBound":
+                guard attempt.finalizedHeight != nil, result.phase == "registryConfirmed" else { throw OwnerStoreError.invalidFormat }
+            default: throw OwnerStoreError.invalidFormat
+            }
             let message = try OwnerScalars.wire(attempt.message)
             let ownerSignature = try OwnerScalars.base58(attempt.ownerSignature, count: 64)
             switch attempt.stage {
