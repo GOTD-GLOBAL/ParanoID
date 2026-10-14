@@ -24,10 +24,19 @@ import XCTest
         let catalogueCrypto = CatalogueAppleCryptography(catalogue: f.catalogueKey, owner: f.ownerKey, fi: f.fi, ru: f.ru)
         let ownerCrypto = OwnerAppleCryptography(owner: f.ownerKey)   // typed owner policy, see below
         // Retained bootstrap written by the unchanged old store (same bytes the old reader accepts).
-        let old = CatalogueStore(directory: f.root, context: f.context, files: CatalogueAppleFileIO(fileSystem: f.disk), crypto: catalogueCrypto)
+        let lease = OwnerNamespaceLease(root: f.root)
+        let bootstrapHolder = try lease.acquire()
+        let old = CatalogueStore(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: bootstrapHolder),
+            crypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: bootstrapHolder))
         try old.inspectFresh(); try old.commit(f.context)
-        let c = OwnerAllocationCoordinator(directory: f.root, context: f.context, files: files, catalogueCrypto: catalogueCrypto,
-                                           ownerCrypto: ownerCrypto, entropy: { Data(repeating: 0, count: 16) }) // public fixture entropy, never SecRandomCopyBytes here
+        lease.retire(bootstrapHolder) // old handles can never touch the namespace again
+        XCTAssertThrowsError(try old.loadRetained()) { XCTAssertEqual($0 as? CatalogueStoreError, .backendFailure) }
+        let holder = try lease.acquire()
+        let c = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: holder),
+            catalogueCrypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: holder),
+            ownerCrypto: LeasedCryptography(ownerCrypto, lease: lease, holder: holder), entropy: { Data(repeating: 0, count: 16) }) // public fixture entropy, never SecRandomCopyBytes here
         XCTAssertFalse(try c.loadRetained().catalogue.allocated)
         let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
         let value = try c.initializeNew(c.reserveNewOwner(op), operation: op)
@@ -45,26 +54,31 @@ import XCTest
         XCTAssertFalse(f.disk.fileExists(at: f.root.appendingPathComponent("owner/state.enc.tmp")))
         XCTAssertEqual(f.ownerKey.creations, 1); XCTAssertEqual(f.catalogueKey.creations, 1)
         XCTAssertNotEqual(try XCTUnwrap(f.ownerKey.load()), try XCTUnwrap(f.catalogueKey.load()), "distinct opaque owner key")
-        let reopened = OwnerAllocationCoordinator(directory: f.root, context: f.context, files: files, catalogueCrypto: catalogueCrypto,
-                                                  ownerCrypto: ownerCrypto, entropy: { XCTFail("no entropy on reopen"); return Data() })
+        c.close()
+        let reopenedHolder = try lease.acquire()
+        let reopened = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: reopenedHolder),
+            catalogueCrypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: reopenedHolder),
+            ownerCrypto: LeasedCryptography(ownerCrypto, lease: lease, holder: reopenedHolder), entropy: { XCTFail("no entropy on reopen"); return Data() })
         let pair = try reopened.loadRetained()
         XCTAssertTrue(pair.catalogue.allocated); XCTAssertEqual(pair.owner, value)
-        XCTAssertThrowsError(try old.loadRetained()) { XCTAssertEqual($0 as? CatalogueStoreError, .artifactsPresent) }
+        reopened.close()
+        let legacyHolder = try lease.acquire()
+        let legacy = CatalogueStore(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: legacyHolder),
+            crypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: legacyHolder))
+        XCTAssertThrowsError(try legacy.loadRetained()) { XCTAssertEqual($0 as? CatalogueStoreError, .artifactsPresent) }
+        lease.retire(legacyHolder)
         XCTAssertEqual(f.ownerKey.deletions, 0)
     }
 
-    /// Owner policy is typed and read back; the messaging adapters cannot
-    /// satisfy it merely by account or path injection.
+    /// Required future real-policy evidence. This case remains an executable
+    /// skip until actual Keychain insertion/readback exists; constants cannot pass it.
     func testOwnerKeyPolicyIsWhenUnlockedThisDeviceOnlyAndNotSynchronizable() throws {
         // Requires a real Keychain-backed owner store seam (simulator/device), NOT
         // NativeOwnerMemoryKey: the host run must record this case as skipped
         // with reason when no Keychain is available, never as passed.
-        let f = try NativeOwnerFixture()
-        defer { f.cleanup() }
-        let policy = OwnerAppleCryptography(owner: f.ownerKey).policy
-        XCTAssertEqual(policy.accessible, kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
-        XCTAssertFalse(policy.synchronizable)
-        XCTAssertEqual(policy.fileProtection, .complete)
+        throw XCTSkip("NOT IMPLEMENTED: real owner Keychain insertion plus accessibility/synchronizable readback on a signed simulator/device; memory-key policy descriptors are not evidence")
     }
 
     /// Create-only, no-follow owner directory: an existing inode (link or
@@ -87,35 +101,52 @@ import XCTest
         XCTAssertTrue(try f.disk.isExcludedFromBackup(at: owner))
     }
 
-    /// Every retained stage reopens on a fresh coordinator with real AES-GCM
-    /// boxes; a tampered tag or the catalogue key on the owner box refuses
-    /// without rewriting either file, and zero signing operations run.
-    func testRetainedStagesReopenWithRealBoxesAndRefuseTamperingWithoutRepair() throws {
+    /// Only unregistered + backup-confirmed state and tampered-tag refusal.
+    /// ownerSigned, assembled/sends, publication-pending/published and foreign-key
+    /// boxes still need separate native cases; this blueprint does not cover them.
+    func testUnregisteredBackupReopenWithRealBoxAndTamperedTagRefusal() throws {
         let f = try NativeOwnerFixture()
         defer { f.cleanup() }
         let files = OwnerAppleFileIO(fileSystem: f.disk)
         let catalogueCrypto = CatalogueAppleCryptography(catalogue: f.catalogueKey, owner: f.ownerKey, fi: f.fi, ru: f.ru)
         let ownerCrypto = OwnerAppleCryptography(owner: f.ownerKey)
-        let old = CatalogueStore(directory: f.root, context: f.context, files: CatalogueAppleFileIO(fileSystem: f.disk), crypto: catalogueCrypto)
+        let lease = OwnerNamespaceLease(root: f.root)
+        let bootstrapHolder = try lease.acquire()
+        let old = CatalogueStore(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: bootstrapHolder),
+            crypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: bootstrapHolder))
         try old.inspectFresh(); try old.commit(f.context)
+        lease.retire(bootstrapHolder) // old handles can never touch the namespace again
+        XCTAssertThrowsError(try old.loadRetained()) { XCTAssertEqual($0 as? CatalogueStoreError, .backendFailure) }
+        let holder = try lease.acquire()
         var calls: [String] = []
         let core = OwnerMaterialCore(observed: { calls.append($0) })
-        let c = OwnerAllocationCoordinator(directory: f.root, context: f.context, files: files, catalogueCrypto: catalogueCrypto,
-                                           ownerCrypto: ownerCrypto, entropy: { Data(repeating: 0, count: 16) }, core: core)
+        let c = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: holder),
+            catalogueCrypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: holder),
+            ownerCrypto: LeasedCryptography(ownerCrypto, lease: lease, holder: holder), entropy: { Data(repeating: 0, count: 16) }, core: core)
         let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
         _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op); try c.finish(op)
         let ownerFile = f.root.appendingPathComponent("owner/state.enc")
         let sealed = try f.disk.read(at: ownerFile, maximumBytes: f.cap)
         calls = []
-        let reopened = OwnerAllocationCoordinator(directory: f.root, context: f.context, files: files, catalogueCrypto: catalogueCrypto,
-                                                  ownerCrypto: ownerCrypto, entropy: { Data() }, core: core)
+        c.close()
+        let reopenedHolder = try lease.acquire()
+        let reopened = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: reopenedHolder),
+            catalogueCrypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: reopenedHolder),
+            ownerCrypto: LeasedCryptography(ownerCrypto, lease: lease, holder: reopenedHolder), entropy: { Data() }, core: core)
         XCTAssertEqual(try reopened.loadRetained().owner?.wordsBackupConfirmed, true)
         XCTAssertEqual(Set(calls), ["identity"])
+        reopened.close() // retire the reader before test-only fixture corruption
         var tampered = sealed; tampered[tampered.count - 1] ^= 0x01
         try FileManager.default.removeItem(at: ownerFile) // synthetic fixture only, never store behavior
         try f.disk.write(tampered, to: ownerFile)
-        let again = OwnerAllocationCoordinator(directory: f.root, context: f.context, files: files, catalogueCrypto: catalogueCrypto,
-                                               ownerCrypto: ownerCrypto, entropy: { Data() }, core: core)
+        let tamperedHolder = try lease.acquire()
+        let again = OwnerAllocationCoordinator(directory: f.root, context: f.context,
+            files: LeasedFileIO(files, lease: lease, holder: tamperedHolder),
+            catalogueCrypto: LeasedCryptography(catalogueCrypto, lease: lease, holder: tamperedHolder),
+            ownerCrypto: LeasedCryptography(ownerCrypto, lease: lease, holder: tamperedHolder), entropy: { Data() }, core: core)
         XCTAssertThrowsError(try again.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .authenticationFailed) }
         XCTAssertEqual(try f.disk.read(at: ownerFile, maximumBytes: f.cap), tampered, "no repair")
         XCTAssertEqual(f.ownerKey.deletions, 0); XCTAssertEqual(f.ownerKey.creations, 1)

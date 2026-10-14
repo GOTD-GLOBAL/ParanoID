@@ -2,6 +2,7 @@ import Foundation
 
 enum OwnerScalars {
     static func name(_ s: String) -> Bool {
+        guard (3...24).contains(s.utf8.count) else { return false }
         let b = Array(s.utf8)
         return (3...24).contains(b.count) && (97...122).contains(b[0]) && b.allSatisfy { (97...122).contains($0) || (48...57).contains($0) || $0 == 95 }
     }

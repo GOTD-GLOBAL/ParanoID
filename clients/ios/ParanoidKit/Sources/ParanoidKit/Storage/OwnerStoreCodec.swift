@@ -89,7 +89,9 @@ struct AllocatedCatalogueState: Equatable {
     var binding: OwnerBinding? = nil
 }
 enum AllocatedCatalogueCodec {
-    static func encode(_ value: AllocatedCatalogueState) -> Data {
+    static func encode(_ value: AllocatedCatalogueState) throws -> Data {
+        guard value.allocated || value.binding == nil else { throw OwnerStoreError.invalidFormat }
+        try value.binding?.validate()
         let bootstrap = String(decoding: IdentityCatalogueCodec.encode(value.context), as: UTF8.self)
         // Only the first allocation belongs to the owner; both realms remain unallocated.
         guard value.allocated, let range = bootstrap.range(of: #""allocation":"unallocated""#) else { return Data(bootstrap.utf8) }
@@ -180,6 +182,24 @@ struct OwnerMaterialCore {
 }
 enum OwnerEnvelopeCodec {
     static func encode(_ v: OwnerEnvelopeV1, core: OwnerMaterialCore) throws -> Data {
+        // Bound and validate scalars BEFORE interpolation/map/join. The round-trip
+        // below still enforces full phase/ledger/material semantics using Rust.
+        guard v.attempts.count <= 8, v.phase.utf8.count <= 44, v.entropy.utf8.count <= 44 else { throw OwnerStoreError.limitExceeded }
+        guard ["unregistered", "registrationPending", "registryConfirmed"].contains(v.phase),
+              let entropy = Data(base64Encoded: v.entropy), [16, 32].contains(entropy.count),
+              entropy.base64EncodedString() == v.entropy else { throw OwnerStoreError.invalidFormat }
+        for field in [v.owner, v.identity, v.genesis, v.program] { _ = try OwnerScalars.base58(field, count: 32) }
+        try v.binding?.validate()
+        for attempt in v.attempts {
+            try attempt.intent.validate(context: v.context, owner: v.owner)
+            guard attempt.stage.utf8.count <= 11, attempt.resolution.utf8.count <= 13 else { throw OwnerStoreError.limitExceeded }
+            guard ["ownerSigned", "assembled"].contains(attempt.stage),
+                  ["unresolved", "expiredAbsent", "nameTaken", "ownerBound"].contains(attempt.resolution) else { throw OwnerStoreError.invalidFormat }
+            _ = try OwnerScalars.wire(attempt.message)
+            _ = try OwnerScalars.base58(attempt.ownerSignature, count: 64)
+            if let transaction = attempt.transaction { _ = try OwnerScalars.wire(transaction) }
+            if let signature = attempt.signature { _ = try OwnerScalars.base58(signature, count: 64) }
+        }
         let data = Data(#"{"version":1,"kind":"owner","installID":"\#(v.context.installID)","ownerRef":"\#(v.context.ownerRef)","entropy":"\#(v.entropy)","owner":"\#(v.owner)","identity":"\#(v.identity)","genesis":"\#(v.genesis)","program":"\#(v.program)","phase":"\#(v.phase)","binding":\#(v.binding?.json ?? "null"),"wordsBackupConfirmed":\#(v.wordsBackupConfirmed),"attempts":[\#(v.attempts.map(\.json).joined(separator: ","))]}"#.utf8)
         guard try decode(data, context: v.context, core: core) == v else { throw OwnerStoreError.invalidFormat }
         return data

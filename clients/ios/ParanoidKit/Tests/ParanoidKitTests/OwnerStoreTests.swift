@@ -38,6 +38,7 @@ final class OwnerStoreTests: XCTestCase {
             XCTAssertEqual(Set(f.coreCalls).subtracting(["identity", "lookup"]), [], "signing/register/proof never run on open, " + label)
             XCTAssertEqual(f.io.data[f.path("text-state.enc")], catalogueBytes, "open never rewrites, " + label)
             XCTAssertEqual(f.io.data[f.path("owner/state.enc")], ownerBytes, label)
+            c.close() // controlled handoff before the separate legacy read-only probe
             // Old bootstrap store still refuses anything beyond the exact bootstrap pair.
             let legacy = CatalogueStore(directory: f.root, context: f.context, files: f.io, crypto: f.catalogue)
             if label == "bootstrap" { XCTAssertEqual(try legacy.loadRetained(), f.context) }
@@ -234,14 +235,14 @@ final class OwnerStoreTests: XCTestCase {
         let bootstrap = String(decoding: IdentityCatalogueCodec.encode(f.context), as: UTF8.self)
         func catalogue(_ s: String) throws -> AllocatedCatalogueState { try AllocatedCatalogueCodec.decode(Data(s.utf8), context: f.context) }
         XCTAssertEqual(try catalogue(bootstrap), .init(context: f.context, allocated: false))
-        XCTAssertEqual(AllocatedCatalogueCodec.encode(.init(context: f.context, allocated: false)), IdentityCatalogueCodec.encode(f.context), "unallocated bytes are the bootstrap bytes")
+        XCTAssertEqual(try AllocatedCatalogueCodec.encode(.init(context: f.context, allocated: false)), IdentityCatalogueCodec.encode(f.context), "unallocated bytes are the bootstrap bytes")
         let bindingJSON = #"{"genesis":"\#(base.genesis)","program":"\#(base.program)","identity":"\#(base.identity)","owner":"\#(base.owner)","name":"alice_fixture"}"#
         XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""binding":null"#, with: #""binding":\#(bindingJSON)"#))) { XCTAssertEqual($0 as? OwnerStoreError, .invalidFormat) }
         XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""slot":"fi","origin":"\#(f.context.realms.fi.origin)","pin":"\#(f.context.realms.fi.pin)","protocol":"identity-v3","allocation":"unallocated""#, with: #""slot":"fi","origin":"\#(f.context.realms.fi.origin)","pin":"\#(f.context.realms.fi.pin)","protocol":"identity-v3","allocation":"allocated""#))) { XCTAssertEqual($0 as? OwnerStoreError, .invalidTransition) }
         XCTAssertThrowsError(try catalogue(bootstrap.replacingOccurrences(of: #""version":5,"minReader":5"#, with: #""version":6,"minReader":6"#))) { XCTAssertEqual($0 as? OwnerStoreError, .unsupportedVersion) }
         let allocated = bootstrap.replacingOccurrences(of: #""allocation":"unallocated","binding":null"#, with: #""allocation":"allocated","binding":\#(bindingJSON)"#)
         XCTAssertEqual(try catalogue(allocated).binding?.name, "alice_fixture")
-        XCTAssertEqual(AllocatedCatalogueCodec.encode(try catalogue(allocated)), Data(allocated.utf8))
+        XCTAssertEqual(try AllocatedCatalogueCodec.encode(try catalogue(allocated)), Data(allocated.utf8))
         // Old bootstrap reader/store still refuse the allocated form; nothing was rewritten.
         XCTAssertThrowsError(try IdentityCatalogueCodec.decode(Data(allocated.utf8), expectedInstallID: f.context.installID, expectedRealms: f.context.realms)) { XCTAssertEqual($0 as? IdentityCatalogueError, .unsupportedState) }
         XCTAssertEqual(calls.filter { !["identity", "lookup"].contains($0) }, [])
@@ -266,11 +267,12 @@ final class OwnerStoreTests: XCTestCase {
         // Deadline passes while awaiting: late evidence writes nothing; the permit never existed.
         do {
             let f = try OwnerFixture(); let c = f.coordinator()
-            let op = try c.begin(deadline: .now.advanced(by: .milliseconds(20)))
+            let deadline = ContinuousClock.now.advanced(by: .seconds(1))
+            let op = try c.begin(deadline: deadline)
             let gate = GateVerifier()
             let task = Task { @MainActor in try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: gate) }
             await gate.entered()
-            try await Task.sleep(for: .milliseconds(40))
+            try await Task.sleep(until: deadline.advanced(by: .milliseconds(20)), clock: .continuous)
             gate.release(.evidence)
             await assertThrows(.cancelled) { try await task.value }
             XCTAssertFalse(f.io.events.contains { $0.hasPrefix("write:") || $0.hasPrefix("mkdir:") || $0.hasPrefix("keyCreate") })
@@ -304,8 +306,9 @@ final class OwnerStoreTests: XCTestCase {
             let reopened = f.coordinator()
             XCTAssertThrowsError(try reopened.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .continuity) }
             // Another coordinator's permit over the same root is foreign too.
-            let g = try OwnerFixture(); let d = g.coordinator(); let e = g.coordinator()
+            let g = try OwnerFixture(); let d = g.coordinator()
             let opD = try d.begin(deadline: .now.advanced(by: .seconds(30))); let foreign = try d.reserveNewOwner(opD)
+            let e = g.coordinator() // explicit retirement before a fresh coordinator
             let opE = try e.begin(deadline: .now.advanced(by: .seconds(30)))
             XCTAssertThrowsError(try e.initializeNew(foreign, operation: opE)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
             XCTAssertEqual(g.entropyCalls, 0)
@@ -535,7 +538,7 @@ final class OwnerStoreTests: XCTestCase {
     }
 
     @MainActor func testSendReservationIsDurableBeforeTicketAndFourthReleaseRefuses() async throws {
-        let f = try OwnerFixture(); let c = f.coordinator()
+        let f = try OwnerFixture(); var c = f.coordinator()
         var op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
         _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.confirmWordsBackup(op)
         let signed = try c.recordOwnerSigned(op, intent: f.intent(), signer: PublicVectorSigner())
@@ -546,7 +549,8 @@ final class OwnerStoreTests: XCTestCase {
             XCTAssertEqual(try ticket.take(), try OwnerScalars.wire(XCTUnwrap(assembled.transaction)))
             XCTAssertThrowsError(try ticket.take()) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
             try c.finish(op)
-            let reopened = try f.coordinator().loadRetained()
+            c = f.coordinator() // never reuse the retired writer after reopen
+            let reopened = try c.loadRetained()
             XCTAssertEqual(reopened.owner?.attempts.first?.sends, UInt64(expected))
             XCTAssertEqual(reopened.owner?.attempts.first?.transaction, assembled.transaction)
             op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
@@ -622,7 +626,9 @@ final class OwnerStoreTests: XCTestCase {
         XCTAssertNil(f.io.kinds[f.path("owner")])
         f.onEntropy = {
             XCTAssertNil(f.io.data[f.path("catalogue.write.pending")])
-            XCTAssertEqual(f.io.events.last, "sync:" + f.root.path)
+            // Continuity is reread before entropy; those read-only events are
+            // required now. The final *effect* is still allocation's final sync.
+            XCTAssertEqual(f.io.effects.last, "sync:" + f.root.path)
         }
         let value = try c.initializeNew(permit, operation: op)
         XCTAssertEqual(value.entropy, "AAAAAAAAAAAAAAAAAAAAAA==")
@@ -671,10 +677,25 @@ final class OwnerStoreTests: XCTestCase {
     private var waiters: [CheckedContinuation<Outcome, Never>] = []
     private var enteredWaiters: [CheckedContinuation<Void, Never>] = []
     private var isEntered = false
-    func entered() async { if isEntered { return }; await withCheckedContinuation { enteredWaiters.append($0) } }
+    private var enteredTimeout: Task<Void, Never>?
+    func entered() async {
+        if isEntered { return }
+        await withCheckedContinuation { enteredWaiters.append($0)
+            // Test readiness watchdog only: fail, never hang if preparation
+            // rejects before the external seam is called (e.g. a slow host).
+            enteredTimeout = Task { @MainActor in
+                do { try await Task.sleep(for: .seconds(5)) } catch { return }
+                guard !isEntered else { return }
+                XCTFail("verifier was not entered within the bounded fixture wait")
+                let pending = enteredWaiters; enteredWaiters = []
+                pending.forEach { $0.resume() }
+            }
+        }
+    }
     func release(_ o: Outcome) { outcome = o; let w = waiters; waiters = []; w.forEach { $0.resume(returning: o) } }
     func binding(for request: OwnerBindingRequest) async throws -> OwnerBindingEvidence? {
-        isEntered = true; enteredWaiters.forEach { $0.resume() }; enteredWaiters = []
+        isEntered = true; enteredTimeout?.cancel(); enteredTimeout = nil
+        enteredWaiters.forEach { $0.resume() }; enteredWaiters = []
         let o: Outcome = await { if let outcome { return outcome }; return await withCheckedContinuation { waiters.append($0) } }()
         let v = request.material
         let binding = OwnerBinding(genesis: v.genesis, program: v.program, identity: v.identity, owner: v.owner, name: "alice_fixture")
@@ -710,15 +731,16 @@ final class OwnerFixtureIO: OwnerFileIO {
     var onEffect: ((String) -> Void)?
     var faultAt: Int?
     var faultAfter = false
+    var faultError = OwnerStoreError.backendFailure
     var effects: [String] = []
     /// Fault seam: throw before or after exactly the N-th effect; never undo it.
     func effect(_ e: String, _ apply: () throws -> Void) throws {
         events.append(e)
         if e == failBefore { throw OwnerStoreError.backendFailure }
         let index = effects.count
-        if faultAt == index, !faultAfter { throw OwnerStoreError.backendFailure }
+        if faultAt == index, !faultAfter { throw faultError }
         try apply(); effects.append(e); onEffect?(e)
-        if faultAt == index, faultAfter { throw OwnerStoreError.backendFailure }
+        if faultAt == index, faultAfter { throw faultError }
     }
     private func record(_ e: String) throws { events.append(e); if e == failBefore { throw OwnerStoreError.backendFailure } }
     func inspect(_ u: URL) throws -> CataloguePathKind { events.append("inspect:" + u.path); return kinds[u.path] ?? (data[u.path] == nil ? .absent : .regularFile) }
@@ -770,7 +792,19 @@ final class OwnerFixtureCrypto: OwnerCryptography {
     func intent(_ number: Int = 1, height: UInt64 = 100, name: String = "alice_fixture") -> OwnerAttemptIntent {
         .init(attemptID: String(format: "00000000-0000-0000-0000-%012d", number), name: name, sponsorRealmKey: context.realms.fi, payer: String(repeating: "1", count: 32), blockhash: String(repeating: "1", count: 32), lastValidHeight: height)
     }
+    private var previous: OwnerAllocationCoordinator<OwnerFixtureCrypto, OwnerFixtureCrypto>?
+    private lazy var lease = OwnerNamespaceLease(root: root)
     func coordinator() -> OwnerAllocationCoordinator<OwnerFixtureCrypto, OwnerFixtureCrypto> {
-        OwnerAllocationCoordinator(directory: root, context: context, files: io, catalogueCrypto: catalogue, ownerCrypto: owner, entropy: { [self] in entropyCalls += 1; onEntropy?(); return Data(repeating: 0, count: 16) }, core: .init(observed: { [self] in coreCalls.append($0) }))
+        // Explicit controlled fixture handoff, not multiple live writers over one namespace.
+        previous?.close()
+        let holder = try! lease.acquire()
+        let next = OwnerAllocationCoordinator(directory: root, context: context,
+            files: LeasedFileIO(io, lease: lease, holder: holder),
+            catalogueCrypto: LeasedCryptography(catalogue, lease: lease, holder: holder),
+            ownerCrypto: LeasedCryptography(owner, lease: lease, holder: holder),
+            entropy: { [self] in entropyCalls += 1; onEntropy?(); return Data(repeating: 0, count: 16) },
+            core: .init(observed: { [self] in coreCalls.append($0) }))
+        previous = next
+        return next
     }
 }
