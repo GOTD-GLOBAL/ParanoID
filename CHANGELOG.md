@@ -8,6 +8,13 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Non-signing validation decision record (documentation)
+
+- Add draft ADR-0018 for RFC-0032 with explicit candidate API/state/error/size,
+  runtime-entropy and caller-lifetime boundaries and pending approval evidence.
+- Preserve draft/proposed/accepted lifecycle distinctions and separate design
+  disposition from later runtime/native acceptance. No implementation is granted.
+
 ### Non-signing core validation RFC (documentation)
 
 - Add draft RFC-0032 and an existing-code entropy/size research receipt. Preserve

@@ -2,10 +2,26 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: verified bounded source-scope and D87 disposition records; parallel non-signing-validation RFC and namespace drafting; no implementation or ADR acceptance
+last_reviewed_scope: draft ADR-0018 decision record and pending contract disposition; no implementation or ADR acceptance
 ---
 
 # Current project state
+
+## Non-signing validation decision record drafted — 2026-10-14
+
+[Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) records
+RFC-0032's candidate shared-core boundary and pending approval evidence. The
+RFC's scoped closure review is not review or human acceptance of this new ADR.
+The record separates readiness for disposition, required human design/source
+approval and later implementation/native/adoption acceptance; it does not demand
+future code tests as a prerequisite to deciding whether to authorize their code.
+
+Concrete remaining choices are requested in [D88-01–06](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6175640412)
+and, independently, [D89-01–05](https://github.com/GOTD-GLOBAL/ParanoID/pull/89#issuecomment-6175641613).
+No human answers to those exact contract requests were present at this drafting
+checkpoint. Status remains draft; no shared-core implementation, accepted ADR,
+native result, merge or live permission is implied. #73/D87 source/direction
+records already exist and are not being requested again.
 
 ## Non-signing core validation RFC draft — 2026-10-14
 

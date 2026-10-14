@@ -27,6 +27,10 @@ with the video-call work.
 
 ## Draft implementation records
 
+- [ADR-0018](0018-core-non-signing-state-validation.md): draft decision record for
+  RFC-0032's non-signing core validation/public projection; exact contract,
+  required review and human approval pending. No implementation/adoption grant.
+
 - [ADR-0017](0017-ios-concurrent-identity-v3.md): draft iOS identity-v3/concurrent-realm
   candidate and local component preparation; no architecture acceptance,
   native-app result or live authority is implied.

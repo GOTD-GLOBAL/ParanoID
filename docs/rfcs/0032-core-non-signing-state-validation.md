@@ -21,7 +21,8 @@ schema-3 admission remains **blocked** until the RFC → ADR → required owner
 approval gates and the real implementation, tests and review are complete.
 [RFC-0030](0030-ios-identity-v3.md) and
 [ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md) remain `draft`.
-No resulting ADR number is allocated here.
+The candidate decision is recorded in [draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md);
+its existence does not supply approval or close the implementation gates.
 
 ## Required review rationale
 
@@ -738,20 +739,24 @@ remain separate decisions, not unresolved prerequisites added to this RFC.
 - **Bounded iOS source-scope evidence:**
   [human confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
   to the exact request linked above; no live/merge/release authority.
-- **Required-review evidence:** not yet available for this RFC or implementation.
-  No AI review is recorded as human approval.
-- **Resulting ADR:** not created or numbered. Allocate only after checking then-current
-  published refs; record exact decision, scope, risks, approval and required review.
+- **Required-review evidence:** [scoped RFC closure review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5522716241)
+  covers the contract at `55364d7d781620075f55bb08b46946110008ce52`, not the later
+  ADR revision or implementation. No AI review is recorded as human approval.
+- **Resulting ADR:** [draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md),
+  allocated after checking published refs; its exact decision/review and human
+  approval evidence remain pending. RFC remains draft, not completed.
 - **Closure/replacement RFC:** not applicable while draft; no replacement selected.
 - **Implementation issues:** not created by this task. D87-07 is tracked in PR #87;
   preflight R07/R09/R10 and RFC-0030 D1–D3 identify its consumers.
 
 Required sequence, with no gate implied passed:
 
-1. Independent exact-draft design/security review; human disposition of the open
-   contract choices; separately scoped ADR and required owner approval **before
-   any shared-core/key-protocol/clean-service modification**. No normative decision
-   is manufactured by merging this draft.
+1. Complete the draft ADR and its exact-revision design/security review before
+   final disposition; obtain the required human approval of the scoped contract
+   **before any shared-core/key-protocol/clean-service modification**. Moving a
+   complete record to proposed is not acceptance, and future implementation tests
+   are not claimed passed in order to authorize their implementation. No normative
+   decision is manufactured by merging this draft.
 2. Approved local shared-core implementation with behavioral RED/GREEN, actual
    no-sign/no-protocol-generation instrumentation with runtime entropy attribution,
    differential validation/transcript/size tests,

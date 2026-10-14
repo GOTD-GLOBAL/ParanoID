@@ -12,7 +12,11 @@ last_reviewed_scope: verified bounded source/D87 records and unchanged trust bou
 
 [Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) specifies a
 non-signing Rust validation/public-projection candidate, not a delivered control.
-Both validation and result construction must avoid signing while preserving peer
+[Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) now records
+that proposed boundary with review/approval evidence still pending; it neither
+accepts the API nor changes any runtime/native acceptance gate. Design approval
+and tested implementation/adoption are distinct, and neither is inferred from a
+draft label or CI result. Both validation and result construction must avoid signing while preserving peer
 signature checks, transcripts and every existing state/serialized-size check.
 A private non-buffering sink may count the same serializer without retaining or
 exporting an encoded secret-state buffer; equality/limit evidence remains required.
