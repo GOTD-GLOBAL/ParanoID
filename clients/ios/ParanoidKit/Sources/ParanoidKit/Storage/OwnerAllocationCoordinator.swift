@@ -6,6 +6,10 @@ enum OwnerStoreError: Error, Equatable {
     case bindingMismatch, authenticationFailed, keyMismatch, readbackMismatch, backendFailure, broken
 }
 enum OwnerProtection { case ownerComplete }
+/// The only backend error the coordinator classifies: a precisely reported
+/// read-only lock (e.g. errSecInteractionNotAllowed / EPERM-class protection).
+/// Adapters throw it instead of a generic error; anything else is failure.
+enum OwnerBackendLock: Error { case locked }
 protocol OwnerFileIO: CatalogueFileIO {
     /// Create-only, no-follow, mode 0700. Never compensate by deleting evidence.
     func createOwnerDirectory(_ url: URL) throws
@@ -44,6 +48,7 @@ final class OwnerCreationPermit {
     private var active: OwnerOperation?
     private var revision: UInt64 = 0
     private var entered = false
+    private var awaiting = false
     private var writing = false
     private(set) var isBroken = false
 
@@ -56,10 +61,12 @@ final class OwnerCreationPermit {
     private func path(_ s: String) -> URL { directory.appendingPathComponent(s) }
     private func checked<T>(_ body: () throws -> T) throws -> T {
         guard !isBroken else { throw OwnerStoreError.broken }
-        guard !entered else { throw OwnerStoreError.busy }
+        guard !entered, !awaiting else { throw OwnerStoreError.busy }
         entered = true; defer { entered = false }
         do { return try body() }
         catch {
+            // A precisely classified read-only lock before any effect is retryable.
+            if error is OwnerBackendLock, !writing { active = nil; throw OwnerStoreError.locked }
             let e = (error as? OwnerStoreError) ?? .backendFailure
             if e == .busy { throw e }
             if writing || [.continuity, .contextMismatch, .artifactsPresent, .keyMismatch,
@@ -71,6 +78,13 @@ final class OwnerCreationPermit {
     private func require(_ op: OwnerOperation) throws {
         guard active === op else { throw OwnerStoreError.authorityRequired }
         guard ContinuousClock.now < op.deadline, !Task.isCancelled else { throw OwnerStoreError.cancelled }
+    }
+    /// Sole-operation external wait: every other call is `busy` until it returns.
+    /// No application/realm lock is held; only this coordinator is fenced.
+    private func awaitingExternal<T>(_ operation: OwnerOperation, _ body: () async throws -> T) async throws -> T {
+        awaiting = true; defer { awaiting = false }
+        do { return try await body() }
+        catch { if active === operation { active = nil }; throw OwnerStoreError.backendFailure }
     }
     func begin(deadline: ContinuousClock.Instant) throws -> OwnerOperation {
         try checked {
@@ -91,9 +105,7 @@ final class OwnerCreationPermit {
             guard let owner = old.owner, owner.phase != "registryConfirmed" else { throw OwnerStoreError.invalidTransition }
             return OwnerBindingRequest(correlation: UUID(), material: owner)
         }
-        let evidence: OwnerBindingEvidence?
-        do { evidence = try await verifier.binding(for: request) }
-        catch { active = nil; throw OwnerStoreError.backendFailure }
+        let evidence = try await awaitingExternal(operation) { try await verifier.binding(for: request) }
         try checked {
             try require(operation)
             guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }
@@ -117,9 +129,7 @@ final class OwnerCreationPermit {
             guard owner.attempts.count < 8 else { throw OwnerStoreError.limitExceeded }
             return OwnerExpiryRequest(correlation: UUID(), material: owner, proposedName: proposedName)
         }
-        let evidence: OwnerExpiryEvidence?
-        do { evidence = try await verifier.expiry(for: request) }
-        catch { active = nil; throw OwnerStoreError.backendFailure }
+        let evidence = try await awaitingExternal(operation) { try await verifier.expiry(for: request) }
         return try checked {
             try require(operation)
             guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }
@@ -207,6 +217,8 @@ final class OwnerCreationPermit {
         }
     }
     func finish(_ operation: OwnerOperation) throws { try checked { try require(operation); active = nil } }
+    /// Explicit cancellation: invalidates the operation's permits, never undoes durable allocation.
+    func cancel(_ operation: OwnerOperation) throws { try checked { guard active === operation else { throw OwnerStoreError.authorityRequired }; active = nil } }
     private func frame(_ bytes: Data) throws {
         guard (29...65_565).contains(bytes.count) else { throw OwnerStoreError.limitExceeded }
     }
@@ -220,26 +232,35 @@ final class OwnerCreationPermit {
               let key = try catalogueCrypto.loadKey() else { throw OwnerStoreError.continuity }
         if let catalogueKey, catalogueKey != key { throw OwnerStoreError.keyMismatch }
         let bytes = try files.read(path("text-state.enc"), maximumBytes: 65_565); try frame(bytes)
-        let value = try AllocatedCatalogueCodec.decode(catalogueCrypto.open(bytes, with: key), context: context)
+        let value = try AllocatedCatalogueCodec.decode(open(bytes, catalogueCrypto, key), context: context)
         catalogueKey = key
         return value
     }
+    /// Any AEAD failure is `authenticationFailed`; bytes are never repaired.
+    private func open<K: CatalogueCryptography>(_ sealed: Data, _ crypto: K, _ key: K.Key) throws -> Data {
+        do { return try crypto.open(sealed, with: key) }
+        catch let lock as OwnerBackendLock { throw lock }
+        catch { throw OwnerStoreError.authenticationFailed }
+    }
+    /// Stops at a surviving parent: descendants of a non-directory `owner/`
+    /// are never inspected through a foreign inode or symbolic link.
     private func readOwner(_ catalogue: AllocatedCatalogueState, permitMissing: Bool = false) throws -> OwnerEnvelopeV1? {
         let dir = try files.inspect(path("owner"))
-        guard dir == .absent || dir == .directory else { throw OwnerStoreError.continuity }
-        let file = try files.inspect(path("owner/state.enc"))
-        for s in ["owner/state.enc.tmp", "owner/write.pending"] { guard try files.inspect(path(s)) == .absent else { throw OwnerStoreError.artifactsPresent } }
-        let key = try ownerCrypto.loadKey()
-        let foreignOwner = try catalogueCrypto.foreignKeyExists(.owner)
-        guard foreignOwner == (key != nil) else { throw OwnerStoreError.keyMismatch }
         if !catalogue.allocated || permitMissing {
-            guard dir == .absent, file == .absent, key == nil else { throw OwnerStoreError.artifactsPresent }
+            guard dir == .absent, try ownerCrypto.loadKey() == nil,
+                  try !catalogueCrypto.foreignKeyExists(.owner) else { throw OwnerStoreError.artifactsPresent }
             return nil
         }
-        guard dir == .directory, file == .regularFile, let key else { throw OwnerStoreError.continuity }
+        guard dir == .directory else { throw OwnerStoreError.continuity }
+        let file = try files.inspect(path("owner/state.enc"))
+        for s in ["owner/state.enc.tmp", "owner/write.pending"] { guard try files.inspect(path(s)) == .absent else { throw OwnerStoreError.artifactsPresent } }
+        guard file == .regularFile || file == .absent else { throw OwnerStoreError.continuity }
+        let key = try ownerCrypto.loadKey()
+        guard try catalogueCrypto.foreignKeyExists(.owner) == (key != nil) else { throw OwnerStoreError.keyMismatch }
+        guard file == .regularFile, let key else { throw OwnerStoreError.continuity }
         if let ownerKey, ownerKey != key { throw OwnerStoreError.keyMismatch }
         let bytes = try files.read(path("owner/state.enc"), maximumBytes: 65_565); try frame(bytes)
-        let value = try OwnerEnvelopeCodec.decode(ownerCrypto.open(bytes, with: key), context: context, core: core)
+        let value = try OwnerEnvelopeCodec.decode(open(bytes, ownerCrypto, key), context: context, core: core)
         if let binding = catalogue.binding {
             guard value.phase == "registryConfirmed", value.binding == binding else { throw OwnerStoreError.bindingMismatch }
         }
@@ -297,9 +318,7 @@ final class OwnerCreationPermit {
             current = old
             return try OwnerBindingRequest(correlation: UUID(), material: core.identity(entropy: entropy, context: context))
         }
-        let evidence: OwnerBindingEvidence?
-        do { evidence = try await verifier.binding(for: request) }
-        catch { active = nil; throw OwnerStoreError.backendFailure }
+        let evidence = try await awaitingExternal(operation) { try await verifier.binding(for: request) }
         let value = try checked {
             try require(operation)
             guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }

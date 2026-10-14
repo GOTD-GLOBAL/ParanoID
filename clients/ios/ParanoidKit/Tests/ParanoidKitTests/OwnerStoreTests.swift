@@ -5,6 +5,136 @@ import XCTest
 // REQ-ID-002/003/004/006, REQ-MULTI-001, REQ-SEC-001; isolated public fixtures.
 // File/key/AEAD doubles below are NON-CRYPTOGRAPHIC. Identity calls real Rust.
 final class OwnerStoreTests: XCTestCase {
+    @MainActor func testAwaitedVerifierKeepsSoleOperationAndLateResultsHaveNoEffect() async throws {
+        // Reentry while the verifier is awaited is busy and does not cancel the active operation.
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            let gate = GateVerifier()
+            let task = Task { @MainActor in try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: gate) }
+            await gate.entered()
+            XCTAssertThrowsError(try c.begin(deadline: .now.advanced(by: .seconds(1)))) { XCTAssertEqual($0 as? OwnerStoreError, .busy) }
+            XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .busy) }
+            XCTAssertThrowsError(try c.reserveNewOwner(op)) { XCTAssertEqual($0 as? OwnerStoreError, .busy) }
+            XCTAssertFalse(c.isBroken)
+            gate.release(.evidence)
+            let pair = try await task.value
+            XCTAssertEqual(pair.catalogue.binding?.name, "alice_fixture")
+        }
+        // Deadline passes while awaiting: late evidence writes nothing; the permit never existed.
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .milliseconds(20)))
+            let gate = GateVerifier()
+            let task = Task { @MainActor in try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: gate) }
+            await gate.entered()
+            try await Task.sleep(for: .milliseconds(40))
+            gate.release(.evidence)
+            await assertThrows(.cancelled) { try await task.value }
+            XCTAssertFalse(f.io.events.contains { $0.hasPrefix("write:") || $0.hasPrefix("mkdir:") || $0.hasPrefix("keyCreate") })
+            XCTAssertEqual(f.entropyCalls, 0)
+            XCTAssertFalse(try f.coordinator().loadRetained().catalogue.allocated)
+        }
+        // Foreign correlation, no-name and thrown verifier: zero writes, operation ended.
+        for outcome in [GateVerifier.Outcome.foreign, .none, .failure] {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            let gate = GateVerifier(); gate.release(outcome)
+            await assertThrows(outcome == .failure ? .backendFailure : .authorityRequired) { try await c.recoverVerified(op, entropy: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", verifier: gate) }
+            XCTAssertFalse(f.io.events.contains { $0.hasPrefix("write:") || $0.hasPrefix("mkdir:") || $0.hasPrefix("keyCreate") }, "\(outcome)")
+            XCTAssertThrowsError(try c.reserveNewOwner(op)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+            XCTAssertFalse(c.isBroken)
+        }
+        // Cancellation after reservation preserves allocation; a stale/foreign permit cannot initialize.
+        do {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            let permit = try c.reserveNewOwner(op)
+            try c.cancel(op)
+            XCTAssertThrowsError(try c.initializeNew(permit, operation: op)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+            let op2 = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            XCTAssertThrowsError(try c.initializeNew(permit, operation: op2)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+            let op3 = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            // Allocated with no owner artifacts is owner loss for every coordinator, never a second reservation.
+            XCTAssertThrowsError(try c.reserveNewOwner(op3)) { XCTAssertEqual($0 as? OwnerStoreError, .continuity) }
+            XCTAssertTrue(c.isBroken)
+            XCTAssertEqual(f.entropyCalls, 0)
+            let reopened = f.coordinator()
+            XCTAssertThrowsError(try reopened.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .continuity) }
+            // Another coordinator's permit over the same root is foreign too.
+            let g = try OwnerFixture(); let d = g.coordinator(); let e = g.coordinator()
+            let opD = try d.begin(deadline: .now.advanced(by: .seconds(30))); let foreign = try d.reserveNewOwner(opD)
+            let opE = try e.begin(deadline: .now.advanced(by: .seconds(30)))
+            XCTAssertThrowsError(try e.initializeNew(foreign, operation: opE)) { XCTAssertEqual($0 as? OwnerStoreError, .authorityRequired) }
+            XCTAssertEqual(g.entropyCalls, 0)
+        }
+    }
+
+    @MainActor func testConsistencyMatrixRefusesWithoutCleanupAndLockedIsRetryable() async throws {
+        func committed() throws -> OwnerFixture {
+            let f = try OwnerFixture(); let c = f.coordinator()
+            let op = try c.begin(deadline: .now.advanced(by: .seconds(30)))
+            _ = try c.initializeNew(c.reserveNewOwner(op), operation: op); try c.finish(op)
+            f.io.events = []; return f
+        }
+        func expect(_ f: OwnerFixture, _ error: OwnerStoreError, _ label: String) {
+            let data = f.io.data; let kinds = f.io.kinds; let keys = [f.catalogue.key, f.owner.key]
+            let c = f.coordinator()
+            XCTAssertThrowsError(try c.loadRetained(), label) { XCTAssertEqual($0 as? OwnerStoreError, error, label) }
+            XCTAssertEqual(f.io.data, data, label); XCTAssertEqual(f.io.kinds, kinds, label); XCTAssertEqual([f.catalogue.key, f.owner.key], keys, label)
+            XCTAssertFalse(f.io.events.contains { $0.hasPrefix("write:") || $0.hasPrefix("remove:") || $0.hasPrefix("keyCreate") || $0.hasPrefix("mkdir") || $0.hasPrefix("rename") }, label)
+            XCTAssertEqual(f.coreCalls.filter { $0 != "identity" }, [], label)
+            XCTAssertFalse(f.io.events.contains { $0.hasPrefix("open:2") } && ![.invalidFormat, .unsupportedVersion, .bindingMismatch, .contextMismatch, .authenticationFailed].contains(error), "owner box is not opened on a structural refusal, " + label)
+        }
+        // Unallocated + any owner artifact/key: never promote, never delete.
+        for artifact in ["owner", "owner/state.enc", "owner/state.enc.tmp", "owner/write.pending"] {
+            for kind in [CataloguePathKind.directory, .regularFile, .other] {
+                let f = try OwnerFixture(); f.io.kinds[f.path(artifact)] = kind
+                if artifact != "owner" { f.io.kinds[f.path("owner")] = .directory }
+                expect(f, .artifactsPresent, "unallocated \(artifact) \(kind)")
+            }
+        }
+        do { let f = try OwnerFixture(); f.owner.key = 2; expect(f, .artifactsPresent, "unallocated with owner key only") }
+        // Realm artifacts/keys refuse this unallocated-realm slice before any owner work.
+        for artifact in ["realms", "realms/fi", "realms/ru", "realms/fi/state.enc", "realms/ru/write.pending"] {
+            let f = try committed(); f.io.kinds[f.path(artifact)] = .directory; expect(f, .artifactsPresent, artifact)
+        }
+        for slot in [CatalogueForeignStore.fi, .ru] {
+            let f = try committed(); let inner = f.catalogue.foreign; f.catalogue.foreign = { $0 == slot || inner($0) }; expect(f, .artifactsPresent, "foreign key \(slot)")
+        }
+        // Allocated owner loss: both absent (with or without directory), XOR, wrong inode, pending/temp.
+        do { let f = try committed(); f.io.data[f.path("owner/state.enc")] = nil; f.owner.key = nil; expect(f, .continuity, "allocated both lost, dir kept") }
+        do { let f = try committed(); f.io.data[f.path("owner/state.enc")] = nil; f.owner.key = nil; f.io.kinds[f.path("owner")] = nil; expect(f, .continuity, "allocated both lost, dir gone") }
+        do { let f = try committed(); f.io.data[f.path("owner/state.enc")] = nil; expect(f, .continuity, "allocated file lost, key kept") }
+        do { let f = try committed(); f.owner.key = nil; expect(f, .continuity, "allocated key lost, file kept") }
+        do { let f = try committed(); f.io.kinds[f.path("owner/state.enc")] = .other; expect(f, .continuity, "symlinked owner file") }
+        do { let f = try committed(); f.io.kinds[f.path("owner")] = .other; expect(f, .continuity, "symlinked owner directory") }
+        for pending in ["owner/write.pending", "owner/state.enc.tmp", "catalogue.write.pending", "text-state.enc.tmp"] {
+            let f = try committed(); f.io.data[f.path(pending)] = Data(); expect(f, .artifactsPresent, pending)
+        }
+        // Sealed with the other store's key: authentication, never repair.
+        do { let f = try committed(); f.io.data[f.path("owner/state.enc")] = try f.catalogue.seal(f.io.data[f.path("owner/state.enc")]!.dropFirst(29), with: 1); expect(f, .authenticationFailed, "owner sealed with catalogue key") }
+        // Swapped stores: catalogue plaintext inside the owner box and vice versa.
+        do { let f = try committed(); f.io.data[f.path("owner/state.enc")] = try f.owner.seal(f.io.data[f.path("text-state.enc")]!.dropFirst(29), with: 2); expect(f, .unsupportedVersion, "catalogue document in owner store (version 5 token)") }
+        do { let f = try committed(); f.io.data[f.path("text-state.enc")] = try f.catalogue.seal(f.io.data[f.path("owner/state.enc")]!.dropFirst(29), with: 1); expect(f, .unsupportedVersion, "owner document in catalogue store (version 1 token)") }
+        // Foreign installation context in the owner box.
+        do {
+            let f = try committed()
+            let other = try IdentityCatalogue(installID: "00000000-0000-0000-0000-00000000000f", ownerRef: f.context.ownerRef, realms: f.context.realms)
+            let text = String(decoding: f.io.data[f.path("owner/state.enc")]!.dropFirst(29), as: UTF8.self).replacingOccurrences(of: f.context.installID, with: other.installID)
+            f.io.data[f.path("owner/state.enc")] = try f.owner.seal(Data(text.utf8), with: 2); expect(f, .contextMismatch, "foreign install in owner")
+        }
+        // Read-only locked key/file before effects: retry after unlock, not broken.
+        for lockFile in [false, true] {
+            let f = try committed(); f.io.lockedPaths = lockFile ? [f.path("owner/state.enc")] : []; f.owner.locked = !lockFile
+            let c = f.coordinator()
+            XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .locked) }
+            XCTAssertFalse(c.isBroken)
+            f.io.lockedPaths = []; f.owner.locked = false
+            XCTAssertEqual(try c.loadRetained().owner?.phase, "unregistered")
+        }
+    }
+
     @MainActor func testEveryCreationEffectFaultPreservesEvidenceAndNeverRecreatesPermit() async throws {
         let baseline = try OwnerFixture(); let b = baseline.coordinator()
         let op0 = try b.begin(deadline: .now.advanced(by: .seconds(30)))
@@ -293,6 +423,29 @@ final class OwnerStoreTests: XCTestCase {
     catch { XCTAssertEqual(error as? OwnerStoreError, expected, file: file, line: line) }
 }
 
+@MainActor final class GateVerifier: IsolatedTrustedOwnerVerifier {
+    enum Outcome { case evidence, foreign, none, failure }
+    private var outcome: Outcome?
+    private var waiters: [CheckedContinuation<Outcome, Never>] = []
+    private var enteredWaiters: [CheckedContinuation<Void, Never>] = []
+    private var isEntered = false
+    func entered() async { if isEntered { return }; await withCheckedContinuation { enteredWaiters.append($0) } }
+    func release(_ o: Outcome) { outcome = o; let w = waiters; waiters = []; w.forEach { $0.resume(returning: o) } }
+    func binding(for request: OwnerBindingRequest) async throws -> OwnerBindingEvidence? {
+        isEntered = true; enteredWaiters.forEach { $0.resume() }; enteredWaiters = []
+        let o: Outcome = await { if let outcome { return outcome }; return await withCheckedContinuation { waiters.append($0) } }()
+        let v = request.material
+        let binding = OwnerBinding(genesis: v.genesis, program: v.program, identity: v.identity, owner: v.owner, name: "alice_fixture")
+        switch o {
+        case .evidence: return .init(request: request, binding: binding, finalizedHeight: 101)
+        case .foreign: return .init(request: .init(correlation: UUID(), material: v), binding: binding, finalizedHeight: 101)
+        case .none: return nil
+        case .failure: throw OwnerStoreError.backendFailure
+        }
+    }
+    func expiry(for request: OwnerExpiryRequest) async throws -> OwnerExpiryEvidence? { nil }
+}
+
 @MainActor struct SyntheticBindingVerifier: IsolatedTrustedOwnerVerifier {
     func binding(for request: OwnerBindingRequest) async throws -> OwnerBindingEvidence? {
         let v = request.material
@@ -310,6 +463,7 @@ final class OwnerFixtureIO: OwnerFileIO {
     var kinds: [String: CataloguePathKind] = [:]
     var events: [String] = []
     var failBefore: String?
+    var lockedPaths: Set<String> = []
     var faultAt: Int?
     var faultAfter = false
     var effects: [String] = []
@@ -330,7 +484,7 @@ final class OwnerFixtureIO: OwnerFileIO {
     func createOwnerDirectory(_ u: URL) throws { try effect("mkdir:" + u.path) { guard kinds[u.path] == nil, data[u.path] == nil else { throw OwnerStoreError.artifactsPresent }; kinds[u.path] = .directory } }
     func fullSync(_ u: URL, directory: Bool) throws { try effect("sync:" + u.path) {} }
     func rename(_ u: URL, to d: URL) throws { try effect("rename:" + u.path) { data[d.path] = data.removeValue(forKey: u.path) } }
-    func read(_ u: URL, maximumBytes: Int) throws -> Data { events.append("read:" + u.path); guard let bytes = data[u.path] else { throw OwnerStoreError.continuity }; guard bytes.count <= maximumBytes else { throw OwnerStoreError.limitExceeded }; return bytes }
+    func read(_ u: URL, maximumBytes: Int) throws -> Data { events.append("read:" + u.path); if lockedPaths.contains(u.path) { throw OwnerBackendLock.locked }; guard let bytes = data[u.path] else { throw OwnerStoreError.continuity }; guard bytes.count <= maximumBytes else { throw OwnerStoreError.limitExceeded }; return bytes }
     func removeIntent(_ u: URL) throws { try effect("remove:" + u.path) { data.removeValue(forKey: u.path) } }
 }
 final class OwnerFixtureCrypto: OwnerCryptography {
@@ -338,9 +492,10 @@ final class OwnerFixtureCrypto: OwnerCryptography {
     var key: Int?
     let io: OwnerFixtureIO
     var foreign: (CatalogueForeignStore) -> Bool = { _ in false }
+    var locked = false
     init(_ id: Int, _ io: OwnerFixtureIO) { self.id = id; self.io = io }
     var framingOverhead: Int { 29 }
-    func loadKey() throws -> Int? { io.events.append("keyLoad:\(id)"); return key }
+    func loadKey() throws -> Int? { io.events.append("keyLoad:\(id)"); if locked { throw OwnerBackendLock.locked }; return key }
     func createKey() throws -> Int { try io.effect("keyCreate:\(id)") { guard key == nil else { throw OwnerStoreError.keyMismatch }; key = id }; return id }
     func foreignKeyExists(_ slot: CatalogueForeignStore) throws -> Bool { io.events.append("foreign:\(slot.rawValue)"); return foreign(slot) }
     func seal(_ plaintext: Data, with key: Int) throws -> Data { try io.effect("seal:\(id)") {}; return Data(repeating: UInt8(key), count: 29) + plaintext }
