@@ -77,7 +77,11 @@ this appendix nor an RFC draft alone unblocks arbitrary schema-3 reopen.
 D87-07 is a critical-path dependency of verified-B admission and the restart-
 keeps-login milestone, not an optional later cleanup; its RFC drafting runs in
 parallel with the namespace/readback contract. Neither alone delivers the app.
-Existing #85 closure is unchanged.
+Existing #85 closure is unchanged. The [draft namespace/readback contract](realm-key-namespace-contract.md)
+now refines D87-02 query identity, bound-key observations and synthetic native
+probes. It is not an implemented backend or Apple receipt. The separately drafted
+D87-07 RFC remains required for general schema-3 admission; future D87-06 wire
+changes/inventory do not block the current namespace slice's retained grammar.
 
 ## 2. Existing facts versus inherited proposals
 

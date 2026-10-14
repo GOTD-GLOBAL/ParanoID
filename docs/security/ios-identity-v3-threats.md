@@ -8,6 +8,25 @@ last_reviewed_scope: verified bounded source/D87 records and unchanged trust bou
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## Proposed namespace/readback boundary (D87-02)
+
+The [draft contract](../clients/ios/realm-key-namespace-contract.md) separates
+query namespace, actual stored policy/key observations and one-use authority.
+Different objects/policies do not prove disjoint queries; a first match does not
+prove uniqueness. It proposes explicit query-set checks and combined attributes/
+data association, with missing/default/ambiguous results refused and empirical
+Apple behavior still open. A bounded result count is not a pre-allocation byte
+bound or a global atomic snapshot across Keychain/filesystem/roles.
+
+Creation remains permit → durable journal → create-only → actual bound readback
+before key use/adoption, with retained evidence on uncertainty and no repair.
+Known-disjoint owner selectors may support B's local read without inventing fresh
+owner attributes; missing proof refuses. All locked-owner realm writes are outside
+this slice. General schema-3 admission still needs D87-07, not a partial/signing
+validator; D87-06's future wire change/inventory is not a prerequisite under the
+interim canonical-UUID rule. No new native/probe/runtime control is claimed and
+no source scope authorizes a live database inventory or operational cleanup.
+
 ## Realm-store preflight proposal — 2026-10-14
 
 The [new preflight appendix](../clients/ios/realm-store-preflight.md) maps the next
