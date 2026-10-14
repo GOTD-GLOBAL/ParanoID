@@ -10,6 +10,13 @@ public struct OwnerKeyPolicy: Equatable, Sendable {
     public let accessible: String
     public let synchronizable: Bool
 
+    /// Only this file builds policy values: the canonical constant below and
+    /// the readback of an existing item. No caller can construct a weaker one.
+    fileprivate init(accessible: String, synchronizable: Bool) {
+        self.accessible = accessible
+        self.synchronizable = synchronizable
+    }
+
     /// The only policy the owner store accepts.
     public static let whenUnlockedThisDeviceOnly = OwnerKeyPolicy(
         accessible: kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String, synchronizable: false)
@@ -40,19 +47,24 @@ public protocol OwnerKeyBackend: WrappingKeyStore {
 /// - `load()` never creates; a read refused because the device is locked
 ///   (`errSecInteractionNotAllowed`) is reported as `OwnerBackendLock.locked`,
 ///   every other status as `StorageError.keychain`. Errors are never absence.
-/// - `create()` adds the item with the owner policy and reads its attributes
-///   back; a duplicate (`errSecDuplicateItem`) is refused, never replaced.
+///   A retained item whose stored attributes are not the canonical owner
+///   policy (for example a legacy messaging item under this account) is
+///   refused — not used, not deleted, not migrated.
+/// - `create()` adds the item with the canonical policy and reads its
+///   attributes back; a duplicate (`errSecDuplicateItem`) is refused, never
+///   replaced. There is no way to ask this type for another policy.
 /// - `deleteRetained()` refuses: the owner store never deletes a retained key.
 ///   Test teardown removes its own unique test account directly.
 public struct OwnerKeychainKey: OwnerKeyBackend, Sendable {
     public static let keyBytes = 32
+    /// The one policy this backend writes and accepts.
+    public static let policy = OwnerKeyPolicy.whenUnlockedThisDeviceOnly
     public let account: String
-    public let policy: OwnerKeyPolicy
 
     /// No default account: the caller names the owner namespace explicitly.
-    public init(account: String, policy: OwnerKeyPolicy = .whenUnlockedThisDeviceOnly) {
+    /// No policy parameter: the canonical policy is not configurable.
+    public init(account: String) {
         self.account = account
-        self.policy = policy
     }
 
     private var identity: [String: Any] {
@@ -85,6 +97,9 @@ public struct OwnerKeychainKey: OwnerKeyBackend, Sendable {
                 throw StorageError.keychain(errSecDecode)
             }
             defer { material.resetBytes(in: material.startIndex..<material.endIndex) }
+            // The bytes alone are not the owner key: the item must carry the
+            // canonical policy. A weaker retained item is refused and left alone.
+            guard try storedPolicy() == Self.policy else { throw StorageError.keychain(errSecDecode) }
             return SymmetricKey(data: material)
         case errSecItemNotFound:
             return nil
@@ -128,14 +143,14 @@ public struct OwnerKeychainKey: OwnerKeyBackend, Sendable {
         guard generated == errSecSuccess else { throw StorageError.keychain(generated) }
         defer { material.resetBytes(in: material.startIndex..<material.endIndex) }
         var attributes = identity
-        attributes[kSecAttrAccessible as String] = policy.accessible
-        attributes[kSecAttrSynchronizable as String] = policy.synchronizable
+        attributes[kSecAttrAccessible as String] = Self.policy.accessible
+        attributes[kSecAttrSynchronizable as String] = Self.policy.synchronizable
         attributes[kSecValueData as String] = material
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw StorageError.keychain(status) }
         // Insertion is not enforcement: read the policy back from the store
         // and refuse an item the Keychain filed under another class.
-        guard try storedPolicy() == policy else { throw StorageError.keychain(errSecDecode) }
+        guard try storedPolicy() == Self.policy else { throw StorageError.keychain(errSecDecode) }
         return SymmetricKey(data: material)
     }
 
@@ -194,8 +209,9 @@ struct OwnerAppleFileIO: OwnerFileIO {
     /// `OwnerBackendLock.locked`, so the coordinator may retry a read-only open
     /// after unlock, only when all of the following hold:
     ///
-    /// 1. the failure came from the `open(2)` stage — not from inspection, not
-    ///    from `fstat` or the descriptor read;
+    /// 1. the failure came from the `open(2)` syscall itself — not from the
+    ///    inspection before it, not from the `fstat`/inode confirmation that
+    ///    follows it, not from the descriptor read;
     /// 2. the path is the owner state file `owner/state.enc` of the leased
     ///    root — the catalogue (messaging class) and every other path freeze;
     /// 3. `errno` is `EPERM` — `EACCES` and anything else are failures;
@@ -209,13 +225,16 @@ struct OwnerAppleFileIO: OwnerFileIO {
         let inspected = try inner.inspectRegular(url, maximumBytes: maximumBytes)
         let descriptor: Int32
         do {
-            descriptor = try inner.openRegular(url, inspected: inspected)
+            // The catch spans the open syscall alone: `fstat`, inode
+            // confirmation and the descriptor read run outside it below.
+            descriptor = try inner.openOnly(url)
         } catch let error as CatalogueAppleAdapterError
             where error.operation == .read && error.code == Int(EPERM) && Self.isOwnerStateFile(url) {
             if !protectedDataAvailable() { throw OwnerBackendLock.locked }
             throw error
         }
         defer { _ = syscalls.close(descriptor) }
+        try inner.confirmOpened(descriptor, url: url, inspected: inspected)
         return try inner.readBounded(descriptor, url: url, inspected: inspected, maximumBytes: maximumBytes)
     }
 
@@ -303,19 +322,40 @@ struct OwnerAppleFileIO: OwnerFileIO {
 /// has no foreign namespaces of its own; those belong to the catalogue adapter.
 struct OwnerAppleCryptography: OwnerCryptography {
     typealias Key = SymmetricKey
-    private let owner: any WrappingKeyStore
+    private let owner: any OwnerKeyBackend
 
-    /// Explicit owner backend only — `OwnerKeychainKey` in production, an
-    /// in-memory key in host tests. No default account and no key export.
-    init(owner: any WrappingKeyStore) {
+    /// Only an owner-policy backend is admitted: `OwnerKeychainKey` in
+    /// production, a labelled FIXTURE-ONLY memory key in host tests. The
+    /// messaging `KeychainKey` is not an `OwnerKeyBackend` and does not type
+    /// check here, whatever account it carries. No default and no key export.
+    init(owner: any OwnerKeyBackend) {
         self.owner = owner
     }
 
     var framingOverhead: Int { SnapshotCodec.headerBytes + SnapshotCodec.tagBytes }
+
     /// `load()` never creates; a locked backend surfaces as `OwnerBackendLock`.
-    func loadKey() throws -> SymmetricKey? { try owner.load() }
+    /// A retained item whose stored policy is not the canonical owner policy is
+    /// refused before any use — never deleted, migrated or replaced.
+    func loadKey() throws -> SymmetricKey? {
+        guard let key = try owner.load() else { return nil }
+        try requireCanonicalPolicy()
+        return key
+    }
+
     /// Create-only by the backend's contract; never replaces a retained key.
-    func createKey() throws -> SymmetricKey { try owner.create() }
+    /// The created item is read back and must carry the canonical policy.
+    func createKey() throws -> SymmetricKey {
+        let key = try owner.create()
+        try requireCanonicalPolicy()
+        return key
+    }
+
+    private func requireCanonicalPolicy() throws {
+        guard try owner.storedPolicy() == .whenUnlockedThisDeviceOnly else {
+            throw CatalogueAppleAdapterError(.key, nil, code: Int(EACCES), reason: "retained owner key is not under the owner policy")
+        }
+    }
     func foreignKeyExists(_ slot: CatalogueForeignStore) throws -> Bool {
         throw CatalogueAppleAdapterError(.open, nil, code: Int(EINVAL), reason: "the owner store has no foreign key namespaces")
     }

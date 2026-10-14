@@ -133,13 +133,13 @@ import XCTest
         let f = try LockFixture()
         defer { f.cleanup() }
         try f.commitOwner()
-        f.fault.failFstat(nth: 1, errno: EPERM)
+        f.fault.failFstat(nth: 1, afterOpening: "/owner/state.enc", errno: EPERM)
         f.availability.set(false)
         XCTAssertThrowsError(try f.files.read(f.ownerFile, maximumBytes: f.cap)) {
             XCTAssertFalse($0 is OwnerBackendLock, "the first fstat is not the open syscall: \($0)")
             XCTAssertEqual(($0 as? CatalogueAppleAdapterError)?.code, Int(EPERM))
         }
-        f.fault.failFstat(nth: 1, errno: EPERM)
+        f.fault.failFstat(nth: 1, afterOpening: "/owner/state.enc", errno: EPERM)
         let c = f.coordinator()
         XCTAssertThrowsError(try c.loadRetained()) { XCTAssertEqual($0 as? OwnerStoreError, .backendFailure) }
         XCTAssertTrue(c.isBroken, "an fstat failure freezes the store")
@@ -151,7 +151,7 @@ import XCTest
         let f = try LockFixture()
         defer { f.cleanup() }
         try f.commitOwner()
-        f.fault.failFstat(nth: 2, errno: EPERM)
+        f.fault.failFstat(nth: 2, afterOpening: "/owner/state.enc", errno: EPERM)
         f.availability.set(false)
         XCTAssertThrowsError(try f.files.read(f.ownerFile, maximumBytes: f.cap)) {
             XCTAssertFalse($0 is OwnerBackendLock)
@@ -195,24 +195,40 @@ private final class SyscallFault: @unchecked Sendable {
     private var readErrno: Int32?
     private var lstatSuffix: String?; private var lstatErrno: Int32 = 0
     private var fstatNth = 0; private var fstatErrno: Int32 = 0; private var fstatCalls = 0
+    private var fstatSuffix: String?; private var armedDescriptor: Int32?
     func failOpen(ofSuffix suffix: String, create: Bool, errno code: Int32) { lock.lock(); openSuffix = suffix; openCreate = create; openErrno = code; lock.unlock() }
     func failRead(errno code: Int32) { lock.lock(); readErrno = code; lock.unlock() }
     func failLstat(ofSuffix suffix: String, errno code: Int32) { lock.lock(); lstatSuffix = suffix; lstatErrno = code; lock.unlock() }
-    func clear() { lock.lock(); openSuffix = nil; readErrno = nil; lstatSuffix = nil; fstatNth = 0; fstatCalls = 0; lock.unlock() }
-    /// Fail the n-th fstat of the next read (1 = the validation right after open, 2 = the size check before reading).
-    func failFstat(nth: Int, errno code: Int32) { lock.lock(); fstatNth = nth; fstatErrno = code; fstatCalls = 0; lock.unlock() }
+    func clear() { lock.lock(); openSuffix = nil; readErrno = nil; lstatSuffix = nil; fstatNth = 0; fstatCalls = 0; fstatSuffix = nil; armedDescriptor = nil; lock.unlock() }
+    /// Fail the n-th fstat on the descriptor returned by the next successful
+    /// O_RDONLY open of `suffix` (1 = the confirmation right after open,
+    /// 2 = the size check before reading). One shot.
+    func failFstat(nth: Int, afterOpening suffix: String, errno code: Int32) {
+        lock.lock(); fstatNth = nth; fstatErrno = code; fstatCalls = 0; fstatSuffix = suffix; armedDescriptor = nil; lock.unlock()
+    }
     var fstatHook: @Sendable (Int32, UnsafeMutablePointer<stat>) -> Int32 {
         { descriptor, information in
-            self.lock.lock(); self.fstatCalls += 1; let hit = self.fstatNth != 0 && self.fstatCalls == self.fstatNth; let code = self.fstatErrno; self.lock.unlock()
+            self.lock.lock()
+            var hit = false; let code = self.fstatErrno
+            if self.fstatNth != 0, self.armedDescriptor == descriptor {
+                self.fstatCalls += 1
+                if self.fstatCalls == self.fstatNth { hit = true; self.fstatNth = 0; self.armedDescriptor = nil }
+            }
+            self.lock.unlock()
             if hit { errno = code; return -1 }
             return Darwin.fstat(descriptor, information)
         }
     }
     var openHook: @Sendable (UnsafePointer<CChar>, Int32, mode_t) -> Int32 {
         { path, flags, mode in
-            self.lock.lock(); let suffix = self.openSuffix; let create = self.openCreate; let code = self.openErrno; self.lock.unlock()
-            if let suffix, String(cString: path).hasSuffix(suffix), (flags & O_CREAT != 0) == create { errno = code; return -1 }
-            return Darwin.open(path, flags, mode)
+            self.lock.lock(); let suffix = self.openSuffix; let create = self.openCreate; let code = self.openErrno; let armSuffix = self.fstatSuffix; self.lock.unlock()
+            let name = String(cString: path)
+            if let suffix, name.hasSuffix(suffix), (flags & O_CREAT != 0) == create { errno = code; return -1 }
+            let descriptor = Darwin.open(path, flags, mode)
+            if descriptor >= 0, let armSuffix, name.hasSuffix(armSuffix), flags & O_CREAT == 0 {
+                self.lock.lock(); if self.armedDescriptor == nil { self.armedDescriptor = descriptor }; self.lock.unlock()
+            }
+            return descriptor
         }
     }
     var readHook: @Sendable (Int32, UnsafeMutableRawPointer, Int) -> Int {

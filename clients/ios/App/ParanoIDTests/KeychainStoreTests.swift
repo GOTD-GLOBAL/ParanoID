@@ -122,6 +122,36 @@ final class KeychainStoreTests: XCTestCase {
         XCTAssertNotEqual(try key.load(), created)
     }
 
+    /// A legacy messaging item under an owner account is not an owner key: the
+    /// owner backend refuses to load it, reads its weaker policy back, refuses
+    /// to create over it, and never deletes or migrates it.
+    func testALegacyMessagingItemUnderTheOwnerAccountIsRefusedNotUsedOrDeleted() throws {
+        let account = "paranoid-test-owner-legacy-\(UUID().uuidString)"
+        defer {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrAccount as String: account,
+                kSecUseDataProtectionKeychain as String: true,
+            ]
+            SecItemDelete(query as CFDictionary) // this test's own item only
+        }
+        let legacy = KeychainKey(account: account) // AfterFirstUnlockThisDeviceOnly, the messaging default
+        let legacyKey = try legacy.create()
+        let owner = OwnerKeychainKey(account: account)
+        XCTAssertTrue(try owner.exists(), "the item is there; it is just not an owner item")
+        let stored = try XCTUnwrap(owner.storedPolicy())
+        XCTAssertNotEqual(stored, OwnerKeychainKey.policy)
+        XCTAssertEqual(stored.accessible, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly as String)
+        XCTAssertThrowsError(try owner.load(), "a weaker retained item is refused, not returned") { error in
+            XCTAssertEqual(error as? StorageError, .keychain(errSecDecode), "a refusal, not a lock and not absence")
+        }
+        XCTAssertThrowsError(try owner.create()) { error in
+            XCTAssertEqual(error as? StorageError, .keychain(errSecDuplicateItem))
+        }
+        XCTAssertEqual(try legacy.load(), legacyKey, "the legacy item is intact for its own owner")
+        XCTAssertEqual(try owner.storedPolicy(), stored, "nothing was migrated")
+    }
+
     /// A real Keychain-backed owner key drives the shipped framing the owner
     /// adapter seals with (`SnapshotCodec.seal`): round trip under the loaded
     /// key, tampering refused. The adapter types themselves are internal to the

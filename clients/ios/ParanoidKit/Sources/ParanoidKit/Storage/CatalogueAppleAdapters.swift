@@ -6,7 +6,7 @@ import Foundation
 /// never file contents or key material.
 public struct CatalogueAppleAdapterError: Error, Equatable, Sendable, CustomStringConvertible {
     public enum Operation: String, Equatable, Sendable {
-        case inspect, create, write, protect, sync, rename, read, remove, seal, open
+        case inspect, create, write, protect, sync, rename, read, remove, seal, open, key
     }
     public let operation: Operation
     public let name: String
@@ -220,11 +220,18 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
         return inspected
     }
 
-    /// Stage 2: `open(O_RDONLY|O_NOFOLLOW)` of the inspected inode. The error of
-    /// a refused open carries the `errno` of that call and nothing else; the
-    /// descriptor is returned open and belongs to the caller.
-    func openRegular(_ url: URL, inspected: stat) throws -> Int32 {
-        let descriptor = try openDescriptor(url, flags: O_RDONLY | O_NOFOLLOW | O_CLOEXEC, mode: 0, operation: .read)
+    /// Stage 2: the `open(2)` syscall alone, `O_RDONLY|O_NOFOLLOW|O_CLOEXEC`.
+    /// The error of a refused open carries the `errno` of that one call and
+    /// nothing else — no `fstat`, no validation — so a caller can classify it
+    /// without catching a later stage by accident. The descriptor is returned
+    /// open and belongs to the caller.
+    func openOnly(_ url: URL) throws -> Int32 {
+        try openDescriptor(url, flags: O_RDONLY | O_NOFOLLOW | O_CLOEXEC, mode: 0, operation: .read)
+    }
+
+    /// Stage 2b: the opened descriptor must be a regular file and the very
+    /// inode that was inspected. On failure the descriptor is closed here.
+    func confirmOpened(_ descriptor: Int32, url: URL, inspected: stat) throws {
         var opened = stat()
         guard syscalls.fstat(descriptor, &opened) == 0 else {
             let code = errno
@@ -236,6 +243,12 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
             _ = syscalls.close(descriptor)
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
         }
+    }
+
+    /// Stages 2 and 2b together, for callers that need no stage distinction.
+    func openRegular(_ url: URL, inspected: stat) throws -> Int32 {
+        let descriptor = try openOnly(url)
+        try confirmOpened(descriptor, url: url, inspected: inspected)
         return descriptor
     }
 
