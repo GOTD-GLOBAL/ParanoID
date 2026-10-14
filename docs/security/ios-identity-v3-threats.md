@@ -8,6 +8,25 @@ last_reviewed_scope: verified bounded source/D87 records and unchanged trust bou
 
 # iOS identity v3 threat delta (RFC-0030)
 
+## Proposed full-state validation boundary (RFC-0032)
+
+[Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) specifies a
+non-signing Rust validation/public-projection candidate, not a delivered control.
+Both validation and result construction must avoid signing while preserving peer
+signature checks, transcripts and every existing state/serialized-size check.
+A private non-buffering sink may count the same serializer without retaining or
+exporting an encoded secret-state buffer; equality/limit evidence remains required.
+
+[Existing-code probes](../project/evidence/core-state-validation-20261014/README.md)
+show that Account restoration may draw OS entropy for runtime hash-table seeding.
+An absolute zero-syscall promise is therefore false, and warm-only measurements
+can hide first use. Protocol RNG, signing and key/nonce/UUID generation remain
+forbidden; permitted runtime seeding needs evidenced call-path attribution, not
+an arbitrary syscall whitelist or a production bypass flag. Never disable hash
+randomization or Account checks to satisfy a counter. All new V01–V14 and Apple
+resource tests remain NOT RUN; this research grants no shared-core implementation
+or live authority, and a local projection is not membership/login proof.
+
 ## Realm-store preflight proposal — 2026-10-14
 
 The [new preflight appendix](../clients/ios/realm-store-preflight.md) maps the next

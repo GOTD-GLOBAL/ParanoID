@@ -8,7 +8,7 @@ review_mode: closed-alpha-ai
 required_reviewers: []
 created: 2026-10-14
 last_reviewed: 2026-10-14
-last_reviewed_scope: source trace and proposed D87-07 contract only; no implementation or new runtime tests
+last_reviewed_scope: draft review corrections and existing-API Linux entropy probes; no new validator implementation or Apple acceptance
 ---
 
 # RFC-0032: Non-signing full core-state validation and public projection
@@ -74,11 +74,14 @@ production/security/privacy claims. Apply accepted
 
 Propose `{"op":"validate_state_v3"}` on `clients/core::command(state, request)`.
 For an admitted schema-3 state, perform all existing typed-state and semantic
-checks without signing, randomness, state transitions or I/O, and return only a
-versioned public credential/fingerprint and retained enrollment projection.
-Do not return, normalize or re-encode the core state. The caller retains the
-exact input bytes and remains responsible for storage authenticity, context,
-lease ownership and authority fencing.
+checks without signing, protocol randomness, protocol-state transitions or
+application I/O, and return only a versioned public credential/fingerprint and
+retained enrollment projection. Required runtime hash-table seeding is accounted
+for separately below; it is never a source of protocol material.
+Never return or normalize the core state or produce a complete re-encoded
+state buffer. The internal non-buffering serialized-size count defined below is
+permitted; the caller retains exact input bytes and remains responsible for
+storage authenticity, context, lease ownership and authority fencing.
 
 This closes one necessary dependency of the iOS realm-store read contract. It
 would not by itself deliver restart-keeps-login, server membership, owner
@@ -139,7 +142,8 @@ signature check may be skipped.
 - Add one read-only schema-3 validation/projection operation, available through
   the unchanged Rust entry point, JNI and C function signatures.
 - Preserve every current full-state admission check and cryptographic transcript;
-  make the new path unable to call signing or key/entropy generation.
+  make the protocol path unable to sign or generate keys, nonces, UUIDs or other
+  protocol-random material; distinguish necessary runtime hash-table entropy.
 - Return the smallest useful public fields for the existing proposed realm
   coherence checks, with explicit version, size and failure contracts.
 - Keep source bytes immutable on success, refusal, cancellation and native failure.
@@ -152,7 +156,7 @@ signature check may be skipped.
   temporary signing guard, consent bypass or environment switch.
 - No state repair, upgrade, migration, pruning, candidate adoption, persistence,
   file/Keychain access, network, clock read, nonce/UUID generation, key generation,
-  session creation, encryption/decryption transition or receipt creation.
+  new protocol-session creation, encryption/decryption transition or receipt creation.
 - No changes to global `Credential::verify`, identity-v3 UUID policy, server
   admission, RPC trust, wire formats, E2EE algorithms, pins or dependencies.
 - No new app factory, realm writer, namespace identity, lease registry, runtime,
@@ -262,6 +266,43 @@ secrets, not by generating keys or signing a test message. "Non-signing" does
 not mean "does not read any private material": full pickle/key consistency
 necessarily handles secret-bearing state in memory.
 
+#### Runtime entropy is not protocol randomness
+
+The literal initial zero-OS-RNG promise was contradicted by existing code.
+`self_service::validate` calls `account(s)` → `Account::from_pickle`. In pinned
+vodozemac 0.10.0, `From<AccountPickle>` converts `OneTimeKeysPickle`, whose
+conversion creates a standard `HashMap`; its `RandomState` may obtain OS entropy
+for hashing. This is required state reconstruction, not key generation or signing.
+The [source-probe receipt](../project/evidence/core-state-validation-20261014/README.md)
+records real existing-API Linux debug/release runs: cold workers made an entropy
+call, repeated warmed calls did not. It is not new-validator or Apple acceptance.
+
+Proposed corrected boundary:
+
+- Signing, key/nonce/UUID generation, protocol RNG and protocol/persisted-state
+  mutation remain forbidden on every success/refusal path, including RNG calls
+  served from an already seeded generator without a new OS syscall.
+- Runtime-internal entropy may occur only on evidenced, required hash-table
+  seeding paths of state reconstruction/validation. It must not be exported,
+  persisted or repurposed as protocol/key/nonce/identifier material. This is not
+  an `allowEntropy` switch or a blanket allowance for every `getrandom` call.
+- Attribute observations to the pinned call graph/call sites; syscall byte count,
+  flags, warm-cache behavior or a convenient label alone are insufficient.
+  Other randomness, including a new cryptographic RNG used only for verification,
+  is outside this narrow runtime category. Unclassified/new entropy paths need
+  investigation and explicit disposition,
+  not automatic classification as harmless. Revalidate on supported native builds.
+- Do not suppress Account validation, disable/change hash randomization or
+  deliberately warm the measured worker to make a zero counter pass. Include
+  cold-process, fresh-worker and explicitly warmed cases, with optimized builds.
+  Instrument signing and protocol/key/nonce/UUID generation separately from OS
+  entropy and report the runtime category separately.
+
+This narrows an inaccurate draft promise to a testable application boundary; it
+never permits signing on reopen, changes verification or proves that the future
+operation already meets V07. The allowed runtime category still needs ratification
+with this exact RFC contract and real platform evidence before adoption.
+
 ### 3. Exact preservation of existing checks
 
 The following inventory is the minimum differential acceptance surface. Source
@@ -292,16 +333,24 @@ hardening requirement must be reported and separately dispositioned, not silentl
 weakened, tightened or called fixed by this RFC.
 
 **Size-check implementation obligation:** replacing `reply` must not lose
-`snapshot_size`. Propose a checked, count-only traversal of the same typed
-serialization representation: count field names, punctuation, omitted/default
-fields, escaped-string lengths and numeric render lengths without emitting or
-buffering a re-encoded core state or secret string. Stop above 8,388,608.
-Differential tests must compare its count with the existing serializer on
-synthetic fixtures, including omitted defaults, control-character escapes,
-Unicode, numeric `Value` cases and boundary states. Do not call `to_vec(State)`,
-`to_string(State)` or the old `reply` in production merely to measure size.
-This is a real implementation/review obligation, not an assumed free refactor;
-if exact equivalence cannot be demonstrated, adoption remains blocked.
+`snapshot_size`. Prefer the existing pinned `serde_json::Serializer` writing
+into a private, checked **non-buffering counting sink**. It may visit the same
+typed `Serialize` representation and consume transient borrowed byte chunks, but
+must not retain, log, return, persist or forward those chunks, allocate a complete
+encoded-state buffer, or change the caller's original state. Internal streaming
+for exact size counting is permitted; it is not a persisted-state rewrite.
+Reuse the serializer's escaping, numeric formatting and field/default handling
+rather than introduce a second hand-maintained JSON encoding engine.
+
+Stop above 8,388,608 using checked arithmetic and an internal limit indicator;
+map that intentional size refusal to `local_state_full`, not `state_error`.
+Other counting/serialization failures remain `state_error`. Differential tests
+must compare the count with the baseline serializer on synthetic fixtures,
+including omitted defaults, control-character escapes, Unicode, numeric `Value`
+cases and exact/+1 boundaries. No `to_vec(State)`, `to_string(State)` or old
+`reply` in production merely to measure size. An alternative count-only design
+requires the same exact-equivalence proof and explicit disposition. This is a
+real implementation/review obligation; without it adoption remains blocked.
 
 ### 4. Minimal successful public projection
 
@@ -361,9 +410,23 @@ These are proposed additions over existing bounds, not present API guarantees:
 | Raw state argument | Existing maximum **8,388,608 bytes**, inclusive. New operation requires nonempty valid schema-3 JSON. |
 | Raw request argument | Existing maximum **65,536 bytes**, inclusive, even though the new request has only one member. |
 | Typed state encoded-length count | At most **8,388,608 bytes**, preserving the existing reply size gate independently of raw input size. |
-| Successful projection / error JSON | Proposed maximum **8,192 UTF-8 bytes**, excluding C NUL terminator. This accommodates the fixed public fields and escaping of the existing bounded realm; require a checked bound proof and tests. No truncation or partial success. |
+| Successful projection / error JSON | Proposed maximum **8,192 UTF-8 bytes**, excluding C NUL terminator. The conservative shape bound below covers the fixed public fields and escaping of the existing bounded realm; real implementation tests still required. No truncation or partial success. |
 | JSON recursion / dynamic state collections | Retain pinned parser recursion protection and every existing collection/frame limit. No larger limits, new dependency or additional per-history-entry ceiling. |
 | Concurrent use by future realm reader | Proposed at most one in-flight validation per installation root, across both slots, with no unbounded pending-validation queue; reentry refuses at the caller. This is caller scheduling, not a new Rust global lock. |
+
+**Conservative serialized-shape bound, not a runtime result:** the UTF-8 string
+caps are credential `43,64,36,43,512,64,64,86`, fingerprint `64`, and enrollment
+`6,64,36,64`: 1,146 value bytes in total. With fixed literal ASCII keys, compact
+syntax and the fixed version integers, the non-value overhead is 229 bytes.
+Overapproximating every value byte as a six-byte JSON escape gives
+`229 + 6 × 1146 = 7105` bytes, below 8192; the finite error objects need at most
+29 bytes. The [receipt](../project/evidence/core-state-validation-20261014/README.md)
+contains the executed calculation and its deliberately non-credential dummy
+values. The global verifier rejects noncanonical signatures by re-encoding,
+so padding cannot inflate the admitted 86-byte signature. No new ASCII rule is
+imposed on the existing 512-byte realm; valid Unicode/control-character escaping
+is covered. Changing the projection/writer or adding fields invalidates this
+specific proof and requires a new bound. This is not a peak-memory guarantee.
 
 Return errors as the existing `Result<String, &'static str>` convention in Rust;
 C/JNI wrap them into exactly `{"error":"<code>"}`. Proposed codes for this new
@@ -497,13 +560,14 @@ a read-only JSON verb.
 
 | Threat / source basis | Proposed control and acceptance mapping | Residual / disposition |
 | --- | --- | --- |
-| Reopen becomes a signing oracle through `local_contact` or `reply` ([clean source](../../clients/core/src/clean_service.rs)) | Separate immutable validation and allowlisted projection; no old reply call; instrument actual device/root signing and RNG entry points, including zero-peer fallback. V01/V07/V08. | Secret/public derivation still reads private state. No approved implementation exists yet. |
+| Reopen becomes a signing oracle through `local_contact` or `reply` ([clean source](../../clients/core/src/clean_service.rs)) | Separate immutable validation and allowlisted projection; no old reply call; instrument actual device/root signing and protocol/key/nonce/UUID generation, including zero-peer fallback; attribute runtime entropy separately. V01/V07/V08. | Secret/public derivation still reads private state. No approved implementation exists yet. |
+| Warm fixture setup hides entropy or OS-only counting misses seeded protocol RNG | Separate forbidden signing/protocol-generation counters from attributed runtime hash seeding; cold-process/fresh-worker and warmed controls in debug/optimized builds. V07. | Required Account reconstruction can seed `HashMap`; no blanket syscall whitelist, weakened validation or disabled hash randomization. |
 | Forged peer contact passes because fingerprint excludes signature ([contact source](../../clients/core/src/contact_v2.rs)) | Retain actual `ContactV2::verify` before channel acceptance; corrupt/missing/noncanonical signatures fail even when fingerprints/channel are unchanged. V03/V04. | Signature verification is not out-of-band human identity verification. |
 | Local helper changes transcript/order/encoding ([channel source](../../clients/core/src/intro_v2.rs), [protocol](../protocol/first-contact-v1.md#immutable-channel-and-framing)) | Byte-identical LP/domain/profile/account sorting and old/new credential/contact/channel differential vectors. V04/V13. | Duplicate implementations are discouraged; independent vectors must not merely call the same new helper twice. |
 | Credential-only success admits corrupt enrollment/session/replay state ([legacy-only branch](../../clients/core/src/clean_service.rs)) | Full inventory above, genuine populated fixtures and one-defect-at-a-time negatives. V02/V03/V05. | Preserves baseline checks, not historical-message reauthentication or repair. |
 | Duplicate request fields divert validation into creation/signing ([outer dispatch](../../clients/core/src/lib.rs)) | Duplicate-aware raw discriminator and exact typed request before state routing; both duplicate-op orders and escaped-key collisions. V06/V07. | Old operation admission remains separately tested; no global parser tightening hidden here. |
 | Secret state/history escapes in reply or logs ([old reply](../../clients/core/src/clean_service.rs), [Swift reply](../../clients/ios/ParanoidKit/Sources/ParanoidKit/Core/CoreBridge.swift)) | Exact public-field allowlist, fixed errors, no state/dialog serializer, no payload logging; canary and shape tests. V08/V09. | Public credential/account/device/realm/enrollment are linkable metadata, not anonymous or suitable for automatic telemetry. |
-| Malformed/large state causes allocation or CPU exhaustion ([input caps](../../clients/core/src/lib.rs), [pickle helpers](../../clients/core/src/lib.rs)) | Preserve raw/encoded-size/collection/depth bounds; bounded public output; one in-flight caller; exact-head host and simulator peak measurements. V09/V10/V12. | Byte caps do not prove small peak memory or bounded wall time; C pointer preconditions, OOM/abort and shared-device pressure remain. |
+| Malformed/large state causes allocation or CPU exhaustion ([input caps](../../clients/core/src/lib.rs), [pickle helpers](../../clients/core/src/lib.rs)) | Preserve raw/encoded-size/collection/depth bounds; bounded public output; one in-flight caller; exact-head caller-lifetime checks and simulator peak measurements. V09/V10/V12. | Byte caps do not prove small peak memory or bounded wall time; C pointer preconditions, OOM/abort and shared-device pressure remain. |
 | Stale/cross-realm projection becomes UI/login authority ([verified B](../clients/ios/realm-store-preflight.md#verified-b-means-local-read-only-admission)) | Caller compares full context/credential, checks all six conditions and fences lease/incarnation/revision after return. V11. | Validator cannot verify filesystem/Keychain identity, owner binding provenance, server state or current registry. |
 | Cancellation releases buffers or a newer call adopts old success ([synchronous bridge](../../clients/ios/bridge/src/lib.rs)) | Keep buffers/slot until return; exact-once free, no late publication, no unbounded replacement tasks. V10/V11/V12. | No in-call cancellation or immediate zeroization guarantee; caller lifecycle remains a separate integration gate. |
 | Old state/binary is normalized, upgraded or reset on refusal ([preflight](../clients/ios/realm-store-preflight.md)) | No state output/rewrites; unsupported version/binary fails preserving bytes; no legacy fallback. V08/V14. | Not anti-rollback. A previously valid state can still be stale; physical-device protection and restore safety are separate. |
@@ -603,8 +667,8 @@ unmodified logs; never replace test assertions with source grep.
 | V04 | Altered domain/order/fallback/account sorting is detected → old signed-contact and new public-input fingerprints/channel bytes match independent existing LP vectors in both endpoint orders, crossing and original bundle labels; changed bound input changes/rejects as before. | [Independent test helpers](../../clients/core/tests/clean_first_contact.rs) `contact_fingerprint`/`channel`; no new transcript, no fake signed contact. |
 | V05 | Omitted collection/state check fails its assertion → exact existing boundaries and +1 cases, duplicate pending IDs, commitment IDs/senders/channels/digests, replay keys/sequence collisions/profile/channel, invalid session/fallback and frame2 checks all match old admission. | REQ-MSG-002/003/004/005; retain unlimited-count history within the state-size bound and optional `local_ms`. |
 | V06 | Naive peek/dispatch accepts or misroutes a negative → raw entry-point tests reject duplicate/escaped-duplicate op keys in both orders, including `create_identity`/signing/upgrade alternatives, unknown fields/types/trailing input and unsupported versions; valid escaped operation spelling works. | New route independent of state version; missing/negative/fractional/duplicate/out-of-range version; no effects on refusal; old dispatch regression. |
-| V07 | Instrumentation positive controls observe actual signing/RNG during fixture setup and old signing paths → after counters reset, **every new-operation success and refusal calls sign/RNG/key-generation zero times**, including malformed input, zero-peer fallback and populated states. A deliberate forbidden call in a disposable probe must be caught. | Cover root/device Ed25519 implementations and dependency entropy boundaries (OS/getrandom and any seeded RNG/key-generation path), not merely `local_contact` counts or code search; test instrumentation only, no production bypass/guard. |
-| V08 | A state/reply reuse leaks a canary or changes bytes → exact input bytes equal before/after each success/refusal, repeated call and C/Swift transfer; reply key allowlist and secret/plaintext canaries exclude state, pickles, history and secrets. Source secret buffers are never passed to the result serializer. | No core state re-encoding/return, no persistence/clock/network invocation; no use of canonicalized fixtures as byte-preservation proof. |
+| V07 | Positive controls observe actual signing and protocol/key/nonce/UUID generation; every new-operation success/refusal invokes those forbidden paths zero times, even when a seeded generator would need no OS call. Cold-process, fresh-worker and explicitly warmed cases separately capture/attribute necessary runtime hash seeding. Deliberate forbidden-call probes must fail. | Cover actual root/device signers and protocol RNG/generation as well as OS entropy in debug/optimized builds; classify only evidenced runtime paths, not every 16-byte draw or syscall flag. Unknown paths remain unresolved; no warm-up workaround, disabled hash randomization, skipped Account validation or production bypass. |
+| V08 | A state/reply reuse leaks a canary or changes bytes → exact input bytes equal before/after each success/refusal, repeated call and C/Swift transfer; reply key allowlist and secret/plaintext canaries exclude state, pickles, history and secrets. Source secret buffers are never passed to the result serializer. | No complete encoded-state buffer or state return, no persistence/clock/network invocation; no use of canonicalized fixtures as byte-preservation proof. |
 | V09 | Removed raw/typed/output bound or incorrect counter is caught → exact cap/+1/overflow cases, whitespace/escape/default expansion and deep parser refusal; count-only size equals baseline serialization for synthetic corpus; output bound covers maximum admitted public fields and never truncates. | Core 8,388,608; request 65,536; proposed reply 8,192; error precedence and fixed no-payload codes; no broad state grammar tightening. |
 | V10 | Wrong ownership or shape fails → real C link/run, Rust result/error/panic mapping, valid terminated null/non-UTF-8 negatives, Swift `state == nil`, strict typed projection/version refusal, no candidate-save path and exactly-once free on success/error/consumer failure. | Unchanged ABI, rebuilt artifact, real Rust call rather than mocked successful response; invalid pointers are not test inputs under the C safety contract. |
 | V11 | Missing caller fence accepts stale/foreign success → cancellation/close/lease loss/revision change before and during synchronous validation suppress publication, retain buffers until return and prohibit replacement-call accumulation; full context/intent/result mismatch refuses without writes. | Later isolated realm integration; all six verified-B conditions, owner-locked write refusal, no server-membership assertion. Namespace/storage evidence remains separate. |
@@ -613,12 +677,15 @@ unmodified logs; never replace test assertions with source grep.
 | V14 | Fallback or tightening changes retained compatibility → old binary rejects the new verb without state effects; schema 0/1/2/future refusal, separate clean schema-0 dry-run and v4 Snapshot preservation; generated device v4 versus canonical retained non-v4 cases; no global verifier change. | D87-06 separation; no migration, reset, new live inventory dependency or substituted full validator. |
 
 The V02 baseline oracle may sign during **synthetic fixture/baseline execution**;
-that does not permit signing in the measured new path. Generate fixtures before
-arming no-call instrumentation. Isolate measurements so parallel tests cannot
-hide or inflate counters. Review the instrumentation's coverage against the
-actual dependency call graph; a wrapper that misses an underlying signer or RNG
-is not evidence. Required positive controls and deliberately failing probes
-must be retained alongside the zero-call results.
+that does not permit signing in the measured new path. Prepare fixtures outside
+the measured worker, then preserve first-use behavior for cold-worker/process
+cases; never present fixture-warmed zero OS calls as evidence of no protocol RNG.
+Run explicit warmed controls separately. Isolate measurements so parallel tests
+cannot hide or inflate counters. Review coverage against the pinned dependency
+call graph; a wrapper missing an underlying signer or seeded protocol RNG is not
+evidence. Retain positive controls and deliberately failing forbidden-call probes
+alongside zero forbidden-call counts and separately attributed runtime entropy.
+The existing-API counterexample in the receipt is research, not a passing V07.
 
 ### Native memory acceptance
 
@@ -649,9 +716,9 @@ preferred direction is not approval of each detail below.
 | Decision still required | Responsible decision / evidence |
 | --- | --- |
 | Ratify `validate_state_v3`, projection version/fields, error mapping and 8,192-byte output cap, versus another explicitly versioned local contract. | Cooldom66671 within the delegation; required shared-core owner approval and independent design review before code. |
-| Select the exact internal transcript-input/verified-peer separation and prove count-only typed-size equivalence without serialized secret state. | Shared-core implementation/review under the technical owner; no missing-check or secret-buffer shortcut. |
+| Select the exact internal transcript-input/verified-peer separation and prove non-buffering counting-sink equivalence without a complete encoded secret-state buffer. | Shared-core implementation/review under the technical owner; no missing-check or secret-buffer shortcut. |
 | Ratify the duplicate-aware outer discriminator and compatibility corpus, including probe/parser recursion behavior and unchanged old dispatch. | Technical owner and independent reviewer; source/behavioral evidence required. |
-| Specify trustworthy actual sign/RNG instrumentation and its positive controls for pinned dependencies, including optimized builds. | Implementation review; model/author self-assertion or grep is insufficient. |
+| Ratify the narrow runtime hash-seeding category and specify trustworthy sign/protocol-generation/entropy attribution with cold-process, fresh-worker, warmed and optimized controls. | Implementation review; model/author self-assertion or grep is insufficient. |
 | Define simulator peak instrumentation, numeric budget and elapsed-time acceptance for bounded worst-case state, with caller scheduling/lifetime policy. | Cooldom66671 and the selected native test handoff; no current harness/result/deadline claim. |
 | Confirm the narrow shared-core implementation scope and resulting ADR disposition under the required human approvals. | Technical owner plus any scope/risk decision reserved to martadvix-web; #73 is source-scope evidence, not this API's approval. |
 | Integrate the resulting validator with the independently approved namespace/realm-reader contract and all six verified-B conditions. | Separate storage task/review after the real validator passes; not a reason to serialize the two draft workstreams. |
@@ -686,7 +753,8 @@ Required sequence, with no gate implied passed:
    any shared-core/key-protocol/clean-service modification**. No normative decision
    is manufactured by merging this draft.
 2. Approved local shared-core implementation with behavioral RED/GREEN, actual
-   no-sign/no-RNG instrumentation, differential validation/transcript/size tests,
+   no-sign/no-protocol-generation instrumentation with runtime entropy attribution,
+   differential validation/transcript/size tests,
    bounded response and independent exact-source review. Keep dependencies and
    old commands unchanged; stop and disposition any required scope expansion.
 3. Rebuilt C/JNI artifact and existing Android/iOS regression evidence, then
@@ -697,7 +765,8 @@ Required sequence, with no gate implied passed:
    schema-3 read blocker; neither this RFC nor an unimplemented ADR can do so.
 5. Reconcile shared current-state, API/component reference, threat documents,
    RFC index and eventual decision log through their owning change before
-   adoption/publication. Only this RFC file is changed by this drafting task.
+   adoption/publication. Initial authoring created only this RFC; publication adds
+   explicit evidence/navigation/status documents, not runtime source changes.
 6. Preserve separate application/login, native/phone restart, both-realm peer,
    live-action, merge and release gates. No passing component row is full
    restart-keeps-login or MR-16 acceptance.

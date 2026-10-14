@@ -8,6 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Non-signing core validation RFC (documentation)
+
+- Add draft RFC-0032 and an existing-code entropy/size research receipt. Preserve
+  full validation/transcript and immutable-state boundaries; distinguish required
+  runtime hash seeding from forbidden signing/protocol generation.
+- This specifies a candidate contract and unrun acceptance plan, not a new core
+  operation or working realm/login feature. Source/ADR/native gates remain.
+
 ### iOS source-scope and realm disposition records (documentation)
 
 - Record the [human bounded source/local-test confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) and

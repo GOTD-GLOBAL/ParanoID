@@ -77,7 +77,10 @@ this appendix nor an RFC draft alone unblocks arbitrary schema-3 reopen.
 D87-07 is a critical-path dependency of verified-B admission and the restart-
 keeps-login milestone, not an optional later cleanup; its RFC drafting runs in
 parallel with the namespace/readback contract. Neither alone delivers the app.
-Existing #85 closure is unchanged.
+Existing #85 closure is unchanged. [Draft RFC-0032](../../rfcs/0032-core-non-signing-state-validation.md)
+now specifies the candidate non-signing validation/projection contract and its
+acceptance plan; it is not the implemented validator required by this preflight.
+Namespace/readback drafting remains independent of D87-06's future v3 change.
 
 ## 2. Existing facts versus inherited proposals
 

@@ -7,6 +7,22 @@ last_reviewed_scope: verified bounded source-scope and D87 disposition records; 
 
 # Current project state
 
+## Non-signing core validation RFC draft — 2026-10-14
+
+[Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) proposes an
+additive full-schema-3 validation/public projection through the unchanged C ABI.
+It is on the verified-B/restart-keeps-login critical path, but the operation is
+not implemented or approved. Shared-core RFC → ADR and required owner approval,
+actual V01–V14 tests and native resource evidence remain gates.
+
+[Existing-API source probes](evidence/core-state-validation-20261014/README.md)
+correct the initial absolute zero-OS-RNG promise: Account reconstruction can
+seed runtime hash tables on a cold worker. Parent Linux debug/release runs
+observed cold entropy and no repeat warm syscall; this does not prove a new
+validator or permit signing/key/nonce/UUID/protocol RNG. The corrected proposal
+requires separate attribution and cold/warm positive/negative controls. Namespace
+and future v3 UUID work remain separate; no live inventory is authorized here.
+
 ## Verified source scope and realm disposition — 2026-10-14
 
 Human `martadvix-web` [confirmed the bounded source/local-test scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)

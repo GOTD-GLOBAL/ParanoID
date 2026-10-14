@@ -45,6 +45,13 @@ Follow the human authority and acceptance-evidence rules in the
 
 ## Active narrow proposal
 
+- [RFC-0032: Non-signing full core-state validation and public projection](0032-core-non-signing-state-validation.md)
+  (draft): D87-07's critical-path dependency for verified realm reopen; additive
+  Rust JSON proposal through the unchanged ABI, preserving full validation and
+  transcripts without signing/protocol generation. Required runtime hash seeding
+  is distinguished from protocol RNG. Shared-core RFC → ADR/owner approvals,
+  implementation and native evidence remain gates; no validator exists yet.
+
 - [RFC-0031: Content-free iOS background delivery through APNs](0031-ios-background-delivery.md)
   (draft): a constant, content-free APNs alert wake as a second provider of the
   RFC-0020 gateway, then a read-only notification service extension with
