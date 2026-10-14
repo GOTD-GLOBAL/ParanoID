@@ -44,8 +44,11 @@ Protected domains: shared identity/key handling, cryptographic verification,
 local persistence admission, public JSON API compatibility and native memory
 boundaries. The proposed `closed-alpha-ai` mode uses the bounded exception of
 accepted [ADR-0003](0003-closed-alpha-review-policy.md); the empty reviewer
-list is not completed review or exemption. Independent exact-revision ADR review
-(reviewer/model, revision, findings and resolutions) is **pending**. Completing
+list is not completed review or exemption. [Independent fresh-context ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+returned **scoped DRAFT PASS** on `15e86b96658009cd452e4343809c057d15b3c04b` with no blocking defects.
+Reviewer/model: gpt-6-astra, provider openai-codex; model diversity is not claimed.
+This later citation/status-only update preserves the reviewed substantive boundary;
+it is parent-verified, not a second independent review. Completing
 the record and review makes it eligible for `proposed`, meaning ready for human
 disposition, not already approved. Human decision-owner approval of the exact
 boundary, any required product/risk-owner approval and complete governance
@@ -262,8 +265,9 @@ is research, not acceptance.
 - Permanent disposition or approval evidence URL: pending
 - Withdrawal author statement URL, if applicable: not applicable
 - Delegation evidence URL: <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
-- Required-review evidence URLs: pending for this ADR revision; the advisory
-  RFC review above is not review of this record
+- Required-review evidence URL: [exact-revision ADR draft review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+  on `15e86b96658009cd452e4343809c057d15b3c04b`; the older RFC review remains separate. This is not human
+  decision approval or an implementation/native review.
 - Telegram message ID, sender mapping, timestamp, and exact approval text: not used
 - Disposition date: pending
 - Known limitations and follow-up: no implementation, test, harness or native

@@ -2,7 +2,7 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: draft ADR-0018 decision record and pending contract disposition; no implementation or ADR acceptance
+last_reviewed_scope: ADR-0018 draft review recorded with citation-only tail; human disposition pending; no implementation or ADR acceptance
 ---
 
 # Current project state
@@ -10,8 +10,12 @@ last_reviewed_scope: draft ADR-0018 decision record and pending contract disposi
 ## Non-signing validation decision record drafted — 2026-10-14
 
 [Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) records
-RFC-0032's candidate shared-core boundary and pending approval evidence. The
-RFC's scoped closure review is not review or human acceptance of this new ADR.
+RFC-0032's candidate shared-core boundary and pending human approval evidence.
+[Independent ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288) returned scoped DRAFT PASS on
+`15e86b96658009cd452e4343809c057d15b3c04b`, without blocking defects. This later citation/status-only
+update preserves the reviewed substantive sections and is parent-verified;
+no independent review of that metadata tail is claimed. The older RFC review
+remains separate. Neither review accepts the ADR or permits implementation.
 The record separates readiness for disposition, required human design/source
 approval and later implementation/native/adoption acceptance; it does not demand
 future code tests as a prerequisite to deciding whether to authorize their code.

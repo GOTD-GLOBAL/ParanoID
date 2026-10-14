@@ -14,6 +14,8 @@ public contract is declared.
   runtime-entropy and caller-lifetime boundaries and pending approval evidence.
 - Preserve draft/proposed/accepted lifecycle distinctions and separate design
   disposition from later runtime/native acceptance. No implementation is granted.
+- Record the exact-revision draft ADR review separately from its subsequent
+  parent-verified citation/status update; human approval remains pending.
 
 ### Non-signing core validation RFC (documentation)
 

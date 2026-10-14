@@ -50,7 +50,7 @@ Follow the human authority and acceptance-evidence rules in the
   Rust JSON proposal through the unchanged ABI, preserving full validation and
   transcripts without signing/protocol generation. Required runtime hash seeding
   is distinguished from protocol RNG. [Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md)
-  records the candidate boundary; exact review/owner approvals, implementation
+  records the reviewed draft boundary; owner approvals, reviewed implementation
   and native evidence remain gates. No validator exists yet.
 
 - [RFC-0031: Content-free iOS background delivery through APNs](0031-ios-background-delivery.md)

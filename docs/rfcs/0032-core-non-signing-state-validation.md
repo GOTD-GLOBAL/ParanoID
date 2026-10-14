@@ -743,8 +743,10 @@ remain separate decisions, not unresolved prerequisites added to this RFC.
   covers the contract at `55364d7d781620075f55bb08b46946110008ce52`, not the later
   ADR revision or implementation. No AI review is recorded as human approval.
 - **Resulting ADR:** [draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md),
-  allocated after checking published refs; its exact decision/review and human
-  approval evidence remain pending. RFC remains draft, not completed.
+  allocated after checking published refs; [scoped ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+  covers `15e86b96658009cd452e4343809c057d15b3c04b`, not implementation. The later citation/status-only
+  update preserves its substantive boundary and is parent-verified. Contract
+  ratification and human approval remain pending. RFC remains draft, not completed.
 - **Closure/replacement RFC:** not applicable while draft; no replacement selected.
 - **Implementation issues:** not created by this task. D87-07 is tracked in PR #87;
   preflight R07/R09/R10 and RFC-0030 D1–D3 identify its consumers.

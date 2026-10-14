@@ -13,7 +13,8 @@ last_reviewed_scope: verified bounded source/D87 records and unchanged trust bou
 [Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) specifies a
 non-signing Rust validation/public-projection candidate, not a delivered control.
 [Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) now records
-that proposed boundary with review/approval evidence still pending; it neither
+that proposed boundary with a [scoped draft ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288) on
+`15e86b96658009cd452e4343809c057d15b3c04b`; human approval remains pending. Recording that review neither
 accepts the API nor changes any runtime/native acceptance gate. Design approval
 and tested implementation/adoption are distinct, and neither is inferred from a
 draft label or CI result. Both validation and result construction must avoid signing while preserving peer
