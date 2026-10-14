@@ -138,7 +138,7 @@ The archives keep rustc's default minimum OS versions (iOS 10.0, simulator
 is applied by the application target, which links these older-minimum static
 libraries without a warning.
 
-## Catalogue transaction core (native adapter pending)
+## Catalogue transaction core and Apple adapter (proposal component)
 
 `CatalogueStore<Crypto>` implements the proposed commit/reopen ordering behind
 explicit `CatalogueFileIO` and opaque-key `CatalogueCryptography` interfaces.
@@ -148,15 +148,24 @@ Fresh inspection and retained opening are separate; intent and parent sync
 precede key creation, and readback plus both directory syncs precede success.
 Failures break the instance without deleting keys or ambiguous artifacts.
 
-This delivery is **partial**: 23 new store tests plus 28 unchanged codec tests
-pass in isolated debug/release execution, with 142 before/after-effect fault
-cases. Their I/O/key/token backends are explicitly non-cryptographic doubles.
-The [receipt and native-first checkpoint](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-store.md)
-identify the missing Apple file/crypto adapter. Its four staged XCTest cases
-are outside the active package target and are not compiled, passed or skipped.
-The selected next execution step is native adapter RED/GREEN on the build Mac;
-coordinator review and feature-branch integration follow. No new native-store,
-Keychain, process-restart or phone acceptance is claimed by the 51 host tests.
+The transaction core's 23 store tests plus 28 codec tests run against explicit
+non-cryptographic doubles (142 before/after-effect fault cases; see the
+[checkpoint receipt](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-store.md)).
+The narrow Apple adapters now exist as well: `CatalogueAppleFileIO(fileSystem:)`
+(no-follow `lstat` inspection where only `ENOENT` is absence, `O_EXCL|O_NOFOLLOW`
+create-only writes with short/`EINTR` handling and no compensating unlink,
+Data Protection plus backup exclusion read back on the inode, the shipped
+`F_FULLFSYNC`/`rename(2)` steps, bounded descriptor reads that refuse
+non-regular inodes and growth, intent `unlink` only for a regular file) and
+`CatalogueAppleCryptography(catalogue:owner:fi:ru:)` (29-byte shipped framing,
+`SnapshotCodec.seal` after an exact-UTF-8 check, raw AES-GCM opening that never
+passes through the lossy String decoder, opaque keys without export or
+deletion). The four native acceptance cases live in `ParanoidKitTests` and
+twenty-one native-seam cases join them; the
+[adapter receipt](../../docs/project/evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md)
+records the RED/GREEN runs on the build Mac. Still not claimed: iOS Data
+Protection execution (host only), a live Keychain, restart/power loss, owner or
+realm stores, recovery, login, app startup or phone acceptance.
 
 ## In-memory catalogue bootstrap (proposal component)
 

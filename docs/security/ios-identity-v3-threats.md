@@ -2,11 +2,32 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-10-13
-last_reviewed_scope: isolated catalogue transaction-core fault tests; native adapter, durable identity-v3 runtime and MR gates remain NOT RUN
+last_reviewed: 2026-10-14
+last_reviewed_scope: Apple catalogue adapter native tests on the build Mac added to the transaction-core checkpoint; durable identity-v3 runtime, live Keychain and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
+
+## Apple catalogue adapter — 2026-10-14
+
+The native adapter the checkpoint below left unimplemented is now exercised on
+the build Mac ([receipt](../project/evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md)):
+the four staged cases in the active target plus twenty-one native-seam cases
+against the real file system and real CryptoKit, with four labelled
+fixture-only POSIX fault injections for transfers the file system does not
+interrupt on demand. These rows update the "remaining boundary" cells below;
+they do not close MR-02/06/07/14 or any application gate.
+
+| Threat | Native control now tested | Remaining boundary |
+| --- | --- | --- |
+| A link, FIFO or foreign inode is followed or opened | `lstat` no-follow inspection; `O_NOFOLLOW` on every open; FIFO refused before any open; reader checks the opened inode is the inspected one | Same-process caller is trusted; races against a hostile co-writer are out of scope |
+| An unreadable or missing parent is taken for absence | Only `ENOENT` is absence; `ENOTDIR`/`EACCES` throw (tested with a mode-0 directory and a file used as a directory) | Permission cases skip when running as root |
+| Candidate or intent replaces or truncates an existing name | `O_CREAT` with `O_EXCL` create-only, owner-only mode; existing link refused and its target untouched | — |
+| Partial transfer passes as success or is tidied away | Short writes completed, `EINTR` retried, zero-length write → `EIO`, failing `close` reported; partial bytes stay as evidence, no unlink | Fault injections are fixture-only; Darwin power loss is not reproduced |
+| Oversized or growing file is decoded | Size refused before allocation; at most `maximumBytes + 1` bytes read through the descriptor; growth past the limit → `EFBIG` | — |
+| Backup or protection flag silently missing | Backup exclusion set on the inode and read back before rename | iOS Data Protection class is compiled for iOS only and not executed on the host |
+| Authenticated bytes are repaired on the way to the strict codec | Raw `AES.GCM.open` on the shipped framing returns the stored bytes; the lossy legacy String decoder is not used; the old reader still parses the same box | Catalogue plaintext must be exact UTF-8 to be sealed (`EILSEQ` otherwise) |
+| Key material leaks or is replaced through the adapter | Opaque `SymmetricKey` through the existing `WrappingKeyStore`/`RetainedKey` seams; create-only; no export, byte comparison or deletion | Real `KeychainKey` was not instantiated; in-memory backends only |
 
 ## Isolated catalogue transaction-core checkpoint — 2026-10-13
 

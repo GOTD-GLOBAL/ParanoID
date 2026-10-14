@@ -8,6 +8,17 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS catalogue Apple adapter (component proposal)
+
+- Add `CatalogueAppleFileIO` and `CatalogueAppleCryptography`: no-follow
+  inspection, create-only writes, bounded descriptor reads, the shipped
+  Data Protection/backup/`F_FULLFSYNC`/`rename` steps and raw AES-GCM opening of
+  the existing version-1 framing behind the catalogue transaction seams.
+- Move the four staged native acceptance cases into the active test target and
+  add twenty-one native-seam cases; all pass on the build Mac after a genuine
+  runtime RED against stub adapters. No app, Keychain, migration, owner or realm
+  store, recovery, login or live behaviour changes.
+
 ### iOS catalogue transaction core (partial proposal)
 
 - Add explicit fresh/retained catalogue transaction orchestration and failure

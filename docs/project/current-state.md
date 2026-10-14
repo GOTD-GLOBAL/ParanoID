@@ -1,11 +1,30 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-13
-last_reviewed_scope: exercised catalogue transaction core and verified base Mac receipt; Apple adapter implementation/native checks and owner/realm login remain separate
+last_reviewed: 2026-10-14
+last_reviewed_scope: Apple catalogue adapter implemented and natively tested on the build Mac (component proposal); durable store adoption, owner/realm login and phone acceptance remain separate
 ---
 
 # Current project state
+
+## Apple catalogue adapter on the build Mac — 2026-10-14
+
+The adapter the transaction-core checkpoint left open is implemented on the
+branch `feat/ios-catalogue-apple-adapter-20261013` from `a19a980`:
+`CatalogueAppleFileIO` and `CatalogueAppleCryptography` in
+`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/CatalogueAppleAdapters.swift`.
+The four staged native cases moved into the active test target and passed on
+the Mac after a genuine runtime RED against stub adapters; twenty-one further
+native-seam cases (real temporary roots, real CryptoKit, four labelled
+fixture-only POSIX fault injections) pass, and two mutation probes confirmed
+they fail when the `EINTR` retry or the growth guard is removed. The
+[adapter receipt](evidence/ios-identity-v3-20261013/catalogue-apple-adapter.md)
+records commands, snapshot hashes, the full-package count, notices and the
+unsigned iOS build. `CatalogueStore`, the codec, the legacy stores, the package
+manifest, pins, app, Rust bridge and all other components are unchanged.
+This is a component proposal for coordinator review and feature-branch
+integration: no real Keychain, iOS Data Protection execution, restart, owner or
+realm store, recovery, login, app startup, merge, install or live action.
 
 ## Catalogue transaction-core checkpoint — 2026-10-13
 
