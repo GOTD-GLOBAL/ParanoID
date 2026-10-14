@@ -171,25 +171,51 @@ struct OwnerAppleFileIO: OwnerFileIO {
     func rename(_ source: URL, to destination: URL) throws { try inner.rename(source, to: destination) }
     func removeIntent(_ url: URL) throws { try inner.removeIntent(url) }
 
-    /// The bounded catalogue read. On iOS a `.complete`-protected file that the
-    /// kernel refuses while the device is locked fails `open(2)` with `EPERM`;
-    /// that precise condition is reported as `OwnerBackendLock.locked` so the
-    /// coordinator may retry a read-only open later. `EACCES` and every other
-    /// error stay failures. The host has no Data Protection, so no mapping.
+    /// The bounded catalogue read, with exactly one classified exception. A
+    /// `.complete`-protected owner file that the kernel refuses while protected
+    /// data is unavailable fails `open(2)` with `EPERM`; that is reported as
+    /// `OwnerBackendLock.locked`, so the coordinator may retry a read-only open
+    /// after unlock, only when all of the following hold:
+    ///
+    /// 1. the failure came from the `open(2)` stage — not from inspection, not
+    ///    from `fstat` or the descriptor read;
+    /// 2. the path is the owner state file `owner/state.enc` of the leased
+    ///    root — the catalogue (messaging class) and every other path freeze;
+    /// 3. `errno` is `EPERM` — `EACCES` and anything else are failures;
+    /// 4. the platform reports protected data unavailable at that moment
+    ///    (`protectedDataAvailable()` is `false`) — positive evidence, sampled
+    ///    after the failure; the error code alone is never that evidence.
+    ///
+    /// Everything else propagates as the ordinary adapter failure and the store
+    /// freezes on it. Without a protected-data signal nothing is ever a lock.
     func read(_ url: URL, maximumBytes: Int) throws -> Data {
-        do { return try inner.read(url, maximumBytes: maximumBytes) }
-        catch let error as CatalogueAppleAdapterError {
-            #if os(iOS)
-            if error.operation == .read, error.code == Int(EPERM) { throw OwnerBackendLock.locked }
-            #endif
+        let inspected = try inner.inspectRegular(url, maximumBytes: maximumBytes)
+        let descriptor: Int32
+        do {
+            descriptor = try inner.openRegular(url, inspected: inspected)
+        } catch let error as CatalogueAppleAdapterError
+            where error.operation == .read && error.code == Int(EPERM) && Self.isOwnerStateFile(url) {
+            if !protectedDataAvailable() { throw OwnerBackendLock.locked }
             throw error
         }
+        defer { _ = syscalls.close(descriptor) }
+        return try inner.readBounded(descriptor, url: url, inspected: inspected, maximumBytes: maximumBytes)
+    }
+
+    /// The owner store's one readable file, by the fixed layout of the format
+    /// contract (§5): `<root>/owner/state.enc`. Candidates, intents and the
+    /// catalogue are never classified.
+    static func isOwnerStateFile(_ url: URL) -> Bool {
+        let standardized = url.standardizedFileURL
+        return standardized.lastPathComponent == "state.enc"
+            && standardized.deletingLastPathComponent().lastPathComponent == "owner"
     }
 
     /// `mkdir(2)` with mode 0700: the final component is never followed, so an
     /// existing link, file or directory of any kind is refused (`EEXIST`) and
     /// left untouched. The new directory is then opened `O_DIRECTORY|O_NOFOLLOW`
-    /// and its mode pinned with `fchmod` in case the umask widened it.
+    /// and its mode confirmed, pinning it with `fchmod` if it differs from 0700
+    /// (a umask only ever removes bits; the check is defensive, not a widening).
     func createOwnerDirectory(_ url: URL) throws {
         let (made, code) = url.withUnsafeFileSystemRepresentation { path -> (Int32, Int32) in
             guard let path else { return (-1, EINVAL) }

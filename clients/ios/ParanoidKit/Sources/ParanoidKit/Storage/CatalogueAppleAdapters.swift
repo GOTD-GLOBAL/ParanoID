@@ -191,13 +191,23 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
 
     /// Inspect without following, require a regular file, open `O_NOFOLLOW`,
     /// confirm the opened inode is the inspected one, then read through the
-    /// descriptor into a buffer of at most `maximumBytes + 1` bytes. A file
-    /// that is larger, or that grows past the limit while being read, is
-    /// refused; nothing is decoded on the way.
+    /// descriptor into a buffer of the inspected size plus one byte. A file
+    /// that is larger, or that grows while being read, is refused; nothing is
+    /// decoded on the way. The three stages are separate internal steps so the
+    /// owner adapter can classify a failure by the exact stage it came from.
     public func read(_ url: URL, maximumBytes: Int) throws -> Data {
-        // The buffer below needs room for one byte past the limit, so the
-        // limit itself must leave that room (follow-up of the first receipt:
-        // an unchecked `maximumBytes + 1` trapped on `Int.max`).
+        let inspected = try inspectRegular(url, maximumBytes: maximumBytes)
+        let descriptor = try openRegular(url, inspected: inspected)
+        defer { _ = syscalls.close(descriptor) }
+        return try readBounded(descriptor, url: url, inspected: inspected, maximumBytes: maximumBytes)
+    }
+
+    /// Stage 1: no-follow inspection. The limit is validated first because the
+    /// buffer below needs room for one byte past it (follow-up of the first
+    /// receipt: an unchecked `maximumBytes + 1` trapped on `Int.max`). Only a
+    /// regular file may be read; a FIFO is refused here, before any `open(2)`
+    /// could block on it.
+    func inspectRegular(_ url: URL, maximumBytes: Int) throws -> stat {
         guard maximumBytes >= 0, maximumBytes < Int.max else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EINVAL), reason: "read limit out of range")
         }
@@ -207,23 +217,40 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
         guard Self.kind(of: inspected) == .regularFile else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "not a regular file")
         }
+        return inspected
+    }
+
+    /// Stage 2: `open(O_RDONLY|O_NOFOLLOW)` of the inspected inode. The error of
+    /// a refused open carries the `errno` of that call and nothing else; the
+    /// descriptor is returned open and belongs to the caller.
+    func openRegular(_ url: URL, inspected: stat) throws -> Int32 {
         let descriptor = try openDescriptor(url, flags: O_RDONLY | O_NOFOLLOW | O_CLOEXEC, mode: 0, operation: .read)
-        defer { _ = syscalls.close(descriptor) }
+        var opened = stat()
+        guard syscalls.fstat(descriptor, &opened) == 0 else {
+            let code = errno
+            _ = syscalls.close(descriptor)
+            throw CatalogueAppleAdapterError(.read, url, errno: code)
+        }
+        guard Self.kind(of: opened) == .regularFile,
+              opened.st_dev == inspected.st_dev, opened.st_ino == inspected.st_ino else {
+            _ = syscalls.close(descriptor)
+            throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
+        }
+        return descriptor
+    }
+
+    /// Stage 3: bounded descriptor read. Allocate for the inspected size plus
+    /// one byte, never for the whole budget: a 1 KiB file under a 9 MiB limit
+    /// costs 1 KiB + 1. Filling the buffer means the inode held more than it
+    /// reported, which is refused whether or not the total still fits the limit.
+    func readBounded(_ descriptor: Int32, url: URL, inspected: stat, maximumBytes: Int) throws -> Data {
         var opened = stat()
         guard syscalls.fstat(descriptor, &opened) == 0 else {
             throw CatalogueAppleAdapterError(.read, url, errno: errno)
         }
-        guard Self.kind(of: opened) == .regularFile,
-              opened.st_dev == inspected.st_dev, opened.st_ino == inspected.st_ino else {
-            throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
-        }
         guard opened.st_size >= 0, opened.st_size <= Int64(maximumBytes) else {
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFBIG), reason: "stored bytes above the read limit")
         }
-        // Allocate for the inspected size plus one byte, never for the whole
-        // budget: a 1 KiB file under a 9 MiB limit costs 1 KiB + 1. Filling the
-        // buffer means the inode held more than it reported, which is refused
-        // below whether or not the total still fits the limit.
         let capacity = Int(opened.st_size) + 1
         var buffer = Data(count: capacity)
         var total = 0
