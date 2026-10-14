@@ -230,25 +230,27 @@ public struct CatalogueAppleFileIO: CatalogueFileIO {
     }
 
     /// Stage 2b: the opened descriptor must be a regular file and the very
-    /// inode that was inspected. On failure the descriptor is closed here.
+    /// inode that was inspected. The descriptor stays the caller's: this
+    /// function never closes it, so a caller that already deferred its close
+    /// closes exactly once.
     func confirmOpened(_ descriptor: Int32, url: URL, inspected: stat) throws {
         var opened = stat()
         guard syscalls.fstat(descriptor, &opened) == 0 else {
-            let code = errno
-            _ = syscalls.close(descriptor)
-            throw CatalogueAppleAdapterError(.read, url, errno: code)
+            throw CatalogueAppleAdapterError(.read, url, errno: errno)
         }
         guard Self.kind(of: opened) == .regularFile,
               opened.st_dev == inspected.st_dev, opened.st_ino == inspected.st_ino else {
-            _ = syscalls.close(descriptor)
             throw CatalogueAppleAdapterError(.read, url, code: Int(EFTYPE), reason: "inode changed between inspection and open")
         }
     }
 
     /// Stages 2 and 2b together, for callers that need no stage distinction.
+    /// Returns the descriptor only on success; on a failed confirmation it is
+    /// closed here, once.
     func openRegular(_ url: URL, inspected: stat) throws -> Int32 {
         let descriptor = try openOnly(url)
-        try confirmOpened(descriptor, url: url, inspected: inspected)
+        do { try confirmOpened(descriptor, url: url, inspected: inspected) }
+        catch { _ = syscalls.close(descriptor); throw error }
         return descriptor
     }
 
