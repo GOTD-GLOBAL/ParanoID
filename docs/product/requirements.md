@@ -13,17 +13,20 @@ Sergey Maltsev confirmed the iOS identity-v3 direction and requested both
 in one installation, not merely an either/or choice. This brings
 REQ-MULTI-001 into the iOS workstream alongside REQ-CLIENT-001 and
 REQ-ID-002/003. [RFC-0030](../rfcs/0030-ios-identity-v3.md#owner-direction-and-scope-expansion--2026-10-12)
-records the exact Telegram reply, its missing permanent approval provenance
-and the original single-realm gap. The
-[concurrent-realm design candidate](../clients/ios/concurrent-realms-design.md)
-now proposes its replacement and MR-01..16 acceptance; all execution remains
-NOT RUN, and technical disposition is pending.
+preserves the exact Telegram reply and its historical missing provenance.
+Human `martadvix-web` [directly confirmed the bounded source/local-test scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+on 2026-10-14 in the context of the [exact request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785).
+The [concurrent-realm design candidate](../clients/ios/concurrent-realms-design.md)
+has technical-basis agreement and [D87 preflight disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187);
+remaining exact contracts/ADR acceptance and full MR-01..16 execution stay open.
+No working concurrent application is claimed by these records.
 
 This is product input, not implemented multi-server support, an accepted
 identity/storage architecture, server federation or operational authorization.
 The earlier first-slice and two-OPPO exclusions below remain historical scope,
-not an exclusion of this new iOS direction. Independent review, exact-scope
-alpha approval and technical acceptance remain separate.
+not an exclusion of this new iOS direction. The bounded private alpha source
+scope is recorded; independent review, unchosen technical decisions, formal
+acceptance and every live/phone operation remain separate.
 
 ## Fresh Devnet scope correction — 2026-09-21
 
@@ -66,7 +69,7 @@ are complete.
 | REQ-SERVER-002 | Support server-selection/admission invitations by QR or link, distinct from verified contact pairing; server trust and admission remain explicit. | Confirmed future product direction; design unimplemented |
 | REQ-CLIENT-002 | When a server invite opens without the app, guide the user to Google Play/App Store and back to the invitation after installation; provide a reopen-original-invite fallback. | Confirmed future product direction; platform behavior unverified |
 | REQ-CLIENT-003 | Provide a user-triggered in-app update button to download a verified same-signer newer APK and invoke the native Android installer without erasing application identity or data. | Confirmed user direction; implementation/review pending |
-| REQ-MULTI-001 | A user must be able to connect to or participate through more than one server without creating an incoherent identity model. | iOS concurrent use of both named v3 servers requested 2026-10-12; RFC-0030 records product input, permanent evidence and technical design pending |
+| REQ-MULTI-001 | A user must be able to connect to or participate through more than one server without creating an incoherent identity model. | iOS concurrent use requested 2026-10-12; direct bounded source/local-test confirmation recorded 2026-10-14; remaining design/ADR/runtime gates open |
 | REQ-EXT-001 | The platform must support modular extensions with explicit permissions and isolation. | Confirmed direction |
 | REQ-ENT-001 | The commercial platform must support configurable enterprise messaging and CRM workflows. | Confirmed direction |
 | REQ-AI-001 | AI capabilities must be optional, permissioned, and capable of using self-hosted inference in future deployments. | Draft |

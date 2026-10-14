@@ -142,6 +142,12 @@ runtime/review gates. No relay deployment has occurred.
 
 ## iOS client candidate
 
+The identity-v3 workstream is proposed in [RFC-0030](rfcs/0030-ios-identity-v3.md).
+Its [realm-store preflight](clients/ios/realm-store-preflight.md) is a draft
+source-grounded next-slice contract/test matrix after the isolated owner
+component, not implemented realm storage, app login or new scope approval.
+Current results and remaining gates are recorded in [current state](project/current-state.md).
+
 [RFC-0021](rfcs/0021-ios-client.md) and [proposed ADR-0014](decisions/0014-ios-client.md)
 propose a native iOS client on the unchanged shared core for REQ-CLIENT-001.
 The [iOS component documentation](clients/ios/README.md) records the intended

@@ -8,6 +8,15 @@ public contract is declared.
 
 ## [Unreleased]
 
+### iOS source-scope and realm disposition records (documentation)
+
+- Record the [human bounded source/local-test confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) and
+  [human D87-01–07 technical disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187); preserve independent
+  review, ADR acceptance and all separate live/merge/release boundaries.
+- Mark non-signing full-state validation as a critical-path dependency of realm
+  reopen, with RFC drafting parallel to namespace/readback design. These are
+  documentation workstreams, not an implemented validator or realm store.
+
 ### iOS owner Apple adapters (component proposal)
 
 - Add `OwnerAppleFileIO`, `OwnerAppleCryptography` and the owner-policy

@@ -2,10 +2,71 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: PR85 integrated into the owner-store feature with unchanged reviewed source; new realm/login implementation and product-scope provenance remain gated
+last_reviewed_scope: verified bounded source-scope and D87 disposition records; parallel non-signing-validation RFC and namespace drafting; no implementation or ADR acceptance
 ---
 
 # Current project state
+
+## Verified source scope and realm disposition — 2026-10-14
+
+Human `martadvix-web` [confirmed the bounded source/local-test scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+with “Подтверждаю” after the [exact scope request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785). This closes the
+missing authenticated #73 evidence, not the PR itself or formal ADR acceptance.
+Human `Cooldom66671` [published D87-01–07 on exact head c66fcbc](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187), accepting
+its qualifications under the existing technical delegation. The earlier relay-
+only/pending-evidence statements in historical checkpoints below describe their
+then-current state, not a requirement to ask the same directions again.
+
+These records permit only their bounded private non-sensitive source/local-test
+scope; main merge, release, server/DB/RPC/login/registration/replacement and phone/
+Apple/TestFlight operations retain separate authorization. New shared-core/API
+changes still require their separately scoped RFC → ADR and owner approvals.
+No implementation or new native/memory evidence is supplied by these comments.
+
+Two documentation streams are now active in isolated worktrees: D87-07's pure
+full-state-validation RFC and the realm namespace/readback contract. The former
+is a critical-path dependency of verified-B admission and the restart-keeps-login
+milestone. Drafting both in parallel does not close realm, app or native gates.
+
+## Realm-store preflight proposal — 2026-10-14
+
+The [realm-store appendix](../clients/ios/realm-store-preflight.md), supporting
+RFC-0030, is now drafted against the integrated owner feature `79d6c8d`.
+It separates source facts from proposed successor-writer/schema/byte limits,
+lease handoff, allocation/freeze rules and twelve **NOT RUN** acceptance rows.
+The old owner codec/writer intentionally rejects allocated realms/artifacts;
+the existing shared Apple box is limited to 8 MiB whole plaintext. Neither is
+silently weakened by this document, and no realm runtime code is added.
+
+The refinement specifies typed metadata/encoding/depth/byte bounds while keeping
+core bytes opaque and retained Snapshot spans verbatim. Fresh review found no
+blocking contradiction in the bounded draft. It confirmed two open contract
+questions before implementation: the v3 text requires device UUIDv4 while the
+shared credential verifier checks canonical UUID text, and existing core calls
+do not provide full arbitrary schema-3 validation without possible device-contact
+signing. These are future integration questions, not newly demonstrated owner-
+adapter or live-app defects. No shared Rust rule/API or signing exception has
+been changed; disposition and scoped review are required for any such change.
+
+The verified D87-01–07 technical disposition and source verification guide the
+appendix: preserve existing refusal APIs, add a proposed typed realm namespace
+contract, restrict escapes only in new realm metadata (never opaque core or old
+formats), define verified-B local reads and exclude owner-locked realm writes.
+Both shared-core questions select separately scoped RFC → ADR directions, not
+source permission. Actual Keychain identity/default-attribute rules and the
+non-signing full validator are still dependencies; xcodebuild-driven simulator
+peak-memory evidence has no implemented harness or result. Bounded source and
+technical-direction records now exist; formal ADR acceptance and every new
+NOT RUN gate remain separate.
+
+D1-D3 remain an application gap: legacy startup still constructs one snapshot
+store/runtime; production registry verification, realm-targeted v3 transport and
+durable login orchestration are not delivered by owner-component tests.
+The next implementation slice would be isolated realm allocation/commit/reopen,
+followed by separately reviewed adoption, runtime/transport, recovery and login.
+Implementation still requires the remaining exact contracts and independent
+review within the now-recorded #73 scope; shared-core changes retain their
+separate RFC/ADR gates. This proposal accepts no ADR and authorizes no live action.
 
 ## Owner adapter integrated into the owner-store feature — 2026-10-14
 

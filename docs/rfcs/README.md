@@ -64,8 +64,10 @@ Follow the human authority and acceptance-evidence rules in the
   in one installation, expanding the single-realm proposal (REQ-MULTI-001).
   The [concurrent-realm candidate](../clients/ios/concurrent-realms-design.md)
   proposes independent state/lanes, a shared owner and a global call arbiter,
-  with MR-01..16 acceptance. Nothing is implemented; exact-scope permanent
-  approval evidence, technical disposition and design review remain gates.
+  with MR-01..16 acceptance. The [bounded source scope](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046) and
+  [realm preflight disposition](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187) now have direct human records;
+  exact remaining contracts, independent review and ADR acceptance remain gates.
+  Isolated component receipts do not deliver the full concurrent application.
 
 - [RFC-0029: one-time sponsored invitation for nickname registration](0029-invite-sponsored-registration.md)
   (draft, written in Russian, decision deadline 2026-10-14): a single-use
