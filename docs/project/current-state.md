@@ -2,12 +2,37 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: owner-adapter source review closed on 09eac34 with native receipt for 17d8d88; documentation-only reconciliation, final-head CI and feature integration remain separate
+last_reviewed_scope: PR85 integrated into the owner-store feature with unchanged reviewed source; new realm/login implementation and product-scope provenance remain gated
 ---
 
 # Current project state
 
+## Owner adapter integrated into the owner-store feature — 2026-10-14
+
+[PR #85](https://github.com/GOTD-GLOBAL/ParanoID/pull/85) is merged into
+`feat/ios-owner-store-20261014` (PR #84), not main, by ordinary merge
+`051018254660ff86f44a7e6db7cb53a7c3a6dafb`. Its parents are the preserved
+`2ed901ddf5fd5441578392aa7a6a2380c5130108` and reviewed
+`2f786afc707c7a8159ba1d3620db55f4c416623d`; the merge tree is byte-identical to
+the reviewed head. [Scoped approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517936391)
+follows closed source/documentation review and [six successful primary checks](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#issuecomment-6168082917).
+The informational Legacy job retains its exact archived fourteen failures.
+The source-matching Mac receipt remains applicable; no new native run is implied.
+
+This is consolidation of the reviewed isolated component, not runtime adoption.
+Both realm slots remain unallocated; realm storage, production RPC verification,
+app login/recovery and retained-login-after-restart are not delivered. The next
+work is a source-grounded realm/store preflight proposal under RFC-0030, not an
+accepted new format. [PR #73's authenticated product/scope record](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153858611)
+remains open; new protected persistence/login implementation and adoption keep
+that gate. PR #84 remains open against its catalogue feature parent and has its
+own new-head CI. No main merge, deployment, phone operation, ADR acceptance or
+full MR/application acceptance follows from this integration.
+
 ## Owner-adapter corrections and source review closed — 2026-10-14
+
+**Source-review checkpoint before feature integration recorded above.** Its
+then-pending integration/CI statements describe that earlier checkpoint.
 
 Code `17d8d88871e48e6323438c98c1ae5556bea6c5ce`, with receipt head
 `09eac341a3823edd67fcb652f63de04067709408`, closes the two native P2 findings

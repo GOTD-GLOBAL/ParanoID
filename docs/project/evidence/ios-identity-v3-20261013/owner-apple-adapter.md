@@ -48,10 +48,15 @@ A direct weak-policy `createKey()` fixture negative remains a nonblocking test
 follow-up; the implementation already applies the canonical guard there.
 
 PR #86 was merged by `2694d3e48efec93579ee8363df01abbcb9ee9795` into
-`feat/ios-owner-apple-adapter-20261014`, not main. Final-head CI and integration
-into the owner-store feature remain separate. Documentation-only reconciliation
-with unchanged source/tests does not require a new Mac run. Earlier failures
-and first-run/regression distinctions below are preserved as historical evidence.
+`feat/ios-owner-apple-adapter-20261014`, not main. After scoped source/doc review
+and six successful primary checks on `2f786af`, PR #85 was integrated into the
+owner-store feature (PR #84) by `051018254660ff86f44a7e6db7cb53a7c3a6dafb`.
+The merge tree matches `2f786af` exactly and source/tests remain those of the
+Mac-tested `17d8d88`. The [integration approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/85#pullrequestreview-5517936391)
+preserves #73, ADR, runtime and live boundaries. Parent PR #84 has separate
+new-head CI; its upstream feature integration is not performed by this record.
+Documentation-only status updates need no new unchanged-source Mac run. Earlier
+failures and first-run/regression distinctions remain historical evidence.
 
 ## What the adapters do
 
@@ -338,8 +343,8 @@ other package test passed in every run.
   no anti-rollback claim. The eight-entry ledger cap stays a component proposal.
 - `fullSync` reuses the shipped `open(O_RDONLY)` without `O_NOFOLLOW` on paths
   the transaction itself just inspected or created (existing contract).
-- Scoped source review is closed as linked above; final-head CI, integration
-  into `feat/ios-owner-store-20261014`, #73 authenticated scope evidence, ADR
-  acceptance, MR gates and every live action remain separate. Only PR #86 was
-  merged into this adapter branch; no #84/main merge, installation or deployment
-  is implied.
+- Scoped source review, PR #85's primary CI and its integration into
+  `feat/ios-owner-store-20261014` are recorded above. Parent PR #84 remains open;
+  its new-head CI/upstream integration, #73 authenticated scope evidence, ADR
+  acceptance, MR gates and every live action remain separate. No main merge,
+  application adoption, installation or deployment is implied.
