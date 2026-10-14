@@ -1,0 +1,292 @@
+import Foundation
+
+enum OwnerStoreError: Error, Equatable {
+    case busy, authorityRequired, cancelled, locked, invalidDirectory, artifactsPresent, continuity
+    case contextMismatch, invalidFormat, unsupportedVersion, limitExceeded, invalidTransition
+    case bindingMismatch, authenticationFailed, keyMismatch, readbackMismatch, backendFailure, broken
+}
+enum OwnerProtection { case ownerComplete }
+protocol OwnerFileIO: CatalogueFileIO {
+    /// Create-only, no-follow, mode 0700. Never compensate by deleting evidence.
+    func createOwnerDirectory(_ url: URL) throws
+    /// Set AND read back complete protection plus backup exclusion on this inode.
+    func protectOwnerAndExclude(_ url: URL, policy: OwnerProtection) throws
+}
+protocol OwnerCryptography: CatalogueCryptography {
+    // Conformance promises WhenUnlockedThisDeviceOnly, nonsynchronizable keys.
+    // Existing messaging KeychainKey is NOT a conformance simply by account change.
+}
+struct OwnerRetained: Equatable { let catalogue: AllocatedCatalogueState; let owner: OwnerEnvelopeV1? }
+final class OwnerOperation {
+    fileprivate let deadline: ContinuousClock.Instant
+    fileprivate init(_ deadline: ContinuousClock.Instant) { self.deadline = deadline }
+}
+final class OwnerCreationPermit {
+    fileprivate let operation: OwnerOperation
+    fileprivate let revision: UInt64
+    fileprivate var consumed = false
+    fileprivate init(_ operation: OwnerOperation, revision: UInt64) { self.operation = operation; self.revision = revision }
+}
+
+/// Isolated component, no application defaults or production entropy/verifier.
+/// MainActor confines this small coordinator; no app/realm lock is acquired.
+@MainActor final class OwnerAllocationCoordinator<C: CatalogueCryptography, O: OwnerCryptography> {
+    private let directory: URL
+    private let context: IdentityCatalogue
+    private let files: any OwnerFileIO
+    private let catalogueCrypto: C
+    private let ownerCrypto: O
+    private let entropy: () throws -> Data
+    private let core: OwnerMaterialCore
+    private var current: OwnerRetained?
+    private var catalogueKey: C.Key?
+    private var ownerKey: O.Key?
+    private var active: OwnerOperation?
+    private var revision: UInt64 = 0
+    private var entered = false
+    private var writing = false
+    private(set) var isBroken = false
+
+    init(directory: URL, context: IdentityCatalogue, files: any OwnerFileIO, catalogueCrypto: C,
+         ownerCrypto: O, entropy: @escaping () throws -> Data, core: OwnerMaterialCore = .init()) {
+        self.directory = directory; self.context = context; self.files = files
+        self.catalogueCrypto = catalogueCrypto; self.ownerCrypto = ownerCrypto
+        self.entropy = entropy; self.core = core
+    }
+    private func path(_ s: String) -> URL { directory.appendingPathComponent(s) }
+    private func checked<T>(_ body: () throws -> T) throws -> T {
+        guard !isBroken else { throw OwnerStoreError.broken }
+        guard !entered else { throw OwnerStoreError.busy }
+        entered = true; defer { entered = false }
+        do { return try body() }
+        catch {
+            let e = (error as? OwnerStoreError) ?? .backendFailure
+            if writing || [.continuity, .contextMismatch, .artifactsPresent, .keyMismatch,
+                           .authenticationFailed, .readbackMismatch, .backendFailure, .invalidDirectory].contains(e) { isBroken = true }
+            active = nil
+            throw e
+        }
+    }
+    private func require(_ op: OwnerOperation) throws {
+        guard active === op else { throw OwnerStoreError.authorityRequired }
+        guard ContinuousClock.now < op.deadline, !Task.isCancelled else { throw OwnerStoreError.cancelled }
+    }
+    func begin(deadline: ContinuousClock.Instant) throws -> OwnerOperation {
+        try checked {
+            guard active == nil else { throw OwnerStoreError.busy }
+            guard ContinuousClock.now < deadline else { throw OwnerStoreError.cancelled }
+            let op = OwnerOperation(deadline); active = op; return op
+        }
+    }
+    private func commitOwner(_ next: OwnerEnvelopeV1, catalogue: AllocatedCatalogueState) throws {
+        guard let key = ownerKey else { throw OwnerStoreError.continuity }
+        ownerKey = try replace(OwnerEnvelopeCodec.encode(next, core: core), owner: true, crypto: ownerCrypto, key: key)
+        current = .init(catalogue: catalogue, owner: next)
+    }
+    func reserveSend(_ operation: OwnerOperation, attemptID: String) throws -> OwnerDispatchTicket {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard var next = old.owner, next.phase == "registrationPending",
+                  let index = next.attempts.firstIndex(where: { $0.intent.attemptID == attemptID }),
+                  next.attempts[index].stage == "assembled", next.attempts[index].resolution == "unresolved",
+                  let transaction = next.attempts[index].transaction else { throw OwnerStoreError.invalidTransition }
+            guard next.attempts[index].sends < 3 else { throw OwnerStoreError.limitExceeded }
+            let bytes = try OwnerScalars.wire(transaction)
+            next.attempts[index].sends += 1
+            try commitOwner(next, catalogue: old.catalogue)
+            return OwnerDispatchTicket.mint(attemptID: attemptID, transaction: bytes)
+        }
+    }
+    func recordAssembled(_ operation: OwnerOperation, attemptID: String, signer: any IsolatedTrustedOwnerAssembler) throws -> OwnerAttempt {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard var next = old.owner, next.phase == "registrationPending", next.wordsBackupConfirmed,
+                  let index = next.attempts.firstIndex(where: { $0.intent.attemptID == attemptID }),
+                  next.attempts[index].stage == "ownerSigned", next.attempts[index].resolution == "unresolved" else { throw OwnerStoreError.invalidTransition }
+            let request = OwnerAssemblyRequest(correlation: UUID(), material: next, attempt: next.attempts[index])
+            let evidence = try signer.assembled(for: request)
+            try require(operation)
+            guard evidence.request == request else { throw OwnerStoreError.authorityRequired }
+            next.attempts[index].stage = "assembled"
+            next.attempts[index].transaction = evidence.transaction; next.attempts[index].signature = evidence.signature
+            try commitOwner(next, catalogue: old.catalogue)
+            return next.attempts[index]
+        }
+    }
+    func recordOwnerSigned(_ operation: OwnerOperation, intent: OwnerAttemptIntent, signer: any IsolatedTrustedOwnerSigner) throws -> OwnerAttempt {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard var next = old.owner, next.phase == "unregistered", next.wordsBackupConfirmed, next.attempts.isEmpty else { throw OwnerStoreError.invalidTransition }
+            try intent.validate(context: context, owner: next.owner)
+            let request = OwnerSigningRequest(correlation: UUID(), material: next, intent: intent)
+            let evidence = try signer.ownerSigned(for: request)
+            try require(operation)
+            guard evidence.request == request else { throw OwnerStoreError.authorityRequired }
+            let attempt = OwnerAttempt(intent: intent, message: evidence.message, ownerSignature: evidence.ownerSignature)
+            next.attempts.append(attempt); next.phase = "registrationPending"
+            try commitOwner(next, catalogue: old.catalogue)
+            return attempt
+        }
+    }
+    func confirmWordsBackup(_ operation: OwnerOperation) throws {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard var next = old.owner else { throw OwnerStoreError.invalidTransition }
+            if next.wordsBackupConfirmed { return }
+            next.wordsBackupConfirmed = true
+            try commitOwner(next, catalogue: old.catalogue)
+        }
+    }
+    func finish(_ operation: OwnerOperation) throws { try checked { try require(operation); active = nil } }
+    private func frame(_ bytes: Data) throws {
+        guard (29...65_565).contains(bytes.count) else { throw OwnerStoreError.limitExceeded }
+    }
+    private func readCatalogue() throws -> AllocatedCatalogueState {
+        guard directory.isFileURL, try files.inspect(directory) == .directory else { throw OwnerStoreError.invalidDirectory }
+        for s in ["text-state.enc.tmp", "catalogue.write.pending", "realms", "realms/fi", "realms/ru"] + ["realms/fi", "realms/ru"].flatMap({ d in ["state.enc", "state.enc.tmp", "write.pending"].map { d + "/" + $0 } }) {
+            guard try files.inspect(path(s)) == .absent else { throw OwnerStoreError.artifactsPresent }
+        }
+        for slot in [CatalogueForeignStore.fi, .ru] { guard try !catalogueCrypto.foreignKeyExists(slot) else { throw OwnerStoreError.artifactsPresent } }
+        guard try files.inspect(path("text-state.enc")) == .regularFile,
+              let key = try catalogueCrypto.loadKey() else { throw OwnerStoreError.continuity }
+        if let catalogueKey, catalogueKey != key { throw OwnerStoreError.keyMismatch }
+        let bytes = try files.read(path("text-state.enc"), maximumBytes: 65_565); try frame(bytes)
+        let value = try AllocatedCatalogueCodec.decode(catalogueCrypto.open(bytes, with: key), context: context)
+        catalogueKey = key
+        return value
+    }
+    private func readOwner(_ catalogue: AllocatedCatalogueState, permitMissing: Bool = false) throws -> OwnerEnvelopeV1? {
+        let dir = try files.inspect(path("owner"))
+        guard dir == .absent || dir == .directory else { throw OwnerStoreError.continuity }
+        let file = try files.inspect(path("owner/state.enc"))
+        for s in ["owner/state.enc.tmp", "owner/write.pending"] { guard try files.inspect(path(s)) == .absent else { throw OwnerStoreError.artifactsPresent } }
+        let key = try ownerCrypto.loadKey()
+        let foreignOwner = try catalogueCrypto.foreignKeyExists(.owner)
+        guard foreignOwner == (key != nil) else { throw OwnerStoreError.keyMismatch }
+        if !catalogue.allocated || permitMissing {
+            guard dir == .absent, file == .absent, key == nil else { throw OwnerStoreError.artifactsPresent }
+            return nil
+        }
+        guard dir == .directory, file == .regularFile, let key else { throw OwnerStoreError.continuity }
+        if let ownerKey, ownerKey != key { throw OwnerStoreError.keyMismatch }
+        let bytes = try files.read(path("owner/state.enc"), maximumBytes: 65_565); try frame(bytes)
+        let value = try OwnerEnvelopeCodec.decode(ownerCrypto.open(bytes, with: key), context: context, core: core)
+        if let binding = catalogue.binding {
+            guard value.phase == "registryConfirmed", value.binding == binding else { throw OwnerStoreError.bindingMismatch }
+        }
+        ownerKey = key; return value
+    }
+    private func refresh(permitMissing: Bool = false) throws -> OwnerRetained {
+        let catalogue = try readCatalogue()
+        let snapshot = try OwnerRetained(catalogue: catalogue, owner: readOwner(catalogue, permitMissing: permitMissing))
+        if let current, current != snapshot { throw OwnerStoreError.continuity }
+        return snapshot
+    }
+    func loadRetained() throws -> OwnerRetained {
+        try checked {
+            guard active == nil else { throw OwnerStoreError.busy }
+            let value = try refresh(); current = value; return value
+        }
+    }
+    /// No state is adopted until the second parent sync returns. A thrown effect
+    /// leaves every key/temp/intent in place and latches this writer broken.
+    private func replace<K: CatalogueCryptography>(_ plaintext: Data, owner: Bool, crypto: K, key retained: K.Key?) throws -> K.Key {
+        guard plaintext.count <= 65_536 else { throw OwnerStoreError.limitExceeded }
+        writing = true
+        let parent = owner ? path("owner") : directory
+        if owner && retained == nil {
+            try files.createOwnerDirectory(parent)
+            try files.protectOwnerAndExclude(parent, policy: .ownerComplete)
+            try files.fullSync(parent, directory: true); try files.fullSync(directory, directory: true)
+        }
+        let intent = owner ? path("owner/write.pending") : path("catalogue.write.pending")
+        let temporary = owner ? path("owner/state.enc.tmp") : path("text-state.enc.tmp")
+        let destination = owner ? path("owner/state.enc") : path("text-state.enc")
+        try files.writeExclusive(Data((owner ? "owner-write-v1\n" : "catalogue-write-v1\n").utf8), to: intent)
+        if owner { try files.protectOwnerAndExclude(intent, policy: .ownerComplete) } else { try files.protectAndExclude(intent) }
+        try files.fullSync(intent, directory: false); try files.fullSync(parent, directory: true)
+        let key = try retained ?? crypto.createKey()
+        guard try crypto.loadKey() == key else { throw OwnerStoreError.keyMismatch }
+        let sealed = try crypto.seal(plaintext, with: key); try frame(sealed)
+        try files.writeExclusive(sealed, to: temporary)
+        if owner { try files.protectOwnerAndExclude(temporary, policy: .ownerComplete) } else { try files.protectAndExclude(temporary) }
+        try files.fullSync(temporary, directory: false); try files.rename(temporary, to: destination)
+        guard try files.read(destination, maximumBytes: 65_565) == sealed else { throw OwnerStoreError.readbackMismatch }
+        try files.fullSync(parent, directory: true); try files.removeIntent(intent); try files.fullSync(parent, directory: true)
+        writing = false; revision += 1
+        return key
+    }
+    func recoverVerified(_ operation: OwnerOperation, entropy: String, verifier: any IsolatedTrustedOwnerVerifier) async throws -> OwnerRetained {
+        let request = try checked {
+            try require(operation)
+            let old = try refresh()
+            guard !old.catalogue.allocated else { throw OwnerStoreError.invalidTransition }
+            current = old
+            return try OwnerBindingRequest(correlation: UUID(), material: core.identity(entropy: entropy, context: context))
+        }
+        let evidence: OwnerBindingEvidence?
+        do { evidence = try await verifier.binding(for: request) }
+        catch { active = nil; throw OwnerStoreError.backendFailure }
+        let value = try checked {
+            try require(operation)
+            guard let evidence, evidence.request == request else { throw OwnerStoreError.authorityRequired }
+            try core.validate(evidence.binding, material: request.material)
+            var value = request.material; value.binding = evidence.binding; value.phase = "registryConfirmed"
+            return value
+        }
+        let permit = try reserveNewOwner(operation)
+        try checked {
+            try require(operation)
+            guard !permit.consumed, permit.revision == revision else { throw OwnerStoreError.authorityRequired }
+            permit.consumed = true
+            let old = try refresh(permitMissing: true)
+            ownerKey = try replace(OwnerEnvelopeCodec.encode(value, core: core), owner: true, crypto: ownerCrypto, key: Optional<O.Key>.none)
+            current = .init(catalogue: old.catalogue, owner: value)
+        }
+        return try publishConfirmedBinding(operation)
+    }
+    func publishConfirmedBinding(_ operation: OwnerOperation) throws -> OwnerRetained {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard let owner = old.owner, owner.phase == "registryConfirmed", let binding = owner.binding else { throw OwnerStoreError.invalidTransition }
+            if old.catalogue.binding == binding { return old }
+            guard old.catalogue.binding == nil, let key = catalogueKey else { throw OwnerStoreError.bindingMismatch }
+            var next = old.catalogue; next.binding = binding
+            catalogueKey = try replace(AllocatedCatalogueCodec.encode(next), owner: false, crypto: catalogueCrypto, key: key)
+            let result = OwnerRetained(catalogue: next, owner: owner); current = result; return result
+        }
+    }
+    func reserveNewOwner(_ operation: OwnerOperation) throws -> OwnerCreationPermit {
+        try checked {
+            try require(operation)
+            let old = try refresh()
+            guard !old.catalogue.allocated else { throw OwnerStoreError.invalidTransition }
+            var next = old.catalogue; next.allocated = true
+            guard let key = catalogueKey else { throw OwnerStoreError.continuity }
+            catalogueKey = try replace(AllocatedCatalogueCodec.encode(next), owner: false, crypto: catalogueCrypto, key: key)
+            current = .init(catalogue: next, owner: nil)
+            return OwnerCreationPermit(operation, revision: revision)
+        }
+    }
+    func initializeNew(_ permit: OwnerCreationPermit, operation: OwnerOperation) throws -> OwnerEnvelopeV1 {
+        try checked {
+            try require(operation)
+            guard permit.operation === operation, !permit.consumed, permit.revision == revision else { throw OwnerStoreError.authorityRequired }
+            permit.consumed = true
+            let raw = try entropy()
+            guard raw.count == 16 else { throw OwnerStoreError.invalidFormat }
+            let value = try core.identity(entropy: raw.base64EncodedString(), context: context)
+            let plaintext = try OwnerEnvelopeCodec.encode(value, core: core)
+            let old = try refresh(permitMissing: true)
+            guard old.catalogue.allocated else { throw OwnerStoreError.invalidTransition }
+            ownerKey = try replace(plaintext, owner: true, crypto: ownerCrypto, key: Optional<O.Key>.none)
+            current = .init(catalogue: old.catalogue, owner: value)
+            return value
+        }
+    }
+}
