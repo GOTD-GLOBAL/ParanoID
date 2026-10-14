@@ -1,0 +1,126 @@
+Owner external-wait regression: test-only watchdog (2026-10-14)
+
+Scope / provenance
+- Base PR #85 head: 1d53a84d0027459cf3ab13692ff41a27412d6568.
+  Native code head: b9854d4bd179051f2a54a2e74aa3dc44af3e03d8.
+- Only OwnerStoreRegressionTests.swift and this receipt belong to this fix.
+  No coordinator, adapters, Keychain, codecs, Rust, package, pins, app or CI change.
+- Proposed owner-store-format section 4: finite monotonic deadline; caller and
+  authority finish independently of an uncooperative verifier; late evidence has
+  no effects. REQ-ID-002/003/004/006, REQ-CLIENT-001, REQ-MULTI-001, REQ-SEC-001;
+  RFC-0030 / draft ADR-0017 remain proposals. No #73/MR/adoption gate is closed.
+
+Historical native RED (Yaroslav's report, NOT execution on this Linux host)
+- https://github.com/GOTD-GLOBAL/ParanoID/pull/84#issuecomment-6164998235
+- docs/project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md, lines 156-175:
+  isolated fail/pass/fail; complete package 540 tests, 1 skip, 1 failure in 3/3
+  runs; other 538 pass. Focused 130 incl. 1 skip: fail after build, pass idle.
+  Failure: "caller must finish without waiting for verifier: deadline", old
+  OwnerStoreRegressionTests.swift:306. This history is not replaced by host GREEN.
+
+Diagnosis / single correction
+- Old test sleeps until its 1 s operation deadline + 50 ms (other controls sleep
+  250 ms), then samples a MainActor-local flag. This asserts an unspecified
+  scheduler latency, not just bounded completion. Both flag access and completion
+  are MainActor-isolated; no data race was found. Deadline cancellation failure
+  was a competing hypothesis, not assumed away. Exact Mac scheduling cause still
+  needs the native rerun; controlled host latency demonstrates the brittle oracle.
+- Replace the flag/sample with XCTestExpectation fulfilled in the caller's defer
+  and async static XCTWaiter.fulfillment, timeout 5 s. It yields the MainActor
+  and does not transfer the non-Sendable XCTestCase instance. Swift 6.3.3 strict
+  concurrency / warnings-as-errors compilation and execution pass on Linux.
+- 5 s is a TEST watchdog, not a new operation deadline or performance guarantee.
+  Deadline remains 1 s; cancel/task/close retain 30 s deadlines, so a broken
+  cancellation cannot pass by waiting for those deadlines. Success returns early.
+  GateVerifier stays held until the finite assertion, then is released even on
+  RED (also protected by defer). task.value is awaited only AFTER release.
+  All four controls, rejection of late success, unchanged backend events, zero
+  effects and valid successor checks are retained without weakening assertions.
+
+Actual portable execution
+Host: Linux x86_64, Swift 6.3.3 (swift-6.3.3-RELEASE).
+Release below means optimized Swift + the same cached DEBUG Rust static library;
+not optimized Rust, Apple adapters, native package, Keychain or phone evidence.
+
+Scratch root S=/home/codex/.hermes/profiles/paranoid/cache/scratch/owner-wait-watchdog-20261014
+Swift W=/home/codex/.hermes/profiles/paranoid/cache/scratch/swift-6.3.3-host/toolchain/usr/bin/swift
+Runner adapted from owner-parent-fix-review-1df9462-20261014/run.py, not committed.
+Explicit allowlist: original six Owner core sources; IdentityCatalogue,
+CatalogueStore, DevnetBridge, CoreBridge, JsonSpan; five test files below.
+OwnerAppleAdapters / all other Apple-only sources and native tests EXCLUDED.
+No fake SDK, repository Linux harness, dependency or production mutation.
+Each stage/receipt.json records exact command, source and compiled-input SHA-256,
+exit, elapsed time and execution-NN.log SHA-256. Non-probe inputs equal worktree
+bytes; unchanged inputs also equal base Git objects (checked programmatically).
+
+Actual commands (in order; runner prepends the absolute Swift path above):
+  python3 "$S/run.py" old-normal --repeat 10
+  python3 "$S/run.py" old-jitter --mode jitter --trace --repeat 3
+  [apply the single test-only correction]
+  python3 "$S/run.py" new-jitter --mode jitter --trace --repeat 3
+  python3 "$S/run.py" new-timeout-mutant --mode mutant --trace --repeat 3
+  python3 "$S/run.py" new-normal-debug --repeat 20
+  python3 "$S/run.py" new-full-debug --full
+  python3 "$S/run.py" new-full-release --full --configuration release
+  python3 "$S/run.py" new-normal-release --configuration release --repeat 20
+Invocation per stage:
+  "$W" test --package-path "$S/<stage>" --scratch-path "$S/<stage>/build" --configuration <debug|release> --jobs 4
+Focused runs add:
+  --filter OwnerStoreRegressionTests.testExternalWaitIsBoundedAndCancellationDoesNotDependOnVerifierCooperation
+Repeats add --skip-build. Full runs have no filter. Subprocess ceiling: 240 s;
+no run reached it. Parallel independent stages use separate build directories.
+
+Results (every focused invocation executes one XCTest method / four controls)
+- old-normal: 10/10 PASS, no native flake reproduced naturally here.
+- old-jitter RED: 3/3 exit 1, exactly one failure each, deadline assertion above.
+  SCRATCH ONLY: after the original sleep to operation.deadline, insert cancellable
+  Task.sleep(for: .milliseconds(200)) before timer completion. No authority
+  deadline changes. The old test asserts at +0.0501 s, releases its gate too early,
+  and the late worker then cancels the delayed timer. This simulates bounded timer
+  dispatch jitter; it is NOT a native Mac repro or a production-runtime patch.
+- new-jitter GREEN: same scratch coordinator hash, 3/3 exit 0, no failures;
+  timer delivery +0.2003..0.2005 s, completion observed +0.2005..0.2007 s before
+  gate release. Other controls remain passing.
+- new-timeout-mutant NEGATIVE CONTROL: SCRATCH ONLY remove the timer's
+  complete(.failure(OwnerStoreError.cancelled)); retain its original deadline
+  sleep, worker, explicit cancellation and close. 3/3 exit 1, exactly one failure
+  each: ("timedOut") is not equal to ("completed") - caller must finish without
+  waiting for verifier: deadline. The failure precedes the pre-release trace;
+  gate release then drains task.value. Test durations 5.150..5.178 s, no hang,
+  other controls and post-release assertions pass. The watchdog detects broken
+  bounded waiting instead of rescuing it through verifier cooperation.
+- new-normal-debug: 20/20 PASS, each 1/0; 1.113..1.144 s per method.
+- new-normal-release: 20/20 PASS, each 1/0; 1.107..1.224 s per method.
+- new-full-debug: 109 tests / 0 failures / 0 skips, exit 0 (43.635 s test time).
+- new-full-release: 109 tests / 0 failures / 0 skips, exit 0 (42.880 s test time).
+  Both: CatalogueStoreTests 23, DevnetBridgeTests 21, IdentityCatalogueTests 28,
+  OwnerStoreRegressionTests 22, OwnerStoreTests 15. No compiler warnings.
+
+SHA-256 correspondence (full manifests and logs in the stage receipts)
+Old regression test: 3c77ae65b4d846164208871971d362646481af70997830be818a9b9e8cff7419
+New regression test: ef3a91c16f13e079aa450d38be1adee649b0ffd01057bffd1f808b5dd8fcf855
+Unchanged coordinator: e7d87d274632247881b058f14e7b441f14098cb873fb67dd8bfa8f22cf18e87c
+Scratch jitter coordinator (both): f406ba0bd5f4f0455b42c799bdecaf323c7e84cdc401a769e4c6fa54a4c37277
+Scratch timeout mutant: cb18c21e8c5b1a1ef13d8ef2232d3b8d24408ef85da2cb9968a39b87f8f32543
+Cached debug Rust library: fb9f94b04990a6587c247921fc2e4937d4048ce7c4a3e4ede133309b95e64021
+run.py: cb92fc4ad9d622cca1856856939efb4034a11d553a50b057fa00e40251ba84f2
+New source manifest (sorted compact JSON): 0397d2eb10907386868858e361c32e41b6bc120a8f16d6c31e80caf02d616ad8
+stage/receipt.json hashes:
+old-normal fb2aa77fc284e2064d9c29798c8991ac13f45858423d0bb24c5a31beabfab1a6
+old-jitter 7c407353c3fd4f1166905f4aa231660f75bb8b5edf5884afbbc7d181c2510e11
+new-jitter 48432976347990f42f66aa2037b5d552dfc0c61bb92f4816985837e28e47171d
+new-timeout-mutant 13403e4acd35f787130a62312c13253c825633ef2a9480a0c92ab71d24afd446
+new-normal-debug c17100645ced366ba99256ab8ca8c51d1c645de5935c498a35490a68aee365af
+new-normal-release 8356fbdb69391b55b42cbe513c1f9062b421930217fd6452dcf49ebf588775c0
+new-full-debug 1f575b8c764505d28881ccf6e1cf801f01444eecf5ed2e69fb23ecbcab9607ac
+new-full-release d490650ea4ab2995854079012bba4c3f3125125430ac3c1016d1d8995b93e231
+
+Remaining gate / rollback
+Yaroslav must run focused repetitions and the complete native package on the
+exact new commit with the pinned Mac toolchain; retain all counts/skips/failures.
+No 540-test GREEN, Apple-platform compile, review closure, merge, deployment or
+live authorization is claimed here. Independent final review remains with the
+coordinator. Canonical Markdown updates belong to that integration, not this
+worker's two-file commit. Rollback reverts this test/receipt only; no stored data,
+production behavior or migration changes. Scratch instrumentation/mutants are
+excluded from repository changes; original native receipt paths are untouched.
