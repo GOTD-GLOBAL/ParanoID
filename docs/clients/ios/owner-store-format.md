@@ -352,7 +352,8 @@ adapter merely by changing its path/account. Explicit typed owner-policy/opaque
 key seams are allowed; host fixtures prove their invocations, not real Keychain
 or on-device Data Protection. Existing adapters' native receipts stay frozen.
 The Mac branch delivers these seams as `OwnerAppleFileIO`,
-`OwnerAppleCryptography` and `OwnerKeychainKey`
+`OwnerAppleCryptography(owner: any OwnerKeyBackend)` and the canonical-only
+`OwnerKeychainKey(account:)`
 ([receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)):
 the host proves the invocation order and backup flag, an ad-hoc signed
 simulator proves the Keychain attributes, and on-device `.complete`

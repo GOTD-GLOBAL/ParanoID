@@ -44,33 +44,43 @@ not a human audit.
   first (a link or foreign inode is refused with `EFTYPE`, absence with
   `ENOENT`); Data Protection `.complete` set and read back (iOS only — the host
   has no such attribute), then backup exclusion set and read back on the inode.
-- `read`: the catalogue adapter's bounded read, now in three internal stages
-  (no-follow inspection, `open(O_NOFOLLOW)` with inode confirmation, bounded
-  descriptor read). Exactly one classified exception: `EPERM` **at the open
-  stage**, **of `owner/state.enc`**, **while the platform reports protected data
-  unavailable** (`protectedDataAvailable()` is `false`, sampled after the
-  failure) is `OwnerBackendLock.locked`. `EACCES`, any other stage, the
+- `read`: the catalogue adapter's bounded read in its internal stages
+  (no-follow inspection; the `open(2)` syscall alone; `fstat` with inode
+  confirmation; bounded descriptor read). Exactly one classified exception:
+  `EPERM` **from the open syscall itself**, **of `owner/state.enc`**, **while the
+  platform reports protected data unavailable** (`protectedDataAvailable()` is
+  `false`, sampled after the failure) is `OwnerBackendLock.locked`. The `fstat`
+  that follows the open, the inode confirmation and the descriptor read run
+  outside that catch (review follow-up). `EACCES`, any other stage, the
   catalogue or any other path, and `EPERM` with protected data available or
   with no signal at all are failures the store freezes on. The plain
   `init(fileSystem:)` has no signal, so it never classifies a lock; the
   application supplies `UIApplication.shared.isProtectedDataAvailable` through
   `init(fileSystem:protectedDataAvailable:)` when it integrates.
 
-`OwnerAppleCryptography(owner:)` — `OwnerCryptography` over one explicit opaque
-owner key backend: 29-byte shipped framing, `seal` through
+`OwnerAppleCryptography(owner: any OwnerKeyBackend)` — `OwnerCryptography` over
+one explicit owner-policy backend: 29-byte shipped framing, `seal` through
 `SnapshotCodec.seal` after an exact-UTF-8 check, raw `AES.GCM.open` with the
 version byte as associated data (never the lossy String decoder), load/create
-delegated to the backend, no foreign namespaces (that query is refused), no key
-export or deletion. `seal`/`open` are the shared `AppleFramedBox` routine the
+delegated to the backend and followed by a `storedPolicy()` readback that must
+be the canonical owner policy (a weaker retained item is refused, never deleted
+or migrated), no foreign namespaces (that query is refused), no key export or
+deletion. `OwnerKeyBackend` is `WrappingKeyStore` plus `storedPolicy()`; the
+messaging `KeychainKey` does not conform and does not type check here (review
+follow-up). Host memory fixtures conform behind a labelled FIXTURE-ONLY seam. `seal`/`open` are the shared `AppleFramedBox` routine the
 catalogue adapter now uses too.
 
-`OwnerKeychainKey(account:policy:)` — the owner-policy Keychain backend, a
-separate type from the messaging `KeychainKey`, whose
-`AfterFirstUnlockThisDeviceOnly` default is untouched. No default account.
-`create()` adds the item with `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`
-and `kSecAttrSynchronizable = false`, then reads the stored attributes back and
-refuses a mismatch (`storedPolicy()`); a duplicate is `errSecDuplicateItem`,
-never replaced. `load()`/`exists()` map `errSecInteractionNotAllowed` to
+`OwnerKeychainKey(account:)` — the owner-policy Keychain backend, a separate
+type from the messaging `KeychainKey`, whose `AfterFirstUnlockThisDeviceOnly`
+default is untouched. No default account and **no policy parameter**: the
+canonical policy (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`,
+`kSecAttrSynchronizable = false`) is a static constant and `OwnerKeyPolicy`'s
+initializer is file-private, so a weaker value cannot be constructed anywhere
+(review follow-up). `create()` writes that policy, reads the stored attributes
+back and refuses a mismatch; a duplicate is `errSecDuplicateItem`, never
+replaced. `load()` refuses a retained item whose stored policy is not canonical
+(`StorageError.keychain(errSecDecode)`: not absence, not a lock, nothing
+deleted or migrated). `load()`/`exists()` map `errSecInteractionNotAllowed` to
 `OwnerBackendLock.locked` and every other status to `StorageError.keychain`.
 `deleteRetained()` refuses: the owner store never deletes a retained key.
 
@@ -153,6 +163,52 @@ record; `notices.py --offline` 146 crates + WebRTC; `test_notices.py` 32 PASS;
 SUCCEEDED **` (unsigned binary SHA-256 `e290981337601918…`); simulator
 `KeychainStoreTests` rerun on this head: see the section below.
 
+## Review correction 2 (PR #85 follow-ups): open-only classification, owner-policy admission
+
+Base for this round: our `98f58b0` merged by ordinary history with the
+coordinator's watchdog test fix `4b041ac` (PR #86 head `af82b9c`) as merge
+commit `2694d3e`; native blobs unchanged by the merge. Two findings, one RED/GREEN
+loop (platform state injected, FIXTURE-ONLY; the compile probes are source
+checks on the native compiler, not committed):
+
+| Step | Snapshot (`OwnerAppleAdapters.swift`) | Result |
+| --- | --- | --- |
+| RED `cf2b48e` | `ee6ecd1b…` — `OwnerKeyBackend` protocol and the `fstat` injection hook added, classifier and admission unchanged | `OwnerAppleLockClassificationTests` **11 tests, 3 failures**: `testEPERMAtTheFirstFstatAfterOpenIsAFailureNotALock` (the first `fstat` after a successful open became `locked`, the reviewer's trace) and `testABackendReportingAWeakerStoredPolicyIsRefusedBeforeUse` (the key was returned); the later-`fstat` negative already held |
+| RED compile probe | same | `OwnerAppleCryptography(owner: KeychainKey(…))`, `OwnerKeychainKey(account:policy:)` and `OwnerKeyPolicy(accessible:synchronizable:)` all **compiled** (admitted) |
+| GREEN `7322b68` | `8426cc94…` (owner) / `a0f1e5f6…` (catalogue: `openOnly` + `confirmOpened`) | **11 tests, 0 failures**; `OwnerNativeAdapterTests` 4 (1 skipped)/0; `OwnerAppleNativeStagesTests` 8/0; `CatalogueNativeAdapterTests` 4/0; `CatalogueAppleFileIOTests` 26/0 |
+| GREEN compile probe | same | the three constructs are **rejected**: `argument type 'KeychainKey' does not conform to expected type 'OwnerKeyBackend'`; `extra argument 'policy' in call`; `'OwnerKeyPolicy' initializer is inaccessible due to 'fileprivate' protection level` — while the canonical control `OwnerAppleCryptography(owner: OwnerKeychainKey(account:))` compiles |
+
+Negative cases now in the lock suite: `EPERM` from the first `fstat` after a
+successful open of `owner/state.enc` with protected data unavailable → ordinary
+adapter failure and a frozen coordinator (`backendFailure`); `EPERM` from the
+later `fstat` → failure; a backend whose retained item reads back a weaker
+policy → `loadKey()` refuses, nothing deleted (FIXTURE-ONLY descriptor). The
+eight earlier cases and the terminal-after-write preservation case still hold.
+
+**Descriptor ownership (found by a background security review of the GREEN
+above, fixed before publication):** the first GREEN registered the owner read's
+deferred `close` before `confirmOpened`, which also closed the descriptor on an
+`fstat` failure — a double close. RED `6bfe011` added a close-counting hook on
+the owner-file descriptor (`"2" is not equal to "1"` on the first-`fstat`
+failure); GREEN `17d8d88` makes `confirmOpened` never close (the caller
+owns the descriptor) while `openRegular` closes once on a failed confirmation.
+The lock suite now asserts exactly one close on the first-`fstat` failure, on
+the later-`fstat` failure and on success.
+
+### Final acceptance on code head `17d8d88`
+
+Prerequisites rerun: `bridge/check.sh` rc 0, `build-core.sh` 3 slices, WebRTC
+verified. Then, each step separate:
+
+| # | Command | Result |
+| --- | --- | --- |
+| 1 | the repaired timing test `OwnerStoreRegressionTests.testExternalWaitIsBoundedAndCancellationDoesNotDependOnVerifierCooperation`, ten consecutive runs | **10 of 10 passed**, exit 0 each (watchdog variant from PR #86) |
+| 2 | focused filter (lock, owner native, owner stages, owner store and regressions, catalogue native, catalogue seams, catalogue store, catalogue codec) | **141 tests, 1 skipped, 0 failures** |
+| 3 | complete package | **551 tests, 1 skipped, 0 failures** (548 before this round + 3 new classification cases); no compiler warnings beyond the pre-existing ContactFlowError one |
+| 4 | `notices.py --offline` / `test_notices.py` | 146 crates + WebRTC 150.7871.01 / PASS 32 |
+| 5 | `xcodebuild … -sdk iphoneos … CODE_SIGNING_ALLOWED=NO build` | `** BUILD SUCCEEDED **`, unsigned binary SHA-256 `9ca4aebb11a71a05…` |
+| 6 | ad-hoc signed simulator `KeychainStoreTests` (fresh test namespaces) | **14 tests, 0 failures**, `** TEST SUCCEEDED **` — owner policy readback, real-key framing and the legacy-item refusal included |
+
 ## Real Keychain policy — ad-hoc signed simulator
 
 `KeychainStoreTests` in the application test bundle, run ad-hoc signed on the
@@ -182,6 +238,15 @@ worktree fails the bundle copy phase without it; first attempt recorded as such)
 
 Rerun on the corrected code head `3c8cbab`: `KeychainStoreTests` **13 tests,
 0 failures**, `** TEST SUCCEEDED **` (the owner-policy case included).
+
+Admission round: a third simulator case,
+`testALegacyMessagingItemUnderTheOwnerAccountIsRefusedNotUsedOrDeleted`,
+creates a legacy `KeychainKey` item (`AfterFirstUnlockThisDeviceOnly`) under a
+fresh owner-test account and shows that `OwnerKeychainKey(account:)` reports
+it present, reads its weaker policy back, refuses `load()` with
+`StorageError.keychain(errSecDecode)`, refuses `create()` as a duplicate, and
+leaves the legacy item intact for its own owner. Suite on the final head: see
+the acceptance table above.
 
 A simulator Keychain is not a device: on-device `.complete`/lock behaviour and
 power loss remain separate physical checks.

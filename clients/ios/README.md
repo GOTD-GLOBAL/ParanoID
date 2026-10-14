@@ -73,9 +73,12 @@ is delivered on the branch `feat/ios-owner-apple-adapter-20261014`:
 catalogue adapter's bounded reads, where only an `EPERM` at the `open` stage
 of `owner/state.enc` with the platform reporting protected data unavailable
 is `OwnerBackendLock.locked`; everything else freezes), `OwnerAppleCryptography(owner:)` (shipped framing,
-raw AES-GCM opening, one opaque owner key, no foreign namespaces) and
-`OwnerKeychainKey(account:policy:)` (owner Keychain item, `WhenUnlockedThisDeviceOnly`,
-non-synchronizable, attributes read back after insertion, no deletion). The
+raw AES-GCM opening, one owner-policy key backend, no foreign namespaces) and
+`OwnerKeychainKey(account:)` (owner Keychain item, canonical
+`WhenUnlockedThisDeviceOnly` non-synchronizable policy that cannot be
+configured, attributes read back after insertion, a weaker retained item
+refused, no deletion). `OwnerAppleCryptography` admits only an `OwnerKeyBackend`;
+the messaging `KeychainKey` does not type check there. The
 four staged native cases and eight native-stage cases run in `ParanoidKitTests`
 on the build Mac; the real Keychain policy is proven by two ad-hoc signed
 simulator cases in `KeychainStoreTests`. See the
