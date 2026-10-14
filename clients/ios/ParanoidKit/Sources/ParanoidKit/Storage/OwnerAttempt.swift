@@ -92,16 +92,6 @@ struct OwnerAssemblyEvidence {
     /// payer and message under fresh foreground authority. No production impl.
     func assembled(for request: OwnerAssemblyRequest) throws -> OwnerAssemblyEvidence
 }
-/// Process-local, one-use dispatch capability. The bytes are exactly what the
-/// ledger retained; a ticket is minted only after the increment was durable.
-final class OwnerDispatchTicket {
-    let attemptID: String
-    let transaction: Data
-    fileprivate(set) var consumed = false
-    fileprivate init(attemptID: String, transaction: Data) { self.attemptID = attemptID; self.transaction = transaction }
-    func take() throws -> Data { guard !consumed else { throw OwnerStoreError.authorityRequired }; consumed = true; return transaction }
-    static func mint(attemptID: String, transaction: Data) -> OwnerDispatchTicket { .init(attemptID: attemptID, transaction: transaction) }
-}
 struct OwnerSignedEvidence {
     let request: OwnerSigningRequest
     let message: String

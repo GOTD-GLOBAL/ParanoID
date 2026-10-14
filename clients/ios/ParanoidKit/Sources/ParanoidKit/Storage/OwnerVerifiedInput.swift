@@ -27,15 +27,6 @@ struct OwnerExpiryEvidence {
     let finalizedHeight: UInt64
     let dispositions: [(attemptID: String, disposition: OwnerTerminalDisposition)]
 }
-/// Successor permit for one append after a checked ledger; private minting.
-final class OwnerAppendPermit {
-    let operation: OwnerOperation
-    let name: String
-    let revision: UInt64
-    var consumed = false
-    fileprivate init(operation: OwnerOperation, name: String, revision: UInt64) { self.operation = operation; self.name = name; self.revision = revision }
-    static func mint(operation: OwnerOperation, name: String, revision: UInt64) -> OwnerAppendPermit { .init(operation: operation, name: name, revision: revision) }
-}
 /// ISOLATED TRUSTED external verified-input seam. No production conformance.
 /// A fixture here is NOT RPC authentication, finality, blockhash-expiry proof,
 /// Face ID, or foreground signing authority. No boolean grants those powers.

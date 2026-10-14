@@ -25,6 +25,25 @@ final class OwnerOperation {
     fileprivate let deadline: ContinuousClock.Instant
     fileprivate init(_ deadline: ContinuousClock.Instant) { self.deadline = deadline }
 }
+/// Successor permit for exactly one append after a checked ledger.
+final class OwnerAppendPermit {
+    fileprivate let operation: OwnerOperation
+    fileprivate let name: String
+    fileprivate let revision: UInt64
+    fileprivate var consumed = false
+    fileprivate init(_ operation: OwnerOperation, name: String, revision: UInt64) { self.operation = operation; self.name = name; self.revision = revision }
+}
+/// Process-local, one-use dispatch capability. The bytes are exactly what the
+/// ledger retained; a ticket exists only after the increment was durable.
+final class OwnerDispatchTicket {
+    let attemptID: String
+    private let transaction: Data
+    private var consumed = false
+    fileprivate init(attemptID: String, transaction: Data) { self.attemptID = attemptID; self.transaction = transaction }
+    func take() throws -> Data { guard !consumed else { throw OwnerStoreError.authorityRequired }; consumed = true; return transaction }
+}
+// All permits above are nonpersistable classes with fileprivate initializers:
+// only this coordinator mints them, and only after the named durable step.
 final class OwnerCreationPermit {
     fileprivate let operation: OwnerOperation
     fileprivate let revision: UInt64
@@ -146,7 +165,7 @@ final class OwnerCreationPermit {
                 next.attempts[index].finalizedHeight = evidence.finalizedHeight
             }
             if next != old.owner { try commitOwner(next, catalogue: old.catalogue) }
-            return OwnerAppendPermit.mint(operation: operation, name: proposedName, revision: revision)
+            return OwnerAppendPermit(operation, name: proposedName, revision: revision)
         }
     }
     func reserveSend(_ operation: OwnerOperation, attemptID: String) throws -> OwnerDispatchTicket {
@@ -161,7 +180,7 @@ final class OwnerCreationPermit {
             let bytes = try OwnerScalars.wire(transaction)
             next.attempts[index].sends += 1
             try commitOwner(next, catalogue: old.catalogue)
-            return OwnerDispatchTicket.mint(attemptID: attemptID, transaction: bytes)
+            return OwnerDispatchTicket(attemptID: attemptID, transaction: bytes)
         }
     }
     func recordAssembled(_ operation: OwnerOperation, attemptID: String, signer: any IsolatedTrustedOwnerAssembler) throws -> OwnerAttempt {
