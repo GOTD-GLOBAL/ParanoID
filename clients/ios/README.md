@@ -54,6 +54,26 @@ does not, the reference is wrong and not the base. A directory or
 script named in this README exists only once its pull-request step has landed;
 the name alone is not a claim that the code exists or works.
 
+## Isolated owner-store component checkpoint
+
+The [proposed owner format](../../docs/clients/ios/owner-store-format.md) now has
+an allocation-aware catalogue/owner coordinator, strict codecs, retained pending
+ledger and process-local authority tests. The old bootstrap codec/store stay
+unchanged and still refuse allocated owner artifacts. Corrected source
+`1df946251b4338fef6de8edbc0b22dd56cc97858` passes the parent's isolated Linux
+**109/0 debug and release** replay; see the [full evidence and review status](../../docs/project/evidence/ios-identity-v3-20261013/owner-store-core.md).
+Storage backends there are explicit non-cryptographic fixtures, with real Rust
+public-vector material checks; release is optimized Swift plus debug Rust.
+
+Both independent exact-head component reviews closed without remaining P1/P2.
+The [next Mac implementation task](../../docs/clients/ios/owner-store-mac-handoff.md)
+covers actual owner backends and native commit/reopen. Owner Apple adapters are not yet
+implemented, staged native checks are excluded/NOT RUN, and no owner persistence,
+recovery, login or new startup path is wired into the application. Do not count
+this as native encrypted storage or extend earlier Mac receipts to this source.
+The new eight-entry lifetime ledger cap remains a component proposal, not an
+accepted product decision. No existing user state is migrated or reset.
+
 ## Bridge crate (`bridge/`)
 
 `paranoid-ios-bridge` exports four C symbols, declared in

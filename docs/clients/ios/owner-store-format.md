@@ -253,7 +253,7 @@ inputs in this storage slice are not an implemented foreground signing flow.
 | `recordOwnerSigned(operation, rustResult)` | Valid foreground owner authority, prechecked capacity and (for nonempty history) fresh expiry/absence permit for this ledger/name; append unresolved ownerSigned; first append changes phase to registrationPending |
 | `recordAssembled(operation, attemptID, rustResult)` | Same immutable request, valid signing authority, unresolved ownerSigned; commit assembled form |
 | `reserveSend(operation, attemptID)` | Explicit foreground registration operation, unresolved assembled, sends below 3; commit increment, then issue a one-use process-local dispatch ticket for exact saved bytes |
-| `resolveExpired(operation, externalVerifier)` | Verifier covers exact ledger/candidate and strict finalized-height/registry conditions; commit terminal resolutions, never remove entries; issue one append-eligibility successor permit for the checked candidate |
+| `resolveExpired(operation, externalVerifier)` | Verifier covers exact ledger/candidate and strict finalized-height/registry conditions; commit terminal resolutions, never remove entries. If capacity remains, issue one append-eligibility successor permit for the checked candidate; at eight entries reconciliation still succeeds, but issues no append permit |
 | `confirmRegistry(operation, externalVerifier)` | Trusted verified pair for same owner; commit registryConfirmed plus matching binding and resolutions first, then explicit catalogue publication |
 | `publishConfirmedBinding(operation)` | Revalidate current confirmed owner and allocated catalogue/null binding; commit exact matching binding. Same pair already published is a read-only no-op |
 
@@ -290,7 +290,11 @@ mint its narrow successor only after that transition succeeds (verification →
 reservation → owner commit → publication). Never rebind a stale permit to a
 new revision or let an unrelated operation inherit the verified result.
 Any bounded external wait uses a caller-supplied finite monotonic deadline;
-expiry invalidates authority and late results have no effects. No app authority
+expiry invalidates authority and late results have no effects. Completion bounds
+apply to the caller/authority, not forced termination of an uncooperative trusted
+verifier continuation. That worker can retain its own request copies until it
+returns; production verifier resource/copy-lifetime policy and a global bounded
+worker pool are not supplied by this isolated slice. No app authority
 or Face ID result is invented by a test fixture. Recovery failure, no-name,
 wrong-context or cancellation **before allocation** performs zero recovery
 catalogue/owner/realm writes. Cancellation after reservation cannot undo durable

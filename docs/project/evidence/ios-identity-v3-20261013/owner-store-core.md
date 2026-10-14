@@ -18,7 +18,152 @@ The Apple owner adapter (typed owner policy, `.complete`,
 implemented**; its native-first tests are staged outside the active target and
 are **NOT RUN**. Base: `7848016` on `feat/ios-owner-store-20261014`.
 
-## Scope and contracts
+## Corrected source: parent replay and scoped review closure
+
+Correction source **`985b30b20bdf896813410262fecbeb68ec256b4b`** and receipt-only
+HEAD **`1df946251b4338fef6de8edbc0b22dd56cc97858`** are subsequent to the initial
+checkpoint described below. The [raw correction receipt](../../../../clients/ios/bridge/evidence/owner-store-review-fixes.txt)
+retains runtime RED/GREEN, compile/fixture failures, timed-out runs and exact
+source hashes without rewriting historical evidence.
+
+Parent executed the corrected source independently: **109/0 in debug and 109/0
+in release**, including 15 existing owner and 22 new regression methods plus
+unchanged 23 catalogue-store, 28 catalogue-codec and 21 Devnet tests. Both runs
+use the cached debug Rust bridge; only Swift is optimized for release. Receipts
+and complete logs are in profile scratch
+`owner-parent-fix-review-1df9462-20261014/{parent-debug,parent-release}/`.
+All 16 listed source/test hashes and both executed snapshots match the exact
+Git objects. The tail from code commit to receipt HEAD changes only the raw
+receipt, not runtime/tests/build inputs.
+
+The parent also ran the same compile-negative policy probe against both builds:
+old source compiles it (exit 0); corrected source refuses it (exit 1) specifically
+because a CatalogueOnly backend does not conform to OwnerCryptography. This is
+type-boundary evidence, not actual Keychain accessibility enforcement.
+
+Corrections cover live ticket issuer/operation/revision/phase/lease checks;
+explicit close and cancellable/deadline-bounded external wait; fencing before
+entropy/sign/assemble and around effects/final sync; retained-origin integrity
+freeze; eight-entry reconciliation with **nil append permit at capacity**;
+conditional owner conformance; and strict bounded encoding. New regression
+coverage also exercises stale-result isolation from a successor, busy-after-effect
+uncertainty and contradictory nameTaken/proposed-name evidence.
+
+The prior fixture's simultaneous writer reuse was replaced by explicit close/
+retire/reopen. Its deadline-entry wait has a failing watchdog; an unavailable
+verifier entry no longer hangs a test. Parent inspected these test changes;
+substantive old storage/refusal assertions remain. Pinned Swift is also 6.3.3,
+but no Apple SDK compilation is claimed from the Linux compiler.
+
+The independent **retained-integrity, ledger, codec and type-policy** review at
+exact `1df9462` now closes its target findings with no new P1/P2. It separately
+ran 109/0 debug and release, five new probes and the expected compile-negative.
+Parent read the report/probes and repeated those five probes: **5/0, exit 0**,
+under `owner-parent-fix-review-1df9462-20261014/integrity-closure-probes/`.
+The new cases distinguish invalid new payloads from retained corruption, preserve
+terminal history during full-ledger reconciliation/confirmation and reject
+oversized writer inputs before core validation. The reviewer report is in
+profile scratch `owner-integrity-recheck-47894333-a2af-4d8f-a65a-2c3b524e54eb/`.
+
+The separate **authority/lease/async** exact-head review now closes its target
+groups too, with no remaining P1/P2 in the isolated component scope. It repeated
+109/0 in debug and release and six new probes in both modes. Parent read those
+probes and independently ran **6/0**, exit 0, in
+`owner-parent-fix-review-1df9462-20261014/authority-closure-probes/`: all three
+async entrypoints, pre-cancellation, late success/nil/error while a successor
+waits, issuer deallocation during suspended verification, holder replacement and
+foreign close/root checks. The review report is in profile scratch
+`owner-closure-43d76f7d-8c4c-42b4-ab8d-001e356b04d0/`.
+
+Both reviewers used fresh independent gpt-6-astra contexts, the same model family
+as the implementation agents. This is advisory AI component review, not a human
+security audit or acceptance of the format, eight-entry product cap, ADR or app.
+An uncooperative verifier worker may stay suspended after caller cancellation:
+its late completion has no authority and it does not retain the coordinator,
+but forced worker termination, global task-pool bounds and erasure of all Swift
+request copies are not promised. The future production verifier owns those
+resource/lifetime limits.
+
+**Portable source review is closed; native storage acceptance is not.** The
+native blueprint now has an explicit real-Keychain XCTSkip placeholder and an
+honest unregistered/backup-only case name, with required remaining stages
+visible; it is still excluded and NOT RUN. Owner Apple implementations and all
+native/app/phone acceptance remain separate work.
+
+## Initial-source parent review: baseline green, contract regressions blocking
+
+On frozen `697bd68520d1ba764dd306d267b40d0c776c5e1f` the parent independently
+repeated debug and release: each **87 XCTest methods, 0 failures**. Release here
+means optimized Swift linked to the previously built **debug Rust** static
+library, not a separately optimized Rust build. The source snapshots and hashes
+are in profile scratch `owner-parent-review-697bd685-20261014/` under
+`baseline-debug/` and `baseline-release/`; each has `receipt.json` and
+`execution.log`.
+
+Additional parent `OwnerParentProbeTests` executed six methods with **eleven
+assertion failures**, exit 1, not compiler/setup errors. The retained stage is
+`parent-contract-probes/` in that same scratch root. At this reviewed source:
+
+- `OwnerDispatchTicket.take()` releases after finish or cancel instead of
+  rechecking live operation/revision/deadline/lease authority.
+- Explicit cancellation during a verifier wait is refused as busy; releasing
+  valid late evidence then performs recovery writes.
+- Expiry during an allocation write still returns a creation permit rather than
+  treating post-effect cancellation/expiry as terminal uncertainty.
+- After namespace retirement, initialization generates entropy before its
+  wrapped backend finally rejects the stale holder.
+- `LeasedCryptography<Inner: CatalogueCryptography>` unconditionally acquires
+  `OwnerCryptography`, contrary to the typed owner-policy boundary.
+- Allocated-catalogue encoding silently removes a non-null binding from invalid
+  unallocated input instead of refusing that input.
+
+The independent codec/ledger review additionally reproduced two **P2** failures
+on this same frozen source. Parent reran its six probe methods: **25 failed
+assertions, 0 unexpected, exit 1**, saved as `independent-codec-probes/` in the
+parent scratch root above. That count is not 25 separate defects:
+
+- Retained schema/version/size/material errors do not latch the writer broken;
+  it accesses backends again, and the same instance resumes after fixture bytes
+  are externally restored. This does not mean corrupt bytes were accepted or
+  automatically repaired. Invalid new caller input must remain distinguishable
+  from retained-storage integrity failure; only the latter freezes.
+- At eight entries `resolveExpired` refuses before invoking the verifier, leaving
+  the last attempt unresolved. Capacity must stop new append/sign operations,
+  not reconciliation or registry confirmation. No cap increase/pruning is needed.
+
+Catalogue encoder normalization is confirmed, including an escaped invalid name,
+but is **P3/API hardening** in the current internal-call-site scope, not a proven
+runtime security exploit. The owner encoder's pre-validation allocation is
+separate; its invalid/oversized values do refuse. The reviewer report and source
+probes are retained under profile scratch
+`owner-codec-review-c0719d49-dfe2-49ff-bb19-2aeaec6cf518/`.
+
+The independent coordinator review confirms those same freeze/cap findings,
+not additional unique P2s, and expands the authority checks. Parent reproduced
+the new pre-sign/final-sync cases on the frozen source: **two methods, three
+assertion failures**, exit 1, under `coordinator-boundary-probes/`. Delaying a
+successful read-only refresh past the deadline still invokes real Rust
+`sponsored_sign` once on a public fixture before returning cancelled. Expiry
+inside the final sync still releases a dispatch ticket without freezing. No
+network or real owner key was involved. Authority must be rechecked immediately
+before protected calls and at final capability release, not only at method entry.
+
+The reviewer also exercised ticket invalidation after errors, revision/phase
+changes, deadline, lease retirement and coordinator destruction, and cancellation
+of an outstanding verifier after deadline. Its frozen report/probes are under
+profile scratch `owner-review-4559fad8-5963-433d-b3c8-7b6cedab96c5/`. Neither
+review covers the concurrently changing correction branch; a new exact-SHA
+review is required. A single coordinator broken flag does not yet express future
+owner/common runtime scope; no global messaging outage was demonstrated here.
+
+These were **blocking deviations at the initial `697bd68` SHA**; its positive
+baseline did not establish readiness. The original unrun native policy case
+inspected only a memory-backed descriptor, and its "every retained stage" name
+overstated coverage. The later corrections and scoped closure are recorded
+above; the original failures are not erased or presented as passing tests.
+Native/ADR/adoption gates remain separate.
+
+## Initial checkpoint scope and contracts
 
 - [RFC-0030](../../../rfcs/0030-ios-identity-v3.md) / draft
   [ADR-0017](../../../decisions/0017-ios-concurrent-identity-v3.md); accepted
@@ -34,7 +179,7 @@ are **NOT RUN**. Base: `7848016` on `feat/ios-owner-store-20261014`.
   `OwnerNamespaceLease.swift`; `Tests/ParanoidKitTests/OwnerStoreTests.swift`;
   staged `Tests/NativeFirstTests/OwnerNativeAdapterTests.swift` (NOT RUN).
 
-## What is implemented and executed
+## Initial checkpoint implementation and execution
 
 | Contract area | Implemented behavior (executed on Linux) |
 | --- | --- |
@@ -46,9 +191,9 @@ are **NOT RUN**. Base: `7848016` on `feat/ios-owner-store-20261014`.
 | §3 owner v1 | `owner/identity/genesis/program` must equal real Rust `identity(entropy)`; binding checked through real Rust `lookup`; phases and ledger conditions; `wordsBackupConfirmed` false→true only, required for nonempty ledger |
 | §3 ledger | eight entries max (ninth refused at the limit, no pruning); distinct IDs; `ownerSigned`/`assembled` exact stages; assembled framing `0x02‖sig‖owner_sig‖message` byte consistency; `sends` 0..3; only last entry unresolved; terminal heights strictly above prefix expiry maximum; `ownerBound` only when confirmed |
 | §4 operations | `loadRetained`, `begin/finish/cancel`, `reserveNewOwner` → creation permit only after final sync, `initializeNew` (16-byte injectable fixture RNG, called only after durable reservation), `recoverVerified`, `confirmWordsBackup`, `recordOwnerSigned` (+append permit), `recordAssembled`, `reserveSend` (durable `sends+1` before one-use ticket, fourth refused), `resolveExpired` (typed dispositions, strict height, successor permit), `confirmRegistry` (unresolved→`ownerBound`, terminal unchanged), `publishConfirmedBinding` (idempotent, revalidated) |
-| §4 permits | nonpersistable classes with `fileprivate` initializers; bound to operation, coordinator, revision; consumed once; invalid after finish/cancel/error/deadline/lease loss; foreign coordinator's permit refused |
+| §4 permits | Private minting and foreign creation/append-permit checks exist; dispatch-ticket lifetime, mid-effect expiry and pre-entropy lease checks fail the parent regressions above. The full invalidation contract is NOT satisfied at this SHA |
 | §5 ordering | allocation final sync → `mkdir owner/` → owner protect/readback → sync `owner/` + root → intent create/protect/sync → parent sync → key create once → readback compare → seal → temp → rename → byte-exact readback → parent sync → remove intent → parent sync; catalogue key never created |
-| §6 matrix | every row of the consistency table executed, including empty `owner/` under unallocated, key-only, XOR, symlink inode, pending/temp, swapped-store documents, other-key box, foreign install; `locked` retryable without latch; any failure after write begins → `broken` with no backend access afterwards |
+| §6 matrix | Existing tests cover empty owner directory, key-only/XOR, links, pending/temp, swapped documents/keys, foreign install and retryable locked reads; injected thrown write failures latch broken. Mid-write expiry/cancellation and remaining integrity cases still require review closure |
 
 Explicitly **not** provided: production verifier/signer/assembler, entropy
 source, Keychain policy, Darwin `.complete`, power loss, multiprocess locking,
@@ -114,46 +259,38 @@ Runtime counts in RED rows are executed methods / failures, not independent
 bugs. Fixture-expectation corrections made during GREEN (06, 07, 10, 12) are
 recorded in the stage logs; no historical RED log was edited.
 
-## Native handoff (Mac, separate; not claimed here)
+## Native handoff (implementation still required)
 
-`Tests/NativeFirstTests/OwnerNativeAdapterTests.swift` names the proposed
-`OwnerAppleFileIO(fileSystem:)` and `OwnerAppleCryptography(owner:)` with a
-typed `policy` (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`,
-`kSecAttrSynchronizable = false`, `FileProtectionType.complete`). Required
-native-first sequence on the Mac, as for PR #83:
+Use the [complete owner Apple implementation handoff](../../../clients/ios/owner-store-mac-handoff.md)
+and the exact starting SHA in the parent PR comment. It specifies real native
+RED/GREEN, complete catalogue/owner encrypted commit/reopen, typed protection,
+additional pending/confirmed/foreign-key cases, separate real-Keychain evidence,
+notices and unsigned build prerequisites. It is not a request to rerun unchanged
+PR #78/#81/#83 code or build another server.
 
-1. Move the file into `Tests/ParanoidKitTests`, add minimal stub adapters
-   throwing `ENOSYS`, observe runtime RED for
-   `testRealReservationOwnerCommitAndReopenWithOwnerArtifactsPresent`.
-2. Implement create-only/no-follow `createOwnerDirectory` (mode 0700, EEXIST on
-   any inode), `protectOwnerAndExclude` setting **and reading back** `.complete`
-   plus backup exclusion on directory, intent, temp; reuse `F_FULLFSYNC`/rename.
-3. Implement `OwnerAppleCryptography` over a Keychain seam that selects the
-   owner accessibility; the policy case must be **skipped with reason** on a
-   host without Keychain, never passed by the memory double.
-4. Run the four staged cases, `OwnerStoreTests` (15), `CatalogueStoreTests`
-   (23), `IdentityCatalogueTests` (28), full package, notices, unsigned iOS
-   build; record exact head, counts, skips and snapshot hashes.
-5. Still open from PR #83 (do not reuse its frozen receipt): checked dynamic
-   read-budget bounds and direct new-crypto `open` regressions for sliced
-   `Data`, foreign AAD and the upper framing limit.
+The four staged `Tests/NativeFirstTests/OwnerNativeAdapterTests.swift` methods
+are only an unrun starting blueprint, not full native coverage. Its real-policy
+case now explicitly skips until genuine Keychain insertion/readback exists; that
+future skip has not executed and is not counted in the portable suite. Native
+implementation must preserve the reviewed lease/authority/format contract and
+keep old messaging defaults and bootstrap refusals intact.
 
-No Mac run of unchanged heads is requested; the frozen #81/#83 receipts are
-not extended by this document.
+## Interpretations and remaining integration boundaries
 
-## Contract deviations and open decisions for the parent
-
-- None found that required changing the contract. Two interpretations were
-  applied conservatively and should be confirmed by the contract reviewer:
-  (a) an allocated catalogue with **no** owner artifacts after a cancelled
-  reservation is reported as `continuity` (owner loss), and that classification
-  latches the coordinator `broken` like other integrity failures;
-  (b) a semantic refusal (`invalidTransition`, `authorityRequired`,
-  `limitExceeded` before effects) ends the active operation, so the caller must
-  `begin` again — the contract says permits are invalidated, it does not say
-  whether the operation itself survives.
-- `OwnerBackendLock.locked` is a new typed error the native adapters must
-  throw for a precisely classified read-only lock; it is the only backend error
-  the coordinator does not treat as failure.
-- Base58 decoding is a bounded conversion used only for grammar/consistency;
-  it is not a cryptographic routine and performs no signing or hashing.
+- Scoped source review is closed for `1df9462`, not native storage or app adoption.
+  An allocated catalogue missing owner state is loss, never renewed creation
+  authority. Pre-effect semantic refusals invalidate that operation without
+  freezing valid storage; a stale callback/ticket cannot revoke its successor.
+- `OwnerBackendLock.locked` remains an explicit native-adapter responsibility:
+  only precisely classified read-only protection lock is retryable. Generic
+  permission errors must not masquerade as absence or safe retry.
+- An uncooperative external worker may retain its own request copies after the
+  caller has timed out. The component revokes authority and frees its issuer;
+  it does not force-kill the verifier, promise global worker bounds or guarantee
+  Swift-memory erasure. Production verifier/resource policy remains unimplemented.
+- Owner/common runtime containment, fresh-Welcome classification and app adoption
+  are not delivered by this owner-only component. Eight entries remain a
+  non-adopted bounded proposal with no automatic pruning or reset.
+- Base58 handling is bounded encoding/consistency, not new cryptography. No
+  changes to shared derivation/signing, real keys, server state or phone sessions
+  follow from these source checks.

@@ -3,7 +3,7 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: Apple catalogue adapter native tests on the build Mac added to the transaction-core checkpoint; durable identity-v3 runtime, live Keychain and MR gates remain NOT RUN
+last_reviewed_scope: corrected owner-core portable controls replayed and independently reviewed; native owner protection, runtime, live Keychain and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
@@ -11,8 +11,26 @@ last_reviewed_scope: Apple catalogue adapter native tests on the build Mac added
 ## PROPOSED allocation-aware owner-store delta — 2026-10-14
 
 The [byte/transaction appendix](../clients/ios/owner-store-format.md) is a
-non-adopted component proposal. These controls and tests are **NOT RUN**; they
-do not extend the prior catalogue/Mac receipts or close #73/ADR/MR gates.
+non-adopted component proposal. The portable controls now have the scoped
+execution evidence below; native owner protection/durability and application
+controls remain **NOT RUN**. Nothing extends the prior catalogue/Mac receipts
+or closes #73/ADR/MR gates.
+
+The initial source at `697bd68` failed additional authority/retained-integrity
+reviews despite its passing baseline. Corrected source `1df9462` is independently
+replayed by the parent: **109/0 in debug and release**, including 22 regression
+methods. Those tests cover cancellation/close/late results, pre-sign and
+post-effect deadlines, stale leases/tickets, retained-origin freeze and full
+ledger reconciliation without new append authority. Conditional owner-policy
+conformance is also checked by an expected compile rejection. The
+[receipt](../project/evidence/ios-identity-v3-20261013/owner-store-core.md) records
+old failures and new results separately; both exact-head component reviews
+closed without remaining P1/P2. Cancellation fences the caller and late callback
+authority, not forced termination of an uncooperative verifier or a global task
+pool; production resource/secret-copy lifetime policy remains separate. These
+are non-cryptographic storage fixtures plus real Rust public
+vectors, not proof of Apple Keychain, file protection, power-loss or a live
+trusted verifier. Owner/common runtime containment is not implemented here.
 
 | Threat | Proposed control | Required check / residual |
 | --- | --- | --- |
