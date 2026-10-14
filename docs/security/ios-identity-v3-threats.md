@@ -3,10 +3,29 @@ status: draft
 owner: security
 decision_owner: martadvix-web
 last_reviewed: 2026-10-14
-last_reviewed_scope: corrected owner-core portable controls replayed and independently reviewed; native owner protection, runtime, live Keychain and MR gates remain NOT RUN
+last_reviewed_scope: Apple owner adapters natively tested on the build Mac and the owner Keychain policy read back on an ad-hoc signed simulator; on-device protection, runtime and MR gates remain NOT RUN
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
+
+## Apple owner adapter — 2026-10-14
+
+The native owner backends the delta below left unimplemented are exercised on
+the build Mac ([receipt](../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)):
+the four staged cases plus eight native-stage cases against the real file
+system and real CryptoKit, with labelled fixture-only fault injections, and two
+ad-hoc signed simulator cases that read the owner Keychain attributes back.
+These rows update the "required check / residual" cells below; they do not
+close #73, ADR, MR or application gates.
+
+| Threat | Native control now tested | Remaining boundary |
+| --- | --- | --- |
+| `owner/` is created through a link or over an existing inode | `mkdir(2)` never follows the final component; any existing inode is `EEXIST` and untouched; `O_DIRECTORY` and `O_NOFOLLOW` open then `fchmod(0700)` | Same-process caller trusted; hostile co-writers out of scope |
+| Owner files carry messaging protection or are protected through a link | No-follow inspection before protection; `.complete` set and read back (iOS), backup exclusion set and read back on the inode; a link or foreign inode is `EFTYPE` | `.complete` is compiled for iOS and read back there; host runs prove invocation order and the backup flag only |
+| The owner key lands under the messaging policy or is replaced/deleted | Separate `OwnerKeychainKey`: `WhenUnlockedThisDeviceOnly`, non-synchronizable, attributes read back after `SecItemAdd` and refused on mismatch; duplicate refused; deletion refused; messaging `KeychainKey` defaults untouched (simulator cases) | Simulator Keychain, not a device; lock/unlock lifecycle and power loss not reproduced |
+| A locked key or file is taken for absence or for failure | `errSecInteractionNotAllowed` and iOS `EPERM`-while-locked map to `OwnerBackendLock.locked`; read-only lock before effects is retryable without latching; a lock after the write began is terminal with intent and key kept | Host cannot produce the iOS lock; `EACCES` stays a failure (tested) |
+| Reopening repairs, republishes or rewrites | Every reopen compares exact saved bytes; interrupted publication before the intent leaves a clean intermediate that only explicit publication completes; after the intent the leftover marker freezes the catalogue with all bytes kept; foreign key/context, leftover temp/intent and missing halves refuse without modification | Lost final acknowledgement remains undetectable to a later instance (unchanged) |
+| Pre-sponsor evidence or send counters drift across restarts | ownerSigned (real Rust `sponsored_sign` on the public vector), assembled and one send reservation each reopen byte-exact; confirmation marks `ownerBound` and publishes once | Synthetic assembly/verification are trusted input, not signature or live-chain verification |
 
 ## PROPOSED allocation-aware owner-store delta — 2026-10-14
 

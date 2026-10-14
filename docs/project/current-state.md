@@ -2,10 +2,35 @@
 status: accepted
 owner: maintainers
 last_reviewed: 2026-10-14
-last_reviewed_scope: corrected portable owner-store replay and independent component reviews closed; native owner adapter and app adoption remain unimplemented
+last_reviewed_scope: Apple owner adapters implemented and natively tested on the build Mac and an ad-hoc signed simulator (component proposal); app adoption, recovery/login and phone acceptance remain separate
 ---
 
 # Current project state
+
+## Apple owner adapters on the build Mac — 2026-10-14
+
+The owner backends the portable checkpoint below left open are implemented on
+the branch `feat/ios-owner-apple-adapter-20261014` from `2ed901dd`:
+`OwnerAppleFileIO`, `OwnerAppleCryptography` and the owner-policy Keychain
+backend `OwnerKeychainKey` in
+`clients/ios/ParanoidKit/Sources/ParanoidKit/Storage/OwnerAppleAdapters.swift`.
+The four staged native cases moved into the active test target and passed on
+the Mac after a genuine runtime RED against stub adapters; eight owner
+native-stage cases (verified recovery → publication → reopen, ownerSigned /
+assembled / send / confirmed reopen with exact bytes, interrupted publication,
+foreign key/context, leftover and missing artifacts, read-only lock retry,
+fixture-only sync faults) and five catalogue follow-up cases pass; two mutation
+probes failed exactly their cases and were reverted. The real owner Keychain
+policy (`WhenUnlockedThisDeviceOnly`, non-synchronizable) is read back from
+the Keychain by two ad-hoc signed simulator cases. The
+[adapter receipt](evidence/ios-identity-v3-20261013/owner-apple-adapter.md)
+records commands, snapshot hashes, counts, the full package, notices and the
+unsigned iOS build. The coordinator, codecs, lease, catalogue store, legacy
+stores, `KeychainKey`, package manifest, pins, app sources and Rust bridge are
+unchanged; the catalogue adapter received only its two recorded follow-ups.
+This is a component proposal for coordinator review and integration: no app
+startup, recovery, login, on-device `.complete`, restart, merge, install or
+live action.
 
 ## Owner-store core review closed; native implementation next — 2026-10-14
 

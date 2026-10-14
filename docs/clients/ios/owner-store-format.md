@@ -351,6 +351,12 @@ injection into existing `KeychainKey` does not select accessibility, and existin
 adapter merely by changing its path/account. Explicit typed owner-policy/opaque
 key seams are allowed; host fixtures prove their invocations, not real Keychain
 or on-device Data Protection. Existing adapters' native receipts stay frozen.
+The Mac branch delivers these seams as `OwnerAppleFileIO`,
+`OwnerAppleCryptography` and `OwnerKeychainKey`
+([receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md)):
+the host proves the invocation order and backup flag, an ad-hoc signed
+simulator proves the Keychain attributes, and on-device `.complete`
+behaviour stays a separate physical check.
 
 ## 6. Consistency, errors and crash containment
 

@@ -7,6 +7,11 @@ last_reviewed: 2026-10-14
 
 # Owner-store Apple adapter: implementation handoff
 
+> Status (2026-10-14): delivered on `feat/ios-owner-apple-adapter-20261014`
+> from the exact parent SHA; see the
+> [owner adapter receipt](../../project/evidence/ios-identity-v3-20261013/owner-apple-adapter.md).
+> The task text below is preserved as written.
+
 ## Objective and exact source
 
 Implement and actually exercise the Apple backends for the isolated owner-store
