@@ -1,5 +1,5 @@
 ---
-status: draft
+status: proposed
 owner: ios
 decision_owner: Cooldom66671
 product_decision_owner: martadvix-web
@@ -14,12 +14,12 @@ source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#is
 
 # ADR-0018: Non-signing full core-state validation and public projection
 
-**Draft, not accepted.** This records the candidate decision of
+**Proposed lifecycle checkpoint, not yet recorded as accepted.** This records the candidate decision of
 [RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) for D87-07: one
 additive, read-only `validate_state_v3` operation on the shared Rust core. It
 asserts no implemented operation, passed test, lifted schema-3 reopen blocker
-or live authority. Number 0018 was checked by the publishing task against
-then-current published refs; recheck before this record moves to `proposed`.
+or live authority. Number 0018 was rechecked against published heads and pull
+heads on 2026-10-15; no other ADR-0018 allocation was found.
 
 ## Authority and work boundary
 
@@ -53,7 +53,8 @@ the record and review makes it eligible for `proposed`, meaning ready for human
 disposition, not already approved. Human decision-owner approval of the exact
 boundary, any required product/risk-owner approval and complete governance
 acceptance evidence are required for `proposed` → `accepted`, not prerequisites
-to merely proposing the record. This publication keeps `status: draft`.
+to merely proposing the record. This lifecycle checkpoint records `status: proposed`; the following acceptance
+record incorporates the already received human disposition of the frozen boundary.
 Neither label itself authorizes shared-core changes; the required owner approval
 and scoped RFC/ADR process must precede source modification. Default qualified
 human review remains the exit gate before sensitive data, public release or

@@ -27,7 +27,7 @@ with the video-call work.
 
 ## Draft implementation records
 
-- [ADR-0018](0018-core-non-signing-state-validation.md): draft decision record for
+- [ADR-0018](0018-core-non-signing-state-validation.md): proposed decision record for
   RFC-0032's non-signing core validation/public projection; scoped draft review
   recorded, contract ratification and human approval pending. No implementation/
   adoption grant.
