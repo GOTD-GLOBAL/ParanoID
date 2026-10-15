@@ -77,12 +77,21 @@ this appendix nor an RFC draft alone unblocks arbitrary schema-3 reopen.
 D87-07 is a critical-path dependency of verified-B admission and the restart-
 keeps-login milestone, not an optional later cleanup; its RFC drafting runs in
 parallel with the namespace/readback contract. Neither alone delivers the app.
-Existing #85 closure is unchanged.
+Existing #85 closure is unchanged. [Completed RFC-0032](../../rfcs/0032-core-non-signing-state-validation.md)
+now links [ADR-0018](../../decisions/0018-core-non-signing-state-validation.md),
+with [human approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) of the frozen contract and bounded local
+implementation/tests. That closes only the named design/source gate. It is not
+the implemented validator required by this preflight; native/resources/R tests
+and realm integration remain open. D88-02 requests explicit R09/R10 fixtures
+for `output_limit`, `state_error`, `native_failure` as freeze-and-report outcomes,
+never no saved login; these fixtures are not implemented here. Namespace work
+remains separate, with native assertions/probes unverified and no D87-06 dependency.
 
 ## 2. Existing facts versus inherited proposals
 
 Line ranges/symbols refer to the frozen baseline; linked design/protocol
-documents remain draft, not accepted architecture.
+documents retain their recorded statuses. The bounded ADR-0018 exception above
+is accepted in its review branch; it supplies no working realm implementation.
 
 | Basis | What is actually established / required next |
 | --- | --- |

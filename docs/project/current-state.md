@@ -1,11 +1,73 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-14
-last_reviewed_scope: verified bounded source-scope and D87 disposition records; parallel non-signing-validation RFC and namespace drafting; no implementation or ADR acceptance
+last_reviewed: 2026-10-15
+last_reviewed_scope: verified ADR-0018 human acceptance and bounded local source authorization; no implementation or native/adoption result
 ---
 
 # Current project state
+
+## ADR-0018 design/source gate closed — 2026-10-15
+
+Human GitHub `Cooldom66671` [confirmed points 1–3](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) at
+`2026-10-15T07:01:36Z`: accepts [ADR-0018](../decisions/0018-core-non-signing-state-validation.md)
+exactly at `9eb6527a6ed6090c9213a4663677e67d9ad03339` and permits only the stated
+local feature-branch non-signing shared-core implementation/tests. The accepted
+record, decision-log entry and completed [RFC-0032](../rfcs/0032-core-non-signing-state-validation.md)
+are reconciled together. The ADR is accepted in this review branch, not normative
+on `main` until a separately authorized merge. No merge was requested/performed.
+The prior independent design review covers `15e86b9`, with verified citation-only
+correspondence to the approved revision; this is not runtime/source acceptance.
+
+This later explicit record supersedes the earlier [D88 technical response's](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186309504)
+direction-only boundary for the specified core work. [D89 choices/amendments](https://github.com/GOTD-GLOBAL/ParanoID/pull/89#issuecomment-6186309968)
+also exist. Their native/entitlement/entropy/fleet assertions remain subject to
+source/target qualification, not evidence automatically made true by agreement.
+The already verified #73/D87/delegation records are not being requested again.
+
+No validator is implemented by this change. V01–V14, native/memory, P/K, realm
+integration and app acceptance remain NOT RUN/OPEN. The numeric peak/latency
+budget is deferred to measurements and mandatory before adoption. No Keychain
+probe, retained-item mutation, phone/Apple, server/DB/RPC/login, deploy or release
+authority follows. General schema-3 reopen is still blocked on a real tested path.
+Historical pending-approval/draft checkpoints below describe earlier states;
+they do not reopen this closed design/source gate or imply a runtime result.
+
+## Non-signing validation decision record drafted — 2026-10-14
+
+[Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) records
+RFC-0032's candidate shared-core boundary and pending human approval evidence.
+[Independent ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288) returned scoped DRAFT PASS on
+`15e86b96658009cd452e4343809c057d15b3c04b`, without blocking defects. This later citation/status-only
+update preserves the reviewed substantive sections and is parent-verified;
+no independent review of that metadata tail is claimed. The older RFC review
+remains separate. Neither review accepts the ADR or permits implementation.
+The record separates readiness for disposition, required human design/source
+approval and later implementation/native/adoption acceptance; it does not demand
+future code tests as a prerequisite to deciding whether to authorize their code.
+
+Concrete remaining choices are requested in [D88-01–06](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6175640412)
+and, independently, [D89-01–05](https://github.com/GOTD-GLOBAL/ParanoID/pull/89#issuecomment-6175641613).
+No human answers to those exact contract requests were present at this drafting
+checkpoint. Status remains draft; no shared-core implementation, accepted ADR,
+native result, merge or live permission is implied. #73/D87 source/direction
+records already exist and are not being requested again.
+
+## Non-signing core validation RFC draft — 2026-10-14
+
+[Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) proposes an
+additive full-schema-3 validation/public projection through the unchanged C ABI.
+It is on the verified-B/restart-keeps-login critical path, but the operation is
+not implemented or approved. Shared-core RFC → ADR and required owner approval,
+actual V01–V14 tests and native resource evidence remain gates.
+
+[Existing-API source probes](evidence/core-state-validation-20261014/README.md)
+correct the initial absolute zero-OS-RNG promise: Account reconstruction can
+seed runtime hash tables on a cold worker. Parent Linux debug/release runs
+observed cold entropy and no repeat warm syscall; this does not prove a new
+validator or permit signing/key/nonce/UUID/protocol RNG. The corrected proposal
+requires separate attribution and cold/warm positive/negative controls. Namespace
+and future v3 UUID work remain separate; no live inventory is authorized here.
 
 ## Verified source scope and realm disposition — 2026-10-14
 

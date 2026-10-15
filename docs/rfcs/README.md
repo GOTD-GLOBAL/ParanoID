@@ -43,6 +43,14 @@ Close an RFC and record its disposition in one coherent pull request:
 Follow the human authority and acceptance-evidence rules in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
+## Completed non-signing validation proposal
+
+- [RFC-0032](0032-core-non-signing-state-validation.md): completed proposal history
+  linked to [ADR-0018](../decisions/0018-core-non-signing-state-validation.md),
+  human-accepted on 2026-10-15 in the review branch with bounded local source/tests
+  authorized. Normative publication requires a separately authorized merge;
+  no validator, native/adoption evidence or live permission is supplied.
+
 ## Active narrow proposal
 
 - [RFC-0031: Content-free iOS background delivery through APNs](0031-ios-background-delivery.md)
