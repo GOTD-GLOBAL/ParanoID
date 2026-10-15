@@ -1,11 +1,37 @@
 ---
 status: accepted
 owner: maintainers
-last_reviewed: 2026-10-14
-last_reviewed_scope: ADR-0018 draft review recorded with citation-only tail; human disposition pending; no implementation or ADR acceptance
+last_reviewed: 2026-10-15
+last_reviewed_scope: verified ADR-0018 human acceptance and bounded local source authorization; no implementation or native/adoption result
 ---
 
 # Current project state
+
+## ADR-0018 design/source gate closed — 2026-10-15
+
+Human GitHub `Cooldom66671` [confirmed points 1–3](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) at
+`2026-10-15T07:01:36Z`: accepts [ADR-0018](../decisions/0018-core-non-signing-state-validation.md)
+exactly at `9eb6527a6ed6090c9213a4663677e67d9ad03339` and permits only the stated
+local feature-branch non-signing shared-core implementation/tests. The accepted
+record, decision-log entry and completed [RFC-0032](../rfcs/0032-core-non-signing-state-validation.md)
+are reconciled together. The ADR is accepted in this review branch, not normative
+on `main` until a separately authorized merge. No merge was requested/performed.
+The prior independent design review covers `15e86b9`, with verified citation-only
+correspondence to the approved revision; this is not runtime/source acceptance.
+
+This later explicit record supersedes the earlier [D88 technical response's](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186309504)
+direction-only boundary for the specified core work. [D89 choices/amendments](https://github.com/GOTD-GLOBAL/ParanoID/pull/89#issuecomment-6186309968)
+also exist. Their native/entitlement/entropy/fleet assertions remain subject to
+source/target qualification, not evidence automatically made true by agreement.
+The already verified #73/D87/delegation records are not being requested again.
+
+No validator is implemented by this change. V01–V14, native/memory, P/K, realm
+integration and app acceptance remain NOT RUN/OPEN. The numeric peak/latency
+budget is deferred to measurements and mandatory before adoption. No Keychain
+probe, retained-item mutation, phone/Apple, server/DB/RPC/login, deploy or release
+authority follows. General schema-3 reopen is still blocked on a real tested path.
+Historical pending-approval/draft checkpoints below describe earlier states;
+they do not reopen this closed design/source gate or imply a runtime result.
 
 ## Non-signing validation decision record drafted — 2026-10-14
 

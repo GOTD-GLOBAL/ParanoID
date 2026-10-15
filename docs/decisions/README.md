@@ -25,12 +25,16 @@ with the video-call work.
 | [ADR-0001](0001-documentation-as-code.md) | Accepted | Use documentation as code with English as the canonical language |
 | [ADR-0003](0003-closed-alpha-review-policy.md) | Accepted | Bounded independent-AI review exception for private test-data alpha; human owner acceptance retained |
 
-## Draft implementation records
+## Accepted in this review branch
 
-- [ADR-0018](0018-core-non-signing-state-validation.md): proposed decision record for
-  RFC-0032's non-signing core validation/public projection; scoped draft review
-  recorded, contract ratification and human approval pending. No implementation/
-  adoption grant.
+- [ADR-0018](0018-core-non-signing-state-validation.md): human approval on
+  2026-10-15 for the frozen `9eb6527` non-signing core validation design and bounded
+  local implementation/tests. [Approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) and independent review
+  are recorded; normative only after separately authorized canonical merge.
+  RFC-0032 is completed proposal history; implementation/native/adoption gates
+  remain unrun, with no merge/live permission.
+
+## Draft implementation records
 
 - [ADR-0017](0017-ios-concurrent-identity-v3.md): draft iOS identity-v3/concurrent-realm
   candidate and local component preparation; no architecture acceptance,

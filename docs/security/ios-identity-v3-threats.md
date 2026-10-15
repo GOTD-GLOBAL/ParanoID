@@ -2,23 +2,23 @@
 status: draft
 owner: security
 decision_owner: martadvix-web
-last_reviewed: 2026-10-14
-last_reviewed_scope: verified bounded source/D87 records and unchanged trust boundaries; no implementation, native measurement or ADR acceptance
+last_reviewed: 2026-10-15
+last_reviewed_scope: recorded bounded ADR-0018 design/source approval; controls and native evidence still unimplemented
 ---
 
 # iOS identity v3 threat delta (RFC-0030)
 
 ## Proposed full-state validation boundary (RFC-0032)
 
-[Draft RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) specifies a
-non-signing Rust validation/public-projection candidate, not a delivered control.
-[Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md) now records
-that proposed boundary with a [scoped draft ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288) on
-`15e86b96658009cd452e4343809c057d15b3c04b`; human approval remains pending. Recording that review neither
-accepts the API nor changes any runtime/native acceptance gate. Design approval
-and tested implementation/adoption are distinct, and neither is inferred from a
-draft label or CI result. Both validation and result construction must avoid signing while preserving peer
-signature checks, transcripts and every existing state/serialized-size check.
+[Completed RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) is proposal
+history for the non-signing Rust validation/public projection, not a delivered
+control. [ADR-0018](../decisions/0018-core-non-signing-state-validation.md) records
+[human approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) of `9eb6527` in the review branch and bounded
+local implementation/tests, distinct from [scoped design review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+on `15e86b9` and its verified citation tail. No canonical merge or live permission
+is inferred, and no runtime/native acceptance gate is lifted. Both validation
+and result construction must avoid signing while preserving peer signature
+checks, transcripts and every existing state/serialized-size check.
 A private non-buffering sink may count the same serializer without retaining or
 exporting an encoded secret-state buffer; equality/limit evidence remains required.
 

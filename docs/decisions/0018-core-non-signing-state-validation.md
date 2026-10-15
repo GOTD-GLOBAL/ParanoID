@@ -1,12 +1,20 @@
 ---
-status: proposed
+status: accepted
 owner: ios
 decision_owner: Cooldom66671
 product_decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 required_reviewers: []
+risk_owner: martadvix-web
+approved_change: bounded private-alpha non-signing core validation design and local implementation/tests; no adoption or live authority
+approved_revision: 9eb6527a6ed6090c9213a4663677e67d9ad03339
+approval_date: 2026-10-15
+approval_pull_request: https://github.com/GOTD-GLOBAL/ParanoID/pull/88
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887
+approval_request_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6178371133
 created: 2026-10-14
-last_reviewed: 2026-10-14
+last_reviewed: 2026-10-15
+last_reviewed_scope: verified human acceptance of the frozen contract; runtime/native evidence remains unrun
 technical_direction_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187
 delegation_record: https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919
 source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046
@@ -14,12 +22,19 @@ source_scope_approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/73#is
 
 # ADR-0018: Non-signing full core-state validation and public projection
 
-**Proposed lifecycle checkpoint, not yet recorded as accepted.** This records the candidate decision of
-[RFC-0032](../rfcs/0032-core-non-signing-state-validation.md) for D87-07: one
-additive, read-only `validate_state_v3` operation on the shared Rust core. It
-asserts no implemented operation, passed test, lifted schema-3 reopen blocker
-or live authority. Number 0018 was rechecked against published heads and pull
-heads on 2026-10-15; no other ADR-0018 allocation was found.
+**Accepted decision in this review branch; not yet normative on `main`.**
+Human technical decision owner Cooldom66671 [accepted the exact boundary](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887)
+at `9eb6527a6ed6090c9213a4663677e67d9ad03339` on `2026-10-15T07:01:36Z` and explicitly authorized only the
+scoped local implementation/tests. The linked [RFC-0032](../rfcs/0032-core-non-signing-state-validation.md)
+is completed as proposal history, not a normative API specification or delivered
+operation. Canonical publication still requires a separately authorized merge.
+No runtime implementation, passed V01–V14 test, lifted schema-3 reopen blocker,
+adoption, native measurement or live authority is claimed.
+
+The history records `draft` → `proposed` → `accepted`, without a direct transition
+or invented earlier approval date. The proposed checkpoint changes status only;
+the human-approved eight-item contract below is retained verbatim from `9eb6527`.
+Number 0018 was rechecked against published heads/pull heads before proposing.
 
 ## Authority and work boundary
 
@@ -30,7 +45,9 @@ heads on 2026-10-15; no other ADR-0018 allocation was found.
   direction B, blocked general schema-3 reopen, as the interim default. It
   explicitly withholds permission to modify `clients/core` (including
   `clean_service`), `key-protocol` or the shared JSON command contract before
-  RFC → ADR → required owner approval. This ADR is that step, not the approval.
+  RFC → ADR → required owner approval. The [later explicit approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887)
+  now satisfies that design/source gate only for the frozen contract and scope;
+  it does not authorize unrelated shared-code changes or adoption.
 - The [bounded source/local-test confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
   by martadvix-web covers private alpha with synthetic/non-sensitive data and
   local component/native tests. It is not approval of this API.
@@ -42,23 +59,33 @@ heads on 2026-10-15; no other ADR-0018 allocation was found.
 
 Protected domains: shared identity/key handling, cryptographic verification,
 local persistence admission, public JSON API compatibility and native memory
-boundaries. The proposed `closed-alpha-ai` mode uses the bounded exception of
-accepted [ADR-0003](0003-closed-alpha-review-policy.md); the empty reviewer
-list is not completed review or exemption. [Independent fresh-context ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
-returned **scoped DRAFT PASS** on `15e86b96658009cd452e4343809c057d15b3c04b` with no blocking defects.
-Reviewer/model: gpt-6-astra, provider openai-codex; model diversity is not claimed.
-This later citation/status-only update preserves the reviewed substantive boundary;
-it is parent-verified, not a second independent review. Completing
-the record and review makes it eligible for `proposed`, meaning ready for human
-disposition, not already approved. Human decision-owner approval of the exact
-boundary, any required product/risk-owner approval and complete governance
-acceptance evidence are required for `proposed` → `accepted`, not prerequisites
-to merely proposing the record. This lifecycle checkpoint records `status: proposed`; the following acceptance
-record incorporates the already received human disposition of the frozen boundary.
-Neither label itself authorizes shared-core changes; the required owner approval
-and scoped RFC/ADR process must precede source modification. Default qualified
-human review remains the exit gate before sensitive data, public release or
-production/security/privacy claims.
+boundaries. `review_mode: closed-alpha-ai` uses accepted [ADR-0003](0003-closed-alpha-review-policy.md)
+under the [human #73 scope confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+and [exact request](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6153528785): private informed
+alpha, synthetic/public/non-sensitive test data, coordinator local source checks
+and the selected Mac component/native path. Human residual-risk owner is
+martadvix-web. No sensitive-user data or production/privacy/security claim is
+covered. No second qualified human is asserted; the empty list is not an exemption.
+
+[Independent fresh-context ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+(`deleg_6a0bf028`, `sa-0-cf6cfdd4`) returned scoped DRAFT PASS on
+`15e86b96658009cd452e4343809c057d15b3c04b`, with no blocking findings to resolve.
+Reviewer/model as reported: gpt-6-astra, provider openai-codex. Model diversity is
+not claimed; shared-model blind spots remain a bounded-alpha residual risk.
+The owner-approved `9eb6527` citation/status tail preserves that reviewed decision;
+this acceptance record changes lifecycle/provenance, not the frozen contract.
+Neither tail is falsely represented as a fresh independent substantive review.
+
+Human [approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) of points 1–3 in the [explicit scope request](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6178371133)
+is the acceptance event, not CI, the AI review or the earlier Telegram relay.
+It authorizes the described local feature-branch implementation/tests only after
+recording this decision. Preserve E2EE, identity/history, all unchanged ABI/old
+command/transcript/peer-verification/size/RNG boundaries and actual tests. Scope
+expansion needs separate disposition. No merge/main, deploy/release, server/DB/
+RPC/login/registration/replacement, installed-app or retained-Keychain changes,
+new Keychain probes, phone installation, Apple signing/export or TestFlight is
+included. Default independent qualified human review remains required before
+sensitive data, public release, production claims or expansion beyond this scope.
 
 ## Context and problem statement
 
@@ -86,7 +113,8 @@ REQ-SEC-001; none is claimed fulfilled. No deadline is assigned.
 
 ## Considered options
 
-These are candidate assessments, not completed human dispositions.
+These proposal-stage assessments underpin the human-approved selection of A;
+B remains the operational default until implementation/adoption gates pass.
 
 1. **A: additive pure Rust validation plus minimal projection** — preferred
    under D87-07; one authority, but real refactoring, dispatch/size
@@ -108,10 +136,12 @@ These are candidate assessments, not completed human dispositions.
 
 ## Decision
 
-**Proposed, pending ratification:** adopt option A, with option B as the
-default until A is approved, implemented, tested and reviewed. Only a
-shared-core path gives the realm reader full admission without a signing oracle
-or a second rule set. The exact boundary to be approved:
+**Human-approved design:** adopt option A; option B remains the operational
+default until A is implemented, tested, reviewed and admitted for use. Only a
+shared-core path gives full admission without a signing oracle or a second rule
+set. The following eight items preserve the exact approved `9eb6527` boundary;
+proposal-stage ratification language is satisfied by the recorded human approval,
+not by a test result or this status edit. Implementation evidence is still required:
 
 1. **Operation and dispatch.** One request `{"op":"validate_state_v3"}` over
    the existing `clients/core::command(state, request)`, unchanged
@@ -221,17 +251,16 @@ or a second rule set. The exact boundary to be approved:
 
 ## Validation
 
-**V01–V14 of RFC-0032 are NOT RUN**; this draft adds and executes no test.
-Design disposition and runtime/adoption acceptance are different phases. The
-existing source probes and design reviews are the available research evidence;
-a human decision must explicitly record the approved design/implementation
-boundary, limitations and future gates under the canonical policy. This draft
-supplies no such approval. Do not create a circular requirement that future
-implementation tests already pass before deciding whether to authorize their
-implementation, or relabel those unrun tests as passed design evidence.
+**V01–V14 of RFC-0032 are NOT RUN**; this documentation change adds and executes
+no runtime test. Design/source approval is now recorded; runtime/adoption
+acceptance is a separate phase. Existing source probes and design reviews are
+research evidence, not tests of an implemented validator. The numeric peak/
+latency budget is deferred to measurement and remains mandatory before adoption.
+Do not create a circular demand for future implementation tests to pass before
+authorizing their code, or relabel those unrun tests as passed evidence.
 
 **Implementation/adoption acceptance** requires behavioral RED → GREEN on the
-subsequently approved implementation;
+authorized implementation;
 differential equivalence against baseline `view` admission and the baseline
 serializer; signing/protocol-generation instrumentation with attributed runtime
 entropy under cold/warm/optimized controls; rebuilt C/JNI artifacts with exact
@@ -258,26 +287,51 @@ is research, not acceptance.
 
 ## Disposition and acceptance evidence
 
-- Disposition: pending (draft; not accepted, rejected or withdrawn)
-- Disposition rationale: pending
-- Decision owner and identity: Cooldom66671 (technical, under the linked
-  delegation); product/risk owner martadvix-web
+- Disposition: accepted in the review branch; not normative until canonical merge
+- Disposition rationale: select full non-signing Rust validation/public projection
+  while retaining full existing admission and separate runtime/adoption gates
+- Decision owner and identity: Cooldom66671, human GitHub `User`, under the
+  [founder's technical delegation](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919)
+- Product/residual-risk owner: martadvix-web, with verified bounded #73 scope
+- Approved revision: `9eb6527a6ed6090c9213a4663677e67d9ad03339`; numbered decision items preserved verbatim
 - Pull request URL: <https://github.com/GOTD-GLOBAL/ParanoID/pull/88>
-- Permanent disposition or approval evidence URL: pending
-- Withdrawal author statement URL, if applicable: not applicable
-- Delegation evidence URL: <https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919>
-- Required-review evidence URL: [exact-revision ADR draft review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
-  on `15e86b96658009cd452e4343809c057d15b3c04b`; the older RFC review remains separate. This is not human
-  decision approval or an implementation/native review.
-- Telegram message ID, sender mapping, timestamp, and exact approval text: not used
-- Disposition date: pending
-- Known limitations and follow-up: no implementation, test, harness or native
-  memory evidence exists; open choices (operation name, projection
-  version/fields, error mapping, output cap, discriminator, counting-sink
-  design, entropy category, peak/latency budget, caller scheduling) await
-  ratification; realm-reader integration and D87-06 remain separate decisions;
-  shared current-state, threat and index documents are reconciled by the
-  owning change, not by this file.
+- Permanent disposition or approval evidence URL: <https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887>
+- Exact request defining points 1–3 and exclusions: <https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6178371133>
+- Approval timestamp: `2026-10-15T07:01:36Z`; disposition date: 2026-10-15
+- Required-review evidence: [independent exact-revision ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+  on `15e86b96658009cd452e4343809c057d15b3c04b`, with the verified citation-only
+  correspondence to the approved revision; no implementation/native review claimed
+- Withdrawal author statement URL: not applicable
+- Telegram evidence: not used for acceptance; the human GitHub record supersedes
+  the earlier unverified relay, which never supplied authority
+- Validation/limitations: source probes and document/design checks only; no
+  implemented validator, V01–V14, native harness/result, budget or adoption evidence
+- Follow-up: implement/test only the approved contract; obtain exact-source review,
+  rebuilt artifact/regression/native evidence and a ratified budget before adoption;
+  realm-reader integration, D87-06 and all excluded live actions remain separate
+
+Exact human approval text (original language, not a bot-authored approval):
+
+> Подтверждаю пункты 1–3: D88/D89 согласованы; ADR-0018 по 9eb6527 принимаю в указанном private-alpha scope; разрешаю только описанные локальную реализацию и тесты. Численный бюджет — отдельный обязательный gate до adoption. Исключения и непройденные проверки сохраняются.
+
+### Technical follow-up inputs, not new implementation evidence
+
+The earlier [D88 technical response](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186309504)
+was expressly direction-only; the later explicit approval above accepts `9eb6527`
+and grants the bounded local source scope. D88-02 requests explicit R09/R10
+freeze-and-report fixtures for `output_limit`, `state_error` and `native_failure`,
+never treating them as no saved login. D88-04/06 propose target-specific Apple
+entropy interposition and footprint sampling. Those target/API assertions and
+instrumentation coverage require source/native verification; they are not
+promoted to measured facts or silently substituted for the approved V07/peak
+acceptance obligations. A sampled maximum or net delta is not automatically the
+actual transient peak. No numeric budget is inferred.
+
+[D89 choices/amendments](https://github.com/GOTD-GLOBAL/ParanoID/pull/89#issuecomment-6186309968) are recorded
+as separate namespace follow-up inputs. This ADR does not adopt a Swift permit
+implementation, assumed signed entitlement, legacy population claim or a new
+Keychain probe scope. Preserve native unknowns and review those details against
+actual target/source evidence; do not rewrite this approved decision to absorb them.
 
 ## Links
 
@@ -291,7 +345,8 @@ is research, not acceptance.
 - Experiment or benchmark: [source-probe receipt](../project/evidence/core-state-validation-20261014/README.md)
 - Consumer contract: [realm-store preflight](../clients/ios/realm-store-preflight.md#verified-b-means-local-read-only-admission)
 - Contract questions: [D88-01–06](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6175640412)
-  on the RFC contract at `55364d7`; answers are not fabricated by this draft.
+  on the RFC contract at `55364d7`; the human answers and later explicit approval
+  are linked above, with technical inputs separated from implementation evidence.
 - Source baseline: [core lib.rs](../../clients/core/src/lib.rs), [clean_service.rs](../../clients/core/src/clean_service.rs), [C ABI](../../clients/ios/bridge/src/lib.rs), [key-protocol](../../key-protocol/src/lib.rs)
 - Governance: [ADR-0001](0001-documentation-as-code.md), [ADR-0003](0003-closed-alpha-review-policy.md),
   [closed-alpha exception](../governance/documentation-policy.md#closed-alpha-review-exception)

@@ -1,5 +1,5 @@
 ---
-status: draft
+status: completed
 owner: ios
 technical_component: shared-client-core
 decision_owner: Cooldom66671
@@ -7,22 +7,30 @@ product_decision_owner: martadvix-web
 review_mode: closed-alpha-ai
 required_reviewers: []
 created: 2026-10-14
-last_reviewed: 2026-10-14
-last_reviewed_scope: draft review corrections and existing-API Linux entropy probes; no new validator implementation or Apple acceptance
+last_reviewed: 2026-10-15
+last_reviewed_scope: human design/source approval recorded; proposal completed, no validator or Apple acceptance
+completed_date: 2026-10-15
+resulting_adr: ../decisions/0018-core-non-signing-state-validation.md
+approval_record: https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887
 ---
 
 # RFC-0032: Non-signing full core-state validation and public projection
 
-**DRAFT — not an existing API, approved implementation or accepted decision.**
-This is the separately scoped D87-07 proposal requested by the delegated
-technical owner. It proposes an additive Rust JSON operation over the existing
-C ABI, not a Swift state validator or a signing exception. General retained
-schema-3 admission remains **blocked** until the RFC → ADR → required owner
-approval gates and the real implementation, tests and review are complete.
-[RFC-0030](0030-ios-identity-v3.md) and
-[ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md) remain `draft`.
-The candidate decision is recorded in [draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md);
-its existence does not supply approval or close the implementation gates.
+**COMPLETED proposal history — not a normative specification or implemented API.**
+Human [approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) on 2026-10-15 accepts the frozen `9eb6527`
+[ADR-0018](../decisions/0018-core-non-signing-state-validation.md) and authorizes
+its bounded local implementation/tests. This closes the specific design/source
+permission gate, not V01–V14, native/resource, realm integration or app acceptance.
+The ADR is accepted in this review branch and becomes normative only after a
+separately authorized canonical merge. No merge or live action is authorized.
+
+The proposed-design and validation-plan sections below retain the reviewed
+`55364d7` content as historical evidence; their unrun tests and runtime/adoption
+conditions remain binding obligations of the resulting decision. General retained
+schema-3 admission stays **blocked** until the real approved/tested/reviewed path
+exists. [RFC-0030](0030-ios-identity-v3.md) and [ADR-0017](../decisions/0017-ios-concurrent-identity-v3.md)
+remain draft. Native implementation/harness suggestions in later D88/D89 comments
+are follow-up inputs requiring source/target qualification, not new measured facts.
 
 ## Required review rationale
 
@@ -55,8 +63,9 @@ construction, not just a function named `validate`.
 - Older statements at the source baseline that #73 confirmation or the D87
   human record is still missing are stale on those two evidence questions.
   They do not negate the records above. Conversely, those records do not accept
-  an ADR, pass any test or authorize this shared-core implementation. Canonical
-  shared-document reconciliation is separate from this one-file draft.
+  an ADR, pass any test or authorize this shared-core implementation by themselves.
+  The later [explicit human approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) now accepts ADR-0018 and
+  authorizes only its bounded local source/tests; no runtime acceptance follows.
 
 The proposed `closed-alpha-ai` review mode uses the bounded second-human
 exception in accepted [ADR-0003](../decisions/0003-closed-alpha-review-policy.md).
@@ -711,54 +720,53 @@ physical-device memory, lock, power-loss or restart evidence.
 
 ## Open questions
 
-All deadlines are **unassigned**; `draft` status is intentional. Approval of a
-preferred direction is not approval of each detail below.
+The design choices below now have [D88 technical answers](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186309504)
+and [explicit ADR/source approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887). The latter at 07:01:36Z
+supersedes the earlier 06:52:21Z direction-only boundary for the stated local
+shared-core scope; it does not waive delivery gates. No new deadline is invented.
 
-| Decision still required | Responsible decision / evidence |
+| Decision / obligation | Current disposition and remaining evidence |
 | --- | --- |
-| Ratify `validate_state_v3`, projection version/fields, error mapping and 8,192-byte output cap, versus another explicitly versioned local contract. | Cooldom66671 within the delegation; required shared-core owner approval and independent design review before code. |
-| Select the exact internal transcript-input/verified-peer separation and prove non-buffering counting-sink equivalence without a complete encoded secret-state buffer. | Shared-core implementation/review under the technical owner; no missing-check or secret-buffer shortcut. |
-| Ratify the duplicate-aware outer discriminator and compatibility corpus, including probe/parser recursion behavior and unchanged old dispatch. | Technical owner and independent reviewer; source/behavioral evidence required. |
-| Ratify the narrow runtime hash-seeding category and specify trustworthy sign/protocol-generation/entropy attribution with cold-process, fresh-worker, warmed and optimized controls. | Implementation review; model/author self-assertion or grep is insufficient. |
-| Define simulator peak instrumentation, numeric budget and elapsed-time acceptance for bounded worst-case state, with caller scheduling/lifetime policy. | Cooldom66671 and the selected native test handoff; no current harness/result/deadline claim. |
-| Confirm the narrow shared-core implementation scope and resulting ADR disposition under the required human approvals. | Technical owner plus any scope/risk decision reserved to martadvix-web; #73 is source-scope evidence, not this API's approval. |
-| Integrate the resulting validator with the independently approved namespace/realm-reader contract and all six verified-B conditions. | Separate storage task/review after the real validator passes; not a reason to serialize the two draft workstreams. |
+| Operation/projection/errors/output cap | D88-01/02 agreed; frozen ADR-0018 accepted. Actual operation and error behavior tests remain NOT RUN. |
+| Transcript-input separation and counting sink | D88-05 selects the same pinned serializer and non-buffering sink. Internal implementation and differential equivalence still require proof. |
+| Duplicate-aware dispatcher and compatibility corpus | D88-03 agreed; original-byte/old-dispatch behavior must still be demonstrated. |
+| Runtime hash-seeding category | D88-04 ratified narrowly; actual sign/protocol-RNG controls and target-specific entropy attribution remain unrun. Apple hook suggestions are not source/native evidence. |
+| Native resources and caller lifetime | D88-06 method/lifetime agreed; numeric budget deferred to measured evidence and mandatory before adoption. No harness, trustworthy peak result or threshold is claimed. |
+| Shared-core permission / ADR | Explicit human approval of `9eb6527` grants only the stated local feature-branch implementation/tests; reserved product/risk/live scope and expansion gates remain. |
+| Namespace / realm-reader integration | D89 answers exist separately; factual/native qualifications, real validator, six verified-B conditions and storage review remain obligations. No new Keychain-probe permission. |
 
-D87-06's v3-only UUID enforcement/retained policy and Sergey's live inventory
-remain separate decisions, not unresolved prerequisites added to this RFC.
+D88-02 also requests explicit R09/R10 freeze-and-report fixtures for
+`output_limit`, `state_error`, `native_failure`; none means no saved identity.
+D88-04/06 proposed Apple interposition and footprint sampling require source/
+target validation before a harness recipe or actual-peak claim is published.
+D87-06's future UUID/wire/inventory work is not reintroduced as a prerequisite.
 
 ## Decision and follow-up
 
-- **Disposition:** DRAFT direction-A design for review; direction B remains the
-  operational default. No RFC completion or accepted architecture.
-- **Decision-owner approval permalink for this exact contract:** none yet.
-  [D87-07 technical direction](https://github.com/GOTD-GLOBAL/ParanoID/pull/87#issuecomment-6173228187)
-  authorizes this drafting direction, not its shared-core implementation.
-- **Delegation evidence:**
-  [martadvix-web → Cooldom66671](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919).
-- **Bounded iOS source-scope evidence:**
-  [human confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
-  to the exact request linked above; no live/merge/release authority.
-- **Required-review evidence:** [scoped RFC closure review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5522716241)
-  covers the contract at `55364d7d781620075f55bb08b46946110008ce52`, not the later
-  ADR revision or implementation. No AI review is recorded as human approval.
-- **Resulting ADR:** [draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md),
-  allocated after checking published refs; [scoped ADR review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
-  covers `15e86b96658009cd452e4343809c057d15b3c04b`, not implementation. The later citation/status-only
-  update preserves its substantive boundary and is parent-verified. Contract
-  ratification and human approval remain pending. RFC remains draft, not completed.
-- **Closure/replacement RFC:** not applicable while draft; no replacement selected.
-- **Implementation issues:** not created by this task. D87-07 is tracked in PR #87;
-  preflight R07/R09/R10 and RFC-0030 D1–D3 identify its consumers.
+- **Disposition:** completed as design discussion; direction A is accepted in
+  [ADR-0018](../decisions/0018-core-non-signing-state-validation.md), with B still
+  the operational default until the validator/adoption obligations pass
+- **Decision-owner approval:** [Cooldom66671, human GitHub User](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887),
+  2026-10-15T07:01:36Z, explicitly accepting `9eb6527` and points 1–3 of the
+  [bounded request](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6178371133)
+- **Delegation:** [martadvix-web → Cooldom66671](https://github.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919)
+- **Product/test-data scope:** [human #73 confirmation](https://github.com/GOTD-GLOBAL/ParanoID/pull/73#issuecomment-6172556046)
+  under the linked exact request; no expansion or repeated approval requested
+- **Required design review:** [ADR scoped review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5523363288)
+  on `15e86b9` and parent-verified citation-only `9eb6527`; [RFC review](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#pullrequestreview-5522716241)
+  on `55364d7` remains separate. Neither is runtime acceptance or human approval.
+- **Resulting ADR:** accepted in the review branch, normative only after separately
+  authorized merge; its frozen numbered contract remains unchanged
+- **Closure/replacement RFC:** this RFC is completed, not replaced or made normative
+- **Implementation tracking:** D87-07 / PR #87 and preflight R07/R09/R10 consumers;
+  no implementation issue or runtime artifact is fabricated by this status update
 
-Required sequence, with no gate implied passed:
+Remaining delivery sequence; only the recorded design/source gate is complete:
 
-1. Complete the draft ADR and its exact-revision design/security review before
-   final disposition; obtain the required human approval of the scoped contract
-   **before any shared-core/key-protocol/clean-service modification**. Moving a
-   complete record to proposed is not acceptance, and future implementation tests
-   are not claimed passed in order to authorize their implementation. No normative
-   decision is manufactured by merging this draft.
+1. Design/source approval is recorded in ADR-0018 for the frozen contract before
+   shared-core modification; this status change grants nothing beyond the human
+   request/approval. Keep future scope expansion separate. Canonical merge is
+   not performed or authorized, and no future implementation test is called passed.
 2. Approved local shared-core implementation with behavioral RED/GREEN, actual
    no-sign/no-protocol-generation instrumentation with runtime entropy attribution,
    differential validation/transcript/size tests,

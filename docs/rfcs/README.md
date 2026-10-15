@@ -43,15 +43,15 @@ Close an RFC and record its disposition in one coherent pull request:
 Follow the human authority and acceptance-evidence rules in the
 [documentation policy](../governance/documentation-policy.md#decision-authority-and-acceptance-evidence).
 
-## Active narrow proposal
+## Completed non-signing validation proposal
 
-- [RFC-0032: Non-signing full core-state validation and public projection](0032-core-non-signing-state-validation.md)
-  (draft): D87-07's critical-path dependency for verified realm reopen; additive
-  Rust JSON proposal through the unchanged ABI, preserving full validation and
-  transcripts without signing/protocol generation. Required runtime hash seeding
-  is distinguished from protocol RNG. [Draft ADR-0018](../decisions/0018-core-non-signing-state-validation.md)
-  records the reviewed draft boundary; owner approvals, reviewed implementation
-  and native evidence remain gates. No validator exists yet.
+- [RFC-0032](0032-core-non-signing-state-validation.md): completed proposal history
+  linked to [ADR-0018](../decisions/0018-core-non-signing-state-validation.md),
+  human-accepted on 2026-10-15 in the review branch with bounded local source/tests
+  authorized. Normative publication requires a separately authorized merge;
+  no validator, native/adoption evidence or live permission is supplied.
+
+## Active narrow proposal
 
 - [RFC-0031: Content-free iOS background delivery through APNs](0031-ios-background-delivery.md)
   (draft): a constant, content-free APNs alert wake as a second provider of the

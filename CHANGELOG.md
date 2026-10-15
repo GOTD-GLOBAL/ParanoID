@@ -8,22 +8,34 @@ public contract is declared.
 
 ## [Unreleased]
 
+### Non-signing design accepted in review branch (documentation)
+
+- Record Cooldom66671's [explicit approval](https://github.com/GOTD-GLOBAL/ParanoID/pull/88#issuecomment-6186443887) of ADR-0018 at
+  `9eb6527`, using proposed → accepted lifecycle history; complete RFC-0032 and
+  reconcile decision/RFC indexes, preflight, threat notes and current state.
+- Permit only the human-authorized local feature-branch implementation/tests;
+  preserve the frozen contract, deferred numeric budget before adoption and all
+  unrun runtime/native gates. No implementation, canonical merge or live action.
+- Keep new Apple/Keychain technical suggestions separate from verified evidence;
+  reported choices do not establish target facts or authorize new probes.
+
 ### Non-signing validation decision record (documentation)
 
-- Add draft ADR-0018 for RFC-0032 with explicit candidate API/state/error/size,
-  runtime-entropy and caller-lifetime boundaries and pending approval evidence.
-- Preserve draft/proposed/accepted lifecycle distinctions and separate design
-  disposition from later runtime/native acceptance. No implementation is granted.
-- Record the exact-revision draft ADR review separately from its subsequent
-  parent-verified citation/status update; human approval remains pending.
+- Introduce ADR-0018 with explicit API/state/error/size, runtime-entropy and
+  caller-lifetime boundaries; its subsequent human acceptance is recorded above.
+- Preserve lifecycle distinctions and separate design/source approval from later
+  runtime/native acceptance; no delivered implementation is claimed.
+- Keep exact-revision design review separate from subsequent parent-verified
+  citation/status updates and human acceptance evidence.
 
 ### Non-signing core validation RFC (documentation)
 
 - Add draft RFC-0032 and an existing-code entropy/size research receipt. Preserve
   full validation/transcript and immutable-state boundaries; distinguish required
   runtime hash seeding from forbidden signing/protocol generation.
-- This specifies a candidate contract and unrun acceptance plan, not a new core
-  operation or working realm/login feature. Source/ADR/native gates remain.
+- Preserve the proposal and unrun acceptance plan as historical evidence after
+  the design/source approval recorded above. No core operation or working realm/
+  login feature is delivered; runtime/native/adoption gates remain.
 
 ### iOS source-scope and realm disposition records (documentation)
 
