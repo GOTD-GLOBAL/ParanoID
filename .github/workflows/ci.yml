@@ -28,10 +28,10 @@ jobs:
   ios:
     uses: ./.github/workflows/ios.yml
   gate:
-    # The single status check intended for main's ruleset (see
-    # docs/operations/ci.md for whether it is configured). It fails unless every
-    # component workflow above finished with `success`: a failed, cancelled or
-    # skipped component fails the gate rather than passing it.
+    # The single status check main's ruleset requires, pinned to GitHub Actions
+    # (docs/operations/ci.md). Change the ruleset before renaming this job. It
+    # fails unless every component workflow above finished with `success`: a
+    # failed, cancelled or skipped component fails the gate rather than passing it.
     name: gate
     if: always()
     needs: [docs, server, ios]

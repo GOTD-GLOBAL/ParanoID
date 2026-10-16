@@ -8,12 +8,14 @@ public contract is declared.
 
 ## [Unreleased]
 
-### CI: one entry point and a single `gate` check — 2026-10-16
+### CI: one entry point and a required `gate` check — 2026-10-16
 
 - `.github/workflows/ci.yml` runs the docs, server and iOS workflows on every
   pull request and push to `main`, without path filters; `gate` passes only when
-  all three succeed. Component workflows are now `workflow_call` only. `gate` is
-  the check intended for `main`'s ruleset, which is not configured yet.
+  all three succeed. Component workflows are now `workflow_call` only.
+- `main`'s ruleset requires a pull request and a passing `gate` from GitHub
+  Actions, and blocks force-push and deletion. Direct pushes to `main` are
+  refused; no approvals are required.
 - Every pull request now waits for the server workflow (about 18–20 minutes).
   Pushes to `main` never cancel one another; lychee retries transient errors.
 - The legacy pre-v7 history job passes only when the same 14 documented
