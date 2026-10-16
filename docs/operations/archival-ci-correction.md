@@ -1,7 +1,7 @@
 ---
 status: draft
 owner: maintainers
-last_reviewed: 2026-09-09
+last_reviewed: 2026-10-16
 ---
 
 # Archival PR18 CI harness correction
@@ -78,3 +78,22 @@ Final remote run/commit links and completed outcomes are recorded in the PR and
 issue comments after execution, not guessed in this pre-run source note.
 Historical source review and signed-artifact evidence are untouched. Rollback
 of this CI-only change is a later revert; it requires no runtime action.
+
+## Aggregate semantics superseded — 2026-10-16
+
+The rule above that the legacy job keeps the aggregate workflow red is
+superseded by the [single CI entry point](ci.md). A permanently red `main` hid
+real regressions behind the expected one. The legacy job now runs the same whole
+unchanged `self_service` target and passes only when exactly the 14 listed
+names fail and all other tests pass (`scripts/check-legacy-failures.py`).
+No historical assertion is fixed, waived or excluded from the run; the raw cargo
+exit and every failing name remain in the job log and step summary. The check
+compares failing names, not failure causes.
+
+Decision owner confirmation: Сергей Мальцев (`martadvix-web`) answered
+«1. подтверждаю.» on 2026-10-16 in thread 2 of the ParanoID Telegram group. He
+was replying to the question whether to drop the "red `main` by design" rule. The
+message ID and permalink were not available to the agent that recorded this.
+This note therefore points to the source and is not a durable approval record
+under the [documentation policy](../governance/documentation-policy.md#durable-approval-and-delegation-records).
+This document is a `draft` and the change is CI-only.

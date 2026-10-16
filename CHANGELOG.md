@@ -8,6 +8,19 @@ public contract is declared.
 
 ## [Unreleased]
 
+### CI: one entry point and a single `gate` check — 2026-10-16
+
+- `.github/workflows/ci.yml` runs the docs, server and iOS workflows on every
+  pull request and push to `main`, without path filters; `gate` passes only when
+  all three succeed. Component workflows are now `workflow_call` only. `gate` is
+  the check intended for `main`'s ruleset, which is not configured yet.
+- Every pull request now waits for the server workflow (about 18–20 minutes).
+  Pushes to `main` never cancel one another; lychee retries transient errors.
+- The legacy pre-v7 history job passes only when the same 14 documented
+  historical tests fail and every other test passes; any other result fails.
+  Nothing is fixed or waived. `main` is no longer red by design (owner decision,
+  2026-10-16). See [CI reference](docs/operations/ci.md).
+
 ### PR70 verification and updater regression repairs
 
 - Reconcile the Android fixed-service update contract without changing production

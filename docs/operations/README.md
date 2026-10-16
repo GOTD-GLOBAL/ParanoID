@@ -20,6 +20,11 @@ core requirement.
 - [Production SSH access](production-access.md): owner-provided host inventory,
   temporary-agent procedure, read-only verification evidence, and authority limits.
 
+## Continuous integration
+
+- [CI reference](ci.md): the single entry point, the required `gate` check, the
+  exact legacy-failure check and what CI does not prove.
+
 ## Deployment documentation
 
 The [actual 2026-09-09 self-service v2 rollout](self-service-v2-rollout-2026-09-09.md)
