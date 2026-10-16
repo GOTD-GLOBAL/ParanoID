@@ -1643,8 +1643,16 @@ the peer's core reading it, and the transcript the harness computed in Python. A
 QR that decoded to another contact would pair the user with someone else, and
 only a fingerprint says so. Six refusals close the file: the 2048-byte payload
 bound on both encoders, the 4096-byte import bound on both cores, a contact with
-one byte of its signature changed (`invalid_signature` on both) and a PNG that is
-not a code — and no refusal echoes the payload it was given.
+one byte of its signature changed (`invalid_signature` on both) and a PNG
+truncated to its eight-byte signature, with no dimensions or pixel data. Each
+reader must return only its image-read error, never text or an echoed payload.
+This does not require rejecting every truncated PNG: a decoder may recover
+pixels from a longer partial file.
+
+The earlier half-file negative was nondeterministic: the [Mac receipt at
+`4aac29c`](https://github.com/GOTD-GLOBAL/ParanoID/pull/75#issuecomment-6150129691)
+reports one PASS and three FAIL runs. Native validation of the signature-only
+correction is **NOT RUN**; rerun the focused command below on the build Mac.
 
 The reverse direction is read with `Vision` inside the `core-bridge` fixture.
 The application does **not** read codes that way: it takes the string out of an
