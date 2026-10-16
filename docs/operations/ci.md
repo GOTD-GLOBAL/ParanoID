@@ -9,7 +9,7 @@ last_reviewed: 2026-10-16
 Reference for the GitHub Actions checks. The workflow sources in
 `.github/workflows/` are authoritative; this page explains their contract.
 
-## One entry point, one gate check
+## One entry point, one required check
 
 `.github/workflows/ci.yml` runs on every pull request, every push to `main` and
 manual dispatch. It has **no path filters**: every change runs every component
@@ -22,8 +22,8 @@ workflow, so a change to one platform always runs the other platform's gates.
 | `ios` | `ios.yml` | iOS static checks on Ubuntu: bridge, pins, captions, notices, boundary |
 | `gate` | — | passes only if `docs`, `server` and `ios` all finished with `success` |
 
-`gate` is the single status check intended for `main`'s ruleset. A failed,
-cancelled or skipped component fails it. `docs.yml`, `server.yml` and `ios.yml`
+`gate` is the single status check that [`main`'s ruleset](#main-branch-ruleset)
+requires. A failed, cancelled or skipped component fails it. `docs.yml`, `server.yml` and `ios.yml`
 have only a `workflow_call` trigger and never run on their own.
 `scripts/test-ci-wiring.py` enforces this layout.
 
@@ -86,20 +86,33 @@ inside `docs.yml`, `server.yml` or `ios.yml` is covered by `gate` automatically.
 
 ## Main branch ruleset
 
-Not configured. On 2026-10-16 the rulesets API returned an empty list, and
-`main` returned `Branch not protected`. Until a ruleset exists, `gate` is only
-a check that is reported. It is not evidence that `main` requires anything.
+The repository owner configured it in the GitHub UI on 2026-10-16. It is
+ruleset `main` (ID 25251613), with enforcement `active`, applied to the default
+branch, and with an empty bypass list. The same day the rulesets API returned
+exactly these rules:
 
-Planned, pending the repository owner or an administrator:
+- `deletion` and `non_fast_forward`: `main` cannot be deleted or force-pushed.
+- `pull_request`: every change reaches `main` through a pull request; a direct
+  push is refused. It requires zero approvals and allows merge, squash and
+  rebase.
+- `required_status_checks`: `gate`, pinned to the GitHub Actions app
+  (`integration_id` 15368). A commit status named `gate` from any other source
+  does not satisfy it. A pull request does not have to be up to date with
+  `main` before merging (`strict_required_status_checks_policy: false`).
 
-- pull request required before merging into `main`;
-- required status check `gate`, with its source pinned to the GitHub Actions
-  app, so a commit status named `gate` posted by anything else does not
-  satisfy it;
-- no force-push and no deletion of `main`.
+The repository setting "Automatically delete head branches" is on.
 
-Separately, in the repository settings: automatically delete head branches
-after merge.
+The ruleset enforces CI, not review. It requires zero approvals, so human
+review and decision-owner approval remain process rules recorded in each pull
+request under the [documentation policy](../governance/documentation-policy.md).
+GitHub does not enforce them. A pull request also does not have to be up to
+date, so two pull requests that each pass `gate` alone can still break `main`
+when combined. The push run on `main` shows this, and a new pull request fixes
+it.
+
+To rename or remove the `gate` job, change the ruleset first. Otherwise no pull
+request can merge, because each one waits for a check that never reports. That
+includes the pull request that would fix it, and a revert of the CI entry point.
 
 A required `gate` is only as trustworthy as the review of what computes it. For
 a `pull_request` event GitHub runs the pull request's own version of

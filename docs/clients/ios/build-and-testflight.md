@@ -106,8 +106,8 @@ Team ID reported and the framework digest `SKIPPED`.
 `.github/workflows/ios.yml` landed with pull request #36. It is one Ubuntu job,
 `ios-static`. Since 2026-10-16 it is called by the [single CI entry
 point](../../operations/ci.md) on every pull request and every push to `main`,
-with no path filter, and is covered by the `gate` check intended for `main`'s
-ruleset. It runs, in order:
+with no path filter, and is covered by `gate`, the check `main`'s ruleset
+requires. It runs, in order:
 
 - `cargo +1.98.1 check --locked --target aarch64-apple-ios` over
   `bridge/Cargo.toml` — the shared core and the bridge type-check for the
