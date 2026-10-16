@@ -104,9 +104,10 @@ Team ID reported and the framework digest `SKIPPED`.
 ## Continuous integration
 
 `.github/workflows/ios.yml` landed with pull request #36. It is one Ubuntu job,
-`ios-static`, triggered by a pull request and by a push to `main` when
-`clients/ios/**`, `clients/core/**`, `key-protocol/**` or the workflow itself
-changes. It runs, in order:
+`ios-static`. Since 2026-10-16 it is called by the [single CI entry
+point](../../operations/ci.md) on every pull request and every push to `main`,
+with no path filter, and is covered by the `gate` check intended for `main`'s
+ruleset. It runs, in order:
 
 - `cargo +1.98.1 check --locked --target aarch64-apple-ios` over
   `bridge/Cargo.toml` — the shared core and the bridge type-check for the
@@ -132,8 +133,9 @@ The workflow **first executed on a runner for pull request #36**
 (<https://github.com/GOTD-GLOBAL/ParanoID/pull/36>, opened 2026-09-14 as a
 draft): `ios-static` passed. On the same pull request the docs workflow
 (`markdown`) passed, as did the server workflow's `client-core-and-tls` and
-`native-package` jobs; its `Legacy client history` job is informational and
-fails on `main` too. Before that run, every check in the workflow was run
+`native-package` jobs; its `Legacy client history` job was then informational
+and failed on `main` too (since 2026-10-16 it passes only when the same 14
+documented historical tests fail and every other test passes). Before that run, every check in the workflow was run
 locally on the pinned build Mac with exit 0 — twelve of its thirteen `run`
 commands. The thirteenth,
 `rustup toolchain install 1.98.1 --profile minimal --component clippy`, is

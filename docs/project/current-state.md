@@ -7,6 +7,19 @@ last_reviewed_scope: RFC-0030 proposal and the state of the servers seen on 2026
 
 # Current project state
 
+## CI entry point and required check — 2026-10-16
+
+A [single CI entry point](../operations/ci.md) runs every component workflow on
+every change and exposes one required-check candidate, `gate`. The legacy
+history job now passes only when the same 14 documented historical tests fail
+and every other test passes. They are not fixed. The decision owner confirmed
+dropping the "red `main` by design" rule on 2026-10-16 (see the
+[archival record](../operations/archival-ci-correction.md#aggregate-semantics-superseded--2026-10-16)).
+Older notes below that call the legacy job "deliberately red" or "informational"
+describe the CI of their date. A green `gate` still says nothing about phones,
+Mac receipts or production. The `main` ruleset is not configured yet; that is a
+separate owner action.
+
 ## iOS on identity v3 proposal (RFC-0030) — 2026-10-06
 
 `main` carries Android v48 at `2470dca`. Commits pushed to `main` on the

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression contract for the archival clean-v7/v8 CI harness (no runtime edits)."""
 from pathlib import Path
+import importlib.util
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,15 +11,61 @@ class Wiring(unittest.TestCase):
     def test_ios_shared_caption_dependencies_trigger_pr_and_main_checks(self):
         workflow = (ROOT / '.github/workflows/ios.yml').read_text()
         # Captions depend on Android sources; identity bridges depend on the
-        # registrar/core. A producer-only change must not skip the consumer gate.
-        for glob in ('clients/android/**', 'clients/android-devnet/**', 'blockchain/**'):
-            self.assertEqual(workflow.count('"' + glob + '"'), 2, glob)
+        # registrar/core. A producer-only change must not skip the consumer gate:
+        # the iOS workflow runs for every change through ci.yml, unfiltered.
+        self.assertEqual(triggers(workflow), ['workflow_call:'])
+        self.assertIn('    uses: ./.github/workflows/ios.yml', ci_entry(self))
         self.assertIn('python3 clients/ios/test_ui_contract.py', workflow)
         self.assertNotIn('continue-on-error:', workflow)
 
+    def test_single_entry_point_runs_every_component_on_every_change(self):
+        ci = ci_entry(self)
+        self.assertEqual(triggers(ci), ['pull_request:', 'push:', 'branches: [main]',
+                                        'workflow_dispatch:'])
+        self.assertNotIn('paths', ci.split('jobs:', 1)[0])
+        self.assertNotIn('paths-ignore', ci)
+        for name in ('docs', 'server', 'ios'):
+            self.assertIn(f'  {name}:\n    uses: ./.github/workflows/{name}.yml\n', ci)
+            workflow = (ROOT / f'.github/workflows/{name}.yml').read_text()
+            # Reached only through ci.yml: no second, filtered trigger.
+            self.assertEqual(triggers(workflow), ['workflow_call:'], name)
+        workflows = ROOT / '.github/workflows'
+        listed = sorted(path.name for pattern in ('*.yml', '*.yaml') for path in workflows.glob(pattern))
+        self.assertEqual(listed, ['ci.yml', 'docs.yml', 'ios.yml', 'server.yml'])
+        # Every job of the entry point except `gate` is a component that `gate` needs.
+        self.assertEqual(job_ids(ci), ['docs', 'server', 'ios', 'gate'])
+
+    def test_main_pushes_never_cancel_each_other(self):
+        ci = ci_entry(self)
+        # Only runs of one pull request share a group; a push to main or a manual
+        # dispatch is grouped by its own run id, so no main commit loses its run.
+        self.assertIn("format('ci-pr-{0}', github.event.pull_request.number)", ci)
+        self.assertIn("|| format('ci-run-{0}', github.run_id) }}", ci)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", ci)
+        self.assertNotIn('github.ref }}', ci.split('concurrency:', 1)[1].split('jobs:', 1)[0])
+
+    def test_no_workflow_masks_a_failure(self):
+        for name in ('ci', 'docs', 'server', 'ios'):
+            workflow = (ROOT / f'.github/workflows/{name}.yml').read_text()
+            code = '\n'.join(line for line in workflow.splitlines()
+                             if not line.lstrip().startswith('#'))
+            self.assertNotIn('continue-on-error:', code, name)
+
+    def test_required_gate_fails_unless_every_component_succeeded(self):
+        ci = ci_entry(self)
+        gate = ci.split('\n  gate:\n', 1)[1]
+        self.assertIn('    name: gate\n', gate)
+        self.assertIn('    if: always()\n', gate)
+        self.assertIn('    needs: [docs, server, ios]\n', gate)
+        self.assertIn('NEEDS_JSON: ${{ toJSON(needs) }}', gate)
+        self.assertIn('expected = {"docs", "server", "ios"}', gate)
+        self.assertIn('job["result"] != "success"', gate)
+        self.assertNotIn('continue-on-error:', ci)
+
     def test_devnet_controller_and_integration_gate_ci(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
-        self.assertEqual(workflow.count('"blockchain/**"'), 2)
+        # Registrar-only changes still run this job: server.yml is unfiltered.
+        self.assertEqual(triggers(workflow), ['workflow_call:'])
         self.assertIn('  devnet-client:', workflow)
         job = workflow.split('  devnet-client:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
         for command in ('cargo +1.98.1 test --locked --manifest-path blockchain/solana/client/Cargo.toml',
@@ -55,7 +102,7 @@ class Wiring(unittest.TestCase):
                      'scripts/check-v2-maintenance.py'):
             self.assertIn('python3 ' + name, package)
             self.assertTrue((ROOT / name).is_file())
-        self.assertEqual(workflow.count('"scripts/check-v2-maintenance.py"'), 2)
+        self.assertEqual(triggers(workflow), ['workflow_call:'])
         runner = (ROOT / 'scripts/check-v2-maintenance.py').read_text()
         for marker in ('self_service_v2=True', 'PARANOID_V2_OLD_RELEASE',
                        'PARANOID_TEST_PACKAGED', 'PARANOID_V2_RELEASE',
@@ -79,7 +126,7 @@ class Wiring(unittest.TestCase):
         self.assertNotIn("PARANOID_TEST_DATABASE_URL", server)
         self.assertIn("postgresql-16", server)
 
-    def test_legacy_is_separate_red_and_all_other_targets_gate(self):
+    def test_legacy_exact_failures_and_all_other_targets_gate(self):
         workflow = (ROOT / ".github/workflows/server.yml").read_text()
         self.assertIn("  legacy-client-history:\n", workflow)
         supported, legacy = workflow.split("  legacy-client-history:\n", 1)
@@ -95,12 +142,125 @@ class Wiring(unittest.TestCase):
             self.assertTrue(name.isidentifier())
             self.assertIn('fn ' + name + '()', source)
         self.assertNotIn('--skip', legacy)
-        self.assertIn('--test self_service', legacy)
-        self.assertIn('result=$?', legacy)
-        self.assertIn('exit "$result"', legacy)
+        # The legacy job runs the whole target through the strict checker, which
+        # itself runs `--test self_service` with no --skip and no exclusions.
+        self.assertIn('run: python3 scripts/check-legacy-failures.py', legacy)
+        # The exact command: the whole target, no filter, no --skip, no extra args.
+        self.assertEqual(legacy_checker().COMMAND, [
+            'cargo', '+1.98.1', 'test', '--locked',
+            '--manifest-path', 'clients/core/Cargo.toml', '--test', 'self_service'])
         # Comments explain why no failure-masking attribute is allowed.
         self.assertNotIn('continue-on-error:', '\n'.join(
             line for line in workflow.splitlines() if not line.lstrip().startswith('#')))
+
+
+def legacy_checker():
+    spec = importlib.util.spec_from_file_location(
+        'check_legacy_failures', ROOT / 'scripts/check-legacy-failures.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def cargo_output(results):
+    """Synthetic cargo test output for {name: status}."""
+    lines = ['running %d tests' % len(results)]
+    lines += ['test %s ... %s' % (name, status) for name, status in results.items()]
+    counts = [sum(1 for s in results.values() if s == wanted) for wanted in ('ok', 'FAILED', 'ignored')]
+    verdict = 'FAILED' if counts[1] else 'ok'
+    lines.append('test result: %s. %d passed; %d failed; %d ignored; 0 measured; 0 filtered out; '
+                 'finished in 0.01s' % (verdict, *counts))
+    return '\n'.join(lines) + '\n'
+
+
+class LegacyChecker(unittest.TestCase):
+    """The legacy job is green only for exactly the documented historical failures."""
+
+    def setUp(self):
+        self.module = legacy_checker()
+        self.expected = self.module.expected_names()
+        self.assertEqual(len(self.expected), 14)
+        self.baseline = {name: 'FAILED' for name in self.expected}
+        self.baseline.update({'supported_case_%d' % i: 'ok' for i in range(10)})
+
+    def verdict(self, results, exit_code=101):
+        ok, report = self.module.evaluate(cargo_output(results), exit_code, self.expected)
+        return ok, '\n'.join(report)
+
+    def test_exact_historical_failures_pass(self):
+        ok, report = self.verdict(self.baseline)
+        self.assertTrue(ok, report)
+        self.assertIn('Raw cargo exit: 101', report)
+        for name in self.expected:
+            self.assertIn('historical failure (retained, not fixed): ' + name, report)
+        self.assertIn('RESULT: PASS (the same 14 listed tests fail; every other test passes)', report)
+
+    def test_new_failure_fails(self):
+        results = dict(self.baseline, supported_case_0='FAILED')
+        ok, report = self.verdict(results)
+        self.assertFalse(ok)
+        self.assertIn('NEW failure outside the historical list: supported_case_0', report)
+
+    def test_listed_test_that_now_passes_fails(self):
+        name = sorted(self.expected)[0]
+        ok, report = self.verdict(dict(self.baseline, **{name: 'ok'}))
+        self.assertFalse(ok)
+        self.assertIn('now passes', report)
+
+    def test_missing_listed_test_fails(self):
+        results = dict(self.baseline)
+        results.pop(sorted(self.expected)[0])
+        ok, report = self.verdict(results)
+        self.assertFalse(ok)
+        self.assertIn('did not run', report)
+
+    def test_ignored_test_fails(self):
+        ok, report = self.verdict(dict(self.baseline, supported_case_1='ignored'))
+        self.assertFalse(ok)
+        self.assertIn('ignored test: supported_case_1', report)
+
+    def test_build_error_fails(self):
+        ok, report = self.module.evaluate('error[E0425]: cannot find value\n', 101, self.expected)
+        self.assertFalse(ok)
+        self.assertIn('no test results parsed', '\n'.join(report))
+
+    def test_exit_code_must_agree_with_results(self):
+        ok, report = self.verdict(self.baseline, exit_code=0)
+        self.assertFalse(ok)
+        self.assertIn('cargo exited 0 although tests failed', report)
+
+    def test_filtered_run_fails(self):
+        output = cargo_output(self.baseline).replace('0 filtered out;', '3 filtered out;')
+        ok, report = self.module.evaluate(output, 101, self.expected)
+        self.assertFalse(ok)
+        self.assertIn('the whole target must run unfiltered', '\n'.join(report))
+
+    def test_summary_must_agree_with_lines(self):
+        output = cargo_output(self.baseline).replace('10 passed;', '11 passed;')
+        ok, report = self.module.evaluate(output, 101, self.expected)
+        self.assertFalse(ok)
+        self.assertIn('disagrees with parsed lines', '\n'.join(report))
+
+
+def triggers(workflow):
+    """Non-comment lines of a workflow's top-level `on:` block, stripped."""
+    block = workflow.split('\non:\n', 1)[1].split('\npermissions:', 1)[0]
+    return [line.strip() for line in block.splitlines()
+            if line.strip() and not line.lstrip().startswith('#')]
+
+
+def job_ids(workflow):
+    """Top-level job ids of a workflow, in source order."""
+    jobs = workflow.split('\njobs:\n', 1)[1]
+    return [line[2:-1] for line in jobs.splitlines()
+            if line.startswith('  ') and not line.startswith('   ')
+            and line.endswith(':') and not line.lstrip().startswith('#')]
+
+
+def ci_entry(case):
+    path = ROOT / '.github/workflows/ci.yml'
+    case.assertTrue(path.is_file())
+    return path.read_text()
 
 
 if __name__ == "__main__":

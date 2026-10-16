@@ -1362,7 +1362,8 @@ Scope proposed for the owner's approval:
   (only if decision 4 confirms REQ-CLIENT-005); and `CHANGELOG.md`.
 - **Pull request split.** The iOS component-boundary gate forbids `server/`,
   `clients/core/src/` and `deploy/` (`clients/ios/test_component_boundary.py:22-23`),
-  and CI runs it on `feat/ios-*` branches (`.github/workflows/ios.yml:97`), so
+  and CI runs it on `feat/ios-*` branches (`.github/workflows/ios.yml`, step
+  "Component boundary against the pull request base"), so
   the server, core and deploy parts land in separate pull requests, as
   RFC-0020 did.
 

@@ -1,10 +1,8 @@
 name: Server transport
+# Called only by .github/workflows/ci.yml, for every pull request and every
+# push to main, without path filters (see that file).
 on:
-  pull_request:
-    paths: ["blockchain/**", "server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
-  push:
-    branches: [main]
-    paths: ["blockchain/**", "server/**", "deploy/**", "clients/**", "scripts/check-server.py", "scripts/check-v2-maintenance.py", "scripts/test-ci-wiring.py", "scripts/ci-legacy-client-tests.txt", "scripts/check-pinned-tls.py", "scripts/create-test-tls.py", ".github/workflows/server.yml"]
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -157,20 +155,18 @@ jobs:
           python3 clients/android/test_devnet_notices.py
           JSON_JAR="$GITHUB_WORKSPACE/clients/android/out/deps/json-20240303.jar" python3 clients/android-devnet/check_controller.py
   legacy-client-history:
-    name: Legacy client history (informational, failures retained)
+    name: Legacy client history (exact known failures)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - name: Exact Rust toolchain
         run: rustup toolchain install 1.98.1 --profile minimal
-      - name: Run unchanged pre-v7 history tests and retain raw exit
-        # Deliberately NOT continue-on-error: historical RED remains visible.
-        # REQ-MSG-005 excludes this historical target from clean-v7/v8 gates.
-        run: |
-          set +e
-          cargo +1.98.1 test --locked --manifest-path clients/core/Cargo.toml --test self_service
-          result=$?
-          printf 'Historical self_service raw exit: %s\n' "$result"
-          printf '### Informational pre-v7 history (not a clean-v7/v8 release gate)\n\nRaw cargo exit: `%s`. Failures are retained, not fixed or waived. See this step log for every assertion.\n' "$result" >> "$GITHUB_STEP_SUMMARY"
-          exit "$result"
+      - name: Run the whole unchanged pre-v7 target and require the exact known failures
+        # Runs the whole `--test self_service` target without exclusions. REQ-MSG-005
+        # excludes this historical target from clean-v7/v8 gates; its 14 listed
+        # failures are retained, not fixed or waived. The job passes only when
+        # exactly those 14 fail and every other test passes: any new failure, a
+        # listed test that starts passing, a missing test or a build error turns
+        # it red. Raw cargo exit and every name go to the log and step summary.
+        run: python3 scripts/check-legacy-failures.py

@@ -1,0 +1,57 @@
+name: CI
+# The single entry point for every pull request and every push to main.
+#
+# There are deliberately no path filters. Every check runs on every change, so
+# the one required check (`gate`) can never be skipped or left pending, and a
+# producer-only change (Android, registrar, shared core) always runs its
+# consumers' gates (iOS captions and boundaries, JNI and snapshot codecs).
+# The three component workflows run only through this file.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  # A newer push to the same pull request cancels its older run. Every push to
+  # main and every manual dispatch gets its own group, so no commit on main is
+  # ever left without a run: one shared group would let a third push cancel the
+  # second, still-pending one.
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.event.pull_request.number) || format('ci-run-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  docs:
+    uses: ./.github/workflows/docs.yml
+  server:
+    uses: ./.github/workflows/server.yml
+  ios:
+    uses: ./.github/workflows/ios.yml
+  gate:
+    # The single status check intended for main's ruleset (see
+    # docs/operations/ci.md for whether it is configured). It fails unless every
+    # component workflow above finished with `success`: a failed, cancelled or
+    # skipped component fails the gate rather than passing it.
+    name: gate
+    if: always()
+    needs: [docs, server, ios]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every component workflow succeeded
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          expected = {"docs", "server", "ios"}
+          for name in sorted(needs):
+              print(f"{name}: {needs[name]['result']}")
+          missing = expected - set(needs)
+          failed = sorted(name for name, job in needs.items() if job["result"] != "success")
+          if missing or failed:
+              print(f"gate: FAIL (missing={sorted(missing)}, not successful={failed})")
+              sys.exit(1)
+          print("gate: PASS")
+          PY

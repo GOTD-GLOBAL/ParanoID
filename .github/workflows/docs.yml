@@ -1,22 +1,9 @@
 name: Documentation
 
+# Called only by .github/workflows/ci.yml, for every pull request and every
+# push to main, without path filters (see that file).
 on:
-  pull_request:
-    paths:
-      - "**/*.md"
-      - ".markdownlint-cli2.yaml"
-      - ".github/workflows/docs.yml"
-      - "scripts/check-devnet-receipt.py"
-      - "scripts/test-devnet-receipt.py"
-  push:
-    branches:
-      - main
-    paths:
-      - "**/*.md"
-      - ".markdownlint-cli2.yaml"
-      - ".github/workflows/docs.yml"
-      - "scripts/check-devnet-receipt.py"
-      - "scripts/test-devnet-receipt.py"
+  workflow_call:
 
 permissions:
   contents: read
@@ -42,8 +29,12 @@ jobs:
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
           # Private PR provenance is verified through authenticated GitHub API calls.
+          # Every change now waits on this step, so a transient third-party 503
+          # is retried before it can fail the gate. Persistent link rot still fails.
           args: >-
             --no-progress
+            --max-retries 4
+            --retry-wait-time 5
             --exclude '^https://explorer\.solana\.com/address/C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas\?cluster=devnet$'
             --exclude '^https://explorer\.solana\.com/tx/4dFfANwtzdq6iEwBM1GTd2iYLFowe3xXQBrBPYdjqxPSAwVPT6VNP3EnCuLwuHzhdJDc6NT3tywRYrCxyMk6PH1a\?cluster=devnet$'
             --exclude '^https://github\.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821$'
