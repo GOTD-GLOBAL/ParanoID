@@ -113,9 +113,20 @@ halves on every change.
 
 ## Adding a check
 
-Add it as a step or job inside the component workflow it belongs to. Do not
-create a new top-level workflow or add path filters to `ci.yml`. A new job
-inside `docs.yml`, `server.yml` or `ios.yml` is covered by `gate` automatically.
+Add it as a step or job inside the component workflow it belongs to. A new job
+inside `docs.yml`, `server.yml` or `ios.yml` is covered by `gate`
+automatically. Give it a `timeout-minutes`; the wiring test requires one for
+every job.
+
+Do not add path filters to `ci.yml`. Do not add another workflow that runs on
+`pull_request`, `push` or `workflow_call`: its checks would sit outside `gate`.
+A separate workflow is allowed only for `schedule` or `workflow_dispatch`, for
+example a weekly report. `scripts/test-ci-wiring.py` enforces both rules. It
+reads the workflows as YAML, so reformatting a workflow does not break it.
+
+The workflows `rust.yml` and `mobile-identity.yml` were left over from an
+August 2026 branch. They were disabled in the repository settings on
+2026-10-16 and never ran on `main`.
 
 ## Main branch ruleset
 

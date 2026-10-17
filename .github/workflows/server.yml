@@ -43,6 +43,12 @@ jobs:
           python3 deploy/test_single_host_vm.py
           python3 deploy/test_reconcile_apk_cap_20260913.py
           python3 deploy/test_restore_active_after_rollback.py
+      - name: Offline guard, environment and TLS-renewal regressions
+        # Pure-Python, offline and unprivileged; no systemd, root or packaged release.
+        run: |
+          python3 deploy/test_fresh_guards.py
+          python3 deploy/test_update_environment.py
+          python3 deploy/test_tls_renewal.py
       - name: Packaged v2 encrypted backup, optional FCM schema and interrupt gates
         # Fresh disposable PG only; fixed command, no untrusted event interpolation.
         # One-off live helpers are never executed here.
@@ -163,6 +169,21 @@ jobs:
           python3 clients/android/test_updates.py --synthetic
           python3 clients/android/test_update_wiring.py
           python3 clients/android/test_update_session_worker.py
+          python3 clients/android/test_update_artifact_regression.py
+          python3 clients/android/test_firebase_dependency.py
+  key-protocol:
+    # The shared identity/login protocol crate. Its tests were never run in CI.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Format, lint and tests
+        run: |
+          cargo +1.98.1 fmt --manifest-path key-protocol/Cargo.toml -- --check
+          cargo +1.98.1 clippy --locked --manifest-path key-protocol/Cargo.toml --all-targets -- -D warnings
+          cargo +1.98.1 test --locked --manifest-path key-protocol/Cargo.toml
   devnet-client:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -11,6 +11,8 @@ permissions:
 jobs:
   markdown:
     runs-on: ubuntu-latest
+    # Usually under a minute; bounds a hung link or RPC check (default is 6 h).
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
