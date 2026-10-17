@@ -1,0 +1,28 @@
+# External link exclusions shared by the PR internal check (docs.yml) and the
+# weekly external check (links-weekly.yml). One regular expression per line.
+# Explorer HTML returns bot429 to CI; the exact on-chain objects are verified
+# through read-only RPC by scripts/check-devnet-receipt.py instead.
+# Private PR provenance is verified through authenticated GitHub API calls.
+^https://explorer\.solana\.com/address/C8e5quz3JqepRZ4Mgj4L6PctGfdFpEo52t66WPBpgvas\?cluster=devnet$
+^https://explorer\.solana\.com/tx/4dFfANwtzdq6iEwBM1GTd2iYLFowe3xXQBrBPYdjqxPSAwVPT6VNP3EnCuLwuHzhdJDc6NT3tywRYrCxyMk6PH1a\?cluster=devnet$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/53#issuecomment-5771635821$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/4#issuecomment-5311797500$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/12$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/12#issuecomment-5581548687$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/14#issuecomment-5587328763$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/16$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/19$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/16#issuecomment-5609070441$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/18$
+^https://github\.com/GOTD-GLOBAL/ParanoID/actions/runs/34406605403$
+^https://github\.com/GOTD-GLOBAL/ParanoID/commit/f45519ebe1c44ab2f34b3707c57703fce4583fa6$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/15#issuecomment-5588484192$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/20$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5613364943$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/19#issuecomment-5614383522$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/27$
+^https://github\.com/GOTD-GLOBAL/ParanoID/issues/27#issuecomment-5651949919$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/45#issuecomment-5714820519$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/45#issuecomment-5715733752$
+^https://github\.com/GOTD-GLOBAL/ParanoID/pull/46#issuecomment-5715736976$

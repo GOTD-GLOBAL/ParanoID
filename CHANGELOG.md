@@ -43,6 +43,14 @@ public contract is declared.
   - the Android call-window `FLAG_SECURE` rule (owner decision 2026-10-05)
     moved from the iOS test into the Android test;
   - a caption mismatch now names the one line to fix (#92).
+- Links are split:
+  - internal links and `#anchors` are checked strictly and offline on every
+    change;
+  - external links are checked weekly (`links-weekly.yml`), and a dead
+    external link opens an issue instead of blocking pull requests;
+  - exclusions live in `.lycheeignore`;
+  - the new anchor check found and fixed one stale link in
+    `docs/security/threat-model.md` (#92).
 
 ### PR70 verification and updater regression repairs
 

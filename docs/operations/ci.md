@@ -54,12 +54,23 @@ move names in `SHARDS`; the CI matrix must list the same shards, and
 `scripts/test-ci-wiring.py` checks that. Run it locally without `--shard` to
 run the whole suite, as before.
 
-Two steps reach third-party services, so an outage there can fail `gate` on an
-unrelated change. Lychee checks every external documentation link, with four
-retries five seconds apart. `scripts/check-devnet-receipt.py` reads the public
-Devnet RPC. If either step fails on a link or service that the change did not
-touch, re-run the failed jobs. If a link is permanently gone, fix the document
-in a separate pull request. Do not add an exclusion only to turn the check green.
+Links are checked in two places:
+
+- **Internal links and anchors, on every change.** `docs.yml` runs lychee with
+  `--offline --include-fragments`. Every relative link and every `#anchor` into a
+  repository file must resolve. The check needs no network and fails the same
+  way every time, so it is strict.
+- **External links, weekly.** `links-weekly.yml` runs on a schedule (Mondays
+  06:17 UTC) and on manual dispatch, never on a pull request or push. A dead
+  external link opens or updates one issue, "Weekly external link check found
+  dead links", instead of blocking unrelated changes. Fix the document, or add a
+  justified line to `.lycheeignore`. That file is the one exclusion list for
+  both checks.
+
+One step still reaches a third-party service on every change.
+`scripts/check-devnet-receipt.py` reads the public Devnet RPC to verify the
+recorded deployment. If it fails on a change that did not touch the Devnet
+records, re-run the failed job.
 
 ## Legacy history job
 
@@ -107,9 +118,9 @@ halves on every change.
 - No macOS runner: iOS simulator, XCTest, the local stand and device runs are
   manual Mac receipts recorded in `docs/clients/ios/`.
 - No ParanoID server, phone, TLS key, Devnet wallet or production host is
-  contacted. The only outside traffic is the read-only Devnet RPC citation
-  check, lychee's external link checks, and package downloads from apt,
-  crates.io, Maven and rustup.
+  contacted. On a change, the only outside traffic is the read-only Devnet RPC
+  citation check and package downloads from apt, crates.io, Maven and rustup.
+  External documentation links are checked weekly, outside `gate`.
 
 ## Adding a check
 
