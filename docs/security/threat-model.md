@@ -522,7 +522,7 @@ interruption. Public deployment is not authorized by local task scope.
 second client adds without changing a wire contract: Keychain and Data
 Protection with the install-marker reinstall rule, leaf-SPKI evaluation on
 `Security.framework` instead of system trust with
-[App Transport Security off](ios-client-threats.md#app-transport-security-is-off-and-why-that-removes-nothing)
+[App Transport Security off](ios-client-threats.md#app-transport-security-is-off-compensating-checks-and-limits)
 (it refused the self-signed leaf on a public IP before the pinning delegate
 ran; found on the phone against the hosted server), the digest-pinned WebRTC
 binary, foreground-only delivery that leaves boundary 8 unused, Apple as a
