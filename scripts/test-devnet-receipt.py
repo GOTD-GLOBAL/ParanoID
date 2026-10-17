@@ -92,13 +92,21 @@ class ReceiptGateTest(unittest.TestCase):
         with self.assertRaises(ValueError):gate.verify_status({'confirmationStatus':'finalized','slot':502240101})
 
     def test_ci_requires_rpc_gate_before_exact_browser_exceptions(self):
-        workflow=(Path(__file__).resolve().parents[1]/'.github/workflows/docs.yml').read_text()
+        root=Path(__file__).resolve().parents[1]
+        workflow=(root/'.github/workflows/docs.yml').read_text()
         self.assertIn('python3 scripts/check-devnet-receipt.py',workflow)
         self.assertIn('python3 scripts/test-devnet-receipt.py',workflow)
-        self.assertLess(workflow.index('python3 scripts/check-devnet-receipt.py'),workflow.index('name: Check links'))
-        lines=[line for line in workflow.splitlines() if '--exclude' in line and 'explorer' in line]
+        # The RPC gate runs before any link check on every change.
+        self.assertLess(workflow.index('python3 scripts/check-devnet-receipt.py'),workflow.index('name: Check internal links'))
+        # Explorer HTML is excluded for exactly the two cited devnet objects, in the
+        # one exclusion list both link checks read; nothing else of the explorer is.
+        ignore=(root/'.lycheeignore').read_text().splitlines()
+        lines=[line for line in ignore if 'explorer' in line and not line.startswith('#')]
         self.assertEqual(len(lines),2)
-        self.assertTrue(all('cluster=devnet$' in line for line in lines))
-        self.assertFalse(any('--accept' in line for line in workflow.splitlines()))
+        self.assertTrue(all(line.startswith('^https://explorer\\.solana\\.com/') and line.endswith('cluster=devnet$') for line in lines))
+        for name in ('docs.yml','links-weekly.yml'):
+            text=(root/'.github/workflows'/name).read_text()
+            self.assertNotIn('--exclude',text,name)
+            self.assertFalse(any('--accept' in line for line in text.splitlines()),name)
 
 if __name__=='__main__':unittest.main()
