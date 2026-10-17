@@ -50,10 +50,11 @@ jobs:
       - name: Real packaged PostgreSQL TLS update and rollback (no systemd)
         # test_integration.py needs an explicitly provisioned user manager; never discover it here.
         run: python3 deploy/test_native.py
-  postgres-http:
+  server-lint:
+    # Format, lint and the CI wiring contract, once per change. The server tests
+    # themselves run in the parallel postgres-http shards below.
     runs-on: ubuntu-24.04
-    # Preserve real five-minute expiry/TLS lifetime assertions plus cold build time.
-    timeout-minutes: 30
+    timeout-minutes: 15
     env:
       RUSTUP_TOOLCHAIN: "1.98.1"
     steps:
@@ -64,13 +65,38 @@ jobs:
         run: cargo +1.98.1 fmt --manifest-path server/Cargo.toml -- --check
       - name: Lint
         run: cargo +1.98.1 clippy --locked --manifest-path server/Cargo.toml --all-targets -- -D warnings
-      - name: Private PostgreSQL prerequisites and CI wiring regression
+      - name: CI wiring regression
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml
+          python3 scripts/test-ci-wiring.py
+  postgres-http:
+    # The whole server suite, split into parallel shards that each run on their
+    # own runner and their own private PostgreSQL. Every test runs exactly once,
+    # unchanged and with its real five-minute expiry and TLS lifetime waits.
+    # Before running, each shard proves its selection against libtest's own list
+    # (scripts/check-server.py SHARDS); the catch-all `rest` owns every new test.
+    name: postgres-http (${{ matrix.shard }})
+    runs-on: ubuntu-24.04
+    # Longest shard: about 5.5 minutes of real-time tests plus a cold build.
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [realtime-expiry, realtime-limits, rest]
+    env:
+      RUSTUP_TOOLCHAIN: "1.98.1"
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Exact Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal
+      - name: Private PostgreSQL prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-16 openssl curl python3-cryptography
-          python3 scripts/test-ci-wiring.py
-      - name: Real PostgreSQL and HTTP tests (all targets, private socket)
-        run: python3 scripts/check-server.py
+      - name: Real PostgreSQL and HTTP tests (one shard, private socket)
+        run: python3 scripts/check-server.py --shard "$SHARD"
   client-core-and-tls:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

@@ -16,8 +16,13 @@ public contract is declared.
 - `main`'s ruleset requires a pull request and a passing `gate` from GitHub
   Actions, and blocks force-push and deletion. Direct pushes to `main` are
   refused; no approvals are required.
-- Every pull request now waits for the server workflow (about 18–20 minutes).
-  Pushes to `main` never cancel one another; lychee retries transient errors.
+- Every pull request now waits for the server workflow. Pushes to `main` never
+  cancel one another; lychee retries transient errors.
+- The server suite runs as three parallel shards (`realtime-expiry`,
+  `realtime-limits`, `rest`). Each one proves that it selects exactly the tests
+  it owns, so every test still runs once with its real waits. Format, lint and
+  the wiring contract moved to their own `server-lint` job. The required wait
+  drops from about 18 minutes to about 7 (#92).
 - The legacy pre-v7 history job passes only when the same 14 documented
   historical tests fail and every other test passes; any other result fails.
   Nothing is fixed or waived. `main` is no longer red by design (owner decision,
