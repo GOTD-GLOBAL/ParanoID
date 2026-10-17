@@ -21,7 +21,9 @@ def main():
         names = ['CoreBridge', 'PinnedTls', 'KeyClient', 'KeyTransport', 'SyncCycle',
                  'SelfServiceClient','IdentityPorts', 'RealtimeLoop', 'RealtimeTransport',
                  'VoiceRelayConfig', 'VoiceRelayTransport', 'UpdateManifest', 'UpdatePolicy', 'UpdateClient']
-        subprocess.run(['javac', '--release', '8', '-cp', cp, '-d', str(tmp)] + [str(ANDROID/f'src/org/paranoid/text/{name}.java') for name in names] + [str(ANDROID/'test/RealtimeTransportSmoke.java'), str(ANDROID/'test/ResponseTimeoutSmoke.java')], check=True)
+        # -sourcepath: same-package classes missing from `names` compile implicitly;
+        # other packages stay off it, so a text -> devnet dependency still fails.
+        subprocess.run(['javac', '--release', '8', '-sourcepath', str(ANDROID/'src'), '-cp', cp, '-d', str(tmp)] + [str(ANDROID/f'src/org/paranoid/text/{name}.java') for name in names] + [str(ANDROID/'test/RealtimeTransportSmoke.java'), str(ANDROID/'test/ResponseTimeoutSmoke.java')], check=True)
         subprocess.run(['java', '-cp', str(tmp)+':'+cp, 'RealtimeTransportSmoke', str(tmp/'server.p12')], check=True)
         subprocess.run(['java', '-cp', str(tmp)+':'+cp, 'org.paranoid.text.ResponseTimeoutSmoke', str(tmp/'server.p12')], check=True, timeout=65)
 

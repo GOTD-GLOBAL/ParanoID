@@ -17,7 +17,11 @@ classes = CLIENT / 'out/controller'
 classes.mkdir(parents=True, exist_ok=True)
 src = CLIENT / 'src/org/paranoid/devnet'
 tests = ['BridgeSmoke', 'RegistrationFlowTest', 'UiGenerationTest', 'DevnetWorkTest']
-subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-cp', str(jar), '-d', str(classes),
+# -sourcepath: the devnet package and the text package it depends on, so a class
+# of either missing from the lists compiles implicitly instead of failing CI.
+sourcepath = os.pathsep.join(str(path) for path in (CLIENT / 'src', ROOT / 'clients/android/src'))
+subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-sourcepath', sourcepath,
+                '-cp', str(jar), '-d', str(classes),
                 *[str(src / (name + '.java')) for name in
                   ['SolanaBridge', 'ProgramPin', 'DevnetRpc', 'RegistrationFlow', 'UiGeneration', 'DevnetWork']],
                 # DevnetWork names server refusals (SyncCycle.Rejected) from the text client.

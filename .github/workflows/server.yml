@@ -125,9 +125,12 @@ jobs:
           cargo +1.98.1 build --locked --manifest-path clients/core/Cargo.toml
       - name: JVM JNI and snapshot codec
         # RUNNER_TEMP is runner-owned; no PR body/title/ref is interpolated here.
+        # -sourcepath (production text package only): a same-package class
+        # missing from the list compiles implicitly, while a dependency on
+        # another package still fails (clients/android/test_host_sourcepath.py).
         run: |
           mkdir -p "$RUNNER_TEMP/paranoid-java"
-          javac --release 8 -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/src/org/paranoid/text/SyncCycle.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java clients/android/test/SyncSmoke.java
+          javac --release 8 -sourcepath clients/android/src -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/CoreBridge.java clients/android/src/org/paranoid/text/SnapshotCodec.java clients/android/src/org/paranoid/text/SyncCycle.java clients/android/test/CoreSmoke.java clients/android/test/StorageSmoke.java clients/android/test/SyncSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java" CoreSmoke
           java -cp "$RUNNER_TEMP/paranoid-java" StorageSmoke
           java -cp "$RUNNER_TEMP/paranoid-java" SyncSmoke
@@ -148,7 +151,8 @@ jobs:
           python3 clients/android/test_update_page.py
           python3 clients/android/test_crash_exit.py
           python3 clients/android/test_voice_relay.py
-          javac --release 8 -Xlint:-options -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,IdentityPorts,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
+          python3 clients/android/test_host_sourcepath.py
+          javac --release 8 -Xlint:-options -sourcepath clients/android/src -cp clients/android/out/deps/json-20240303.jar:clients/android/out/deps/zxing-core-3.5.3.jar -d "$RUNNER_TEMP/paranoid-java" clients/android/src/org/paranoid/text/{CoreBridge,PinnedTls,SnapshotCodec,SyncCycle,KeyClient,KeyTransport,IdentityPorts,SelfServiceClient,QrCodec,StorageGuard,DialogPolicy,RealtimeLoop,RealtimeTransport,VoiceRelayConfig,VoiceRelayTransport}.java clients/android/test/VoiceCommitSmoke.java
           java -Djava.library.path=clients/core/target/debug -cp "$RUNNER_TEMP/paranoid-java":clients/android/out/deps/json-20240303.jar VoiceCommitSmoke
           python3 clients/android/test_voice_relay_lane.py --jni-library-dir clients/core/target/debug --evidence-dir "$RUNNER_TEMP/paranoid-voice-lane"
       - name: Android update transport and installer worker host gates
