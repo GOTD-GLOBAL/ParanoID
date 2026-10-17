@@ -96,7 +96,7 @@ class Wiring(unittest.TestCase):
 
     def test_v2_backup_and_one_off_recovery_are_blocking_ci_gates(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
-        package = workflow.split('  native-package:\n', 1)[1].split('  postgres-http:\n', 1)[0]
+        package = job_runs('server', 'native-package')
         for name in ('deploy/test_reconcile_apk_cap_20260913.py',
                      'deploy/test_restore_active_after_rollback.py',
                      'scripts/check-v2-maintenance.py'):
@@ -111,20 +111,38 @@ class Wiring(unittest.TestCase):
             self.assertIn(marker, runner)
 
     def test_turn_offline_package_and_versioned_controller_gate(self):
-        workflow = (ROOT / ".github/workflows/server.yml").read_text()
-        package = workflow.split("  native-package:\n", 1)[1].split("  postgres-http:\n", 1)[0]
+        package = job_runs('server', 'native-package')
         for name in ('deploy/turn/test_package.py', 'deploy/turn/test_runtime.py',
                      'deploy/test_turn_environment.py', 'deploy/test_push_environment.py'):
             self.assertIn('python3 ' + name, package)
             self.assertTrue((ROOT / name).is_file())
 
     def test_server_uses_private_cluster_without_ci_tcp_bypass(self):
-        workflow = (ROOT / ".github/workflows/server.yml").read_text()
-        server = workflow.split("  postgres-http:\n", 1)[1].split("  client-core-and-tls:\n", 1)[0]
+        job = workflow_yaml('server')['jobs']['postgres-http']
+        server = job_runs('server', 'postgres-http') + '\n' + repr(job.get('env', {}))
         self.assertIn("python3 scripts/check-server.py", server)
         self.assertNotIn("PARANOID_CI_TEST_DATABASE", server)
         self.assertNotIn("PARANOID_TEST_DATABASE_URL", server)
         self.assertIn("postgresql-16", server)
+
+    def test_server_suite_runs_in_proven_shards(self):
+        checks = server_checks()
+        job = workflow_yaml('server')['jobs']['postgres-http']
+        self.assertIs(job['strategy']['fail-fast'], False)
+        # The matrix is exactly the shard table, so a shard cannot be dropped.
+        self.assertEqual(job['strategy']['matrix']['shard'], list(checks.SHARDS))
+        self.assertEqual(job['env']['SHARD'], '${{ matrix.shard }}')
+        runs = [step.get('run', '') for step in job['steps']]
+        self.assertIn('python3 scripts/check-server.py --shard "$SHARD"', runs)
+        self.assertNotIn('continue-on-error', job)
+        # Format, lint and this wiring test run once, in their own job.
+        lint = '\n'.join(step.get('run', '') for step in
+                         workflow_yaml('server')['jobs']['server-lint']['steps'])
+        for command in ('cargo +1.98.1 fmt --manifest-path server/Cargo.toml -- --check',
+                        'cargo +1.98.1 clippy --locked --manifest-path server/Cargo.toml '
+                        '--all-targets -- -D warnings',
+                        'python3 scripts/test-ci-wiring.py'):
+            self.assertIn(command, lint)
 
     def test_legacy_exact_failures_and_all_other_targets_gate(self):
         workflow = (ROOT / ".github/workflows/server.yml").read_text()
@@ -152,6 +170,80 @@ class Wiring(unittest.TestCase):
         # Comments explain why no failure-masking attribute is allowed.
         self.assertNotIn('continue-on-error:', '\n'.join(
             line for line in workflow.splitlines() if not line.lstrip().startswith('#')))
+
+
+class ServerShards(unittest.TestCase):
+    """Selection logic of scripts/check-server.py, without cargo or PostgreSQL."""
+
+    SHARDS = {'slow': ('t_slow',), 'rest': ()}
+    INVENTORY = {'t_slow': 1, 't_a': 1, 't_b': 1}
+
+    def setUp(self):
+        from collections import Counter
+        self.Counter = Counter
+        self.checks = server_checks()
+        self.inventory = Counter(self.INVENTORY)
+
+    def problems(self, shard, selected, shards=None):
+        shards = shards or self.SHARDS
+        return self.checks.check_selection(self.inventory, self.Counter(selected), shard, shards)
+
+    def test_real_shard_table_is_valid_and_disjoint(self):
+        self.checks.validate_shards(self.checks.SHARDS)
+        named = [name for names in self.checks.SHARDS.values() for name in names]
+        self.assertEqual(len(named), len(set(named)))
+        self.assertEqual(self.checks.SHARDS['rest'], ())
+
+    def test_filters_select_exact_names_and_skip_them_in_rest(self):
+        self.assertEqual(self.checks.filters(None, self.SHARDS), [])
+        self.assertEqual(self.checks.filters('slow', self.SHARDS), ['--exact', 't_slow'])
+        self.assertEqual(self.checks.filters('rest', self.SHARDS), ['--exact', '--skip', 't_slow'])
+
+    def test_every_test_is_owned_exactly_once(self):
+        owned = sum((self.checks.owned(self.inventory, shard, self.SHARDS)
+                     for shard in self.SHARDS), self.Counter())
+        self.assertEqual(owned, self.inventory)
+
+    def test_exact_selection_passes(self):
+        self.assertEqual(self.problems('slow', {'t_slow': 1}), [])
+        self.assertEqual(self.problems('rest', {'t_a': 1, 't_b': 1}), [])
+
+    def test_missing_and_extra_tests_fail(self):
+        self.assertIn('would not run', '\n'.join(self.problems('rest', {'t_a': 1})))
+        self.assertIn('tests it does not own',
+                      '\n'.join(self.problems('rest', {'t_a': 1, 't_b': 1, 't_slow': 1})))
+
+    def test_renamed_test_and_empty_selection_fail(self):
+        shards = {'slow': ('t_renamed',), 'rest': ()}
+        report = '\n'.join(self.problems('slow', {}, shards))
+        self.assertIn('not a server test', report)
+        self.assertIn('selects no test at all', report)
+
+    def test_duplicate_or_second_catch_all_is_rejected(self):
+        with self.assertRaises(SystemExit):
+            self.checks.validate_shards({'a': ('x',), 'b': ('x',), 'rest': ()})
+        with self.assertRaises(SystemExit):
+            self.checks.validate_shards({'a': (), 'rest': ()})
+
+
+def server_checks():
+    spec = importlib.util.spec_from_file_location(
+        'check_server', ROOT / 'scripts/check-server.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def job_runs(workflow, job):
+    """Every `run:` script of one job, joined: the exact job, no neighbour."""
+    steps = workflow_yaml(workflow)['jobs'][job]['steps']
+    return '\n'.join(step.get('run', '') for step in steps)
+
+
+def workflow_yaml(name):
+    """A workflow parsed as YAML (needs PyYAML: apt python3-yaml)."""
+    import yaml
+    return yaml.safe_load((ROOT / f'.github/workflows/{name}.yml').read_text())
 
 
 def legacy_checker():

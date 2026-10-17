@@ -34,8 +34,25 @@ concurrency group, so every commit on `main` keeps its own result.
 ### Cost of running everything
 
 Every pull request, a one-line Markdown fix included, waits for the slowest
-component. That is `server`'s `postgres-http` job, which takes about 18–20
-minutes of wall time. This is the price of never skipping a consumer's gate.
+component. That is the server suite, `server`'s `postgres-http` job. This is the
+price of never skipping a consumer's gate.
+
+Five server tests wait on real time on purpose: the five-minute session expiry,
+the two-minute TLS socket lifetime, the nonce ledger and two 61-second expiries.
+Together they took about 11 of the suite's 16 minutes, so `postgres-http` runs
+as three parallel shards, each on its own runner with its own private
+PostgreSQL: `realtime-expiry`, `realtime-limits` and `rest`. Each shard needs
+about five and a half minutes of tests plus a cold build. No test is shortened,
+skipped or given a test-only timeout.
+
+`scripts/check-server.py` owns the shard table (`SHARDS`). Before a shard runs
+any test, it lists the suite through libtest and proves that its filters
+select exactly the tests it owns. A renamed slow test, a test in two shards or
+a missing test fails the shard before PostgreSQL starts. The catch-all `rest`
+owns every test that is not named, so a new test always runs. To rebalance,
+move names in `SHARDS`; the CI matrix must list the same shards, and
+`scripts/test-ci-wiring.py` checks that. Run it locally without `--shard` to
+run the whole suite, as before.
 
 Two steps reach third-party services, so an outage there can fail `gate` on an
 unrelated change. Lychee checks every external documentation link, with four
