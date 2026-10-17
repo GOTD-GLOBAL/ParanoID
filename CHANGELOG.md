@@ -27,6 +27,10 @@ public contract is declared.
   historical tests fail and every other test passes; any other result fails.
   Nothing is fixed or waived. `main` is no longer red by design (owner decision,
   2026-10-16). See [CI reference](docs/operations/ci.md).
+- Host Java compiles in CI pass `-sourcepath` for their own package. A
+  same-package class missing from a hand-written list no longer fails CI, while
+  a new `text` → `devnet` dependency still does (`test_host_sourcepath.py`)
+  (#92).
 
 ### PR70 verification and updater regression repairs
 

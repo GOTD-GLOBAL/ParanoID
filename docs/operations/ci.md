@@ -85,6 +85,22 @@ Before that it was deliberately red, which kept every `main` run red. The
 decision owner confirmed this change in the ParanoID Telegram group: see
 [archival record](archival-ci-correction.md#aggregate-semantics-superseded--2026-10-16).
 
+## Host Java compiles
+
+CI compiles the Android text client on the host with hand-written file lists.
+`server.yml`, `test_realtime_transport.py` and `test_updates.py` pass
+`-sourcepath clients/android/src`. A production class of the same package that
+a list forgot then compiles implicitly instead of failing CI; in 2026-09/10
+that was the most common CI failure, and it was never a defect.
+`clients/android-devnet/check_controller.py` puts both the devnet and the text
+package on its sourcepath, because the devnet client legitimately depends on
+the text client.
+
+The text sourcepath holds the text package only. A new dependency of
+`org.paranoid.text` on `org.paranoid.devnet` therefore still fails these
+compiles, as it should. `clients/android/test_host_sourcepath.py` checks both
+halves on every change.
+
 ## What CI does not prove
 
 - No Android APK is built or signed in CI; APK builds and device runs are local.

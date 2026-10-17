@@ -87,6 +87,20 @@ class Wiring(unittest.TestCase):
         build = (ROOT / 'clients/android/build.sh').read_text()
         self.assertIn('python3 test_message_time.py', build)
 
+    def test_host_java_compiles_use_their_own_package_sourcepath(self):
+        workflow = (ROOT / '.github/workflows/server.yml').read_text()
+        supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]
+        javac = [line.strip() for line in supported.splitlines() if line.strip().startswith('javac ')]
+        self.assertEqual(len(javac), 2)
+        for line in javac:
+            self.assertIn('-sourcepath clients/android/src ', line)
+            self.assertNotIn('android-devnet', line)
+        self.assertIn('python3 clients/android/test_host_sourcepath.py', supported)
+        for name in ('test_realtime_transport.py', 'test_updates.py'):
+            self.assertIn("'-sourcepath', str(", (ROOT / 'clients/android' / name).read_text(), name)
+        controller = (ROOT / 'clients/android-devnet/check_controller.py').read_text()
+        self.assertIn("'-sourcepath', sourcepath", controller)
+
     def test_android_call_rows_and_preserved_main_fixes_gate_in_ci(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
         supported = workflow.split('  client-core-and-tls:\n', 1)[1].split('  legacy-client-history:\n', 1)[0]

@@ -216,7 +216,10 @@ def main():
                 'CoreBridge', 'KeyTransport', 'SyncCycle', 'SelfServiceClient', 'IdentityPorts']]
     sources += sorted((ROOT / 'test').glob('Update*Smoke.java'))
     (ROOT / 'out/update-host').mkdir(exist_ok=True, parents=True)
-    subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-cp', str(ROOT / 'out/deps/json-20240303.jar'),
+    # -sourcepath: same-package classes missing from the list compile implicitly;
+    # other packages stay off it, so a text -> devnet dependency still fails.
+    subprocess.run(['javac', '--release', '8', '-Xlint:-options', '-sourcepath', str(ROOT / 'src'),
+                    '-cp', str(ROOT / 'out/deps/json-20240303.jar'),
                     '-d', str(ROOT / 'out/update-host'), *map(str, sources)], check=True)
     harness_selftest()
     if not args.case:
