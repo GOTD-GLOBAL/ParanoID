@@ -31,6 +31,18 @@ public contract is declared.
   same-package class missing from a hand-written list no longer fails CI, while
   a new `text` → `devnet` dependency still does (`test_host_sourcepath.py`)
   (#92).
+- CI gaps closed: the `key-protocol` crate gets fmt, clippy and its 11 tests
+  (new `key-protocol` job), and five fast offline tests that never ran in CI
+  now do. Those are `deploy/test_fresh_guards.py`, `test_update_environment.py`,
+  `test_tls_renewal.py`, `clients/android/test_update_artifact_regression.py`
+  and `test_firebase_dependency.py` (#92).
+- Over-strict rules relaxed:
+  - the wiring test reads the workflows as YAML and only refuses an extra
+    workflow that runs on changes;
+  - the docs job has a timeout;
+  - the Android call-window `FLAG_SECURE` rule (owner decision 2026-10-05)
+    moved from the iOS test into the Android test;
+  - a caption mismatch now names the one line to fix (#92).
 
 ### PR70 verification and updater regression repairs
 

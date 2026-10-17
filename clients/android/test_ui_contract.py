@@ -1,3 +1,4 @@
+import re
 import unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parent
@@ -149,7 +150,13 @@ class OnboardingContract(unittest.TestCase):
         self.assertIn('requestPermissions(new String[]{android.Manifest.permission.CAMERA},CAMERA_PERMISSION)',ui)
         answer=ui[ui.index('callAnswer=action("Ответить"'):ui.index('callAnswer=action("Ответить"')+120]
         self.assertNotIn('CAMERA',answer)
-        self.assertIn('FLAG_SECURE',ui)
+        # Owner decision 2026-10-05: screenshots are allowed in every mode, so no
+        # window of the text client sets FLAG_SECURE. Checked on code with comments
+        # removed, so the comment recording the decision cannot satisfy or trip it.
+        code=re.sub(r'//[^\n]*','',ui)
+        secure=code.replace('clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)','')
+        self.assertFalse('LayoutParams.FLAG_SECURE)' in secure,
+                         'MainActivity.java sets FLAG_SECURE; the owner decision of 2026-10-05 allows screenshots in all modes')
         self.assertIn('videoPausedByBackground=true;engine.calls().video(false)',ui)
         # Screen stays on only while the video stage is shown; flag lives on the call window (owner request 2026-09-12).
         self.assertIn('if(showStage)callDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);',ui)

@@ -13,54 +13,77 @@ class Wiring(unittest.TestCase):
         # Captions depend on Android sources; identity bridges depend on the
         # registrar/core. A producer-only change must not skip the consumer gate:
         # the iOS workflow runs for every change through ci.yml, unfiltered.
-        self.assertEqual(triggers(workflow), ['workflow_call:'])
-        self.assertIn('    uses: ./.github/workflows/ios.yml', ci_entry(self))
-        self.assertIn('python3 clients/ios/test_ui_contract.py', workflow)
-        self.assertNotIn('continue-on-error:', workflow)
+        self.assertEqual(on_block(workflow_yaml('ios')), {'workflow_call': None})
+        self.assertEqual(workflow_yaml('ci')['jobs']['ios'], {'uses': './.github/workflows/ios.yml'})
+        self.assertIn('python3 clients/ios/test_ui_contract.py', job_runs('ios', 'ios-static'))
 
     def test_single_entry_point_runs_every_component_on_every_change(self):
-        ci = ci_entry(self)
-        self.assertEqual(triggers(ci), ['pull_request:', 'push:', 'branches: [main]',
-                                        'workflow_dispatch:'])
-        self.assertNotIn('paths', ci.split('jobs:', 1)[0])
-        self.assertNotIn('paths-ignore', ci)
+        ci = workflow_yaml('ci')
+        events = on_block(ci)
+        self.assertEqual(sorted(events), ['pull_request', 'push', 'workflow_dispatch'])
+        self.assertEqual(events['push'], {'branches': ['main']})
+        for event in events.values():
+            # No path filter anywhere: every change runs every component.
+            self.assertFalse(set(event or {}) & {'paths', 'paths-ignore'}, events)
         for name in ('docs', 'server', 'ios'):
-            self.assertIn(f'  {name}:\n    uses: ./.github/workflows/{name}.yml\n', ci)
-            workflow = (ROOT / f'.github/workflows/{name}.yml').read_text()
+            self.assertEqual(ci['jobs'][name], {'uses': f'./.github/workflows/{name}.yml'}, name)
             # Reached only through ci.yml: no second, filtered trigger.
-            self.assertEqual(triggers(workflow), ['workflow_call:'], name)
-        workflows = ROOT / '.github/workflows'
-        listed = sorted(path.name for pattern in ('*.yml', '*.yaml') for path in workflows.glob(pattern))
-        self.assertEqual(listed, ['ci.yml', 'docs.yml', 'ios.yml', 'server.yml'])
+            self.assertEqual(on_block(workflow_yaml(name)), {'workflow_call': None}, name)
         # Every job of the entry point except `gate` is a component that `gate` needs.
-        self.assertEqual(job_ids(ci), ['docs', 'server', 'ios', 'gate'])
+        self.assertEqual(list(ci['jobs']), ['docs', 'server', 'ios', 'gate'])
+
+    def test_no_other_workflow_runs_on_changes(self):
+        """Other workflows (a weekly report, say) may exist; none may run on changes.
+
+        A second workflow on pull_request or push would add checks outside
+        `gate`. A workflow with workflow_call could be called from elsewhere.
+        Both are refused. Only schedule, workflow_dispatch and issue-style events
+        are allowed beside ci.yml and its three components.
+        """
+        allowed = {'schedule', 'workflow_dispatch'}
+        workflows = ROOT / '.github/workflows'
+        paths = sorted(path for pattern in ('*.yml', '*.yaml') for path in workflows.glob(pattern))
+        self.assertTrue({'ci.yml', 'docs.yml', 'ios.yml', 'server.yml'} <= {p.name for p in paths})
+        for path in paths:
+            if path.name in ('ci.yml', 'docs.yml', 'ios.yml', 'server.yml'):
+                continue
+            events = set(on_block(load_yaml(path)))
+            self.assertTrue(events, path.name)
+            self.assertLessEqual(events, allowed, f'{path.name} runs on {sorted(events - allowed)}')
 
     def test_main_pushes_never_cancel_each_other(self):
-        ci = ci_entry(self)
+        concurrency = workflow_yaml('ci')['concurrency']
         # Only runs of one pull request share a group; a push to main or a manual
         # dispatch is grouped by its own run id, so no main commit loses its run.
-        self.assertIn("format('ci-pr-{0}', github.event.pull_request.number)", ci)
-        self.assertIn("|| format('ci-run-{0}', github.run_id) }}", ci)
-        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", ci)
-        self.assertNotIn('github.ref }}', ci.split('concurrency:', 1)[1].split('jobs:', 1)[0])
+        self.assertIn("format('ci-pr-{0}', github.event.pull_request.number)", concurrency['group'])
+        self.assertIn("|| format('ci-run-{0}', github.run_id) }}", concurrency['group'])
+        self.assertNotIn('github.ref', concurrency['group'])
+        self.assertEqual(concurrency['cancel-in-progress'], "${{ github.event_name == 'pull_request' }}")
 
     def test_no_workflow_masks_a_failure(self):
+        workflows = ROOT / '.github/workflows'
+        for path in sorted(path for pattern in ('*.yml', '*.yaml') for path in workflows.glob(pattern)):
+            for job_id, job in load_yaml(path).get('jobs', {}).items():
+                self.assertNotIn('continue-on-error', job, f'{path.name}:{job_id}')
+                for step in job.get('steps', []):
+                    self.assertNotIn('continue-on-error', step, f'{path.name}:{job_id}')
+
+    def test_every_job_has_a_timeout(self):
         for name in ('ci', 'docs', 'server', 'ios'):
-            workflow = (ROOT / f'.github/workflows/{name}.yml').read_text()
-            code = '\n'.join(line for line in workflow.splitlines()
-                             if not line.lstrip().startswith('#'))
-            self.assertNotIn('continue-on-error:', code, name)
+            for job_id, job in workflow_yaml(name)['jobs'].items():
+                if 'uses' in job:
+                    continue
+                self.assertIsInstance(job.get('timeout-minutes'), int, f'{name}.yml:{job_id}')
 
     def test_required_gate_fails_unless_every_component_succeeded(self):
-        ci = ci_entry(self)
-        gate = ci.split('\n  gate:\n', 1)[1]
-        self.assertIn('    name: gate\n', gate)
-        self.assertIn('    if: always()\n', gate)
-        self.assertIn('    needs: [docs, server, ios]\n', gate)
-        self.assertIn('NEEDS_JSON: ${{ toJSON(needs) }}', gate)
-        self.assertIn('expected = {"docs", "server", "ios"}', gate)
-        self.assertIn('job["result"] != "success"', gate)
-        self.assertNotIn('continue-on-error:', ci)
+        gate = workflow_yaml('ci')['jobs']['gate']
+        self.assertEqual(gate['name'], 'gate')
+        self.assertEqual(gate['if'], 'always()')
+        self.assertEqual(gate['needs'], ['docs', 'server', 'ios'])
+        step = gate['steps'][0]
+        self.assertEqual(step['env'], {'NEEDS_JSON': '${{ toJSON(needs) }}'})
+        self.assertIn('expected = {"docs", "server", "ios"}', step['run'])
+        self.assertIn('job["result"] != "success"', step['run'])
 
     def test_devnet_controller_and_integration_gate_ci(self):
         workflow = (ROOT / '.github/workflows/server.yml').read_text()
@@ -254,10 +277,24 @@ def job_runs(workflow, job):
     return '\n'.join(step.get('run', '') for step in steps)
 
 
-def workflow_yaml(name):
-    """A workflow parsed as YAML (needs PyYAML: apt python3-yaml)."""
+def load_yaml(path):
+    """A workflow file parsed as YAML (needs PyYAML: apt python3-yaml)."""
     import yaml
-    return yaml.safe_load((ROOT / f'.github/workflows/{name}.yml').read_text())
+    return yaml.safe_load(path.read_text())
+
+
+def workflow_yaml(name):
+    return load_yaml(ROOT / f'.github/workflows/{name}.yml')
+
+
+def on_block(workflow):
+    """The `on:` mapping; YAML 1.1 reads the bare key `on` as the boolean True."""
+    events = workflow.get('on', workflow.get(True))
+    if isinstance(events, str):
+        return {events: None}
+    if isinstance(events, list):
+        return {event: None for event in events}
+    return events
 
 
 def legacy_checker():

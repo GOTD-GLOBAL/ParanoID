@@ -215,7 +215,11 @@ class UiContract(unittest.TestCase):
                               f'{where}: unknown origin {origin!r}')
                 self.shown(caption, where)
                 if origin != 'ios':
-                    self.present(caption, self.java[origin], f'{where}: differs from {origin}')
+                    self.present(caption, self.java[origin],
+                                 f'{where}: differs from {origin}. If Android changed '
+                                 f'this text, update this line of {CAPTIONS.name} and '
+                                 f'the iOS string. If iOS keeps its own wording, change '
+                                 f'the origin to ios with a # comment saying why')
 
     def test_the_voice_privacy_sentence_is_androids_word_for_word(self):
         # `clients/android/test_ui_contract.py:57-58`. The screen that shows it
@@ -891,12 +895,10 @@ class UiContract(unittest.TestCase):
         # The video stage exists only while a camera is actually on.
         self.present('isLive && (call?.localVideo == true || call?.remoteVideo == true)',
                      screen, CALL)
-        # FLAG_SECURE was removed from the call window by owner decision 2026-10-05
-        # (screenshots allowed in all modes). iOS still covers itself while captured
-        # via UIScreen.capturedDidChangeNotification — see checks below.
-        self.absent('callDialog.getWindow().addFlags(android.view.WindowManager'
-                    '.LayoutParams.FLAG_SECURE);', self.java['MainActivity.java'],
-                    'MainActivity.java: FLAG_SECURE must be absent (owner decision 2026-10-05)')
+        # Android's call window has no FLAG_SECURE since the owner decision of
+        # 2026-10-05; that rule is Android's and lives in
+        # clients/android/test_ui_contract.py. iOS still covers itself while the
+        # screen is captured, via UIScreen.capturedDidChangeNotification.
         self.present('.overlay { if captured { curtain } }', screen, CALL)
         self.present('UIScreen.capturedDidChangeNotification', screen, CALL)
         self.present('captured = CallScreen.isScreenCaptured', screen, CALL)
